@@ -34,7 +34,7 @@
     });
   })();
 </script>
-<link rel="stylesheet" href="tloc-portail.css?v=15">
+<link rel="stylesheet" href="tloc-portail.css?v=16">
 </head>
 <body>
 <header class="barre">
@@ -69,7 +69,7 @@
       <div id="reprendre"></div>
       <div class="separateur">ou</div>
       <div class="rangee mode-pied">
-        <div class="champ"><label for="nomPartie">Nouvelle partie</label><input id="nomPartie" maxlength="24" placeholder="Nom du personnage" autocomplete="off"></div>
+        <div class="champ"><label for="nomPartie" class="sr">Nouvelle partie</label><input id="nomPartie" maxlength="24" placeholder="Nom du personnage" autocomplete="off"></div>
         <button id="nouvellePartie">Commencer</button>
       </div>
       <p class="indice mode-pied complet-note" id="noteComplet">Trois personnages au plus : supprimes-en un, plus bas, pour en créer un autre.</p>
@@ -132,7 +132,7 @@
           <p class="indice" id="indiceBots">Sans bot : rien que tes amis.</p>
         </div>
         <div class="rangee mode-pied">
-          <div class="champ"><label for="nomInstance">Nom de la partie</label><input id="nomInstance" maxlength="40" placeholder="Partie entre amis" autocomplete="off"></div>
+          <div class="champ"><label for="nomInstance" class="sr">Nom de la partie</label><input id="nomInstance" maxlength="40" placeholder="Nom de la partie" autocomplete="off"></div>
           <button class="plein" id="creerInstance">Créer</button>
         </div>
       </section>
@@ -166,6 +166,6 @@
 
 <!-- les retours brefs (copié, supprimé, rejoint) : en bas, sans déplacer la page -->
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
-<script type="module" src="accueil.js?v=15"></script>
+<script type="module" src="accueil.js?v=16"></script>
 </body>
 </html>

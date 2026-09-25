@@ -520,7 +520,8 @@ function majBots() {
   $('botsPlus').disabled = nbBots >= TOTAL_MAX - 1;
   $('choixNiveau').disabled = nbBots === 0;
   const amis = Math.max(1, Math.min(PLACES_MODE[modeChoisi()], TOTAL_MAX - nbBots)) - 1;
-  $('indiceBots').textContent = !nbBots ? 'Sans bot : rien que tes amis.'
+  // sans bot, rien à dire : la ligne disparaît et la tuile reste courte
+  $('indiceBots').textContent = !nbBots ? ''
     : `${nbBots} bot${nbBots > 1 ? 's' : ''} ${NOM_NIVEAU[niveauChoisi()]}${nbBots > 1 ? 's' : ''} · `
       + (amis ? `${amis} place${amis > 1 ? 's' : ''} pour tes amis` : 'rien que toi et les bots');
   // avec des bots, on n'attend personne : la partie s'ouvre et on y entre

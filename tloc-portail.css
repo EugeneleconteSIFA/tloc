@@ -80,19 +80,19 @@ h1.logo { margin:0; font-family:var(--gothique); font-weight:700; font-size:clam
    Elles tiennent sous le titre, dans le premier écran : on arrive, on voit tout de suite
    « seul », « rejoindre », « ouvrir » — un verbe par tuile, et un seul bouton pour finir.
    Le bouton est toujours en bas de la tuile, pour que l'œil le trouve au même endroit. */
-.vitrine { padding:40px 16px 120px; }   /* le bas des façades reste visible sous les tuiles */
-h1.logo { font-size:clamp(44px,6vw,80px); }
-.sous { margin:6px 0 28px; }
-.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; text-align:left; }
+.vitrine { padding:26px 16px 110px; }   /* le bas des façades reste visible sous les tuiles */
+h1.logo { font-size:clamp(40px,5vw,68px); }
+.sous { margin:4px 0 18px; font-size:clamp(16px,1.6vw,20px); }
+.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px; text-align:left; }
 .modes-multi { display:contents; }
-.mode { display:flex; flex-direction:column; gap:16px; padding:22px; border-radius:10px;
+.mode { display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:10px;
         background:var(--verre); border:1px solid var(--bord2); box-shadow:0 20px 50px rgba(0,0,0,.35);
         -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
 .mode-local { grid-column:span 2; }
 .mode-tete { display:flex; align-items:center; gap:14px; }
-.mode-icone { flex-shrink:0; width:44px; height:44px; border-radius:22px; display:flex; align-items:center; justify-content:center;
+.mode-icone { flex-shrink:0; width:40px; height:40px; border-radius:22px; display:flex; align-items:center; justify-content:center;
               background:var(--brique); color:var(--or-clair); }
-.mode-tete h2 { font-size:28px; color:var(--or-clair); }
+.mode-tete h2 { font-size:25px; color:var(--or-clair); }
 .mode-tete p { margin:2px 0 0; font-size:15px; color:var(--sourd); }
 .mode-pied { margin-top:auto; }
 .mode .indice { margin:0; font-size:14px; color:var(--sourd); }
@@ -115,10 +115,11 @@ h1.logo { font-size:clamp(44px,6vw,80px); }
 .choix-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0; padding:0; border:0; }
 .choix { position:relative; cursor:pointer; }
 .choix input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
-.choix span { display:flex; flex-direction:column; gap:2px; height:100%; padding:12px 14px; border-radius:8px;
-              border:1px solid var(--bord2); background:var(--silhouette); }
-.choix b { font-family:var(--titre); font-size:18px; font-weight:600; }
-.choix .choix-logo { margin-bottom:6px; color:var(--sourd); }
+.choix span { display:grid; grid-template-columns:auto 1fr; column-gap:10px; align-items:center; height:100%; padding:8px 12px;
+              border-radius:8px; border:1px solid var(--bord2); background:var(--silhouette); }
+.choix span .choix-logo { grid-row:span 2; }
+.choix b { font-family:var(--titre); font-size:17px; font-weight:600; line-height:1.15; }
+.choix .choix-logo { margin:0; color:var(--sourd); }
 .choix input:checked + span .choix-logo { color:var(--or); }
 :root[data-theme="clair"] .choix input:checked + span .choix-logo { color:var(--brique); }
 .choix small { font-size:13px; color:var(--sourd); }
@@ -340,7 +341,11 @@ button[aria-busy="true"] { cursor:progress; opacity:.75; }
 }
 
 /* ---------- les bots, dans « Ouvrir une partie » ---------- */
-.bots { display:flex; flex-direction:column; gap:10px; }
+.bots { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+.bots .choix-niveau { flex:1 1 200px; }
+.bots .choix-niveau:disabled { display:none; }
+.bots .indice { flex:1 1 100%; }
+.bots .indice:empty { display:none; }
 .bots-ligne { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .bots-ligne .etiquette { margin:0; font-size:15px; color:var(--pierre); font-weight:500; }
 .pas-a-pas { display:flex; align-items:center; gap:6px; }
@@ -350,7 +355,7 @@ button[aria-busy="true"] { cursor:progress; opacity:.75; }
 .choix-niveau { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin:0; padding:0; border:0; }
 .choix-niveau label { position:relative; cursor:pointer; }
 .choix-niveau input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
-.choix-niveau span { display:flex; align-items:center; justify-content:center; height:36px; border-radius:6px; font-size:14px;
+.choix-niveau span { display:flex; align-items:center; justify-content:center; height:34px; border-radius:6px; font-size:14px;
                      border:1px solid var(--bord2); background:var(--silhouette); }
 .choix-niveau input:checked + span { border-color:var(--or); background:rgba(226,178,90,.14); color:var(--or-clair); font-weight:700; }
 .choix-niveau input:focus-visible + span { outline:2px solid var(--or); outline-offset:2px; }
@@ -458,16 +463,16 @@ button.code:hover { border-style:solid; }
 
 /* ---------- tloc-dev : on ne le confond pas avec le vrai jeu ---------- */
 .bandeau-dev { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; width:fit-content;
-               max-width:min(900px,100%); margin:0 auto 18px; padding:8px 16px; border-radius:10px; font-size:15px;
-               background:#2B5F8A; color:#fff; border:2px dashed #BFE0FF; }
+               max-width:min(900px,100%); margin:0 auto 14px; padding:8px 16px; border-radius:10px; font-size:15px;
+               background:#3A2A20; color:#F6EBD3; border:2px dashed #E2B25A; }
 .bandeau-dev b { color:#FFE3A1; }
 .bandeau-dev .lien-createur { color:#fff; }
 .bandeau-dev button.fantome { color:#fff; }
-.etiquette-dev { padding:2px 10px; border-radius:11px; background:#fff; color:#2B5F8A; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+.etiquette-dev { padding:2px 10px; border-radius:11px; background:#E2B25A; color:#3A2A20; font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
 
 /* ---------- le bandeau des testeurs ---------- */
 .bandeau-testeurs { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; width:fit-content;
-                    max-width:min(760px,100%); margin:-12px auto 22px; padding:8px 16px; border-radius:22px; font-size:15px;
+                    max-width:min(760px,100%); margin:-4px auto 16px; padding:8px 16px; border-radius:22px; font-size:15px;
                     background:var(--verre); border:1px solid var(--bord2); }
 .etiquette-test { padding:2px 10px; border-radius:11px; background:var(--brique); color:#FFE3A1; font-size:12px; font-weight:700;
                   letter-spacing:.5px; text-transform:uppercase; }
@@ -496,7 +501,7 @@ button.code:hover { border-style:solid; }
    Façades de brique, cordons de pierre, vitres qui reflètent le ciel. Les titres passent
    de l'or à la brique : l'or sur fond clair ne se lit pas. */
 :root[data-theme="clair"] {
-  --nuit:#F3EDE1; --ciel:#D6E2EA; --silhouette:#FFFDF8; --silhouette2:#EDE4D3;
+  --nuit:#F3EDE1; --ciel:#EADFC6; --silhouette:#FFFDF8; --silhouette2:#EDE4D3;
   --panneau:#FBF7EF; --panneau2:#EADFCB;
   --pierre:#2B2118; --sourd:#5E5241;
   --brique:#9C3B28; --brique-sombre:#7A2E20;
@@ -507,7 +512,7 @@ button.code:hover { border-style:solid; }
   --survol:rgba(43,33,24,.05); --survol-bord:rgba(43,33,24,.45);
   --indice:#94887A;
   --msg-erreur:#8A2A1A; --msg-ok:#1F6A45; --toast-erreur:#FBE3DC; --danger-survol:#7E2416;
-  --facade:#A34A36; --cordon:#E6D8BC; --vitre:#5A3A31; --vitre-allumee:#9DB6C6;
+  --facade:#A34A36; --cordon:#F1E6CF; --vitre:#5A3A31; --vitre-allumee:#F6E7C1;
 }
 :root[data-theme="clair"] .barre { background:#FBF8F2; }
 :root[data-theme="clair"] h1.logo { text-shadow:0 3px 0 rgba(220,168,68,.9), 0 10px 30px rgba(122,46,32,.18); }
