@@ -30,7 +30,7 @@ printf '{"date":"%s","commit":"%s","message":%s}\n' \
 systemctl restart tloc-dev
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
-  if curl -fsS --max-time 2 http://127.0.0.1:8101/api/sante >/dev/null 2>&1; then echo "→ Dev en ligne : $APRES"; exit 0; fi
+  if curl -fsS --max-time 2 http://127.0.0.1:8131/api/sante >/dev/null 2>&1; then echo "→ Dev en ligne : $APRES"; exit 0; fi
 done
 echo "❌ Le serveur du dev ne répond pas après la mise à jour."
 exit 1

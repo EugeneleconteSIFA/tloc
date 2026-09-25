@@ -10,7 +10,7 @@ User=tloc
 # pointer sur la nouvelle, puis redémarre ce service
 WorkingDirectory=/srv/tloc/prod/site/serveur
 EnvironmentFile=/etc/tloc/prod.env
-ExecStart=/srv/tloc/venv-prod/bin/uvicorn app:app --host 127.0.0.1 --port 8100 --workers 1
+ExecStart=/srv/tloc/venv-prod/bin/uvicorn app:app --host 127.0.0.1 --port 8130 --workers 1
 Restart=always
 RestartSec=3
 # un seul worker : les salons du multi vivent en mémoire du processus

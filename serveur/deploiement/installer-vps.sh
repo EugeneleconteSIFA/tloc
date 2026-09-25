@@ -6,7 +6,7 @@
 #     git clone github-tloc:EugeneleconteSIFA/tloc.git /srv/tloc/dev/repo
 #     bash /srv/tloc/dev/repo/serveur/deploiement/installer-vps.sh
 #
-# Il installe : les paquets, l'utilisateur tloc, les deux serveurs (prod :8100, dev :8101),
+# Il installe : les paquets, l'utilisateur tloc, les deux serveurs (prod :8130, dev :8131 — le VPS a déjà 8100 à 8104 pris),
 # nginx pour tloc.kernse.fr et tloc-dev.kernse.fr (avec la porte du dev), la copie de la
 # base chaque nuit, le droit pour le dev de promouvoir, puis la première prod et HTTPS.
 # Relançable : ce qui existe déjà n'est pas écrasé (sauf les fichiers de config, remis à jour).
@@ -102,5 +102,5 @@ certbot --nginx -d tloc.kernse.fr -d tloc-dev.kernse.fr --redirect || \
   echo "❌ Certificat pas obtenu : vérifie les DNS, puis relance ce script."
 
 echo "→ État"
-for p in 8100 8101; do echo "   :$p $(curl -fsS http://127.0.0.1:$p/api/sante || echo 'ne répond pas')"; done
+for p in 8130 8131; do echo "   :$p $(curl -fsS http://127.0.0.1:$p/api/sante || echo 'ne répond pas')"; done
 echo "→ Prod : https://tloc.kernse.fr    Dev : https://tloc-dev.kernse.fr"

@@ -10,7 +10,7 @@ Mac ──./publier-dev.sh──► GitHub ──« Récupérer de GitHub »─�
 |---|---|---|
 | adresse | https://tloc.kernse.fr | https://tloc-dev.kernse.fr (mot de passe nginx) |
 | fichiers | `/srv/tloc/prod/site` → `releases/AAAAMMJJ-HHMMSS` (5 gardées) | `/srv/tloc/dev/site`, copié de `/srv/tloc/dev/repo` (miroir de GitHub) |
-| serveur | `tloc-prod` sur :8100 | `tloc-dev` sur :8101 |
+| serveur | `tloc-prod` sur :8130 | `tloc-dev` sur :8131 |
 | base | `/var/lib/tloc/prod.db` | `/var/lib/tloc/dev.db` (copie de la nuit) |
 | réglages | `/etc/tloc/prod.env` (mot de passe Createur) | `/etc/tloc/dev.env` |
 

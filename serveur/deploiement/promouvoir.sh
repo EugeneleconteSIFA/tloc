@@ -24,7 +24,7 @@ basculer() {                               # le lien change d'un coup : jamais d
 repond() {
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     sleep 1
-    curl -fsS --max-time 2 http://127.0.0.1:8100/api/sante >/dev/null 2>&1 && return 0
+    curl -fsS --max-time 2 http://127.0.0.1:8130/api/sante >/dev/null 2>&1 && return 0
   done
   return 1
 }
