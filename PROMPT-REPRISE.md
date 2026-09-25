@@ -164,9 +164,10 @@ paille tirés au hasard à chaque chargement).
 
 ## 4. Ce qu'il reste à faire, par ordre
 
-> **Session suivante : voir le § 4.I** (les idées et chantiers du 26 septembre, avec un
-> ordre proposé), puis le § 4.H (défauts visuels). Demander d'abord à Eugène les fichiers
-> verrouillés du jour, et s'il a promu la dernière version du dev en prod.
+> **Session suivante : lire d'abord « La nuit du 26 septembre » (§ 4.I, en tête)** — le
+> prologue, l'armure et l'écu sont faits et en ligne sur le dev, à essayer avec Eugène ;
+> puis le cheval. Demander d'abord à Eugène les fichiers verrouillés du jour, et s'il a
+> promu la dernière version du dev en prod.
 
 ### A. Le beffroi — **terminé et vérifié (24 septembre)**
 
@@ -404,7 +405,35 @@ ou du relief, et à comparer au passage précédent.
   pour le vieux mage (géométrie, comme la cape du prince).
 - Textures : KTX2 / Basis (cf. § 4.E) si le chargement en ligne reste lourd.
 
-### I. Les idées d'Eugène (26 septembre) — **notées, pas commencées**
+### I. Les idées d'Eugène (26 septembre) — **1, 2 (armure, écu) et 4 faits ; le cheval préparé**
+
+**La nuit du 26 septembre — ce qui a été fait en autonomie** (Eugène : « on check ça
+demain ensemble »). Tout est sur le dev (`f2691c5` prologue, `7e5bdeb` armure et écu).
+- **Le prologue** (point 1, § ci-dessous) : `quetes.js` (`debut`, `prologue`,
+  `suivrePrologue`, `introScene(gateau)`, `finPrologue`), l'école Lequeuche = l'enseigne de
+  la boulangerie du bourg (`village.js`, lieu `ecole`), le point d'or de la minicarte
+  (`PARTAGE.repere`, hud.js), le compteur d'épis fauchés (`bleFauche`, nature.js), et le
+  rejeu depuis l'accueil (« Revoir le prologue » → `tloc_auto = 'prologue'` →
+  `G.sansSauvegarde` : ni lecture ni écriture de sauvegarde, vérifié au banc). Rien n'est
+  sauvegardé pendant le prologue ; une sauvegarde automatique prise en route le relance au
+  début (`onLoad`). Les monstres dorment (`caged`) jusqu'à l'enlèvement.
+  Vérifié en rendu, étape par étape (captures au banc). Chargement : 16,9 s en somme des
+  étapes après (bancs/charge-2026-09-26-apres-prologue.json), dans le budget.
+- **Au passage** : Phinaert n'atteignait jamais le pont dans l'intro d'origine (210 m à
+  6 m/s, coupés à 8 s) — il part maintenant de 40 m. La réplique de Lydéric disait « Espace
+  pour frapper » : c'est clic gauche ou F. Eugène n'a plus ni couronne ni cape (pnj.js).
+- **« Prince » retiré** de tous les textes visibles (13 fichiers) ; les noms de code restent.
+- **L'armure et l'écu en multi** (point 2) : voir NOTE-MULTI.md, « L'équipement ».
+- **Le cheval, préparé seulement** : `assets_back/02_personnages/animaux/cheval.glb`
+  (1,5 Mo, 8 clips : Walk, Gallop, Idle, Idle_Headlow, Eating, Death, Idle_HitReact1,
+  Attack_Kick ; fait par `glb.py` du même dossier), essayé en jeu à côté de Camille :
+  la tête à 2,35 m il a la bonne carrure (échelle calculée sur le maillage DÉFORMÉ par les
+  os — la boîte du modèle brut donne 4,8 et un cheval de huit mètres). Style low-poly à
+  facettes : à montrer à Eugène. À faire avec lui : l'écurie (près du moulin), monter et
+  descendre, la vitesse, la jauge de vie qui remonte en broutant, puis l'épée en selle.
+- **À trancher avec Eugène** : les prix de la forge (40 / 70 / 12 / 50 écus), les points
+  d'armure (2, 3, 4 cœurs), le délai de retour de l'armure (45 s), le fait que les bots ne
+  ramassent rien (ils subissent la parade et l'armure, c'est tout).
 
 **1. Apprendre à jouer, et apprendre la carte.** Deux pistes d'Eugène :
 - un **mode tutoriel** à part, à côté du solo et du multi ;
@@ -508,6 +537,7 @@ voir le § 4.E (étapes lentes du chargement, KTX2).
 **Ordre proposé** : 4 (une heure, ça se sent tout de suite) → 5 (l'arc, utile au multi) →
 2 (les objets qui font le multi) → 6 (chargement) → 1 (le prologue : écrire l'histoire
 avec Eugène avant de coder) → 3 (la carte).
+**Fait au 27 septembre** : 4, 1, et 2 sauf le cheval. Reste : le cheval (2), 5, 6, 3, 7.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

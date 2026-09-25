@@ -263,3 +263,27 @@ d'ami (`convs.retour = 1`). Ce compte est réservé (inscription refusée sous c
 ne naît qu'au démarrage du serveur, avec le mot de passe de `TLOC_CREATEUR_MDP`
 (`assurer_createur()` ; une seule fois, ensuite la variable est inutile). Connecté en
 Createur, le bandeau compte les retours et la bulle les range en tête de liste.
+
+### L'équipement : l'armure et l'écu (26 septembre)
+
+Deux objets, posés à des lieux fixes pour qu'on apprenne où courir : **l'armure aux
+casernes**, **l'écu sur la place d'Armes** (le premier client propose un point praticable
+près du lieu nommé, `objets-lieux` ; le serveur garde ce premier choix). Un présentoir
+lumineux et un point sur la minicarte (`PARTAGE.marques`, hud.js) tant qu'ils attendent.
+- **Qui les prend** : le serveur tranche (`objet-prendre`, 4 m, premier arrivé), et
+  annonce `objets` avec `evt: 'pris' | 'casse' | 'retour' | 'raz'`. Une manche neuve rend
+  tout à sa place (`raz_objets` dans `commencer`) ; celui qui s'en va rend ce qu'il portait.
+- **L'écu** se garde, même après une mort. **Clic droit maintenu** (engine.js,
+  `mouse.garde` → `player.garde`) : Camille ralentit (×0,4), fait face au regard, ne frappe
+  plus, et pare tout coup venu de face (±60°, ±83° cerclé de fer). Clip `Sword_Block`, et
+  un second écu tenu devant la poitrine pendant la garde (pnj.js, `ecuGarde`).
+- **L'armure** encaisse avant les cœurs (`absorber`, dans `encaisser`) : 2, 3 ou 4 cœurs
+  (cuir clouté, mailles, plates). Brisée, elle part (`objet-casse`) et revient aux casernes
+  après `OBJET_RETOUR` (45 s). Sa jauge s'affiche au bout des cœurs.
+- **La forge du bourg** (Entrée devant « À l'enclume ») : mailles 40 écus, plates 70,
+  réparation 12, écu cerclé 50. Les niveaux restent côté client ; les autres les voient par
+  l'état (`ar`, `bc`, `gd` dans le message `etat`) et `PNJ.animeCamille` habille l'avatar.
+- **Les bots** ne ramassent rien ; ils subissent la parade et l'armure comme tout le monde.
+- Banc : `banc-equip.mjs` (scratchpad) — ramassage, parade de face, armure qui se casse et
+  revient, achats à la forge, gros plans de la garde.
+

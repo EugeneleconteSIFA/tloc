@@ -1,0 +1,7 @@
+Ultimate Animated Animals — Quaternius (juillet 2021)
+https://quaternius.com — licence CC0 1.0 (domaine public) : usage libre, sans attribution obligatoire.
+
+Reçu d'Eugène le 26 septembre 2026 (dossier Drive partagé), rangé dans
+assets_back/02_personnages/animaux/ : Horse, Horse_White, Fox, Deer, Stag, Cow, Bull, Donkey (.gltf).
+Les .gltf bruts ne partent pas sur GitHub (.gitignore) ; seules leurs versions allégées
+(.glb, clips triés) y vont — cheval.glb et cheval_blanc.glb pour l'instant.
