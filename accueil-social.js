@@ -45,7 +45,7 @@ const TRAITS = {
   retour: '<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>',
   envoyer: '<path d="M4 12l16-8-6 16-3-7z"/>',
   groupe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M17 11v6M14 14h6"/>',
-  epees: '<path d="M4 4l11 11"/><path d="M20 4L9 15"/><path d="M12.5 17.5l5-5"/><path d="M6.5 12.5l5 5"/>',
+  epees: '<path d="M4 4l11 11"/><path d="M20 4L9 15"/><path d="M12.5 17.5l5-5"/><path d="M6.5 12.5l5 5"/><path d="M16.5 16.5l3 3"/><path d="M7.5 16.5l-3 3"/>',
   ajout: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M19 8v6M16 11h6"/>',
   ok: '<path d="M5 12l5 5 9-10"/>',
   photo: '<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/>',
@@ -99,37 +99,73 @@ async function entrerPartie(code, nom, bouton) {
 // =====================================================================
 let profilCourant = null;
 
-export async function chargerProfil() {
-  const zone = $('panneauProfil');
+// ---------- l'accueil du compte : photo, nom, badges, amis ----------
+let ouvrirSection = () => {};
+export function surOnglet(fn) { ouvrirSection = fn; }
+
+export async function chargerAccueilCompte() {
+  const zone = $('compteAccueil');
+  if (!zone) return;
+  try { profilCourant = await C.profil(); } catch (e) { zone.innerHTML = `<p class="sous-titre">${ECH(e.message)}</p>`; return; }
+  const p = profilCourant;
+  zone.innerHTML = `${avatar(p, 64)}
+    <div class="compte-qui"><h3>${ECH(p.pseudo)}</h3>${p.devise ? `<p class="sous-titre">${ECH(p.devise)}</p>` : ''}
+      <div class="compte-chiffres">
+        <button type="button" class="chiffre" data-vers="badges"><b>${p.badges}</b> badge${p.badges > 1 ? 's' : ''}</button>
+        <button type="button" class="chiffre" data-vers="amis"><b>${p.amis}</b> ami${p.amis > 1 ? 's' : ''}</button>
+      </div>
+    </div>`;
+  zone.querySelectorAll('[data-vers]').forEach((b) => { b.onclick = () => ouvrirSection(b.dataset.vers); });
+  if ($('ongletAdmin')) $('ongletAdmin').classList.toggle('cache', !p.createur);
+  majAvatarBarre();
+}
+
+// ---------- infos perso : photo, devise, depuis quand ----------
+export async function chargerInfos() {
+  const zone = $('panneauInfos');
   try { profilCourant = await C.profil(); } catch (e) { zone.innerHTML = `<p class="sous-titre">${ECH(e.message)}</p>`; return; }
   const p = profilCourant;
   const depuis = new Date(p.cree * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   zone.innerHTML = `
-    <div class="profil-tete">
-      <div class="profil-photo">${avatar(p, 88)}
-        <label class="bouton mini" for="fichierPhoto" title="Changer la photo">${icone('photo', 16)}Photo</label>
-        <input type="file" id="fichierPhoto" accept="image/*" class="sr">
-      </div>
-      <div class="profil-nom"><h3>${ECH(p.pseudo)}</h3><p class="sous-titre">Inscrit depuis le ${ECH(depuis)}</p></div>
+    <div class="ligne-photo">${avatar(p, 56)}
+      <label class="bouton mini" for="fichierPhoto">${icone('photo', 16)}Changer la photo</label>
+      <input type="file" id="fichierPhoto" accept="image/*" class="sr">
+      ${p.photo ? '<button class="fantome mini" id="retirerPhoto">Retirer</button>' : ''}
     </div>
     <label for="deviseProfil">Ta devise</label>
     <input id="deviseProfil" maxlength="80" placeholder="Pour Lille et la citadelle !" value="${ECH(p.devise || '')}">
-    <dl class="profil-infos">
-      <div><dt>Parties</dt><dd>${p.parties}</dd></div>
-      <div><dt>Amis</dt><dd>${p.amis}</dd></div>
-      <div><dt>Badges</dt><dd>${p.badges}</dd></div>
-    </dl>
-    ${p.photo ? '<button class="fantome mini" id="retirerPhoto">Retirer la photo</button>' : ''}`;
-  majAvatarBarre();
+    <dl class="infos-liste">
+      <div><dt>Pseudo</dt><dd>${ECH(p.pseudo)}</dd></div>
+      <div><dt>Inscrit depuis le</dt><dd>${ECH(depuis)}</dd></div>
+      <div><dt>Parties en solo</dt><dd>${p.parties}</dd></div>
+    </dl>`;
   $('fichierPhoto').onchange = (e) => { const f = e.target.files[0]; if (f) poserPhoto(f); };
   const devise = $('deviseProfil');
   const garder = async () => {
     if (devise.value.trim() === (profilCourant.devise || '')) return;
-    try { profilCourant = await C.majProfil({ devise: devise.value }); toast('Devise enregistrée.'); } catch (e) { toast(e.message, { erreur: true }); }
+    try { profilCourant = await C.majProfil({ devise: devise.value }); toast('Devise enregistrée.'); chargerAccueilCompte(); }
+    catch (e) { toast(e.message, { erreur: true }); }
   };
   devise.onblur = garder;
   devise.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); devise.blur(); } };
-  if ($('retirerPhoto')) $('retirerPhoto').onclick = async () => { await C.majProfil({ photo: '' }); chargerProfil(); };
+  if ($('retirerPhoto')) $('retirerPhoto').onclick = async () => { await C.majProfil({ photo: '' }); chargerInfos(); chargerAccueilCompte(); };
+}
+
+// ---------- la vue admin du créateur : les chiffres du jeu ----------
+export async function chargerAdmin() {
+  const zone = $('panneauAdmin');
+  zone.innerHTML = '<p class="sous-titre">Chargement…</p>';
+  let a; try { a = await C.admin(); } catch (e) { zone.innerHTML = `<p class="sous-titre">${ECH(e.message)}</p>`; return; }
+  const heures = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`);
+  const carte = (chiffre, titre, detail) => `<div class="stat"><b>${chiffre}</b><span>${titre}</span><small>${detail}</small></div>`;
+  zone.innerHTML = `<p class="sous-titre">Les autres joueurs — toi exclu</p>
+    <div class="stats">
+      ${carte(a.joueurs.total, 'joueurs inscrits', `+${a.joueurs.nouveaux_7j} cette semaine · ${a.joueurs.actifs_24h} venus aujourd’hui`)}
+      ${carte(heures(a.solo.minutes), 'de jeu en solo', `${a.solo.parties} partie${a.solo.parties > 1 ? 's' : ''} sauvegardée${a.solo.parties > 1 ? 's' : ''}`)}
+      ${carte(a.multi.manches, 'manches jouées', `${a.multi.manches_7j} cette semaine · ${a.multi.instances} parties ouvertes · ${a.multi.en_ligne} en ligne`)}
+      ${carte(a.retours.messages, 'messages de retour', `de ${a.retours.conversations} testeur${a.retours.conversations > 1 ? 's' : ''}`)}
+    </div>
+    ${a.derniers.length ? `<p class="sous-titre">Derniers inscrits : ${a.derniers.map((d) => `<b>${ECH(d.pseudo)}</b>`).join(', ')}</p>` : ''}`;
 }
 
 // la photo est recadrée en carré de 160 px dans le navigateur : quelques kilo-octets
@@ -141,7 +177,7 @@ function poserPhoto(fichier) {
     const cote = Math.min(img.width, img.height);
     cv.getContext('2d').drawImage(img, (img.width - cote) / 2, (img.height - cote) / 2, cote, cote, 0, 0, T, T);
     URL.revokeObjectURL(img.src);
-    try { await C.majProfil({ photo: cv.toDataURL('image/jpeg', 0.85) }); toast('Photo de profil changée.'); chargerProfil(); }
+    try { await C.majProfil({ photo: cv.toDataURL('image/jpeg', 0.85) }); toast('Photo de profil changée.'); chargerInfos(); chargerAccueilCompte(); }
     catch (e) { toast(e.message, { erreur: true }); }
   };
   img.onerror = () => toast('Cette image ne s’ouvre pas.', { erreur: true });
@@ -220,7 +256,8 @@ let convsCache = [], amisCache = [];
 export function demarrerChat(opts) {
   toast = opts.toast || toast;
   moiId = null;
-  C.profil().then((p) => { moiId = p.id; profilCourant = profilCourant || p; majAvatarBarre(); }).catch(() => {});
+  C.profil().then((p) => { moiId = p.id; profilCourant = profilCourant || p; majAvatarBarre();
+    if ($('ongletAdmin')) $('ongletAdmin').classList.toggle('cache', !p.createur); }).catch(() => {});
   const bouton = document.createElement('button');
   bouton.className = 'bulle-chat'; bouton.id = 'bulleChat';
   bouton.setAttribute('aria-label', 'Messages');
@@ -329,40 +366,51 @@ async function peindreListe() {
 // versions, et promeut la nouvelle d'un clic — ou revient à la précédente.
 const dateVersion = (v) => (v && v.date ? new Date(v.date).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   + (v.commit ? ` (${v.commit})` : '') : 'inconnue');
+// Sur tloc-dev : une puce « Dev » dans l'en-tête, et, pour le créateur, la section
+// « Version » de son compte (les deux versions, récupérer, promouvoir, revenir en arrière).
+let envCourant = null;
 export async function brancherEnvironnement() {
   let e; try { e = await C.env(); } catch (er) { return; }
   if (e.env !== 'dev') return;
   // le dev est réservé au créateur : pas de mode « sans compte » ici
   if (!C.connecte()) { try { localStorage.removeItem('tloc_local'); } catch (er) {} location.replace('connexion.html'); return; }
   document.title = '[DEV] ' + document.title;
-  const zone = $('bandeauDev');
-  zone.classList.remove('cache');
-  const peindre = (e) => {
-    zone.innerHTML = `<span class="etiquette-dev">Dev</span>
-      <span>Version de développement du <b>${dateVersion(e.version)}</b>${e.peut_promouvoir ? ` · en prod : <b>${dateVersion(e.prod)}</b>` : ' — ce que tu fais ici est effacé chaque nuit.'}</span>
-      ${e.peut_promouvoir ? `<button class="mini" id="majDev" title="git pull de GitHub vers le dev">Récupérer de GitHub</button>
-        <button class="plein mini" id="promouvoir">Promouvoir en prod</button>
-        <button class="fantome mini" id="revenirProd" title="Remettre la version précédente de la prod">Revenir en arrière</button>` : ''}
-      <a class="lien-createur" href="https://tloc.kernse.fr/">Aller au vrai jeu</a>`;
-    const lancer = async (action, bouton) => {
-      const question = action === 'maj' ? 'Récupérer la dernière version poussée sur GitHub ?'
-        : action === 'revenir' ? 'Remettre la version précédente de la prod ?'
-        : `Envoyer la version du ${dateVersion(e.version)} en prod ? Les joueurs l'auront au prochain chargement.`;
-      if (!confirm(question)) return;
-      bouton.disabled = true; bouton.textContent = { maj: 'Récupération…', revenir: 'Retour…' }[action] || 'Promotion…';
-      try {
-        const r = await C.promotion(action);
-        toast(r.ok ? ({ maj: 'Le dev a la dernière version : recharge la page.', revenir: 'La prod est revenue à la version précédente.' }[action] || 'C’est en prod !')
-          : `Échec : ${(r.sortie || []).slice(-1)[0] || 'voir le serveur'}`, { erreur: !r.ok, duree: 8000 });
-        e.prod = r.prod || e.prod; e.version = r.version || e.version;
-      } catch (er) { toast(er.message, { erreur: true }); }
-      peindre(e);
-    };
-    if ($('majDev')) $('majDev').onclick = () => lancer('maj', $('majDev'));
-    if ($('promouvoir')) $('promouvoir').onclick = () => lancer('promouvoir', $('promouvoir'));
-    if ($('revenirProd')) $('revenirProd').onclick = () => lancer('revenir', $('revenirProd'));
+  envCourant = e;
+  if ($('puceDev')) $('puceDev').classList.remove('cache');
+  if (e.peut_promouvoir && $('ongletVersion')) $('ongletVersion').classList.remove('cache');
+}
+
+export function chargerVersion() {
+  const zone = $('panneauVersion'), e = envCourant;
+  if (!zone || !e) return;
+  zone.innerHTML = `
+    <dl class="infos-liste">
+      <div><dt>Dev (ici)</dt><dd>${ECH(dateVersion(e.version))}${e.version && e.version.message ? ` — ${ECH(e.version.message)}` : ''}</dd></div>
+      <div><dt>Prod (les joueurs)</dt><dd>${ECH(dateVersion(e.prod))}${e.prod && e.prod.message ? ` — ${ECH(e.prod.message)}` : ''}</dd></div>
+    </dl>
+    <div class="actions-version">
+      <button class="mini" id="majDev" title="git pull de GitHub vers le dev">Récupérer de GitHub</button>
+      <button class="plein mini" id="promouvoir">Promouvoir en prod</button>
+      <button class="fantome mini" id="revenirProd" title="Remettre la version précédente de la prod">Revenir en arrière</button>
+    </div>
+    <p class="sous-titre">La base du dev est recopiée de la prod chaque nuit à 3 h 30. <a href="https://tloc.kernse.fr/">Aller au vrai jeu</a></p>`;
+  const lancer = async (action, bouton) => {
+    const question = action === 'maj' ? 'Récupérer la dernière version poussée sur GitHub ?'
+      : action === 'revenir' ? 'Remettre la version précédente de la prod ?'
+      : `Envoyer la version du ${dateVersion(e.version)} en prod ? Les joueurs l'auront au prochain chargement.`;
+    if (!confirm(question)) return;
+    bouton.disabled = true; bouton.textContent = { maj: 'Récupération…', revenir: 'Retour…' }[action] || 'Promotion…';
+    try {
+      const r = await C.promotion(action);
+      toast(r.ok ? ({ maj: 'Le dev a la dernière version : recharge la page.', revenir: 'La prod est revenue à la version précédente.' }[action] || 'C’est en prod !')
+        : `Échec : ${(r.sortie || []).slice(-1)[0] || 'voir le serveur'}`, { erreur: !r.ok, duree: 8000 });
+      e.prod = r.prod || e.prod; e.version = r.version || e.version;
+    } catch (er) { toast(er.message, { erreur: true }); }
+    chargerVersion();
   };
-  peindre(e);
+  $('majDev').onclick = () => lancer('maj', $('majDev'));
+  $('promouvoir').onclick = () => lancer('promouvoir', $('promouvoir'));
+  $('revenirProd').onclick = () => lancer('revenir', $('revenirProd'));
 }
 
 // ---------- le bandeau des testeurs, et le créateur ----------

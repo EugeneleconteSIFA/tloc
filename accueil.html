@@ -34,11 +34,17 @@
     });
   })();
 </script>
-<link rel="stylesheet" href="tloc-portail.css?v=18">
+<link rel="stylesheet" href="tloc-portail.css?v=24">
 </head>
 <body>
 <header class="barre">
-  <a class="marque" href="accueil.html"><img src="favicon.svg" alt=""><span>The Legend of Camille</span></a>
+  <a class="marque" href="accueil.html"><img src="favicon.svg" alt=""><span>The Legend of Camille</span><span class="etiquette-dev cache" id="puceDev" title="Version de développement">Dev</span></a>
+  <!-- la phase de test : les retours vont droit au créateur, dans le chat -->
+  <p class="bandeau-testeurs" id="bandeauTesteurs">
+    <span class="etiquette-test">Accès anticipé</span>
+    <span id="texteTesteurs">Vous êtes les premiers testeurs du jeu : faites tous vos retours au
+      <a href="connexion.html" class="lien-createur" id="lienCreateur">créateur</a>.</span>
+  </p>
   <div class="barre-droite">
   <button type="button" class="interrupteur" id="basculeTheme" role="switch" aria-checked="false" aria-label="Thème clair" title="Thème clair ou sombre">
     <span class="piste"><span class="curseur">
@@ -56,12 +62,6 @@
   <h1 class="logo">The Legend of Camille</h1>
   <p class="sous">La Citadelle de Lille</p>
   <!-- la phase de test : les retours vont droit au créateur, dans le chat -->
-  <div class="bandeau-dev cache" id="bandeauDev" role="region" aria-label="Version de développement"></div>
-  <p class="bandeau-testeurs" id="bandeauTesteurs">
-    <span class="etiquette-test">Accès anticipé</span>
-    <span id="texteTesteurs">Vous êtes les premiers testeurs du jeu : faites tous vos retours au
-      <a href="connexion.html" class="lien-createur" id="lienCreateur">créateur</a>.</span>
-  </p>
 
   <div class="modes">
     <section class="mode mode-solo" aria-labelledby="mSolo">
@@ -166,6 +166,6 @@
 
 <!-- les retours brefs (copié, supprimé, rejoint) : en bas, sans déplacer la page -->
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
-<script type="module" src="accueil.js?v=18"></script>
+<script type="module" src="accueil.js?v=19"></script>
 </body>
 </html>

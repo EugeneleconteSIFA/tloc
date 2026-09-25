@@ -244,6 +244,8 @@ export const nonLus = () => appel('/api/non-lus');
 export const createur = () => appel('/api/createur');
 /** Prod, dev ou local — et, sur le dev, les deux versions et le droit de promouvoir. */
 export const env = () => appel('/api/env');
+/** Les chiffres du jeu (créateur seulement). */
+export const admin = () => appel('/api/admin');
 export const promotion = (action = 'promouvoir') => appel('/api/promotion', { method: 'POST', body: JSON.stringify({ action }) });
 export const mesInstances = () => appel('/api/instances');
 export const voirInstance = (code) => appel('/api/instances/' + encodeURIComponent(code.toUpperCase()));

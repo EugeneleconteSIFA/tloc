@@ -226,6 +226,14 @@ def init():
         """)
         if "retour" not in {r["name"] for r in cx.execute("PRAGMA table_info(convs)")}:
             cx.execute("ALTER TABLE convs ADD COLUMN retour INTEGER NOT NULL DEFAULT 0")
+        # les manches jouées (match à mort, chrono) : pour la vue admin du créateur
+        cx.execute("""CREATE TABLE IF NOT EXISTS manches (
+            id       INTEGER PRIMARY KEY,
+            code     TEXT NOT NULL,
+            regle    TEXT NOT NULL,
+            joueurs  INTEGER NOT NULL,
+            humains  INTEGER NOT NULL,
+            t        REAL NOT NULL)""")
         # les badges d'un compte : combien de fois chacun a été gagné
         cx.execute("""CREATE TABLE IF NOT EXISTS badges (
             joueur  INTEGER NOT NULL REFERENCES joueurs(id) ON DELETE CASCADE,
@@ -674,6 +682,39 @@ async def promouvoir(p: Promotion, authorization: str = Header(default="")):
     return {"ok": proc.returncode == 0, "sortie": lignes, "prod": lire_version(PROD_SITE), "version": lire_version(SITE)}
 
 
+@app.get("/api/admin")
+def vue_admin(j: sqlite3.Row = Depends(porteur)):
+    """Les chiffres du jeu, pour le créateur : les autres joueurs seulement (lui-même exclu)."""
+    with db() as cx:
+        crea = id_createur(cx)
+        if crea != j["id"]:
+            raise HTTPException(403, "Réservé au créateur.")
+        t = time.time()
+        un = lambda q, *a: cx.execute(q, a).fetchone()[0] or 0
+        joueurs = un("SELECT COUNT(*) FROM joueurs WHERE id != ?", crea)
+        nouveaux = un("SELECT COUNT(*) FROM joueurs WHERE id != ? AND cree > ?", crea, t - 7 * 86400)
+        actifs_7 = un("SELECT COUNT(DISTINCT joueur) FROM jetons WHERE joueur != ? AND vu > ?", crea, t - 7 * 86400)
+        actifs_1 = un("SELECT COUNT(DISTINCT joueur) FROM jetons WHERE joueur != ? AND vu > ?", crea, t - 86400)
+        parties = un("SELECT COUNT(*) FROM parties WHERE joueur != ?", crea)
+        minutes = un("SELECT SUM(COALESCE(json_extract(resume, '$.minutes'), 0)) FROM parties WHERE joueur != ?", crea)
+        instances = un("SELECT COUNT(*) FROM instances WHERE hote != ?", crea)
+        manches = un("SELECT COUNT(*) FROM manches")
+        manches_7 = un("SELECT COUNT(*) FROM manches WHERE t > ?", t - 7 * 86400)
+        retours = un("SELECT COUNT(*) FROM convs WHERE retour = 1")
+        messages_retour = un("""SELECT COUNT(*) FROM messages m JOIN convs c ON c.id = m.conv
+                                WHERE c.retour = 1 AND m.auteur != ?""", crea)
+        derniers = [{"pseudo": r["pseudo"], "cree": r["cree"]} for r in
+                    cx.execute("SELECT pseudo, cree FROM joueurs WHERE id != ? ORDER BY cree DESC LIMIT 5", (crea,))]
+    return {
+        "joueurs": {"total": joueurs, "nouveaux_7j": nouveaux, "actifs_7j": actifs_7, "actifs_24h": actifs_1},
+        "solo": {"parties": parties, "minutes": minutes},
+        "multi": {"instances": instances, "manches": manches, "manches_7j": manches_7,
+                  "en_ligne": sum(len(s.humains()) for s in SALONS.values())},
+        "retours": {"conversations": retours, "messages": messages_retour},
+        "derniers": derniers,
+    }
+
+
 @app.get("/api/non-lus")
 def non_lus(j: sqlite3.Row = Depends(porteur)):
     """Le petit chiffre de la bulle, et les demandes d'ami en attente."""
@@ -1112,6 +1153,8 @@ class Salon:
                         badges[i].append("tete_brulee")
         # au compte des humains ; les bots gagnent leurs badges pour la gloire seulement
         with db() as cx:
+            cx.execute("INSERT INTO manches (code, regle, joueurs, humains, t) VALUES (?,?,?,?,?)",
+                       (self.code, self.regle, len(st), sum(1 for i in st if i > 0), time.time()))
             for i, bs in badges.items():
                 if i > 0:
                     for b in bs:

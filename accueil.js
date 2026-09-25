@@ -95,32 +95,42 @@ function peindreCompte() {
     barre.innerHTML = `<details class="menu-compte" id="monCompte">
       <summary aria-label="Mon compte, ${ECH(c.pseudo)}"><span class="avatar" id="avatarCompte">${ECH(c.pseudo[0] || '?').toUpperCase()}</span><span class="pseudo">Mon compte</span><span class="compte-total cache" id="nbDemandes" title="Demandes d’ami"></span>${icone('chevron', 16)}</summary>
       <div class="menu compte">
-        <div class="onglets-compte" role="tablist" aria-label="Mon compte">
-          <button role="tab" aria-selected="true" data-onglet="profil">Mon profil</button>
+        <!-- l'accueil du compte : qui je suis, en un coup d'œil ; le détail est dans les sections -->
+        <div class="compte-accueil" id="compteAccueil"><p class="sous-titre">Chargement…</p></div>
+        <nav class="nav-compte" role="tablist" aria-label="Mon compte">
+          <button role="tab" aria-selected="false" data-onglet="infos">Infos perso</button>
           <button role="tab" aria-selected="false" data-onglet="amis">Amis</button>
           <button role="tab" aria-selected="false" data-onglet="badges">Badges <span class="compte-total cache" id="totalBadges"></span></button>
-        </div>
-        <section data-panneau="profil" id="panneauProfil" role="tabpanel"><p class="sous-titre">Chargement…</p></section>
+          <button role="tab" aria-selected="false" data-onglet="admin" class="cache" id="ongletAdmin">Admin</button>
+          <button role="tab" aria-selected="false" data-onglet="version" class="cache" id="ongletVersion">Version</button>
+        </nav>
+        <section data-panneau="infos" id="panneauInfos" role="tabpanel" hidden></section>
         <section data-panneau="amis" id="panneauAmis" role="tabpanel" hidden></section>
         <section data-panneau="badges" role="tabpanel" hidden>
           <p class="sous-titre">Badges d’honneur, gagnés à la fin des manches</p>
           <ul class="badges" id="listeBadges"><li class="vide" style="grid-column:1/-1">Chargement…</li></ul>
         </section>
+        <section data-panneau="admin" id="panneauAdmin" role="tabpanel" hidden></section>
+        <section data-panneau="version" id="panneauVersion" role="tabpanel" hidden></section>
         <button class="fantome" id="seDeconnecter">Se déconnecter</button>
       </div>
     </details>`;
     $('seDeconnecter').onclick = async () => { await C.deconnexion(); location.href = 'connexion.html'; };
-    // un onglet se charge quand on l'ouvre : ce qu'on y lit est toujours frais
-    const charger = { profil: SOCIAL.chargerProfil, amis: SOCIAL.chargerAmis, badges: chargerBadges };
-    let onglet = 'profil';
+    // Le compte s'ouvre sur son accueil (photo, nom, badges, amis) ; une section se déplie
+    // quand on la choisit — et se replie si on la rechoisit. Chacune se charge à l'ouverture :
+    // ce qu'on y lit est toujours frais.
+    const charger = { infos: SOCIAL.chargerInfos, amis: SOCIAL.chargerAmis, badges: chargerBadges,
+                      admin: SOCIAL.chargerAdmin, version: SOCIAL.chargerVersion };
+    let onglet = null;
     const montrer = (o) => {
-      onglet = o;
-      barre.querySelectorAll('[data-onglet]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.onglet === o)));
-      barre.querySelectorAll('[data-panneau]').forEach((p) => { p.hidden = p.dataset.panneau !== o; });
-      charger[o]();
+      onglet = onglet === o ? null : o;
+      barre.querySelectorAll('[data-onglet]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.onglet === onglet)));
+      barre.querySelectorAll('[data-panneau]').forEach((p) => { p.hidden = p.dataset.panneau !== onglet; });
+      if (onglet) charger[onglet]();
     };
+    SOCIAL.surOnglet(montrer);              // les chiffres de l'accueil du compte ouvrent leur section
     barre.querySelectorAll('[data-onglet]').forEach((b) => { b.onclick = () => montrer(b.dataset.onglet); });
-    $('monCompte').addEventListener('toggle', () => { if ($('monCompte').open) montrer(onglet); });
+    $('monCompte').addEventListener('toggle', () => { if ($('monCompte').open) SOCIAL.chargerAccueilCompte(); });
     chargerBadges();
     if (!document.getElementById('bulleChat')) { SOCIAL.demarrerChat({ toast }); SOCIAL.brancherBandeau(); }
     $('carteInstances').classList.remove('cache');
