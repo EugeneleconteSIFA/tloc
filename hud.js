@@ -129,6 +129,8 @@ export function minimap(g, W) {
     g.restore();
   };
   point(HOUSE.x, HOUSE.z, COUL.maison, '#25123a', 4.4);
+  // les objets du multi à prendre (tloc-multi.js : l'armure aux casernes, l'écu sur la place)
+  for (const m of PARTAGE.marques || []) point(m.x, m.z, m.fond, m.bord, 4);
   if (PARTAGE.repere) point(PARTAGE.repere.x, PARTAGE.repere.z, '#ffd24a', '#5a3a00', 5 + Math.sin(performance.now() / 180) * 1.2);
   // Camille : toujours au centre, la pointe dans la direction du regard
   g.translate(W / 2, W / 2); g.rotate(-E.player.yaw);

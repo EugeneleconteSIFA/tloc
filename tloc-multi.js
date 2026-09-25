@@ -19,10 +19,11 @@ import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import * as ATLAS from './atlas.js';
 import * as PNJ from './pnj.js';
-import { sdEau } from './carte.js';
+import { TOWN, sdEau, townWorld } from './carte.js';
+import { PARTAGE } from './etat.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
-  AIDE, G, SFX, THREE, TAU, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, makeBow, makeCamille,
+  AIDE, G, SFX, THREE, TAU, addInteract, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeBow, makeCamille,
   hideMenu, menu, player, saveGame, scene, showMenu, showMessage, state, tryMove, world,
 } from './engine.js?v=27';
 
@@ -389,6 +390,7 @@ function connecter() {
       for (const j of m.joueurs) { const a = creerAutre(j.id, j.pseudo, j.etat || {}, j.perso, j.look, j.camp); a.frags = j.frags || 0; a.bot = j.bot || null; }
       if (m.pilote && m.pilote.length) prendreBots(m.pilote);
       for (const b of m.bourses || []) poserBourse(b);
+      majObjets({ objets: m.objets || [] });
       if (m.bannieres) bannieres = m.bannieres;
       if (m.fete) ouvrirFete(m.fete);
       envoyerLook(true);
@@ -417,6 +419,7 @@ function connecter() {
         a.hp = m.hp; peindrePanneau();
       }
       if (m.mx) a.maxHp = m.mx;
+      a.ctx.armure = m.ar | 0; a.ctx.bouclier = m.bc | 0; a.ctx.garde = !!m.gd;
       a.niveau = m.n || 'citadel';
       a.vu = performance.now();
     } else if (m.t === 'rdv') {
@@ -441,6 +444,7 @@ function connecter() {
     } else if (m.t === 'banniere') { evenementBanniere(m);
     } else if (m.t === 'bourse') { poserBourse(m);
     } else if (m.t === 'bourse-prise') { prendreBourse(m);
+    } else if (m.t === 'objets') { majObjets(m);
     } else if (m.t === 'don') {
       BOURSE.gagner(m.n);
       showMessage(`${m.perso} te donne ${m.n} écus.`, 3.5);
@@ -859,6 +863,174 @@ if (actif) {
 }
 
 // ---------------------------------------------------------------------
+//  L'équipement : l'armure et l'écu
+// ---------------------------------------------------------------------
+// Toujours aux mêmes endroits — l'armure aux casernes, l'écu sur la place d'Armes — pour
+// qu'on apprenne où courir : une lueur, un point sur la minicarte, une annonce quand ils
+// reviennent. Le serveur tranche qui les prend (premier arrivé) ; le reste se joue chez
+// celui qui les porte, comme ses cœurs : l'écu pare les coups de face tant qu'on le lève
+// (clic droit maintenu, engine.js), l'armure encaisse avant les cœurs et se fend. La forge
+// du bourg les renforce contre des écus. Une manche neuve rend tout à sa place.
+const ARMURE_PTS = [0, 4, 6, 8];            // demi-cœurs encaissés : cuir clouté, mailles, plates
+const ARMURE_NOM = ['', 'cuir clouté', 'mailles', 'plates'];
+const ECU_ANGLE = [0, 1.05, 1.45];           // demi-angle de parade : bois peint, cerclé de fer
+const OBJET_LIEU = { armure: 'aux casernes', bouclier: 'sur la place d’Armes' };
+let objets = [], objetsProposes = false, demandeObjet = 0, avisParade = 0;
+let armure = 0, armurePts = 0, ecu = 0;       // ce que je porte (niveaux), et ce qu'il reste à l'armure
+const presentoirs = new Map();                // type -> le râtelier posé à son lieu
+
+// Où poser les objets : près du centre d'un lieu nommé, sur un sol praticable. Le premier
+// client qui connaît la carte les propose ; le serveur garde ce premier choix pour tous.
+function proposerObjets() {
+  if (objetsProposes || !lieux.length || !state.running) return;
+  const lieu = (f) => lieux.find(f);
+  const caserne = lieu((l) => l.id.startsWith('caserne')), place = lieu((l) => l.id === 'place');
+  const liste = [];
+  for (const [type, l] of [['armure', caserne], ['bouclier', place]]) {
+    if (!l) continue;
+    const p = praticable(l.x, l.z);
+    if (p) liste.push({ type, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +getH(p.x, p.z).toFixed(2) });
+  }
+  objetsProposes = true;
+  if (liste.length) envoyer({ t: 'objets-lieux', objets: liste });
+}
+
+function presentoir(type) {
+  const g = new THREE.Group();
+  const bois = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.85 });
+  const fer = new THREE.MeshStandardMaterial({ color: 0x8d9096, metalness: 0.6, roughness: 0.45 });
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.14, 12), bois));
+  const mat_ = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), bois); mat_.position.y = 0.8; g.add(mat_);
+  if (type === 'armure') {
+    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.62, 16), fer); pl.scale.z = 0.75; pl.position.y = 1.22; g.add(pl);
+    for (const sx of [-1, 1]) { const ep = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fer); ep.scale.set(1.1, 0.55, 1); ep.position.set(sx * 0.3, 1.5, 0); g.add(ep); }
+  } else {
+    const forme = new THREE.Shape();
+    forme.moveTo(-0.34, 0.4); forme.lineTo(0.34, 0.4); forme.lineTo(0.34, 0.04);
+    forme.quadraticCurveTo(0.3, -0.36, 0, -0.54); forme.quadraticCurveTo(-0.3, -0.36, -0.34, 0.04); forme.closePath();
+    const ecuM = new THREE.Mesh(new THREE.ExtrudeGeometry(forme, { depth: 0.05, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: 0x8a2a24, roughness: 0.75 }));
+    ecuM.position.set(0, 1.1, 0.07); g.add(ecuM);
+    const bande = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.84, 0.03), new THREE.MeshStandardMaterial({ color: 0xd9b24a, metalness: 0.7, roughness: 0.35 }));
+    bande.position.set(0, 1.07, 0.13); g.add(bande);
+  }
+  const lueur = new THREE.PointLight(0xffd070, 3, 7); lueur.position.y = 1.9; g.add(lueur);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  g.scale.setScalar((G.echelle || 1) / 0.6);     // à l'échelle de Camille (1,80 m dehors)
+  g.userData.dynamic = true;
+  return g;
+}
+
+function majObjets(m) {
+  objets = m.objets || [];
+  const moiId = moi && moi.id;
+  // ce que je portais et que le serveur ne me donne plus (manche neuve, reprise) : rendu
+  if (armure && !objets.some((o) => o.type === 'armure' && o.porteur === moiId)) { armure = 0; armurePts = 0; }
+  if (ecu && !objets.some((o) => o.type === 'bouclier' && o.porteur === moiId)) ecu = 0;
+  for (const o of objets) {
+    let pr = presentoirs.get(o.type);
+    if (!pr) { pr = presentoir(o.type); pr.position.set(o.p[0], o.y, o.p[1]); scene.add(pr); presentoirs.set(o.type, pr); }
+    pr.visible = o.porteur == null && !o.retour;
+  }
+  PARTAGE.marques = objets.filter((o) => o.porteur == null && !o.retour)
+    .map((o) => ({ x: o.p[0], z: o.p[1], fond: o.type === 'armure' ? '#c9ccd2' : '#d0463a', bord: '#1a1a1a' }));
+  const qui = m.par === moiId ? null : (m.perso || 'Quelqu’un');
+  const nom = m.o === 'armure' ? 'l’armure' : 'l’écu';
+  if (m.evt === 'pris') {
+    if (m.par === moiId) {
+      if (m.o === 'armure') { armure = 1; armurePts = ARMURE_PTS[1]; showMessage(`Tu endosses l’armure de cuir clouté : elle encaisse ${ARMURE_PTS[1] / 2} cœurs avant les tiens. La forge du bourg la renforce.`, 6); }
+      else { ecu = 1; showMessage('Tu prends l’écu ! Clic droit maintenu pour le lever : il pare les coups de face. La forge du bourg le cercle de fer.', 6); }
+      try { SFX.pickup(); } catch (e) {}
+    } else showMessage(`${qui} prend ${nom} ${OBJET_LIEU[m.o]}.`, 3);
+  } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats.`, 3);
+  else if (m.evt === 'retour') showMessage(`Une armure neuve attend ${OBJET_LIEU.armure}.`, 4);
+  else if (m.evt === 'raz' && objets.length) showMessage('Nouvelle manche : l’armure est aux casernes, l’écu sur la place d’Armes.', 5);
+  peindreArmure();
+}
+
+function tickObjets(now) {
+  if (!objets.length) proposerObjets();
+  G.armure = armure; G.bouclier = ecu;          // le moteur : la garde et l'aide des touches
+  for (const [type, pr] of presentoirs) {
+    if (!pr.visible) continue;
+    pr.rotation.y += 0.01;
+    const o = objets.find((x) => x.type === type);
+    if (!o || elimine || now - demandeObjet < 800) continue;
+    if ((type === 'armure' && armure) || (type === 'bouclier' && ecu)) continue;     // déjà équipée
+    if (Math.hypot(player.pos.x - pr.position.x, player.pos.z - pr.position.z) < 2.4) { demandeObjet = now; envoyer({ t: 'objet-prendre', o: type }); }
+  }
+}
+
+// l'écu levé pare ce qui vient de face (le demi-angle grandit avec les ferrures)
+function parer(fx, fz) {
+  const p = player;
+  if (!ecu || !p.garde) return false;
+  const da = ((Math.atan2(fx - p.pos.x, fz - p.pos.z) - p.yaw + Math.PI) % TAU + TAU) % TAU - Math.PI;
+  if (Math.abs(da) > ECU_ANGLE[ecu]) return false;
+  burst(p.pos.x + Math.sin(p.yaw) * 0.6, p.pos.y + 1.2, p.pos.z + Math.cos(p.yaw) * 0.6, 0xffe7a3, 12, 5, 0.3);
+  try { SFX.hit(); } catch (e) {}
+  if (performance.now() - avisParade > 8000) { avisParade = performance.now(); showMessage('Paré !', 1.2); }
+  return true;
+}
+
+// l'armure prend d'abord ; brisée, elle retourne aux casernes (le serveur la fera revenir)
+function absorber(degats) {
+  if (!armure || armurePts <= 0) return degats;
+  const pris = Math.min(armurePts, degats);
+  armurePts -= pris;
+  const p = player;
+  burst(p.pos.x, p.pos.y + 1.3, p.pos.z, 0xc9ccd2, 8, 4, 0.4);
+  if (armurePts <= 0) {
+    armure = 0; envoyer({ t: 'objet-casse', o: 'armure' });
+    showMessage('Ton armure vole en éclats ! Une neuve reviendra aux casernes.', 4);
+    try { SFX.stomp(); } catch (e) {}
+  }
+  peindreArmure();
+  return degats - pris;
+}
+
+// la jauge d'armure, au bout des cœurs : une plaque par cœur encaissable
+let jaugeArmure = null;
+function peindreArmure() {
+  if (!actif) return;
+  if (!jaugeArmure) {
+    jaugeArmure = document.createElement('div');
+    jaugeArmure.style.cssText = 'position:absolute; top:19px; display:flex; gap:4px; align-items:center; pointer-events:none;';
+    (document.getElementById('hud') || document.body).appendChild(jaugeArmure);
+  }
+  jaugeArmure.style.left = `${18 + 6 + (player.maxHp / 2) * 34 + 6}px`;
+  jaugeArmure.style.display = armure ? 'flex' : 'none';
+  if (!armure) return;
+  const n = ARMURE_PTS[armure] / 2, plein = armurePts / 2;
+  let h = `<span style="font-size:11px; letter-spacing:1px; color:#dfe3ea; margin-right:2px">${ARMURE_NOM[armure].toUpperCase()}</span>`;
+  for (let i = 0; i < n; i++) {
+    const r = Math.max(0, Math.min(1, plein - i));
+    h += `<span style="width:14px; height:18px; border-radius:3px 3px 7px 7px; border:1.5px solid #1a1d22; background:linear-gradient(90deg, #c9ccd2 ${r * 100}%, #3a3f48 ${r * 100}%)"></span>`;
+  }
+  jaugeArmure.innerHTML = h;
+}
+
+// La forge du bourg : on y renforce ce qu'on porte, contre des écus. Y aller est un risque
+// — c'est loin des casernes et de la place, et on s'y arrête.
+function poserForge() {
+  if (!actif || poserForge.fait || !TOWN || TOWN.y === undefined) return;
+  poserForge.fait = true;
+  const [x, z] = townWorld(4.4, 14);
+  addInteract({ pos: new THREE.Vector3(x, TOWN.y, z), r: 3.2, prompt: () => 'la forge : renforcer ton équipement', fn: () => {
+    const peu = (n) => `il faut d’abord ${n}`;
+    BOURSE.boutique('La forge', 'À l’enclume', 'Le forgeron renforce ce que tu portes. Ce qui est brisé ne se répare pas : il faut en reprendre.', [
+      { label: 'Armure de mailles (3 cœurs à encaisser)', prix: 40, dispo: () => armure === 1, indispo: armure ? 'déjà renforcée' : peu('l’armure des casernes'),
+        acheter: () => { armure = 2; armurePts = ARMURE_PTS[2]; peindreArmure(); showMessage('Mailles neuves : 3 cœurs d’armure.', 3); } },
+      { label: 'Armure de plates (4 cœurs à encaisser)', prix: 70, dispo: () => armure === 2, indispo: armure === 3 ? 'déjà en plates' : peu('les mailles'),
+        acheter: () => { armure = 3; armurePts = ARMURE_PTS[3]; peindreArmure(); showMessage('Plates d’acier : 4 cœurs d’armure.', 3); } },
+      { label: 'Réparer l’armure', prix: 12, dispo: () => armure > 0 && armurePts < ARMURE_PTS[armure], indispo: armure ? 'elle est intacte' : peu('une armure'),
+        acheter: () => { armurePts = ARMURE_PTS[armure]; peindreArmure(); } },
+      { label: 'Cercler l’écu de fer (pare plus large)', prix: 50, dispo: () => ecu === 1, indispo: ecu ? 'déjà cerclé' : peu('l’écu de la place d’Armes'),
+        acheter: () => { ecu = 2; showMessage('L’écu cerclé de fer pare les coups de biais.', 3); } },
+    ]);
+  } });
+}
+
+// ---------------------------------------------------------------------
 //  Encaisser, mourir, réapparaître
 // ---------------------------------------------------------------------
 // On n'appelle pas damagePlayer() du moteur : à zéro cœur, il déclenche la fin de partie.
@@ -866,9 +1038,12 @@ if (actif) {
 function encaisser(degats, fx, fz, de, pseudo, kind) {
   const p = player;
   if (elimine || !state.running || state.paused || state.over || p.invuln > 0 || p.rollT >= 0 || p.sleeping > 0) return;
-  p.hp = Math.max(0, p.hp - degats);
-  p.invuln = INVULN;
   const dx = p.pos.x - fx, dz = p.pos.z - fz, d = Math.hypot(dx, dz) || 1;
+  if (parer(fx, fz)) { p.kb.set(dx / d * 3, 0, dz / d * 3); return; }
+  degats = absorber(degats);
+  p.invuln = INVULN;
+  if (degats <= 0) { p.kb.set(dx / d * 4, 0, dz / d * 4); return; }
+  p.hp = Math.max(0, p.hp - degats);
   p.kb.set(dx / d * (kind === 'fleche' ? 5 : 9), 0, dz / d * (kind === 'fleche' ? 5 : 9));
   burst(p.pos.x, p.pos.y + 1.3, p.pos.z, 0xff6060, 10, 4, 0.5);
   try { SFX.hurt(); } catch (e) {}
@@ -1443,6 +1618,7 @@ function boucle(now) {
   if (now - dernierLook > 1000) { dernierLook = now; envoyerLook(); }
   tickFete(now);
   tickBourses(now);
+  tickObjets(now); poserForge();
   tickBannieres(now);
   tickBots(dt, now);
   if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); if (resultats && manche) majBoutonsResultats(manche); }
@@ -1453,6 +1629,7 @@ function boucle(now) {
       t: 'etat', p: [+player.pos.x.toFixed(2), +player.pos.y.toFixed(2), +player.pos.z.toFixed(2)],
       y: +player.yaw.toFixed(2), a: player.attackT >= 0 ? 1 : (player.rollT >= 0 ? 2 : 0),
       hp: player.hp, mx: player.maxHp, n: G.level.name,
+      ar: armure || undefined, bc: ecu || undefined, gd: player.garde ? 1 : undefined,
     });
     coupsEpee(); coupsFleche();
   }
@@ -1497,4 +1674,5 @@ if (actif) { connecter(); setInterval(() => envoyer({ t: 'ping' }), 25000); }
 requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
-window.TLOC_MULTI = { autres, bots, envoyer, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine }) };
+window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine }),
+  equipement: () => ({ armure, armurePts, ecu, objets }) };

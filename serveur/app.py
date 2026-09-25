@@ -51,6 +51,14 @@ DON_MAX = 999
 BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
+# L'équipement du multi : une armure et un écu, posés à des lieux fixes de la carte (le
+# premier client les propose, le serveur les garde), au premier qui les atteint. L'écu se
+# garde ; l'armure se fend sous les coups (le client de celui qui la porte compte, comme
+# pour ses cœurs) et, brisée, revient à son lieu après OBJET_RETOUR secondes. Les niveaux
+# achetés à la forge restent l'affaire du client : ils ne changent rien à l'arbitrage.
+OBJETS = ("armure", "bouclier")
+OBJET_PORTEE = 4.0
+OBJET_RETOUR = int(os.environ.get("TLOC_OBJET_RETOUR", 45))
 
 
 def places(mode: str) -> int:
@@ -954,6 +962,7 @@ class Salon:
         self.points = {c: 0 for c in CAMPS}     # mises à terre d'un camp sur l'autre
         self.fete: dict | None = None             # { fin, scores: {id: n}, compte: {id: (t, n)} }
         self.bourses: dict[str, dict] = {}        # id -> { p: [x, z], n, fin }
+        self.objets: dict[str, dict] = {}         # id -> { type, p: [x, z], y, porteur, retour }
         # les bannières des camps : au ralliement (base), portées par un adversaire, ou
         # tombées là où leur porteur a été mis à terre
         self.bannieres = {c: {"etat": "base", "porteur": None, "p": None, "t": 0.0} for c in CAMPS}
@@ -1059,6 +1068,7 @@ class Salon:
         for j in self.joueurs.values():
             self.noter_nom(j)
         await self.annoncer_manche()
+        await self.raz_objets()
         if self.regle == "temps":
             jeton = m["jeton"]
 
@@ -1193,6 +1203,31 @@ class Salon:
                 self.manche = None
                 await self.preparer()
         asyncio.create_task(ensuite())
+
+    def vue_objets(self) -> list:
+        maintenant = time.time()
+        return [{"id": k, "type": o["type"], "p": o["p"], "y": o["y"], "porteur": o["porteur"],
+                 "retour": max(0, round(o["retour"] - maintenant)) if o["retour"] else None}
+                for k, o in self.objets.items()]
+
+    async def annoncer_objets(self, **evt):
+        await self.diffuser({"t": "objets", "objets": self.vue_objets(), **evt})
+
+    async def lacher_objets(self, qui: "Connecte"):
+        """Celui qui s'en va rend ce qu'il portait : l'objet revient à son lieu."""
+        rendus = [k for k, o in self.objets.items() if o["porteur"] == qui.id]
+        for k in rendus:
+            self.objets[k]["porteur"] = None
+        if rendus:
+            await self.annoncer_objets()
+
+    async def raz_objets(self):
+        """Une manche neuve : tout le monde repart les mains nues, les objets à leur lieu."""
+        if not self.objets:
+            return
+        for o in self.objets.values():
+            o.update(porteur=None, retour=None)
+        await self.annoncer_objets(evt="raz")
 
     def vue_bannieres(self) -> dict:
         return {c: {k: v for k, v in b.items() if k != "t"} for c, b in self.bannieres.items()}
@@ -1353,6 +1388,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         "mode": inst["mode"], "enjeu": bool(inst["enjeu"]), "camps": salon.camps(), "points": salon.points,
         "fete": salon.vue_fete(), "bannieres": salon.vue_bannieres(),
         "bourses": [{"id": k, **{c: v for c, v in b.items() if c != "fin"}} for k, b in salon.bourses.items()],
+        "objets": salon.vue_objets(),
         "joueurs": [c.vue() for c in salon.joueurs.values() if c.id != moi.id],
         "pilote": [b.vue() for b in salon.bots() if b.pilote == moi.id],
         "regle": salon.regle,
@@ -1380,8 +1416,10 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             return                      # la fête, l'argent et le chat restent aux humains
 
         if t == "etat":
+            # ar / bc : niveaux d'armure et d'écu portés, gd : écu levé — pour que les autres le voient
             moi.etat = {"p": m.get("p"), "y": m.get("y"), "a": m.get("a"),
-                        "hp": m.get("hp"), "mx": m.get("mx"), "n": m.get("n")}
+                        "hp": m.get("hp"), "mx": m.get("mx"), "n": m.get("n"),
+                        "ar": m.get("ar"), "bc": m.get("bc"), "gd": m.get("gd")}
             await salon.diffuser({"t": "etat", "id": moi.id, **moi.etat}, sauf=moi.id)
 
         elif t == "look":
@@ -1548,6 +1586,44 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             salon.bourses.pop(str(m.get("b")), None)
             await salon.diffuser({"t": "bourse-prise", "b": m.get("b"), "par": moi.id, "perso": moi.perso, "n": b["n"]})
 
+        elif t == "objets-lieux":
+            # le premier client qui connaît la carte pose les objets ; les suivants les trouvent
+            if salon.objets or moi.est_bot:
+                return
+            for o in (m.get("objets") or [])[:len(OBJETS)]:
+                try:
+                    typ, x, z, y = o["type"], float(o["p"][0]), float(o["p"][1]), float(o.get("y", 0))
+                except (KeyError, TypeError, ValueError, IndexError):
+                    continue
+                if typ in OBJETS and typ not in [v["type"] for v in salon.objets.values()]:
+                    salon.objets[typ] = {"type": typ, "p": [x, z], "y": y, "porteur": None, "retour": None}
+            await salon.annoncer_objets()
+
+        elif t == "objet-prendre":
+            o = salon.objets.get(str(m.get("o")))
+            p = moi.etat.get("p")
+            if not o or not p or o["porteur"] is not None or o["retour"] or moi.est_bot:
+                return
+            if ((p[0] - o["p"][0]) ** 2 + (p[2] - o["p"][1]) ** 2) ** 0.5 > OBJET_PORTEE:
+                return
+            o["porteur"] = moi.id
+            await salon.annoncer_objets(evt="pris", o=o["type"], par=moi.id, perso=moi.perso)
+
+        elif t == "objet-casse":
+            o = salon.objets.get(str(m.get("o")))
+            if not o or o["porteur"] != moi.id:
+                return
+            o.update(porteur=None, retour=time.time() + OBJET_RETOUR)
+            await salon.annoncer_objets(evt="casse", o=o["type"], par=moi.id, perso=moi.perso)
+            marque = o["retour"]
+
+            async def revenir():
+                await asyncio.sleep(OBJET_RETOUR)
+                if o["retour"] == marque:
+                    o["retour"] = None
+                    await salon.annoncer_objets(evt="retour", o=o["type"])
+            asyncio.create_task(revenir())
+
         elif t == "coup":
             cible = salon.joueurs.get(m.get("c"))
             maintenant = time.time()
@@ -1636,6 +1712,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         if salon.joueurs.get(moi.id) is moi:
             salon.joueurs.pop(moi.id, None)
             await salon.faire_tomber(moi)
+            await salon.lacher_objets(moi)
             await salon.diffuser({"t": "depart", "id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso})
             if any(b.pilote == moi.id for b in salon.bots()) and salon.humains():
                 await salon.confier_bots(inst["hote"])

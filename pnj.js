@@ -858,6 +858,50 @@ export function buildCamille(makeBow) {
   }
   socket(g, perso, 'lowerarm_l', bouclier, [0.02, 0.10, -0.05], [0, Math.PI / 2, 0]);
 
+  // ---------- l'équipement du multi (tloc-multi.js) ----------
+  // L'écu remplace la rondache quand on l'a ramassé : plus grand, en pointe, il se voit de
+  // loin — c'est lui qui pare. Deux niveaux : bois peint, puis cerclé de fer. Il y en a
+  // deux : l'un au bras, l'autre tenu devant la poitrine quand on lève la garde (le clip
+  // Sword_Block lève l'épée, pas l'avant-bras gauche : l'écu du bras restait sur le côté).
+  const faireEcu = () => {
+    const e = new THREE.Group(); e.visible = false;
+    const forme = new THREE.Shape();
+    forme.moveTo(-0.17, 0.2); forme.lineTo(0.17, 0.2); forme.lineTo(0.17, 0.02);
+    forme.quadraticCurveTo(0.15, -0.18, 0, -0.27); forme.quadraticCurveTo(-0.15, -0.18, -0.17, 0.02); forme.closePath();
+    const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.022, bevelEnabled: false }); geo.translate(0, 0, -0.011);
+    e.add(new THREE.Mesh(geo, mat(0x8a2a24, { roughness: 0.75 })));
+    e.add(mesh(boxG(0.05, 0.42, 0.03), mat(0xd9b24a, { metalness: 0.7, roughness: 0.35 }), 0, -0.02, 0.012));   // la bande d'or
+    const cercle = new THREE.Group(); cercle.visible = false;         // niveau 2 : les ferrures
+    // posées en saillie sur la face (z > 0,011), assez épaisses pour se voir à dix mètres
+    cercle.add(mesh(boxG(0.37, 0.035, 0.02), IRON(), 0, 0.185, 0.02));
+    for (const sx of [-1, 1]) cercle.add(mesh(boxG(0.035, 0.2, 0.02), IRON(), sx * 0.155, 0.09, 0.02));
+    cercle.add(mesh(boxG(0.3, 0.03, 0.02), IRON(), 0, -0.06, 0.02));
+    cercle.add(mesh(sphG(0.055, 12), IRON(), 0, 0.04, 0.03));
+    e.add(cercle); e.userData.cercle = cercle;
+    e.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    return e;
+  };
+  const ecu = faireEcu(), ecuGarde = faireEcu();
+  socket(g, perso, 'lowerarm_l', ecu, [0.03, 0.10, -0.06], [0, Math.PI / 2, 0]);
+  socket(g, perso, 'spine_03', ecuGarde, [0.07, 0.02, 0.27], [0.12, 0.3, 0]);
+  // La cuirasse : trois niveaux qu'on distingue de loin — cuir clouté, mailles, plates.
+  const cuirasse = new THREE.Group(); cuirasse.visible = false;
+  {
+    const m = mat(0x6a4526, { roughness: 0.7, side: THREE.DoubleSide });
+    // un peu plus large que le buste de la tenue : sinon elle disparaît dedans
+    const plastron = mesh(new THREE.CylinderGeometry(0.2, 0.17, 0.36, 18, 1, true), m, 0, -0.03, 0.02);
+    plastron.scale.z = 0.82; cuirasse.add(plastron);
+    for (const sx of [-1, 1]) {             // les épaulières
+      const ep = mesh(sphG(0.1, 12), m, sx * 0.19, 0.14, 0); ep.scale.set(1.15, 0.6, 1.05); cuirasse.add(ep);
+    }
+    const clous = new THREE.Group();        // le cuir clouté : des rivets sur le plastron
+    for (let r = 0; r < 3; r++) for (let k = -2; k <= 2; k++) clous.add(mesh(sphG(0.012, 6), GOLD(), k * 0.06, 0.08 - r * 0.1, 0.165));
+    cuirasse.add(clous); cuirasse.userData.clous = clous;
+    cuirasse.userData.mat = m;
+    cuirasse.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  }
+  socket(g, perso, 'spine_03', cuirasse, [0, -0.02, 0]);
+
   const arc = makeBow ? makeBow() : null;
   if (arc) { arc.scale.setScalar(0.26); arc.visible = false; socket(g, perso, 'hand_l', arc, [0, 0.06, 0], [0, Math.PI / 2, 0]); }
   const arcDos = makeBow ? makeBow() : null;
@@ -867,7 +911,7 @@ export function buildCamille(makeBow) {
     dynamic: true, pivot, perso, groupe: g,
     os: perso.userData.os || {},
     sockets: g.userData.sockets,
-    epee, bouclier, arc, arcDos,
+    epee, bouclier, arc, arcDos, ecu, ecuGarde, cuirasse,
   };
   // les sockets vivent sur `g` : majSockets(g) est appelé par le contrôleur
   controleur(g, perso, clipsCamille(), CLIP.repos).then(c => { root.userData.ctrl = c; });
@@ -889,7 +933,8 @@ export function animeCamille(m, p, dt, ctx) {
     // les coups alternent : un enchaînement, pas un moulinet identique
     const n = CLIP.coups[(ud.coup |= 0) % CLIP.coups.length];
     if (a.nom !== n) a.jouer(n, 0.06, false);
-  } else if (p.invuln > 0.55) a.jouer(CLIP.touche, 0.08, false);
+  } else if (ctx.garde) a.jouer('Sword_Block', 0.12);
+  else if (p.invuln > 0.55) a.jouer(CLIP.touche, 0.08, false);
   else if (drawing || bowOut) a.jouer(CLIP.arc, 0.18);
   else if (!p.onGround) a.jouer(CLIP.saut, 0.14);
   else if (running) a.jouer(CLIP.course, 0.2);
@@ -901,7 +946,20 @@ export function animeCamille(m, p, dt, ctx) {
 
   // visibilité des accessoires, puis on repose les sockets
   if (ud.epee) ud.epee.visible = ctx.epeeSortie && !(drawing || bowOut);
-  if (ud.bouclier) ud.bouclier.visible = ctx.epeeSortie && !(drawing || bowOut);
+  if (ud.bouclier) ud.bouclier.visible = ctx.epeeSortie && !(drawing || bowOut) && !ctx.bouclier;
+  if (ud.ecu) {
+    ud.ecu.visible = !!ctx.bouclier && !ctx.garde && !(drawing || bowOut); ud.ecuGarde.visible = !!ctx.bouclier && !!ctx.garde;
+    ud.ecu.userData.cercle.visible = ud.ecuGarde.userData.cercle.visible = ctx.bouclier > 1;
+  }
+  if (ud.cuirasse) {
+    ud.cuirasse.visible = ctx.armure > 0;
+    if (ctx.armure > 0 && ud.cuirasse.userData.niv !== ctx.armure) {      // cuir, mailles, plates
+      ud.cuirasse.userData.niv = ctx.armure;
+      const m = ud.cuirasse.userData.mat, n = ctx.armure;
+      m.color.setHex([0, 0x6a4526, 0x8d9096, 0xaab0b8][n]); m.metalness = [0, 0.05, 0.6, 0.85][n]; m.roughness = [0, 0.75, 0.55, 0.28][n];
+      ud.cuirasse.userData.clous.visible = n === 1;
+    }
+  }
   if (ud.arc) ud.arc.visible = !!(drawing || bowOut);
   if (ud.arcDos) ud.arcDos.visible = ctx.arcTrouve && !(drawing || bowOut);
   a.update(dt);

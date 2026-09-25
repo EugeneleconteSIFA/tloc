@@ -1918,7 +1918,8 @@ function majAide() {
   const gaufres = P.some((o) => o && o.id === 'gaufre' && o.n > 0);
   const l = [['Z Q S D', 'se déplacer'], ['Souris', 'regarder'], ['Z + S', 'courir'], ['Espace', 'sauter']];
   if (state.sword || (state.bow && G.bowOut)) l.push(['Clic G · F', state.bow && G.bowOut ? 'tirer' : 'frapper, faucher']);
-  l.push(['Clic D · Maj', 'roulade']);
+  if (G.bouclier) l.push(['Clic D', 'lever le bouclier'], ['Maj', 'roulade']);
+  else l.push(['Clic D · Maj', 'roulade']);
   if (state.bow) l.push(['C', G.bowOut ? 'ranger l’arc' : 'sortir l’arc']);
   if (state.bourse || P.length) l.push(['I', 'poche']);
   if (gaufres) l.push(['G', 'manger une gaufre']);
@@ -1959,12 +1960,15 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 // souris : clic dans le jeu = capture du pointeur (la souris oriente la caméra) ; clic gauche = épée / flèche ; clic droit = roulade
-export const mouse = { attack: false, roll: false };
+export const mouse = { attack: false, roll: false, garde: false };
 const canvasEl = document.getElementById('game');
 canvasEl.addEventListener('click', () => { if (state.running && !menu.active && !G.journal && !state.over && document.pointerLockElement !== canvasEl) { try { canvasEl.requestPointerLock(); } catch (e) {} } });
 document.addEventListener('pointerlockchange', () => { G.mouseLook = document.pointerLockElement === canvasEl; });
 window.addEventListener('mousemove', (e) => { if (!G.mouseLook || cut.active || menu.active || G.journal) return; if (Math.abs(e.movementX) + Math.abs(e.movementY) > 0) G.mouseT = state.time; G.camYaw -= e.movementX * 0.0022; G.camPitch = clamp(G.camPitch + e.movementY * 0.0016, -0.3, 0.75); });
-window.addEventListener('mousedown', (e) => { if (!G.mouseLook) return; if (e.button === 0) mouse.attack = true; if (e.button === 2) mouse.roll = true; e.preventDefault(); });
+// Le clic droit roule ; avec un bouclier ramassé en multi (G.bouclier, tloc-multi.js), il
+// le lève tant qu'on le tient — la roulade reste sur Maj.
+window.addEventListener('mousedown', (e) => { if (!G.mouseLook) return; if (e.button === 0) mouse.attack = true; if (e.button === 2) { if (G.bouclier) mouse.garde = true; else mouse.roll = true; } e.preventDefault(); });
+window.addEventListener('mouseup', (e) => { if (e.button === 2) mouse.garde = false; });
 window.addEventListener('contextmenu', (e) => { if (G.mouseLook || state.running) e.preventDefault(); });
 export function releaseMouse() { if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} } }
 
@@ -2191,7 +2195,9 @@ export function updatePlayer(dt) {
   const veutCourir = enAvant && enArriere;
   const fwd = enAvant ? 1 : (enArriere ? -1 : 0);
   const sx = locked ? 0 : (down('KeyD') ? 1 : 0) - (down('KeyA') ? 1 : 0);
-  const wantAttack = !locked && (mouse.attack || pressedOnce('KeyF')); const wantRoll = !locked && (mouse.roll || pressedOnce('ShiftLeft', 'ShiftRight')); mouse.attack = mouse.roll = false;
+  // la garde : bouclier levé, on avance au pas, face au regard, et on ne frappe pas
+  p.garde = !locked && !!G.bouclier && !!mouse.garde && p.rollT < 0 && p.attackT < 0 && p.sleeping <= 0;
+  const wantAttack = !locked && !p.garde && (mouse.attack || pressedOnce('KeyF')); const wantRoll = !locked && (mouse.roll || pressedOnce('ShiftLeft', 'ShiftRight')); mouse.attack = mouse.roll = false;
   const aimYaw = G.mouseLook ? G.camYaw : p.yaw; // à la souris, on frappe et on vise dans la direction du regard
   // base de déplacement figée au moment où l'on commence à pousser (ou change de combinaison de touches) : la caméra peut
   // se replacer derrière Camille pendant un demi-tour sans inverser la direction de marche
@@ -2272,6 +2278,7 @@ export function updatePlayer(dt) {
 
   let speed = p.walkTo ? (p.walkSpeed || 4.5) : p.speed;
   if (court) speed *= ENDURANCE.gain;
+  if (p.garde) speed *= 0.4;
   if (p.rollT >= 0) {
     p.rollT += dt;
     tryMove(p.pos, p.rollDir.x * 15 * dt, p.rollDir.z * 15 * dt, 0.5, false);
@@ -2292,8 +2299,9 @@ export function updatePlayer(dt) {
     }
     if (p.attackT > 0.38) { p.attackT = -1; p.attackCd = 0.08; }
   }
+  if (p.garde) p.yaw = lerpAngle(p.yaw, aimYaw, 1 - Math.exp(-14 * dt));   // le bouclier face à ce qu'on regarde
   if (moving && speed > 0) {
-    p.yaw = lerpAngle(p.yaw, Math.atan2(move.x, move.z), 1 - Math.exp(-14 * dt));
+    if (!p.garde) p.yaw = lerpAngle(p.yaw, Math.atan2(move.x, move.z), 1 - Math.exp(-14 * dt));
     tryMove(p.pos, move.x * speed * dt, move.z * speed * dt, 0.5, false, p.onGround ? 0.5 : 0.35);
     if (p.onGround) p.walkT += dt * 11;
   } else if (!moving) p.walkT = lerp(p.walkT, Math.round(p.walkT / Math.PI) * Math.PI, 0.2);
@@ -2335,6 +2343,7 @@ export function updatePlayer(dt) {
     HOOK_CAMILLE(m, p, dt, {
       walking, running: walking && speed > 6.4, drawing: drawingR, bowOut: bowOutR,
       pose: p.pose && p.pose.kind, epeeSortie: state.sword, arcTrouve: state.bow,
+      garde: p.garde, armure: G.armure || 0, bouclier: G.bouclier || 0,     // l'équipement du multi
     });
   }
   // ATTENTION : surtout pas de `return` ici. Le ramassage des objets et TOUTES
