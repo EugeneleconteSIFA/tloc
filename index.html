@@ -6,6 +6,8 @@
   // Le jeu se joue au clavier et à la souris : sur un téléphone ou une tablette sans souris,
   // on repart tout de suite vers l'accueil (qui dit pourquoi), avant de charger la citadelle.
   if (matchMedia('(hover: none) and (pointer: coarse)').matches) location.replace('accueil.html#ordinateur');
+  // le dev a son favicon inversé : on sait d'un coup d'œil sur quelle version on joue
+  if (location.hostname.startsWith('tloc-dev')) addEventListener('DOMContentLoaded', () => { document.querySelector('link[rel="icon"]').href = 'favicon-dev.svg'; });
 </script>
 <title>The Legend of Camille — La Citadelle de Lille</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">

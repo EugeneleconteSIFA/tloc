@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Le favicon de tloc-dev : les couleurs de la prod inversées (pignon brique sur or),
+       pour savoir d'un coup d'œil, dans les onglets, sur quelle version on est. -->
+  <rect width="32" height="32" rx="7" fill="#E2B25A"/>
+  <polygon points="6,27 6,16 9,16 9,12.5 12,12.5 12,9 14.5,9 14.5,5 17.5,5 17.5,9 20,9 20,12.5 23,12.5 23,16 26,16 26,27" fill="#9C3B28"/>
+  <path d="M14 27V19.5a2 2 0 0 1 4 0V27z" fill="#FFE3A1"/>
+  <circle cx="16" cy="12.4" r="1.5" fill="#FFE3A1"/>
+</svg>

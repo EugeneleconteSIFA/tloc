@@ -16,6 +16,7 @@
     let t = 'clair';
     try { t = localStorage.getItem('tloc_theme') || 'clair'; } catch (e) {}
     document.documentElement.dataset.theme = t;
+    if (location.hostname.startsWith('tloc-dev')) document.querySelector('link[rel="icon"]').href = 'favicon-dev.svg';   // le dev a son favicon inversé
     document.addEventListener('DOMContentLoaded', () => {
       const b = document.getElementById('basculeTheme');
       if (!b) return;
