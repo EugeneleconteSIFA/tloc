@@ -164,8 +164,9 @@ paille tirés au hasard à chaque chargement).
 
 ## 4. Ce qu'il reste à faire, par ordre
 
-> **Session suivante : commencer par le § 4.H** (chasse aux défauts visuels, outils en
-> place, liste ordonnée). Demander d'abord à Eugène les fichiers verrouillés du jour.
+> **Session suivante : voir le § 4.I** (les idées et chantiers du 26 septembre, avec un
+> ordre proposé), puis le § 4.H (défauts visuels). Demander d'abord à Eugène les fichiers
+> verrouillés du jour, et s'il a promu la dernière version du dev en prod.
 
 ### A. Le beffroi — **terminé et vérifié (24 septembre)**
 
@@ -326,10 +327,14 @@ Ce qui reste : les objets vivants (villageois, torches, monstres), les 410 maté
 shader de `nature.js`, et les unis restés seuls de leur matière. Option simple : démarrer
 en qualité 2 sur les GPU intégrés (le jeu baisse déjà seul sous 34 images/s).
 
-### F. Mise en ligne
+### F. Mise en ligne — **faite (25 septembre)**
 
-`serveur/deploiement.md` : DNS, rsync (Mac → VPS uniquement), venv, systemd, nginx,
-certbot. Le certificat n'est pas optionnel : le multi passe en `wss://`.
+Prod https://tloc.kernse.fr et dev https://tloc-dev.kernse.fr sur le VPS (168.231.85.64,
+partagé avec d'autres projets : ne toucher qu'à `/srv/tloc`, `/var/lib/tloc`, aux ports
+8130/8131 et aux deux sites nginx `tloc*`). Tout est dans `serveur/deploiement/LISEZMOI.md` :
+`./publier-dev.sh 'message'` (commit + push GitHub, le dev se met à jour), puis
+« Mon compte → Version → Promouvoir en prod » (compte Createur). Base de la prod recopiée
+dans le dev chaque nuit à 3 h 30. Le dev n'admet que le compte Createur.
 
 ### G. Le mode de jeu en équipe (plusieurs contre plusieurs)
 
@@ -398,6 +403,74 @@ ou du relief, et à comparer au passage précédent.
 - Menu pause : changer d'apparence et de point d'apparition en instance ; une vraie robe
   pour le vieux mage (géométrie, comme la cape du prince).
 - Textures : KTX2 / Basis (cf. § 4.E) si le chargement en ligne reste lourd.
+
+### I. Les idées d'Eugène (26 septembre) — **notées, pas commencées**
+
+**1. Apprendre à jouer, et apprendre la carte.** Deux pistes d'Eugène :
+- un **mode tutoriel** à part, à côté du solo et du multi ;
+- un **prologue du solo** qui enseigne en racontant (dans le Zelda de référence, on
+  apprend à monter le célestrier pour se préparer à un concours).
+
+Avis : la seconde, rejouable depuis l'accueil — le même prologue sert de tuto, sans
+système parallèle (règle 3). Une raison qui colle au Nord : **la procession des géants**.
+Camille veut entrer dans la garde d'honneur qui escorte les géants à la ducasse ;
+Lydéric, le géant de Lille, lui fait passer les épreuves. Chacune est une leçon :
+se déplacer et sauter (le parcours des remparts), la roulade (passer sous la hallebarde
+qui balaie), l'épée (les mannequins), l'arc (le **tir à la perche**, le vieux jeu des
+archers flamands : l'oiseau de bois au sommet d'un mât), et la carte (**la tournée des
+corps de garde** : rallier quatre lieux nommés avec la carte du beffroi — le compteur
+« Lieux x / 13 » existe). Récompense : l'épée de Lydéric. C'est pendant la procession que
+Phinaert enlève le prince — la quête principale s'enchaîne.
+
+**2. En multi, les objets qui font gagner.** Il en faut plus, et il faut qu'on les voie :
+- un **cheval**, dans une écurie : plus rapide (et peut-être une charge) ;
+- une **armure** : des points de résistance à casser avant de toucher les cœurs
+  (côté client de la victime, dans `encaisser`, comme les cœurs) ;
+- d'autres pistes : un bouclier qui bloque de face, une arbalète, les potions (existent).
+Pour les faire connaître : toujours aux mêmes endroits (écurie, arsenal, poudrière — ça
+apprend aussi la carte), une lueur et une icône sur la minimap, une annonce quand ils
+réapparaissent, et un écran qui les présente au début d'une manche.
+
+**3. La carte.**
+- Plus de forêt dans les parcs de la citadelle (le vrai site est très boisé : bois de
+  Boulogne, esplanade).
+- Monter la qualité des maisons du bourg (cf. BRIEF-DESIGN, règle 5 : décor et
+  personnages montent ensemble).
+
+**4. Petites améliorations du multi.**
+- La pause entre deux manches est trop courte (`MANCHE_PAUSE`, 12 s) : la porter à 25–30 s.
+- Un bouton **Rejouer** sur l'écran des résultats (la manche suivante part quand tous les
+  humains l'ont pressé, sans attendre la fin de la pause), et un bouton **Accueil**.
+
+**5. L'arc entre joueurs ne compte pas au-delà de 7 m.** Le serveur refuse tout `coup`
+dont l'auteur est à plus de `PORTEE_COUP` (7 m) de sa cible (`serveur/app.py`, `traiter`,
+branche « coup »). Une flèche qui touche à 15 m est donc perdue — entre joueurs comme
+contre un bot. Corriger : une portée par arme (`k: 'epee'` 7 m, `k: 'fleche'` ~45 m, à
+recaler sur la portée réelle des flèches d'`engine.js`), en gardant la vérification de
+cadence. Une fois fait, donner l'arc aux bots vétérans (`penserBot` dans tloc-multi.js).
+
+**6. Le temps de chargement.** 41 s pour entrer dans la citadelle depuis la prod, et
+≈ 485 Mo au premier envoi (`serveur/deploiement/exclure.txt`). Les deux mégakits
+(`assets_back/01_decors/…_megakit`, ≈ 100 Mo chacun) contiennent leurs textures
+d'origine à côté des dossiers `_web` que le jeu charge : mesurer ce que le jeu réclame
+vraiment (réseau d'un chargement complet, tous niveaux), exclure le reste du site, puis
+voir le § 4.E (étapes lentes du chargement, KTX2).
+
+**7. Petites retouches en attente.**
+- Le thème sombre de l'accueil garde son ciel bleu nuit (Eugène n'aime pas le bleu en
+  clair ; lui demander pour le sombre — piste : un brun nuit).
+- Les bastions : au chargement, « 3 courtines percées au niveau du terre-plein » sur 5, et
+  3 murs de caserne laissés en travers d'une rampe. Vérifier en jeu qu'on monte bien sur
+  les cinq (le banc d'accessibilité du § 4.H, point 4, le dirait).
+- Les sauvegardes nocturnes de la prod restent sur le même VPS (`/var/backups/tloc`) :
+  en garder une copie ailleurs (Google Drive, ou le Mac).
+- Ce fichier, les § 3 : ils ne racontent pas encore le travail des 25–26 septembre (portail
+  flamand, bots, manches, badges, social, mise en ligne, vue mobile). Le détail est dans
+  `NOTE-MULTI.md` et `serveur/deploiement/LISEZMOI.md`.
+
+**Ordre proposé** : 4 (une heure, ça se sent tout de suite) → 5 (l'arc, utile au multi) →
+2 (les objets qui font le multi) → 6 (chargement) → 1 (le prologue : écrire l'histoire
+avec Eugène avant de coder) → 3 (la carte).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
