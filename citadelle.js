@@ -98,8 +98,16 @@ export function choisirRampes() {
     : CASERNES.some((k) => pointInPoly(x, z, k.poly)) ? 1 : 0));
 }
 
+// La rampe et son palier se lisent comme un morceau du bastion : brique des bastions pour
+// tout ce qui est maçonnerie (murs de soutènement, flancs du palier), et, dessus, le sol de
+// la cour qui monte jusqu'au terre-plein. Avant, les murs prenaient la pierre des corniches
+// étalée à 4 m (wallBox reconstruit le matériau sans sa teinte : un blanc cru), et le palier
+// était un massif de terre claire sur ses six faces — un bloc sable qui dépassait de la
+// courtine, vu de la cour (retour d'Eugène, les cinq bastions).
+const BRIQUE_BASTION = (l, h) => patinerMat(phMat('church_bricks_03', l, h), { echelle: 34, force: 0.34, basY: -1.8, humide: 2.2 });
+const SOL_RAMPE = (l, h) => phMat('rocks_ground_08', l, h, { color: 0xeadcbc });   // le sable tassé de la cour (cf. buildCitadel)
+
 function poserRampes() {
-  const terre = pbrRepeat(T.dirt, 4, 2);
   let perces = 0, gardes = 0, restent = 0;
   for (const b of bastions) {
     const bl = percerCouloir(b);
@@ -108,7 +116,7 @@ function poserRampes() {
     const sMid = b.sShoulder - rl / 2;
     const cx = b.V[0] + b.u[0] * sMid + b.v[0] * b.tRampe;
     const cz = b.V[1] + b.u[1] * sMid + b.v[1] * b.tRampe;
-    const ramp = new THREE.Mesh(new THREE.BoxGeometry(W, 0.5, hyp), terre);
+    const ramp = new THREE.Mesh(new THREE.BoxGeometry(W, 0.5, hyp), SOL_RAMPE(W, hyp));
     ramp.position.set(cx, BAST_H / 2 - 0.25, cz);
     ramp.rotation.y = -Math.atan2(b.u[1], b.u[0]) + Math.PI / 2;
     ramp.rotation.x = -Math.atan2(BAST_H, rl);
@@ -119,7 +127,9 @@ function poserRampes() {
       const t = b.tRampe + sg * (b.demiRampe + 0.75);
       const a = [b.V[0] + b.u[0] * (b.sShoulder - rl) + b.v[0] * t, b.V[1] + b.u[1] * (b.sShoulder - rl) + b.v[1] * t];
       const q = [b.V[0] + b.u[0] * b.sShoulder + b.v[0] * t, b.V[1] + b.u[1] * b.sShoulder + b.v[1] * t];
-      wallBox(a[0], a[1], q[0], q[1], BAST_H + 0.2, 0.5, stoneMat, -1.4, T.stone);
+      wallBox(a[0], a[1], q[0], q[1], BAST_H + 0.2, 0.5, stoneMat, -1.4, 'church_bricks_03');
+      // un chaperon de pierre claire : il termine le mur comme le cordon termine la courtine
+      wallBox(a[0], a[1], q[0], q[1], 0.16, 0.66, stoneMat, BAST_H - 1.2, T.stone);
       addCap(a[0], a[1], q[0], q[1], 0.3, BAST_H + 0.2);
     }
     // LE PALIER. La gorge du bastion est oblique à la rampe, et la rampe finissait d'équerre :
@@ -143,7 +153,10 @@ function poserRampes() {
       }
       b.sPalier = sFin + 0.5;
       const Lp = b.sPalier - b.sShoulder + 0.3, sP = b.sShoulder - 0.3 + Lp / 2;
-      const pal = new THREE.Mesh(new THREE.BoxGeometry(Wp, BAST_H - 0.01 - bas, Lp + 0.6), terre);
+      // faces d'une BoxGeometry : +x, −x, +y, −y, +z, −z. Les flancs sont de la maçonnerie
+      // (chacun à l'échelle de sa taille réelle), le dessus est le sol de la rampe.
+      const Hp = BAST_H - 0.01 - bas, flancLong = BRIQUE_BASTION(Lp + 0.6, Hp), flancCourt = BRIQUE_BASTION(Wp, Hp), dessus = SOL_RAMPE(Wp, Lp + 0.6);
+      const pal = new THREE.Mesh(new THREE.BoxGeometry(Wp, Hp, Lp + 0.6), [flancLong, flancLong, dessus, dessus, flancCourt, flancCourt]);
       pal.position.set(b.V[0] + b.u[0] * sP + b.v[0] * b.tRampe, (BAST_H - 0.01 + bas) / 2, b.V[1] + b.u[1] * sP + b.v[1] * b.tRampe);
       pal.rotation.y = -Math.atan2(b.u[1], b.u[0]) + Math.PI / 2;
       pal.receiveShadow = true; scene.add(pal);
