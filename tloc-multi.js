@@ -1272,6 +1272,7 @@ function majManche(m) {
   if (m.etat === 'cours' && avant !== 'cours') debutManche();
   elimine = estElimine(moi && moi.id);
   if (m.etat === 'fin' && avant !== 'fin') afficherResultats(m);
+  else if (m.etat === 'fin') majBoutonsResultats(m);
   if (m.etat !== 'fin' && resultats) { resultats.remove(); resultats = null; }
   peindreManche(); peindrePanneau();
 }
@@ -1320,8 +1321,45 @@ function peindreManche() {
   bandeauManche.innerHTML = `${titre}<br>${ligne}`;
 }
 
+// L'écran des résultats : le cadre du portail (pierre, brique et or), le classement, les
+// badges, et deux boutons. « Rejouer » compte les prêts — la manche suivante part quand
+// tous les humains l'ont pressé, sans attendre la fin de la pause ; « Accueil » s'en va.
+// La souris est rendue au joueur : sans ça, les boutons ne se cliquent pas.
+let styleResultats = false;
+function poserStyleResultats() {
+  if (styleResultats) return; styleResultats = true;
+  const st = document.createElement('style');
+  st.textContent = `
+  .resultats-manche { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:7; width:min(560px, 92vw);
+    max-height:88vh; overflow:auto; padding:0 0 18px; border-radius:14px; background:#1A2030; color:#EDE3CC;
+    border:1px solid rgba(237,227,204,.3); box-shadow:0 24px 70px rgba(0,0,0,.65); font-family:"Alegreya Sans","Trebuchet MS",sans-serif; }
+  .resultats-manche .frise { height:10px; border-radius:14px 14px 0 0; background:repeating-linear-gradient(180deg,#9C3B28 0 3px,#EDE3CC 3px 4px,#6B281B 4px 7px,#EDE3CC 7px 8px); }
+  .resultats-manche .regle { margin:14px 0 0; text-align:center; font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#C4BBA6; }
+  .resultats-manche h2 { margin:4px 20px 14px; text-align:center; font-family:"Grenze Gotisch",Georgia,serif; font-weight:700; font-size:34px; line-height:1.1; color:#FFE3A1; text-shadow:0 3px 0 #6B281B; }
+  .resultats-manche ol { list-style:none; margin:0 18px; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .resultats-manche li { display:grid; grid-template-columns:26px 1fr auto; align-items:center; gap:4px 10px; padding:8px 12px; border-radius:8px; background:#0F1420; border:1px solid transparent; }
+  .resultats-manche li.moi { border-color:#E2B25A; background:rgba(226,178,90,.1); }
+  .resultats-manche li.gagne .rang { color:#FFE3A1; }
+  .resultats-manche .rang { font-family:Grenze,Georgia,serif; font-size:20px; font-weight:600; color:#C4BBA6; text-align:center; }
+  .resultats-manche .nom { font-weight:700; font-size:16px; }
+  .resultats-manche .score { font-family:Grenze,Georgia,serif; font-size:20px; font-weight:600; color:#FFE3A1; text-align:right; }
+  .resultats-manche .score small { font-family:"Alegreya Sans",sans-serif; font-size:12px; color:#C4BBA6; font-weight:400; margin-left:4px; }
+  .resultats-manche .badges { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; }
+  .resultats-manche .badge { padding:1px 9px; border-radius:10px; background:rgba(226,178,90,.18); color:#FFE3A1; font-size:12px; }
+  .resultats-manche .miens { margin:14px 18px 0; text-align:center; font-size:15px; }
+  .resultats-manche .boutons { display:flex; gap:10px; margin:16px 18px 0; }
+  .resultats-manche button { flex:1; height:48px; border-radius:8px; font:inherit; font-size:17px; font-weight:700; cursor:pointer; }
+  .resultats-manche .rejouer { background:#E2B25A; color:#2A1808; border:1px solid #FFE3A1; box-shadow:0 3px 0 #8A6424; }
+  .resultats-manche .rejouer[aria-pressed="true"] { background:#3F7F5A; color:#fff; border-color:#6FC498; box-shadow:0 3px 0 #23513A; }
+  .resultats-manche .accueil { flex:0 0 auto; padding:0 18px; background:transparent; color:#EDE3CC; border:1px solid rgba(237,227,204,.35); }
+  .resultats-manche .suite { margin:10px 18px 0; text-align:center; font-size:13px; color:#C4BBA6; }`;
+  document.head.appendChild(st);
+}
+let jePrets = false;
 function afficherResultats(m) {
+  poserStyleResultats();
   if (resultats) resultats.remove();
+  jePrets = false;
   const nomDe_ = (e) => (moi && e.id === moi.id ? `${ech(monPerso)} (toi)` : ech(e.perso));
   const noms = m.noms_badges || {};
   let titre;
@@ -1329,29 +1367,60 @@ function afficherResultats(m) {
   else if (m.gagnants && m.gagnants.length === 1) {
     const g = m.classement.find((e) => e.id === m.gagnants[0]);
     titre = regle === 'survie' ? `${g ? nomDe_(g) : '?'} reste le dernier debout !` : `${g ? nomDe_(g) : '?'} gagne la manche !`;
-  } else titre = m.gagnants && m.gagnants.length ? 'Égalité en tête !' : 'Personne ne l’emporte.';
-  const lignes = (m.classement || []).slice(0, 8).map((e, k) => {
-    const sc = regle === 'temps' ? `<b style="color:#ffe7a3">${e.k - e.m > 0 ? '+' : ''}${e.k - e.m}</b> <span style="opacity:.6">(${e.k} / ${e.m})</span>` : `${e.k} à terre`;
-    const bs = e.badges.map((b) => `<span style="display:inline-block; margin:2px 3px 0 0; padding:1px 8px; border-radius:10px; background:rgba(226,178,90,.2); color:#ffe3a1; font-size:12px">${ech(noms[b] || b)}</span>`).join('');
-    const couleur = enEquipes() && CAMPS[e.camp] ? CAMPS[e.camp].couleur : '#fff';
-    const moiL = moi && e.id === moi.id;
-    return `<tr style="${moiL ? 'background:rgba(226,178,90,.12)' : ''}"><td style="padding:5px 10px; opacity:.7">${k + 1}</td>
-      <td style="padding:5px 10px; color:${couleur}; font-weight:${moiL ? 'bold' : 'normal'}">${nomDe_(e)}</td>
-      <td style="padding:5px 10px; text-align:right">${sc}</td><td style="padding:5px 10px">${bs}</td></tr>`;
+  } else titre = m.gagnants && m.gagnants.length ? 'Égalité en tête !' : 'Personne ne l’emporte';
+  const lignes = (m.classement || []).slice(0, 12).map((e, k) => {
+    const sc = regle === 'temps' ? `${e.k - e.m > 0 ? '+' : ''}${e.k - e.m}<small>${e.k} / ${e.m}</small>` : `${e.k}<small>à terre</small>`;
+    const couleur = enEquipes() && CAMPS[e.camp] ? `color:${CAMPS[e.camp].couleur}` : '';
+    const cls = [moi && e.id === moi.id ? 'moi' : '', (m.gagnants || []).includes(e.id) ? 'gagne' : ''].join(' ');
+    return `<li class="${cls}"><span class="rang">${k + 1}</span><span class="nom" style="${couleur}">${nomDe_(e)}</span><span class="score">${sc}</span>
+      ${e.badges.length ? `<span class="badges">${e.badges.map((b) => `<span class="badge">${ech(noms[b] || b)}</span>`).join('')}</span>` : ''}</li>`;
   }).join('');
   const miens = ((m.classement || []).find((e) => moi && e.id === moi.id) || { badges: [] }).badges;
-  resultats = document.createElement('div');
-  resultats.style.cssText = `position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:7; pointer-events:none;
-    min-width:min(520px, 92vw); max-width:92vw; padding:22px 26px; border-radius:12px; background:rgba(15,20,32,.94);
-    border:1px solid rgba(255,231,163,.45); color:#EDE3CC; font-family:"Trebuchet MS",sans-serif; box-shadow:0 20px 60px rgba(0,0,0,.6)`;
-  resultats.innerHTML = `<div style="font-size:24px; font-weight:bold; color:#ffe3a1; text-align:center; margin-bottom:12px">${titre}</div>
-    <table style="width:100%; border-collapse:collapse; font-size:15px">${lignes}</table>
-    <div style="margin-top:14px; text-align:center; font-size:15px">${miens.length
-      ? `Tes badges : ${miens.map((b) => `<b style="color:#ffe3a1">${ech(noms[b] || b)}</b>`).join(', ')} — ils rejoignent ton compte.`
-      : '<span style="opacity:.7">Pas de badge cette fois.</span>'}</div>`;
+  resultats = document.createElement('section');
+  resultats.className = 'resultats-manche';
+  resultats.setAttribute('role', 'dialog'); resultats.setAttribute('aria-label', 'Résultats de la manche');
+  resultats.innerHTML = `<div class="frise"></div>
+    <p class="regle">${ech(NOM_REGLE[regle] || '')} · fin de la manche</p>
+    <h2>${titre}</h2>
+    <ol>${lignes}</ol>
+    <p class="miens">${miens.length
+      ? `Tes badges : ${miens.map((b) => `<b style="color:#FFE3A1">${ech(noms[b] || b)}</b>`).join(', ')} — ils rejoignent ton compte.`
+      : '<span style="opacity:.75">Pas de badge cette fois.</span>'}</p>
+    <div class="boutons">
+      <button type="button" class="rejouer" aria-pressed="false">Rejouer</button>
+      <button type="button" class="accueil">Accueil</button>
+    </div>
+    <p class="suite"></p>`;
   document.body.appendChild(resultats);
+  resultats.querySelector('.rejouer').onclick = rejouer;
+  resultats.querySelector('.accueil').onclick = () => allerAccueil();
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+  majBoutonsResultats(m);
   try { if (m.gagnants && moi && m.gagnants.includes(moi.id)) SFX.win(); } catch (e) {}
 }
+function rejouer() {
+  if (jePrets || !manche || manche.etat !== 'fin') return;
+  jePrets = true;
+  envoyer({ t: 'rejouer' });
+  if (manche) majBoutonsResultats(manche);
+}
+function majBoutonsResultats(m) {
+  if (!resultats) return;
+  const b = resultats.querySelector('.rejouer'), prets = (m.prets || []).length, n = m.humains || 1;
+  if (moi && (m.prets || []).includes(moi.id)) jePrets = true;
+  b.setAttribute('aria-pressed', String(jePrets));
+  b.textContent = jePrets ? (n > 1 ? `Prêt ✓ · ${prets}/${n}` : 'Prêt ✓') : (n > 1 ? `Rejouer · ${prets}/${n} prêts` : 'Rejouer');
+  const reste = m.reste != null ? Math.max(0, Math.ceil(m.reste - (performance.now() - recuManche) / 1000)) : null;
+  resultats.querySelector('.suite').textContent = reste != null
+    ? `La manche suivante part dans ${reste} s${n > 1 ? ', ou dès que tout le monde est prêt' : ''}. Entrée : rejouer.` : '';
+}
+// Entrée rejoue tant que les résultats sont affichés (le moteur ne la voit pas : il
+// l'interpréterait comme « parler »)
+window.addEventListener('keydown', (e) => {
+  if (!resultats || !manche || manche.etat !== 'fin') return;
+  if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // le chat garde son Entrée
+  if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.stopImmediatePropagation(); e.preventDefault(); rejouer(); }
+}, true);
 
 // ---------------------------------------------------------------------
 //  Boucle propre au multi (à côté de celle du moteur)
@@ -1376,7 +1445,7 @@ function boucle(now) {
   tickBourses(now);
   tickBannieres(now);
   tickBots(dt, now);
-  if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); }
+  if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); if (resultats && manche) majBoutonsResultats(manche); }
 
   if (state.running && !state.paused && now - dernierEnvoi > 1000 / ENVOIS_PAR_S) {
     dernierEnvoi = now;

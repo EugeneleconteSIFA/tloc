@@ -75,7 +75,9 @@ NOMS_BOTS = ("Baudouin", "Mahaut", "Firmin", "Aldegonde", "Gaspard", "Philippine
 REGLES = ("balade", "survie", "temps")
 MANCHE_COMPTE = int(os.environ.get("TLOC_MANCHE_COMPTE", 10))     # compte à rebours avant une manche
 MANCHE_DUREE_BANC = os.environ.get("TLOC_MANCHE_DUREE")            # le banc raccourcit le chrono
-MANCHE_PAUSE = int(os.environ.get("TLOC_MANCHE_PAUSE", 12))       # les résultats, avant la suivante
+MANCHE_PAUSE = int(os.environ.get("TLOC_MANCHE_PAUSE", 30))       # les résultats, avant la suivante
+# (12 s ne laissaient pas lire les résultats ; qui veut enchaîner a le bouton « Rejouer »)
+MANCHE_RELANCE = 3              # compte à rebours quand tous les humains ont pressé « Rejouer »
 SEUIL_FAIBLE = 0.4              # une cible à 40 % de ses cœurs ou moins est « affaiblie »
 
 # Les badges d'honneur : gagnés à la fin d'une manche, comptés dans le compte. Le nom et
@@ -983,6 +985,9 @@ class Salon:
              "scores": {str(i): [s["k"], s["m"]] for i, s in m["stats"].items()}}
         if m["etat"] == "fin":
             v.update(m["resultat"])
+            # « Rejouer » : qui est prêt, sur combien d'humains présents
+            v["prets"] = sorted(m.get("prets", set()))
+            v["humains"] = len(self.humains())
         return v
 
     async def annoncer_manche(self):
@@ -1011,7 +1016,20 @@ class Salon:
             self.manche.setdefault("noms", {})[j.id] = j.perso
             self.manche.setdefault("camps", {})[j.id] = j.camp
 
-    async def preparer(self):
+    async def rejouer(self, qui: "Connecte"):
+        """Un humain presse « Rejouer » sur l'écran des résultats. Quand tous les humains
+        présents l'ont fait, la manche suivante part sans attendre la fin de la pause."""
+        m = self.manche
+        if qui.est_bot or not m or m["etat"] != "fin":
+            return
+        m.setdefault("prets", set()).add(qui.id)
+        if {h.id for h in self.humains()} <= m["prets"]:
+            self.manche = None                    # la tâche de fin de pause verra un autre jeton
+            await self.preparer(MANCHE_RELANCE)
+        else:
+            await self.annoncer_manche()
+
+    async def preparer(self, compte: int = MANCHE_COMPTE):
         if self.regle == "balade" or (self.manche and self.manche["etat"] in ("compte", "cours", "fin")):
             return
         if len(self.joueurs) < 2:                  # seul : on attend un adversaire
@@ -1019,11 +1037,11 @@ class Salon:
             await self.annoncer_manche()
             return
         jeton = object()                           # une tâche d'une manche passée ne touche à rien
-        self.manche = {"etat": "compte", "fin": time.time() + MANCHE_COMPTE, "stats": {}, "elimines": set(), "jeton": jeton}
+        self.manche = {"etat": "compte", "fin": time.time() + compte, "stats": {}, "elimines": set(), "jeton": jeton}
         await self.annoncer_manche()
 
         async def suite():
-            await asyncio.sleep(MANCHE_COMPTE)
+            await asyncio.sleep(compte)
             m = self.manche
             if m and m["jeton"] is jeton and m["etat"] == "compte":
                 if len(self.joueurs) < 2:
@@ -1355,6 +1373,9 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         """Un message du salon. `moi` est son auteur : le joueur de cette connexion, ou un
         bot qu'il pilote — les règles (portée, cadence, camps) sont les mêmes pour les deux."""
         t = m.get("t")
+        if t == "rejouer":
+            await salon.rejouer(moi)
+            return
         if moi.est_bot and t in ("fete", "recolte", "don", "chat", "ramasser"):
             return                      # la fête, l'argent et le chat restent aux humains
 
