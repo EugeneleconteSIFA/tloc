@@ -76,7 +76,7 @@ function resumePartie(i) {
 // Entrer dans une partie reçue : on la rejoint (elle rejoint aussi notre liste), puis on y va
 async function entrerPartie(code, nom, bouton) {
   if (surMobile) {                     // on rejoint quand même : la partie attend sur l'ordinateur
-    try { await C.rejoindreInstance(code); if (bouton) { bouton.textContent = 'Rejointe ✓'; bouton.disabled = true; } }
+    try { await C.rejoindreInstance(code); if (bouton) { bouton.textContent = 'Dans tes parties ✓'; bouton.disabled = true; } }
     catch (e) { toast(e.message, { erreur: true }); return; }
     montrerOrdinateur(`« ${nom} » est dans ta liste : retrouve-la depuis un ordinateur.`);
     return;
@@ -465,7 +465,7 @@ async function suivre() {
       const i = m.invitation;
       corps += `<div class="invitation"><div class="inv-tete">${icone('epees', 16)}<b>${ECH(i.nom)}</b></div>
         <small>${ECH(resumePartie(i))} · code ${ECH(i.code)}</small>
-        <button class="plein mini" data-entrer="${ECH(i.code)}" data-nom="${ECH(i.nom)}">${mien ? 'Entrer' : 'Rejoindre'}</button></div>`;
+        <button class="plein mini" data-entrer="${ECH(i.code)}" data-nom="${ECH(i.nom)}">${surMobile ? 'Ajouter à mes parties' : (mien ? 'Entrer' : 'Rejoindre')}</button></div>`;
     }
     li.innerHTML = `${!mien ? avatar({ pseudo: m.pseudo, photo: m.photo }, 28) : ''}<div class="bulle">${qui}${corps}<time>${quand(m.t)}</time></div>`;
     fil.appendChild(li);

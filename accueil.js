@@ -211,9 +211,12 @@ function peindreReprendre(s) {
         <div class="infos">${r.neuve ? '' : coeurs(r)}<span class="aide" style="font-size:14px">${ligneResume(r)}</span></div>
       </div>
     </div>
-    <div class="ou"><button class="plein grand" id="btnReprendre" title="ou Entrée">${icone('jouer', 20)}${r.neuve ? 'Commencer' : 'Reprendre'}</button></div>
+    <div class="ou">${SOCIAL.surMobile
+      // sur téléphone, pas de bouton qui ne mènerait nulle part : on dit où ça se passe
+      ? '<span class="a-ordi">À reprendre sur ordinateur</span>'
+      : `<button class="plein grand" id="btnReprendre" title="ou Entrée">${icone('jouer', 20)}${r.neuve ? 'Commencer' : 'Reprendre'}</button>`}</div>
   </div>`;
-  $('btnReprendre').onclick = () => jouerPartie(s.id, $('btnReprendre'));
+  if ($('btnReprendre')) $('btnReprendre').onclick = () => jouerPartie(s.id, $('btnReprendre'));
 }
 
 function peindreParties() {
@@ -328,10 +331,10 @@ function majRejoindre() {
   const deja = code.length === 6 && mesInstances.find((x) => x.code === code);
   // un code qu'on a déjà rejoint : inutile de rejoindre encore, on propose d'entrer
   b.dataset.deja = deja ? code : '';
-  b.classList.toggle('plein', !!deja);
-  b.textContent = deja ? 'Entrer' : 'Rejoindre';
-  $('indiceCode').textContent = deja ? `Déjà dans la partie « ${deja.nom} ». Pour entrer :` : INDICE_CODE;
-  b.disabled = code.length !== 6;
+  b.classList.toggle('plein', !!deja && !SOCIAL.surMobile);
+  b.textContent = deja ? (SOCIAL.surMobile ? 'Déjà dans ta liste' : 'Entrer') : 'Rejoindre';
+  $('indiceCode').textContent = deja ? (SOCIAL.surMobile ? `« ${deja.nom} » est déjà dans ta liste.` : `Déjà dans la partie « ${deja.nom} ». Pour entrer :`) : INDICE_CODE;
+  b.disabled = code.length !== 6 || (!!deja && SOCIAL.surMobile);
 }
 function poserCode(texte, depart = 0) {
   const propre = String(texte).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6 - depart);

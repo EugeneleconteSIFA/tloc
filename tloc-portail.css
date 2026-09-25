@@ -337,6 +337,12 @@ button[aria-busy="true"] { cursor:progress; opacity:.75; }
 }
 /* le jeu ne se joue qu'au clavier : sur un écran tactile, on le dit plutôt que de laisser buter */
 :root.mobile .avis-clavier { display:flex; }
+/* sur téléphone, aucun bouton ne lance le jeu : on retire « Jouer », « Entrer » et le nom
+   du personnage d'instance (il ne sert qu'à entrer) ; renommer, supprimer, copier, quitter restent */
+:root.mobile .partie [data-act="jouer"], :root.mobile .instance [data-act="jouer"], :root.mobile .instance .actions .champ { display:none; }
+:root.mobile .instance .actions { justify-content:flex-end; }
+.a-ordi { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:8px; font-size:14px;
+          color:var(--sourd); border:1px dashed var(--bord2); text-align:center; }
 
 /* le message « passe sur un ordinateur » */
 .dialogue-ordi { width:min(420px, calc(100vw - 32px)); padding:24px; border-radius:14px; border:1px solid var(--bord2);
