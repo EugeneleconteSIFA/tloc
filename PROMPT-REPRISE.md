@@ -431,6 +431,11 @@ demain ensemble »). Tout est sur le dev (`f2691c5` prologue, `7e5bdeb` armure e
   os — la boîte du modèle brut donne 4,8 et un cheval de huit mètres). Style low-poly à
   facettes : à montrer à Eugène. À faire avec lui : l'écurie (près du moulin), monter et
   descendre, la vitesse, la jauge de vie qui remonte en broutant, puis l'épée en selle.
+- **L'arc entre joueurs** (point 5) : portée par arme au serveur (`PORTEE_FLECHE` 62 m, une
+  flèche vole 60 m ; l'épée garde 7 m). Les **vétérans tirent à l'arc** de 9 à 30 m quand
+  rien ne cache leur cible (`tirerFleche`, flèches à part de celles du joueur ; le coup ne
+  part qu'à l'arrivée). Banc : 5 flèches tirées, 5 touches reçues, 10 demi-cœurs perdus.
+  L'écu levé les pare aussi, de face.
 - **À trancher avec Eugène** : les prix de la forge (40 / 70 / 12 / 50 écus), les points
   d'armure (2, 3, 4 cœurs), le délai de retour de l'armure (45 s), le fait que les bots ne
   ramassent rien (ils subissent la parade et l'armure, c'est tout).
@@ -537,7 +542,7 @@ voir le § 4.E (étapes lentes du chargement, KTX2).
 **Ordre proposé** : 4 (une heure, ça se sent tout de suite) → 5 (l'arc, utile au multi) →
 2 (les objets qui font le multi) → 6 (chargement) → 1 (le prologue : écrire l'histoire
 avec Eugène avant de coder) → 3 (la carte).
-**Fait au 27 septembre** : 4, 1, et 2 sauf le cheval. Reste : le cheval (2), 5, 6, 3, 7.
+**Fait au 27 septembre** : 4, 1, 5, et 2 sauf le cheval. Reste : le cheval (2), 6, 3, 7.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

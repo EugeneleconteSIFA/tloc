@@ -105,7 +105,10 @@ BADGES = {
 def places_humains(mode: str, bots: int) -> int:
     """Les places laissées aux humains : celles du mode, dans la limite de douze en tout."""
     return max(1, min(places(mode), TOTAL_MAX - bots))
-PORTEE_COUP = 7.0               # mètres : au-delà, le coup annoncé est refusé
+PORTEE_COUP = 7.0               # mètres : au-delà, le coup d'épée annoncé est refusé
+# Une flèche part à 40 m/s et vit 1,5 s (engine.js) : 60 m au plus. Avec la seule portée de
+# l'épée, toute flèche qui touchait au-delà de 7 m était perdue — entre joueurs comme sur un bot.
+PORTEE_FLECHE = 62.0
 CADENCE_COUP = 0.22             # secondes entre deux coups d'un même joueur
 INSTANCE_TTL = 12 * 3600        # une instance sans personne dedans expire au bout de 12 h
 
@@ -1635,7 +1638,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 return                                      # éliminé : on regarde, on ne frappe plus
             if maintenant - moi.dernier_coup < CADENCE_COUP:
                 return
-            if distance_etat(moi.etat, cible.etat) > PORTEE_COUP:
+            if distance_etat(moi.etat, cible.etat) > (PORTEE_FLECHE if m.get("k") == "fleche" else PORTEE_COUP):
                 return
             moi.dernier_coup = maintenant
             degats = max(0.5, min(4.0, float(m.get("d", 1))))

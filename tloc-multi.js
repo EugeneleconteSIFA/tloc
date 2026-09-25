@@ -23,7 +23,7 @@ import { TOWN, sdEau, townWorld } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
-  AIDE, G, SFX, THREE, TAU, addInteract, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeBow, makeCamille,
+  AIDE, G, SFX, THREE, TAU, addInteract, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   hideMenu, menu, player, saveGame, scene, showMenu, showMessage, state, tryMove, world,
 } from './engine.js?v=27';
 
@@ -1138,7 +1138,8 @@ function coupsFleche() {
 const NIVEAUX = {
   recrue:  { nom: 'recrue',  vitesse: 4.4, reflexe: 0.9,  vue: 16, elan: 0.45, cadence: 1.5, esquive: 0,    fuite: 0,    pv: 8,  chasse: 0.25 },
   soldat:  { nom: 'soldat',  vitesse: 5.8, reflexe: 0.5,  vue: 24, elan: 0.3,  cadence: 1.0, esquive: 0.25, fuite: 0.2,  pv: 12, chasse: 0.6 },
-  veteran: { nom: 'vétéran', vitesse: 6.8, reflexe: 0.25, vue: 34, elan: 0.2,  cadence: 0.7, esquive: 0.55, fuite: 0.3,  pv: 12, chasse: 0.9 },
+  // le vétéran tire aussi à l'arc, de 9 à 30 m, quand rien ne cache sa cible
+  veteran: { nom: 'vétéran', vitesse: 6.8, reflexe: 0.25, vue: 34, elan: 0.2,  cadence: 0.7, esquive: 0.55, fuite: 0.3,  pv: 12, chasse: 0.9, arc: true },
 };
 const PORTEE_BOT = 2.1, ENVOIS_BOT = 8;
 const bots = new Map();            // id -> l'état simulé d'un bot que je pilote
@@ -1247,7 +1248,7 @@ function objectifBanniere(b, camp) {
 
 function penserBot(b, dt, now) {
   const P = b.P, a = autres.get(b.id), camp = a && a.camp;
-  b.cooldown -= dt; b.reflexe -= dt; b.invuln -= dt; b.fuiteT -= dt;
+  b.cooldown -= dt; b.reflexe -= dt; b.invuln -= dt; b.fuiteT -= dt; b.arcCd = (b.arcCd ?? 1.5) - dt;
   // la roulade : vite, de côté, intouchable
   if (b.roulade >= 0) {
     b.roulade += dt; b.act = 2;
@@ -1311,6 +1312,12 @@ function penserBot(b, dt, now) {
   if (cible) {
     b.calme = 0;
     const dx = cible.x - b.pos.x, dz = cible.z - b.pos.z, d = Math.hypot(dx, dz);
+    if (P.arc && d > 9 && d < 30 && b.arcCd <= 0 && vueDegagee(b.pos, cible)) {
+      b.arcCd = 2.5 + Math.random() * 2;
+      b.yaw = Math.atan2(dx, dz);
+      tirerFleche(b, cible);
+      return;
+    }
     if (b.detour && now < b.detour.fin && Math.hypot(b.detour.x - b.pos.x, b.detour.z - b.pos.z) > 1.5) {
       avancer(b, b.detour.x - b.pos.x, b.detour.z - b.pos.z, P.vitesse, dt);
     } else if (d > PORTEE_BOT * 0.85) {
@@ -1343,6 +1350,36 @@ function penserBot(b, dt, now) {
   // coincé contre un mur : autre destination
   if (avant.distanceTo(b.pos) < P.vitesse * 0.6 * dt * 0.2) { if ((b.coince += dt) > 1) { b.but = butAuHasard(b); b.coince = 0; } }
   else b.coince = 0;
+}
+
+// L'arc des bots. Les flèches des joueurs (engine.js, `arrows`) touchent les monstres et
+// passent par coupsFleche() comme celles du pilote : celles d'un bot volent à part, et
+// c'est à l'arrivée seulement, si la cible est encore là, que le coup part au salon.
+const flechesBots = [];
+function vueDegagee(de, a) {
+  for (let k = 1; k < 10; k++) {
+    const t = k / 10, x = de.x + (a.x - de.x) * t, z = de.z + (a.z - de.z) * t;
+    if (blocked(x, z, 0.1, true, de.y + 1.4 + ((a.y || 0) - de.y) * t)) return false;
+  }
+  return true;
+}
+function tirerFleche(b, c) {
+  const m = makeArrow(), de = new THREE.Vector3(b.pos.x, b.pos.y + 1.4, b.pos.z);
+  const dir = new THREE.Vector3(c.x - de.x, (c.y || 0) + 1.1 - de.y, c.z - de.z);
+  const d = dir.length(); dir.normalize();
+  m.position.copy(de); m.lookAt(de.clone().add(dir)); scene.add(m);
+  flechesBots.push({ mesh: m, vel: dir.multiplyScalar(40), vie: d / 40 + 0.15, b, cible: c.id });
+  try { SFX.swing(); } catch (e) {}
+}
+function tickFlechesBots(dt) {
+  for (let i = flechesBots.length - 1; i >= 0; i--) {
+    const f = flechesBots[i], p = f.mesh.position;
+    p.addScaledVector(f.vel, dt); f.vie -= dt;
+    const c = ennemisDe(f.b).find((e) => e.id === f.cible);
+    const touche = c && Math.hypot(c.x - p.x, c.z - p.z) < 1.2 && p.y > (c.y || 0) - 0.4 && p.y < (c.y || 0) + 2.6;
+    if (touche) { parler(f.b, { t: 'coup', c: c.id, d: DEGATS_FLECHE, k: 'fleche' }); burst(p.x, p.y, p.z, 0xfff0a0, 6, 4, 0.3); }
+    if (touche || f.vie <= 0 || blocked(p.x, p.z, 0.05, true, p.y)) { scene.remove(f.mesh); flechesBots.splice(i, 1); }
+  }
 }
 
 // un coup, un refus : ce que le salon adresse à un de mes bots
@@ -1408,6 +1445,7 @@ function tickBots(dt, now) {
   // les bots ne vivent que là où le pilote a le terrain : dans son niveau, jeu lancé
   const actifs = state.running && !state.paused && apparition && G.level;
   if (actifs) ralliementDesBots(now);
+  tickFlechesBots(dt);
   for (const b of bots.values()) {
     const a = autres.get(b.id);
     if (!a) continue;
