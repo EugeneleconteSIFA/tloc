@@ -185,6 +185,7 @@ function aReprendre(l) {
 }
 
 function jouerPartie(id, bouton) {
+  if (SOCIAL.surMobile) return SOCIAL.montrerOrdinateur();
   occuper(bouton);
   C.activer(id); C.poserInstance(null);
   location.href = 'index.html';
@@ -199,6 +200,7 @@ function peindreReprendre(s) {
   const zone = $('reprendre');
   // première visite : rien à reprendre, la tuile ne garde que « Nouvelle partie », en or
   $('nouvellePartie').classList.toggle('plein', !s);
+  if (SOCIAL.surMobile) $('nouvellePartie').textContent = 'Créer';
   zone.closest('.mode-solo').classList.toggle('premiere', !s);
   if (!s) { zone.innerHTML = '<p class="accroche">Phinaert a enlevé le prince Eugène. Donne un nom à ton personnage et pars le délivrer.</p>'; return; }
   const r = s.resume || {};
@@ -427,6 +429,7 @@ async function copierLien(code, bouton) {
 async function actionInstance(code, act, bouton) {
   if (act === 'lien') { copierLien(code, bouton); return; }
   if (act === 'code') { copierCode(code, bouton); return; }
+  if (act === 'jouer' && SOCIAL.surMobile) return SOCIAL.montrerOrdinateur();
   if (act === 'jouer') occuper(bouton);
   const liste = await C.mesInstances().catch(() => []);
   const i = liste.find(x => x.code === code) || { code, nom: code };
@@ -478,12 +481,14 @@ $('nouvellePartie').onclick = async () => {
     document.querySelectorAll('.toast').forEach(t => t.remove());
   }
   if (C.slotsPleins()) return message($('msgParties'), `Trois personnages au plus. Supprimes-en un pour en créer un autre.`);
-  occuper($('nouvellePartie'));
+  if (!SOCIAL.surMobile) occuper($('nouvellePartie'));
   const id = C.creerSlot($('nomPartie').value);
   $('nomPartie').value = '';
   C.activer(id);
   peindreParties();
   try { await C.pousser(id); } catch (e) {}
+  // sur téléphone, le personnage est créé (et monte sur le compte) ; on y jouera sur ordinateur
+  if (SOCIAL.surMobile) { toast(`${(C.slots().find((s) => s.id === id) || {}).nom || 'Ton personnage'} est prêt : joue-le sur ordinateur.`); return; }
   location.href = 'index.html';
 };
 
@@ -525,7 +530,7 @@ function majBots() {
     : `${nbBots} bot${nbBots > 1 ? 's' : ''} ${NOM_NIVEAU[niveauChoisi()]}${nbBots > 1 ? 's' : ''} · `
       + (amis ? `${amis} place${amis > 1 ? 's' : ''} pour tes amis` : 'rien que toi et les bots');
   // avec des bots, on n'attend personne : la partie s'ouvre et on y entre
-  $('creerInstance').textContent = nbBots ? 'Créer et jouer' : 'Créer';
+  $('creerInstance').textContent = nbBots && !SOCIAL.surMobile ? 'Créer et jouer' : 'Créer';
 }
 $('botsMoins').onclick = () => { nbBots--; majBots(); };
 $('botsPlus').onclick = () => { nbBots++; majBots(); };
@@ -555,7 +560,7 @@ $('creerInstance').onclick = async () => {
     message($('msgInstances'), '');
     // le geste suivant, c'est presque toujours d'envoyer le code aux copains : il est déjà copié
     const copie = await copierCode(i.code, null);
-    if (nbBots) {                                  // des bots : on entre tout de suite
+    if (nbBots && !SOCIAL.surMobile) {             // des bots : on entre tout de suite (sur ordinateur)
       const perso = (C.compte() || {}).pseudo || 'Camille';
       C.activerInstance(i.code);
       C.poserInstance({ code: i.code, nom: i.nom, perso });
@@ -593,6 +598,8 @@ $('rejoindreInstance').onclick = async () => {
 };
 
 // lien partagé : accueil.html#AB12CD
+// venu du jeu sur un téléphone : index.html l'a renvoyé ici, on dit pourquoi
+if (location.hash === '#ordinateur') { history.replaceState(null, '', location.pathname); setTimeout(() => SOCIAL.montrerOrdinateur(), 300); }
 if (/^#[A-Z0-9]{6}$/i.test(location.hash)) {
   poserCode(location.hash.slice(1));
   history.replaceState(null, '', location.pathname);

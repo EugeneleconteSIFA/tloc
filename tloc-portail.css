@@ -336,9 +336,17 @@ button[aria-busy="true"] { cursor:progress; opacity:.75; }
   footer { flex-direction:column; }
 }
 /* le jeu ne se joue qu'au clavier : sur un écran tactile, on le dit plutôt que de laisser buter */
-@media (pointer: coarse), (max-width: 640px) {
-  .avis-clavier { display:flex; }
-}
+:root.mobile .avis-clavier { display:flex; }
+
+/* le message « passe sur un ordinateur » */
+.dialogue-ordi { width:min(420px, calc(100vw - 32px)); padding:24px; border-radius:14px; border:1px solid var(--bord2);
+                 background:var(--panneau); color:var(--pierre); text-align:center; box-shadow:0 24px 70px rgba(0,0,0,.4); }
+.dialogue-ordi::backdrop { background:rgba(20,14,10,.55); }
+.dialogue-ordi svg { color:var(--brique); }
+.dialogue-ordi h2 { margin:8px 0 10px; font-size:24px; color:var(--or-clair); }
+.dialogue-ordi p { margin:0 0 12px; }
+.dialogue-ordi .precision { font-weight:700; }
+.dialogue-ordi form { margin-top:16px; }
 
 /* ---------- les bots, dans « Ouvrir une partie » ---------- */
 .bots { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }

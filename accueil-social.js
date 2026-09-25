@@ -11,6 +11,34 @@ const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 let toast = (t) => console.log(t);
 let moiId = null;
 
+// =====================================================================
+//  Téléphone et tablette : on gère, on ne joue pas
+// =====================================================================
+// Le jeu se joue au clavier et à la souris. Sur un écran tactile sans souris, l'accueil
+// reste utile — préparer ses personnages, ouvrir une partie, inviter ses amis, discuter —
+// mais tout ce qui ouvrirait la citadelle affiche ce message à la place. Un ordinateur à
+// écran tactile garde sa souris (hover), il n'est donc pas concerné.
+export const surMobile = matchMedia('(hover: none) and (pointer: coarse)').matches;
+document.documentElement.classList.toggle('mobile', surMobile);
+let dialogueOrdi = null;
+export function montrerOrdinateur(precision = '') {
+  if (!dialogueOrdi) {
+    dialogueOrdi = document.createElement('dialog');
+    dialogueOrdi.className = 'dialogue-ordi';
+    dialogueOrdi.setAttribute('aria-labelledby', 'titreOrdi');
+    document.body.appendChild(dialogueOrdi);
+  }
+  dialogueOrdi.innerHTML = `
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M1.5 20h21"/><path d="M9 16l-.5 4M15 16l.5 4"/></svg>
+    <h2 id="titreOrdi">Le jeu se joue sur ordinateur</h2>
+    <p>L’application est adaptée pour jouer sur ordinateur, au clavier et à la souris. Merci de changer d’écran pour jouer.</p>
+    ${precision ? `<p class="precision">${ECH(precision)}</p>` : ''}
+    <p class="sous-titre">Ici, tu peux préparer tes personnages, ouvrir des parties et inviter tes amis.</p>
+    <form method="dialog"><button class="plein large">Compris</button></form>`;
+  dialogueOrdi.showModal();
+  return false;
+}
+
 const TRAITS = {
   bulle: '<path d="M4 5h16v11H9l-5 4z"/>',
   fermer: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -47,6 +75,12 @@ function resumePartie(i) {
 
 // Entrer dans une partie reçue : on la rejoint (elle rejoint aussi notre liste), puis on y va
 async function entrerPartie(code, nom, bouton) {
+  if (surMobile) {                     // on rejoint quand même : la partie attend sur l'ordinateur
+    try { await C.rejoindreInstance(code); if (bouton) { bouton.textContent = 'Rejointe ✓'; bouton.disabled = true; } }
+    catch (e) { toast(e.message, { erreur: true }); return; }
+    montrerOrdinateur(`« ${nom} » est dans ta liste : retrouve-la depuis un ordinateur.`);
+    return;
+  }
   if (bouton) { bouton.disabled = true; bouton.textContent = 'Ouverture…'; }
   try {
     await C.rejoindreInstance(code);
