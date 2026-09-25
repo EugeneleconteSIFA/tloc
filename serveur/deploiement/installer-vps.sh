@@ -7,7 +7,7 @@
 #     bash /srv/tloc/dev/repo/serveur/deploiement/installer-vps.sh
 #
 # Il installe : les paquets, l'utilisateur tloc, les deux serveurs (prod :8130, dev :8131 — le VPS a déjà 8100 à 8104 pris),
-# nginx pour tloc.kernse.fr et tloc-dev.kernse.fr (avec la porte du dev), la copie de la
+# nginx pour tloc.kernse.fr et tloc-dev.kernse.fr (le dev réservé au compte Createur), la copie de la
 # base chaque nuit, le droit pour le dev de promouvoir, puis la première prod et HTTPS.
 # Relançable : ce qui existe déjà n'est pas écrasé (sauf les fichiers de config, remis à jour).
 set -euo pipefail
@@ -80,10 +80,6 @@ echo "→ Le dev : récupération de GitHub et démarrage"
 /usr/local/bin/tloc-maj-dev
 
 echo "→ nginx"
-if [ ! -f /etc/nginx/tloc-dev.htpasswd ]; then
-  read -r -p "Identifiant de la porte du dev : " QUI
-  htpasswd -c /etc/nginx/tloc-dev.htpasswd "$QUI"
-fi
 install -m 644 "$ICI/nginx-tloc-prod.conf" /etc/nginx/sites-available/tloc.kernse.fr
 install -m 644 "$ICI/nginx-tloc-dev.conf" /etc/nginx/sites-available/tloc-dev.kernse.fr
 ln -sfn /etc/nginx/sites-available/tloc.kernse.fr /etc/nginx/sites-enabled/tloc.kernse.fr

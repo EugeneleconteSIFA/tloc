@@ -298,6 +298,8 @@ const dateVersion = (v) => (v && v.date ? new Date(v.date).toLocaleString('fr-FR
 export async function brancherEnvironnement() {
   let e; try { e = await C.env(); } catch (er) { return; }
   if (e.env !== 'dev') return;
+  // le dev est réservé au créateur : pas de mode « sans compte » ici
+  if (!C.connecte()) { try { localStorage.removeItem('tloc_local'); } catch (er) {} location.replace('connexion.html'); return; }
   document.title = '[DEV] ' + document.title;
   const zone = $('bandeauDev');
   zone.classList.remove('cache');

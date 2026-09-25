@@ -262,6 +262,11 @@ def joueur_du_jeton(jeton: str | None) -> sqlite3.Row | None:
         r = cx.execute(
             "SELECT j.id, j.pseudo FROM jetons t JOIN joueurs j ON j.id = t.joueur WHERE t.jeton = ?",
             (jeton,)).fetchone()
+        # Le dev est réservé au créateur. Sa base est une copie de la prod, jetons compris :
+        # la session encore ouverte d'un joueur y serait valable. On la refuse ici, et c'est
+        # ce qui ferme aussi l'API et le salon — pas seulement le formulaire de connexion.
+        if r and os.environ.get("TLOC_ENV") == "dev" and r["pseudo"].lower() != CREATEUR.lower():
+            return None
         if r:
             cx.execute("UPDATE jetons SET vu = ? WHERE jeton = ?", (time.time(), jeton))
         return r
@@ -302,6 +307,8 @@ def ouvrir_session(joueur_id: int, pseudo: str) -> dict:
 
 @app.post("/api/inscription")
 def inscription(ids: Identifiants):
+    if os.environ.get("TLOC_ENV") == "dev":
+        raise HTTPException(403, "tloc-dev est réservé au créateur : les inscriptions se font sur tloc.kernse.fr.")
     pseudo = ids.pseudo.strip()
     if not RE_PSEUDO.match(pseudo):
         raise HTTPException(400, "Pseudo : 3 à 16 caractères, lettres, chiffres, - et _ seulement.")
@@ -324,6 +331,8 @@ def connexion(ids: Identifiants):
         r = cx.execute("SELECT id, pseudo, mdp FROM joueurs WHERE pseudo = ?", (ids.pseudo.strip(),)).fetchone()
     if not r or not verifier(ids.mdp, r["mdp"]):
         raise HTTPException(401, "Pseudo ou mot de passe incorrect.")
+    if os.environ.get("TLOC_ENV") == "dev" and r["pseudo"].lower() != CREATEUR.lower():
+        raise HTTPException(403, "tloc-dev est réservé au créateur. Le jeu est sur tloc.kernse.fr.")
     return ouvrir_session(r["id"], r["pseudo"])
 
 

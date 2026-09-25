@@ -63,3 +63,15 @@ $('sansCompte').onclick = () => {
   location.href = 'accueil.html';
 };
 $('pseudo').focus();
+
+// Sur tloc-dev, seul le compte Createur entre : pas d'inscription, pas de jeu sans compte —
+// le serveur les refuse de toute façon, autant ne pas les proposer.
+C.env().then((e) => {
+  if (e.env !== 'dev') return;
+  document.title = '[DEV] ' + document.title;
+  $('ongletInscription').classList.add('cache');
+  $('ongletConnexion').parentElement.style.gridTemplateColumns = '1fr';
+  const sans = $('sansCompte').closest('p');
+  if (sans) { sans.classList.add('cache'); if (sans.nextElementSibling) sans.nextElementSibling.classList.add('cache'); }
+  $('aideCompte').innerHTML = 'Version de développement, réservée au compte <b>Createur</b>. Le jeu est sur <a href="https://tloc.kernse.fr/">tloc.kernse.fr</a>.';
+}).catch(() => {});
