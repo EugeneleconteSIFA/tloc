@@ -449,7 +449,7 @@ function build() {
       // touche quelqu'un, autant que ça se voie du bout de la galerie.
       puitsDeLumiere(x, z, { r: 0.82, h: 4.4, eboule: true, fort: true, evase: 2.9 });
       for (const dz of [-2.3, 2.3]) scene.add(mesh(new THREE.BoxGeometry(0.9, 0.34, 0.9), M.pierre, x + 2.3, 0.17, z + dz));
-      addInteract({ pos: cagePos, r: 3.2, enabled: () => !state.princeFreed, prompt: () => state.cageKey ? 'ouvrir la cage du prince' : 'parler au prince Eugène', fn: talkPrince });
+      addInteract({ pos: cagePos, r: 3.2, enabled: () => !state.princeFreed, prompt: () => state.cageKey ? 'ouvrir la cage d’Eugène' : 'parler à Eugène', fn: talkPrince });
     } else if (t === 'g') spawnGaufre(x, z);
   }
 
@@ -735,7 +735,7 @@ function pullLever() {
 }
 function talkPrince() {
   prince.rotation.y = Math.atan2(player.pos.x - prince.position.x, player.pos.z - prince.position.z);
-  if (!state.cageKey) { dialogue([{ who: 'Prince Eugène', text: "« Camille ! Tu es venue jusqu'ici ! Cette cage est fermée à clé… et c'est le Rat-Roi qui garde la clé, dans la galerie des fosses. Méfie-toi de lui. »" }]); return; }
+  if (!state.cageKey) { dialogue([{ who: 'Eugène', text: "« Camille ! Tu es venue jusqu'ici ! Cette cage est fermée à clé… et c'est le Rat-Roi qui garde la clé, dans la galerie des fosses. Méfie-toi de lui. »" }]); return; }
   freePrince();
 }
 // cinématique : la cage s'ouvre, le prince sort
@@ -744,9 +744,9 @@ function freePrince() {
   cutscene([
     { cam: [x + 4, 2.5, z + 4], at: [x, 1.6, z], cam2: [x + 3, 2.2, z + 3.5], at2: [x, 1.6, z], dur: 3, text: 'La clé du Rat-Roi tourne dans la serrure de la cage…', fn: () => { SFX.pickup(); cage.userData.opening = true; prince.rotation.y = Math.PI / 4; } },
     { cam: [x + 3, 2.2, z + 3.5], at: [x, 1.6, z], dur: 2.5, actor: prince, to: [x + 1.8, z + 1.6], speed: 2.5, fn: () => { state.princeFreed = true; state.caveDone = true; SFX.win(); } },
-    { say: "« Camille… je savais que tu viendrais. Phinaert m'a traîné ici en riant, il disait que personne ne passerait ses monstres. »", who: 'Prince Eugène', cam: [x + 4, 2.4, z + 4.5], at: [x + 1.2, 1.6, z + 1] },
-    { say: "« Sortons d'ici. Reste devant, je te suis : je n'ai pas ton épée… ni ton courage. »", who: 'Prince Eugène' },
-  ], () => { saveGame(true); showMessage('Ramène le prince à la surface : l\'escalier de l\'entrée, puis Lydéric près du pont.', 6); });
+    { say: "« Camille… je savais que tu viendrais. Phinaert m'a traîné ici en riant, il disait que personne ne passerait ses monstres. »", who: 'Eugène', cam: [x + 4, 2.4, z + 4.5], at: [x + 1.2, 1.6, z + 1] },
+    { say: "« Sortons d'ici. Reste devant, je te suis : je n'ai pas ton épée… ni ton courage. »", who: 'Eugène' },
+  ], () => { saveGame(true); showMessage('Ramène Eugène à la surface : l\'escalier de l\'entrée, puis Lydéric près du pont.', 6); });
 }
 function populate() {
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
@@ -854,8 +854,8 @@ function counts() {
   return `Rats <b>${rats}</b> &nbsp; Chauves-souris <b>${bats}</b> &nbsp; Levier <b>${state.caveLever ? '✓' : '✗'}</b> &nbsp; Clé de la cage <b>${state.cageKey ? '✓' : '?'}</b>${state.bow ? ' &nbsp; Arc <b>C</b>' : ''}<br><small>Objectif : ${objective()}</small>`;
 }
 function objective() {
-  return state.princeFreed ? "remonte à la surface avec le prince : l'escalier de l'entrée, sous le rai de jour, puis Lydéric au pont"
-    : state.cageKey ? 'ouvre la cage du prince Eugène, sous le puits de lumière au bout de la galerie des fosses'
+  return state.princeFreed ? "remonte à la surface avec Eugène : l'escalier de l'entrée, sous le rai de jour, puis Lydéric au pont"
+    : state.cageKey ? 'ouvre la cage d’Eugène, sous le puits de lumière au bout de la galerie des fosses'
     : state.caveLever ? 'franchis la grille, saute les fosses et vaincs le Rat-Roi qui garde la clé de la cage'
     : "descends dans la contre-mine en suivant le caniveau, et tire la vanne n° 4 qui ouvre la grille";
 }
@@ -863,11 +863,11 @@ const level = {
   name: 'cave', getH: levelH, blocked: levelBlocked, zoneName, build, populate, update, animate, minimap, counts, onLoad, onFall, objective,
   start: () => showMessage("Les galeries de Vauban. Ça suinte, ça résonne. Les torches allumées marquent le chemin ; le caniveau descend vers la contre-mine.", 6),
   arriveMessage: () => state.princeFreed ? "Les galeries. Le prince te suit : remonte par l'escalier, sous le rai de jour." : "Les galeries de Vauban. Suis les torches allumées : celles qui sont mortes ne mènent nulle part.",
-  entry: () => state.princeFreed ? null : { title: 'Les galeries de Vauban', sub: 'Sous la citadelle', cam: [startPos.x + 13, 3.6, startPos.z + 9], at: [startPos.x + 2, 1.4, startPos.z + 1], cam2: [startPos.x + 3.5, 2.5, startPos.z + 4.5], at2: [startPos.x, 1.5, startPos.z], dur: 4.5, text: 'Quelque part au bout de ces galeries, le prince Eugène attend…' },
+  entry: () => state.princeFreed ? null : { title: 'Les galeries de Vauban', sub: 'Sous la citadelle', cam: [startPos.x + 13, 3.6, startPos.z + 9], at: [startPos.x + 2, 1.4, startPos.z + 1], cam2: [startPos.x + 3.5, 2.5, startPos.z + 4.5], at2: [startPos.x, 1.5, startPos.z], dur: 4.5, text: 'Quelque part au bout de ces galeries, Eugène attend…' },
   onKill: (e) => { BOURSE.prime(e); if (e.kind === 'ratroi' && !state.cageKey) { state.cageKey = true; saveGame(true);
     setTimeout(() => cutscene([
       { cam: [e.pos.x + 3, 2.5, e.pos.z + 3], at: [e.pos.x, 0.8, e.pos.z], dur: 2.5, text: 'Le Rat-Roi s\'effondre… et lâche une petite clé de fer.', fn: () => { const k = makeKey(); k.position.set(e.pos.x, 1.0, e.pos.z); k.userData.dynamic = true; scene.add(k); burst(e.pos.x, 1, e.pos.z, 0xffe070, 20, 3, 1, 3, 1.2); SFX.pickup(); setTimeout(() => scene.remove(k), 2400); } },
-      { cam: [cagePos.x + 4, 2.5, cagePos.z + 4], at: [cagePos.x, 1.6, cagePos.z], cam2: [cagePos.x + 3, 2.2, cagePos.z + 3], at2: [cagePos.x, 1.6, cagePos.z], dur: 3.5, text: 'La clé de la cage du prince ! Il est tout près, au bout de la galerie des fosses.' },
+      { cam: [cagePos.x + 4, 2.5, cagePos.z + 4], at: [cagePos.x, 1.6, cagePos.z], cam2: [cagePos.x + 3, 2.2, cagePos.z + 3], at2: [cagePos.x, 1.6, cagePos.z], dur: 3.5, text: 'La clé de la cage d’Eugène ! Il est tout près, au bout de la galerie des fosses.' },
     ]), 800); } },
 };
 // Camille riggée si la banque est là, sinon la version en primitives

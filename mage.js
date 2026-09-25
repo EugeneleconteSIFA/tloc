@@ -262,7 +262,7 @@ function parler() {
     dialogue([
       { who: 'Le vieux mage', text: "« Reviens quand tu voudras, petite. Le feu est vert, la soupe est verte, mais elle nourrit. »" },
       { who: 'Le vieux mage', text: state.princeFreed
-        ? "« Le prince est rentré, dis-tu ? Alors la citadelle peut se rendormir. Moi, je reste ici : les arbres font moins de bruit que les hommes. »"
+        ? "« Eugène est rentré, dis-tu ? Alors la citadelle peut se rendormir. Moi, je reste ici : les arbres font moins de bruit que les hommes. »"
         : "« Et souviens-toi : Phinaert est plus bête que méchant. C'est ce qui le rend dangereux. »" },
       { who: 'Le vieux mage', text: BOURSE.aBourse()
         ? "« Et si tu as des écus qui traînent : mes fioles sont sur l'établi. L'onguent remet trois cœurs, le sirop de chicorée fait courir sans souffler. »"

@@ -531,36 +531,12 @@ const H_REF = enUnites(1.72);
 // ---------------------------------------------------------------------------
 //  Les rôles de l'histoire, hors du village
 // ---------------------------------------------------------------------------
-// Le prince, le vieux mage, Gustave et ses clients étaient restés en primitives :
+// Eugène, le vieux mage, Gustave et ses clients étaient restés en primitives :
 // à côté des villageois de la banque, ils faisaient figurine. Ils passent par la
 // même fabrique, avec leurs propres fiches ; les accessoires reprennent ce qui les
-// faisait reconnaître dans l'ancienne version (couronne et cape, bonnet mou et
-// bâton, tablier, haut-de-forme).
+// faisait reconnaître dans l'ancienne version (bonnet mou et bâton, tablier,
+// haut-de-forme).
 const POURPRE = 0x5a2a7a, ECRU = 0xe8e0d0, ROBE = 0x3a4a6a, BLANC_VIEUX = 0xe8e4dc;
-
-/** Couronne d'or à six fleurons, posée sur le crâne. */
-function couronne() {
-  const g = new THREE.Group();
-  const cercle = mesh(new THREE.CylinderGeometry(0.098, 0.098, 0.04, 16, 1, true), GOLD(), 0, 0, 0);
-  cercle.material.side = THREE.DoubleSide; g.add(cercle);
-  for (let i = 0; i < 6; i++) {
-    const a = i * TAU / 6;
-    g.add(mesh(new THREE.ConeGeometry(0.018, 0.05, 4), GOLD(), Math.cos(a) * 0.095, 0.04, Math.sin(a) * 0.095));
-    g.add(mesh(sphG(0.011, 6), mat([0xd02040, 0x3060d0, 0x30a050][i % 3], { roughness: 0.3 }), Math.cos(a) * 0.1, 0.004, Math.sin(a) * 0.1));
-  }
-  return g;
-}
-
-/** Cape rouge qui tombe des épaules dans le dos. */
-function cape(couleur = 0xb02030) {
-  const g = new THREE.Group();
-  const m = mat(couleur, { roughness: 0.9, side: THREE.DoubleSide });
-  // un pan de cône ouvert vers l'avant : il épouse le dos au lieu de flotter comme un drap
-  const pan = mesh(new THREE.CylinderGeometry(0.15, 0.30, 0.95, 14, 1, true, Math.PI * 0.6, Math.PI * 0.8), m, 0, -0.45, 0);
-  g.add(pan);
-  g.add(mesh(new THREE.TorusGeometry(0.03, 0.012, 6, 12), GOLD(), 0.1, 0.02, 0.08));   // la broche
-  return g;
-}
 
 /** Bonnet mou du mage, qui retombe sur le côté. */
 function bonnetMou(couleur = ROBE) {
@@ -599,7 +575,7 @@ export const ROLES = {
     tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
     cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0xc8a050,
     haut: POURPRE, valeur: 0.9, bas: ECRU, valeurBas: 1.25, idle: 'Idle_Loop',
-    tete: () => couronne(), dos: () => cape(),
+    // Eugène n'est plus « le prince » (26 septembre) : ni couronne ni cape, un ami de Camille
   },
   mage: {
     metier: 'mage', gabarit: 'sec', h: enUnites(1.62),

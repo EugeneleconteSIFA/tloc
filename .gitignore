@@ -22,3 +22,7 @@ assets_back/00_previews/
 verdant_trail/
 hidden_alley/
 Universal Animation Library*/
+
+# les animaux de Quaternius tels que téléchargés (≈ 23 Mo de glTF texte) : le jeu ne
+# chargera que leurs versions allégées
+assets_back/02_personnages/animaux/*.gltf

@@ -422,6 +422,28 @@ corps de garde** : rallier quatre lieux nommés avec la carte du beffroi — le 
 « Lieux x / 13 » existe). Récompense : l'épée de Lydéric. C'est pendant la procession que
 Phinaert enlève le prince — la quête principale s'enchaîne.
 
+**Cadrage avec Eugène (26 septembre) — remplace l'avis ci-dessus.** Prologue du solo, 2 à
+3 minutes, proposé à la première partie avec un bouton « Passer », rejouable depuis
+l'accueil. L'histoire : Camille étudie la cuisine à **l'école Lequeuche, dans le bourg** ;
+avec son ami **Eugène**, elle prépare un gâteau pour l'anniversaire de **Lydéric le géant**.
+Les leçons (se déplacer et sauter, la carte, l'épée) viennent de la préparation — un
+ingrédient à aller chercher —, puis on porte le gâteau à Lydéric au pont, où Phinaert
+enlève Eugène : l'intro actuelle s'enchaîne. **Eugène n'est plus « le prince »** : le mot
+disparaît des dialogues et des textes (≈ 70 occurrences dans 14 fichiers, dont des
+verrouillés — `quetes.js`, `game.js`, `engine.js`… — à demander avant). Les noms de code
+(`state.princeFreed`, `PARTAGE.prince`) restent : ils sont dans les sauvegardes.
+L'ingrédient : **le blé, au moulin d'Émile** (campagne.js) — la leçon d'épée est la fauche
+du champ (`faucherChamp`, nature.js, existe déjà). **La fête est un secret** : Lydéric ne
+se doute de rien. Au pont, au moment où Camille lui tend le gâteau, Phinaert surgit.
+Le gâteau **tombe et s'écrase** dans la bousculade — pas de suite, c'est la tristesse du
+moment. Le retour du moulin à l'école se fait par un fondu (le gâteau terminé), pour tenir
+les 2–3 minutes.
+
+Déroulé : (1) cour de l'école Lequeuche, la farine manque — se déplacer, sauter ;
+(2) le chemin du moulin — la carte ; (3) le champ d'Émile — faucher à l'épée, Émile moud ;
+(4) fondu, le gâteau fini, Camille et Eugène au pont ; Lydéric ému, Camille lui tend le
+gâteau, Phinaert surgit, enlève Eugène, le gâteau s'écrase, la herse tombe → intro actuelle.
+
 **2. En multi, les objets qui font gagner.** Il en faut plus, et il faut qu'on les voie :
 - un **cheval**, dans une écurie : plus rapide (et peut-être une charge) ;
 - une **armure** : des points de résistance à casser avant de toucher les cœurs
@@ -430,6 +452,21 @@ Phinaert enlève le prince — la quête principale s'enchaîne.
 Pour les faire connaître : toujours aux mêmes endroits (écurie, arsenal, poudrière — ça
 apprend aussi la carte), une lueur et une icône sur la minimap, une annonce quand ils
 réapparaissent, et un écran qui les présente au début d'une manche.
+
+**Cadrage avec Eugène (26 septembre).** Multi seulement. Première vague : **armure,
+bouclier, cheval**. On les **ramasse** à des lieux fixes, et on les **améliore avec des
+écus chez le forgeron** (en pleine manche : y aller est un risque).
+- **Armure** : se fend à force de coups (des points à casser avant les cœurs, dans
+  `encaisser`) ; brisée, elle réapparaît à son lieu après un délai, avec une annonce.
+- **Bouclier** : se garde, même après une mort. **Clic droit maintenu** pour le lever quand
+  on l'a (la roulade reste sur Maj ; sans bouclier, le clic droit ne change pas).
+- **Cheval** : plus rapide, **l'épée à cheval** (on frappe depuis la selle — le plus coûteux
+  en animation). Sa propre jauge de vie, prise avant celle du cavalier ; elle **remonte quand
+  il broute** (l'herbe et les meules de la fauche, nature.js). Mort, il réapparaît à
+  l'écurie. Modèle : proposé **Quaternius** (CC0, glTF animé, léger), sinon Poly Pizza ou
+  Sketchfab (CC-BY, plus réaliste, plus lourd) — à choisir par Eugène avant tout
+  téléchargement.
+- Ce qu'on garde en mourant : l'objet et ses améliorations restent au joueur.
 
 **3. La carte.**
 - Plus de forêt dans les parcs de la citadelle (le vrai site est très boisé : bois de

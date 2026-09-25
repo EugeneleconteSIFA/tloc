@@ -527,7 +527,8 @@ function tasTuiles(ctx, x, z, yaw) {
 // boulanger, des pièces de drap qui sèchent chez le drapier, du charbon et un
 // bac à tremper chez le forgeron.
 const METIERS = {
-  boulanger: { texte: 'AU BON PAIN',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
+  // la boulangerie est aussi l'école de cuisine où Camille apprend son métier (le prologue)
+  boulanger: { texte: 'ÉCOLE LEQUEUCHE',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
   brasseur:  { texte: 'LA CERVOISE',      embleme: 'tonneau', objet: 'tonneau',  bois: 0x3c5c42, nom: 'IN DEN HOP — 1658' },
   drapier:   { texte: 'AU DRAP D’OR',     embleme: 'drap',    objet: 'navette',  bois: 0x7c2f36, nom: 'DE GOUDEN LEEUW — 1651' },
   forgeron:  { texte: 'À L’ENCLUME',      embleme: 'fer',     objet: 'fer',      bois: 0x43404a, nom: 'T YSER — 1669' },
@@ -1058,6 +1059,11 @@ function divers(ctx, RUE) {
 export function buildVie(ctx) {
   const RUE = ctx.RUE;
   devanture(ctx, { hx: -11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6, d: 7, metier: 'boulanger' });
+  // l'école Lequeuche : là où commence le prologue, Camille face à l'étal (quetes.js)
+  { const [x, z] = townWorld(-11, RUE - 1.6), [ex, ez] = townWorld(-8.6, RUE - 1.2);
+    const [sx, sz] = townWorld(-13.2, RUE - 0.4);        // l'enseigne, au bout de la façade
+    PARTAGE.ecole = { x, z, yaw: TOWN.a, eugene: [ex, ez], enseigne: [sx, TOWN.y + 4.2 * TOWN.s, sz] };
+    const [lx, lz] = townWorld(-11, RUE + 3.9); E.addLieu({ id: 'ecole', nom: 'l’école Lequeuche', x: lx, z: lz, r: 12 }); }
   devanture(ctx, { hx: 11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6.5, d: 7, metier: 'drapier' });
   devanture(ctx, { hx: 10.5, hz: -RUE - 3.5 - 0.4, yaw: 0, w: 5, d: 7, metier: 'brasseur' });
   devanture(ctx, { hx: 9.6, hz: 14, yaw: -Math.PI / 2, w: 6, d: 7, metier: 'forgeron', cotes: [1], objetY: 4.15, sansPlaque: true });
@@ -1477,7 +1483,7 @@ export function buildTown() {
   // villageois (parlent quand on appuie sur Entrée)
   const giveHeart = (who, txt) => ({ who, text: txt, fn: () => { player.maxHp += 2; player.hp = player.maxHp; SFX.win(); burst(player.pos.x, player.pos.y + 1.5, player.pos.z, 0xff5070, 24, 3, 1.2, 2, 1.2); } });
   const lines = [
-    ['Aldegonde', () => [{ who: 'Aldegonde', text: state.princeFreed ? "« Le prince est sauvé ! Ce soir, tout le village fête ça sur la place. »" : state.metLyderic ? "« Bienvenue au village, Camille ! Depuis que Phinaert a enlevé le prince Eugène, plus personne n'ose passer le pont. Si tu as besoin de reprendre des forces, Gustave, à l'estaminet, offre des gaufres aux braves. »" : "« Tu es la gardienne de la citadelle, non ? Va vite voir Lydéric, près du pont : il t'attend. »" }]],
+    ['Aldegonde', () => [{ who: 'Aldegonde', text: state.princeFreed ? "« Eugène est sauvé ! Ce soir, tout le village fête ça sur la place. »" : state.metLyderic ? "« Bienvenue au village, Camille ! Depuis que Phinaert a enlevé Eugène, plus personne n'ose passer le pont. Si tu as besoin de reprendre des forces, Gustave, à l'estaminet, offre des gaufres aux braves. »" : "« Tu es la gardienne de la citadelle, non ? Va vite voir Lydéric, près du pont : il t'attend. »" }]],
     ['Baptiste', () => [{ who: 'Baptiste', text: "« Mes gaufres ? Les meilleures de la région… après celles de chez Méert, bien sûr. Il y en a de cachées un peu partout : elles redonnent deux cœurs. »" }, { who: 'Baptiste', text: "« Et appuie sur J pour ouvrir ton journal : tu y retrouveras tout ce qu'on te demande. »" }]],
     ['Cornélie', () => { const q = questStep('cat');
       if (q >= 3) return [{ who: 'Cornélie', text: "« Pralin ronronne à nouveau près du poêle. Merci mille fois, Camille ! »" }];
@@ -1506,6 +1512,7 @@ export function buildTown() {
     const v = makeVillager(i); { const [wx, wz] = W2(x, z); v.position.set(wx, TOWN.y, wz); }
     v.rotation.y = yaw; v.scale.setScalar(E.G.echelle); E.scene.add(v);   // même taille que Camille
     v.userData.anim = rand(0, 10); v.userData.name = lines[i][0]; PARTAGE.villagers.push(v);
+    if (lines[i][0] === 'Émile') PARTAGE.emile = v;     // le prologue l'attend à son moulin
     if (i === 1 || i === 3 || i === 5) { // trois villageois se promènent dans les rues
       // Tracés recalés hors de la fontaine (bassin de 3,3 en local) et hors des étals :
       // ils passaient tous les trois en plein milieu du bassin.

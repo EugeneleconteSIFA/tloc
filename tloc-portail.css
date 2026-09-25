@@ -100,6 +100,9 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
 .mode-solo.premiere .separateur { display:none; }
 /* trois personnages : plus de champ « Nouvelle partie », une phrase qui dit pourquoi */
 .complet-note { display:none; }
+.revoir-prologue { margin:10px 0 0; text-align:center; }
+.revoir-prologue button.lien { padding:0; font:inherit; font-weight:600; }
+.revoir-prologue span { opacity:.8; }
 .mode-solo.complet .complet-note { display:block; }
 .mode-solo.complet .rangee.mode-pied, .mode-solo.complet .separateur { display:none; }
 .mode .accroche { margin:0; font-family:var(--titre); font-size:19px; line-height:1.4; color:var(--pierre); }
@@ -344,6 +347,7 @@ button[aria-busy="true"] { cursor:progress; opacity:.75; }
    du personnage d'instance (il ne sert qu'à entrer) ; renommer, supprimer, copier, quitter restent */
 :root.mobile .partie [data-act="jouer"], :root.mobile .instance [data-act="jouer"], :root.mobile .instance .actions .champ { display:none; }
 :root.mobile .instance .actions { justify-content:flex-end; }
+:root.mobile .revoir-prologue { display:none; }
 .a-ordi { display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:8px; font-size:14px;
           color:var(--sourd); border:1px dashed var(--bord2); text-align:center; }
 

@@ -491,7 +491,7 @@ function commanderGaufre() {
   const lines = [];
   if (state.princeFreed) lines.push({ who: 'Gustave', text: "« Le prince est libre ! Ce soir, la tournée est pour la maison. »" });
   else if (!state.metLyderic) lines.push({ who: 'Gustave', text: "« Une gaufre ? Pour la gardienne de la citadelle, c'est offert. Mais file voir Lydéric au pont, il te cherche partout. »" });
-  else lines.push({ who: 'Gustave', text: "« Alors, la citadelle ? On dit que Phinaert a enfermé le prince sous les remparts… Tiens, mange, tu es toute pâle. »" });
+  else lines.push({ who: 'Gustave', text: "« Alors, la citadelle ? On dit que Phinaert a enfermé Eugène sous les remparts… Tiens, mange, tu es toute pâle. »" });
   if (player.hp >= player.maxHp) lines.push({ who: 'Gustave', text: "« Tu es en pleine forme, Camille ! Reviens quand les fantômes t'auront donné du fil à retordre. »" });
   else lines.push({ who: 'Gustave', text: "« Une gaufre bien chaude, c'est pour la maison. Et bonne chance ! » (+2 cœurs)", fn: () => { player.hp = Math.min(player.maxHp, player.hp + 4); SFX.pickup(); } });
   dialogue(lines, () => { barman.userData.talk = 0; });

@@ -110,21 +110,26 @@ export function minimap(g, W) {
   // il doit rester lisible quelle que soit la couleur du fond, et garder sa taille quand
   // la carte défile. Il se dessine même hors de la fenêtre — plaqué au bord du disque —
   // pour dire la DIRECTION de la maison quand on s'en est éloigné.
-  {
-    const ech = W / (demi * 2);                    // px d'écran par px de carte
-    let mx = (c.MARGE + (HOUSE.x + c.R) * CARTE_PX - sx) * ech - W / 2;
-    let mz = (c.MARGE + (HOUSE.z + c.R) * CARTE_PX - sz) * ech - W / 2;
+  // Un point posé sur un lieu, plaqué au bord du disque quand il sort de la fenêtre : il
+  // dit alors la DIRECTION. La maison de Camille en violet ; et, quand l'histoire en donne
+  // un (PARTAGE.repere : le moulin du prologue), le but du moment en or, qui pulse.
+  const ech = W / (demi * 2);                      // px d'écran par px de carte
+  const point = (x, z, fond, bord, r) => {
+    let mx = (c.MARGE + (x + c.R) * CARTE_PX - sx) * ech - W / 2;
+    let mz = (c.MARGE + (z + c.R) * CARTE_PX - sz) * ech - W / 2;
     const d = Math.hypot(mx, mz), lim = W / 2 - 7, loin = d > lim;
     if (loin) { mx = mx / d * lim; mz = mz / d * lim; }
     g.save(); g.translate(W / 2 + mx, W / 2 + mz);
-    g.fillStyle = COUL.maison; g.strokeStyle = '#25123a'; g.lineWidth = 1.4;
-    g.beginPath(); g.arc(0, 0, loin ? 3.4 : 4.4, 0, TAU); g.fill(); g.stroke();
+    g.fillStyle = fond; g.strokeStyle = bord; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(0, 0, loin ? r * 0.77 : r, 0, TAU); g.fill(); g.stroke();
     if (!loin) {                                   // un liseré clair : il se détache du bâti
       g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = 1;
-      g.beginPath(); g.arc(0, 0, 6.2, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(0, 0, r + 1.8, 0, TAU); g.stroke();
     }
     g.restore();
-  }
+  };
+  point(HOUSE.x, HOUSE.z, COUL.maison, '#25123a', 4.4);
+  if (PARTAGE.repere) point(PARTAGE.repere.x, PARTAGE.repere.z, '#ffd24a', '#5a3a00', 5 + Math.sin(performance.now() / 180) * 1.2);
   // Camille : toujours au centre, la pointe dans la direction du regard
   g.translate(W / 2, W / 2); g.rotate(-E.player.yaw);
   g.fillStyle = '#ffe7a3'; g.strokeStyle = '#2a1d10'; g.lineWidth = 1.4;
@@ -157,5 +162,5 @@ export function titleMenu() {
   // L'écran titre ne fait plus la leçon : une phrase d'histoire, le choix, et c'est tout.
   // Les touches sont en jeu, sur le côté droit, et seulement celles qui servent (engine.js).
   showMenu('THE LEGEND OF CAMILLE', 'La Citadelle de Lille',
-    'Phinaert a enlevé le prince Eugène. Camille, gardienne de la citadelle, part le délivrer.', items);
+    'Phinaert a enlevé Eugène. Camille, gardienne de la citadelle, part le délivrer.', items);
 }

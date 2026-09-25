@@ -298,7 +298,7 @@ function build() {
         { text: "Trente cierges, la moitié allumés. Au-dessus, des petites plaques de marbre vissées au mur : « MERCI », « POUR MON FILS REVENU », « À SAINT ROCH, 1708 »." },
         { text: state.princeFreed
           ? "Une plaque toute neuve, encore brillante : « POUR CAMILLE, QUI A RAMENÉ LE PRINCE. » La vis du bas n'est même pas serrée."
-          : "Le dernier cierge est posé de travers, allumé il y a peu. Sous lui, une bande de papier pliée : « Pour le prince Eugène. Et pour la petite qui est partie le chercher. »" },
+          : "Le dernier cierge est posé de travers, allumé il y a peu. Sous lui, une bande de papier pliée : « Pour Eugène. Et pour la petite qui est partie le chercher. »" },
       ]) }); }
 
   // ---------- statue de saint Roch et plaque de la garnison, bas-côté est ----------

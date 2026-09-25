@@ -312,6 +312,8 @@ function fauchee(x, z) {
 
 const aRepousser = [];               // { im, i, m: Float32Array(16), t (échéance), garde() }
 const CHAMPS_BLE = [];               // { im, rayon, cx, cz, fauche }
+// les épis tombés depuis le chargement : le prologue compte la gerbe qu'Émile moudra (quetes.js)
+export let bleFauche = 0;
 const MEULES = [];                   // cf. meuleFauchable
 const zones = new Map();             // anti-farm : zone -> { t0, n }
 let caisse = 0, caissePos = null, derniereGaufre = -1e9, meuleFrappee = false, coupees = 0, sonne = false;
@@ -471,7 +473,7 @@ function faucher() {
       if (a[o] === 0 && a[o + 1] === 0 && a[o + 2] === 0) continue;
       const x = a[o + 12], y = a[o + 13], z = a[o + 14];
       if (!dansLaLame(x, y, z)) continue;
-      couper(im, i, null);
+      couper(im, i, null); bleFauche++;
       gerbe(x, y, z, ch.fauche.couleur);
       recolte(x, y, z, ch.fauche);
     }

@@ -212,7 +212,7 @@ function peindreReprendre(s) {
   $('nouvellePartie').classList.toggle('plein', !s);
   if (SOCIAL.surMobile) $('nouvellePartie').textContent = 'Créer';
   zone.closest('.mode-solo').classList.toggle('premiere', !s);
-  if (!s) { zone.innerHTML = '<p class="accroche">Phinaert a enlevé le prince Eugène. Donne un nom à ton personnage et pars le délivrer.</p>'; return; }
+  if (!s) { zone.innerHTML = '<p class="accroche">Phinaert a enlevé Eugène. Donne un nom à ton personnage et pars le délivrer.</p>'; return; }
   const r = s.resume || {};
   zone.innerHTML = `<div class="reprendre">
     <div class="qui">${ecu(s.nom)}
@@ -485,6 +485,15 @@ async function tout() {
 
 $('nomPartie').onkeydown = (e) => { if (e.key === 'Enter') $('nouvellePartie').click(); };
 $('nomInstance').onkeydown = (e) => { if (e.key === 'Enter') $('creerInstance').click(); };
+
+// Le prologue se rejoue à part : le jeu le lance sans lire ni écrire aucune sauvegarde
+// (engine.js, tloc_auto = 'prologue'), puis ramène ici.
+$('revoirPrologue').onclick = () => {
+  if (SOCIAL.surMobile) return SOCIAL.montrerOrdinateur();
+  C.poserInstance(null);
+  sessionStorage.setItem('tloc_auto', 'prologue');
+  location.href = 'index.html';
+};
 
 $('nouvellePartie').onclick = async () => {
   // une partie supprimée mais encore annulable occupe toujours sa place : créer, c'est

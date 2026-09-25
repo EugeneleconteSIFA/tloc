@@ -1988,6 +1988,8 @@ function levelSnapshot() {
 export const CARTE_V = 5;
 
 export function saveGame(silent = false, override = null) {
+  // le prologue rejoué depuis l'accueil ne touche pas à la partie du personnage
+  if (G.sansSauvegarde) return false;
   const prev = readSave() || { levels: {} };
   const levelName = G.level.name;
   const data = {
@@ -2023,7 +2025,10 @@ export function loadGame() {
   if (state.bow) player.mesh.userData.bowBack.visible = true;
   return snap || {};
 }
-export function newGame() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); location.href = 'index.html'; }
+export function newGame() {
+  // pendant le prologue rejoué, « Nouvelle partie » le recommence : la partie du personnage n'y est pour rien
+  if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); location.href = 'index.html'; }
 export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); location.href = PAGES[d && d.level] || 'index.html'; }
 // changement de niveau : fondu, sauvegarde en visant l'autre page, puis navigation
@@ -2054,9 +2059,9 @@ export function endGame(won) {
     ? [{ label: 'Nouvelle partie', fn: newGame }]
     : [{ label: 'Reprendre à la dernière sauvegarde', fn: resumeFromSave }, { label: 'Nouvelle partie', fn: newGame }];
   if (won) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
-  showMenu(won ? 'FIN' : 'CAMILLE EST TOMBÉE…', won ? 'Le prince Eugène est sauvé' : 'Phinaert règne toujours sur la citadelle',
-    won ? `Camille a ramené le prince Eugène à la lumière : la citadelle de Vauban est libre et Lille fête ses héros. Monstres vaincus : ${state.kills}. Temps de jeu : ${Math.round(state.time / 60)} min.`
-        : `Le prince Eugène attend toujours dans les galeries. Monstres vaincus : ${state.kills}. Temps : ${Math.round(state.time)} s.`, items);
+  showMenu(won ? 'FIN' : 'CAMILLE EST TOMBÉE…', won ? 'Eugène est sauvé' : 'Phinaert règne toujours sur la citadelle',
+    won ? `Camille a ramené Eugène à la lumière : la citadelle de Vauban est libre et Lille fête ses héros. Monstres vaincus : ${state.kills}. Temps de jeu : ${Math.round(state.time / 60)} min.`
+        : `Eugène attend toujours dans les galeries. Monstres vaincus : ${state.kills}. Temps : ${Math.round(state.time)} s.`, items);
   (won ? SFX.win : SFX.dead)();
 }
 
@@ -2761,7 +2766,7 @@ export function openJournal() {
   const hearts = `${player.maxHp / 2} cœurs`, items = [state.sword ? 'Épée' : null, state.bow ? 'Arc' : null, state.key ? 'Clé du donjon' : null, state.cageKey ? 'Clé de la cage' : null].filter(Boolean).join(', ') || 'rien';
   cineUI.journal.innerHTML = `<div style="max-width:760px;width:88%;max-height:84vh;overflow:auto;background:radial-gradient(ellipse at top,rgba(30,40,80,.95),rgba(8,10,22,.97));border:2px solid rgba(255,231,163,.6);border-radius:16px;padding:26px 34px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
     <h2 style="margin:0 0 4px;color:#ffe7a3;letter-spacing:2px">JOURNAL DE CAMILLE</h2><div style="opacity:.75;font-size:14px;margin-bottom:14px">Vie : ${hearts} &nbsp;·&nbsp; Équipement : ${items} &nbsp;·&nbsp; Monstres vaincus : ${state.kills}</div>
-    <h3 style="margin:14px 0 6px;color:#ff9fb0;font-size:16px;letter-spacing:1px">QUÊTE PRINCIPALE — Sauver le prince Eugène</h3><div style="padding:10px 14px;border-left:4px solid #ff9fb0;background:rgba(255,255,255,.06);border-radius:6px">${main}</div>
+    <h3 style="margin:14px 0 6px;color:#ff9fb0;font-size:16px;letter-spacing:1px">QUÊTE PRINCIPALE — Sauver Eugène</h3><div style="padding:10px 14px;border-left:4px solid #ff9fb0;background:rgba(255,255,255,.06);border-radius:6px">${main}</div>
     <h3 style="margin:18px 0 6px;color:#ffe7a3;font-size:16px;letter-spacing:1px">QUÊTES SECONDAIRES</h3>${side}
     <div style="margin-top:16px;font-size:13px;opacity:.7;text-align:center"><kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">J</kbd> ou <kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">Échap</kbd> pour fermer</div></div>`;
   cineUI.journal.style.display = 'flex';
@@ -2784,7 +2789,7 @@ export function makePrince() {
   g.add(crown);
   const legs = []; for (const sx of [-1, 1]) { const hip = makeLeg(sx, { cloth: pants, boot: mat(0x2a1a10) }); hip.position.set(sx * 0.17, 0.95, 0); g.add(hip); legs.push(hip); }
   const arms = []; for (const sx of [-1, 1]) { const sh = makeArm(sx, { skin, sleeve: tunic, cuff: GOLD() }); sh.position.set(sx * 0.46, 1.95, 0); g.add(sh); arms.push(sh); }
-  g.userData = { legs, arms, head, dynamic: true, name: 'Prince Eugène' };
+  g.userData = { legs, arms, head, dynamic: true, name: 'Eugène' };
   return g;
 }
 // le chat Pralin (quête de Cornélie)
@@ -3446,6 +3451,7 @@ export async function bootLevel(level, titleMenuFn) {
   const ld = document.getElementById('loading'); if (ld) ld.classList.add('hidden');
   if (auto === 'new') { hideMenu(); startGame(false); }
   else if (auto === 'resume') { hideMenu(); startGame(true); }
+  else if (auto === 'prologue') { hideMenu(); G.sansSauvegarde = true; startGame(false); }
   else if (titleMenuFn) titleMenuFn();
   else { hideMenu(); startGame(hasSave()); }
   startLoop();

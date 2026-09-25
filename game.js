@@ -16,7 +16,7 @@ import { CLOUD_X, perf } from './nature.js';
 import { buildCitadel } from './citadelle.js';
 import { batirQuartier, rempartsVille } from './quartier.js';
 import { entreeDuParc, voieDesCombattants } from './promenade.js';
-import { introScene, objective, onKill, onLoad, populate, update } from './quetes.js';
+import { debut, objective, onKill, onLoad, populate, update } from './quetes.js';
 import { counts, minimap, titleMenu } from './hud.js';
 // Ce qu'anime la boucle : drapeaux, nuages, fumées, flammes. On parcourait toute la scène
 // — 6 693 objets — à CHAQUE image pour en trouver quelques dizaines (4 ms mesurées). La liste
@@ -102,8 +102,8 @@ const level = {
     scene.add(entreeDuParc());         // l'entrée du parc, au débouché du pont
     scene.add(rempartsVille());        // l'enceinte urbaine ferme le monde
   }, populate, update, animate, minimap, counts, onKill, onLoad, objective,
-  start: () => { if (!state.introSeen) introScene(); else showMessage('Camille arrive devant la Porte Royale. Va voir Lydéric, le géant, près du pont.', 5); },
-  arriveMessage: () => state.princeFreed ? 'Retour à la lumière avec le prince. Rejoins Lydéric près du pont !' : 'Partie reprise. Bonne chance, Camille.',
+  start: () => { if (!state.introSeen) debut(); else showMessage('Camille arrive devant la Porte Royale. Va voir Lydéric, le géant, près du pont.', 5); },
+  arriveMessage: () => state.princeFreed ? 'Retour à la lumière avec Eugène. Rejoins Lydéric près du pont !' : 'Partie reprise. Bonne chance, Camille.',
   entry: () => state.princeFreed ? { title: 'La Citadelle de Lille', sub: 'Retour à la lumière', cam: [22.5 + 14, 9, 31 + 10], at: [22.5, 2, 31], cam2: [22.5 + 6, 4, 31 + 6], dur: 4 } : null,
   titleCamera: (now) => { const a = now / 9000; camera.position.set(Math.cos(a) * 120, 45, Math.sin(a) * 120); camera.lookAt(0, 0, 0); },
   arrowBlocked: (p) => p.y < 0 && sdEau(p.x, p.z) < -1.5,
