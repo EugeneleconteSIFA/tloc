@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Animations — banc d'essai</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1013;color:#e6e8ec;font:13px system-ui,sans-serif}
+canvas{display:block}
+#hud{position:fixed;left:14px;top:14px;background:rgba(18,20,25,.86);border:1px solid #2b303a;border-radius:9px;padding:10px 12px;line-height:1.7}
+#hud b{color:#d9a441}
+#hud select{background:#1a1d24;color:#e6e8ec;border:1px solid #39404d;border-radius:5px;padding:3px 5px;margin-top:6px;max-width:230px}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:#0e1013;z-index:5;color:#9aa2b1}
+</style>
+</head>
+<body>
+<div id="load">chargement…</div>
+<div id="hud"><b>Banque d'animations</b> — Quaternius UAL2, reciblée sur le mannequin UE5<br><select id="clip"></select> <label><input type="checkbox" id="boucle" checked> boucle</label><div id="stats"></div></div>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as A from './assets.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
+const SUN = new THREE.Vector3(0.55, 0.62, 0.45).normalize();
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x4d6b35, 0.55));
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+sun.position.copy(SUN).multiplyScalar(10); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+const sc = sun.shadow.camera; sc.left = -4; sc.right = 4; sc.top = 4; sc.bottom = -3; sc.near = 1; sc.far = 24;
+scene.add(sun, sun.target);
+{ const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#2f6fc4'); g.addColorStop(.55, '#8fbfe8'); g.addColorStop(1, '#c6d6e2');
+  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 20, 12), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })));
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new THREE.Scene().add(new THREE.Mesh(
+    new THREE.SphereGeometry(10, 16, 12), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })))).texture; }
+const sol = new THREE.Mesh(new THREE.CircleGeometry(12, 40), new THREE.MeshStandardMaterial({ color: 0x8a9a68, roughness: 1 }));
+sol.rotation.x = -Math.PI / 2; sol.receiveShadow = true; scene.add(sol);
+
+
+// ---------------------------------------------------------------------------
+// Un personnage complet (tenue + tête greffée + coiffure) piloté par la banque
+// d'animations. Tout le mouvement vient des clips : plus une seule pose écrite
+// à la main.
+// ---------------------------------------------------------------------------
+const IDS = ['tenues:Male_Ranger', 'corps:Superhero_Male_FullBody', 'coiffures_r:Hair_SimpleParted'];
+let anim = null, perso = null;
+
+Promise.all([A.preload(IDS), A.animations()]).then(async ([, banque]) => {
+  perso = A.spawn('tenues:Male_Ranger', { x: 0, z: 0 });
+  perso.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+  scene.add(perso);
+  A.greffeTete(A.spawn('corps:Superhero_Male_FullBody', {}), perso);
+  A.rebind(A.spawn('coiffures_r:Hair_SimpleParted', {}), perso);
+
+  const noms = A.nomsClips();                       // locomotion fabriquée + banque Quaternius
+  anim = await A.animer(perso, noms);
+
+  const sel = document.getElementById('clip');
+  for (const n of noms) { const o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o); }
+  sel.value = noms.includes('Marche') ? 'Marche' : noms[0];
+  const lance = () => anim.jouer(sel.value, 0.25, document.getElementById('boucle').checked);
+  sel.onchange = lance;
+  document.getElementById('boucle').onchange = lance;
+  lance();
+
+  window.BANC = { perso, anim, noms,
+    jouer: n => { sel.value = n; lance(); },
+    /** Cadrage pour les captures : un cycle de marche se juge de PROFIL. */
+    vue: (y, p, d) => { yaw = y; pitch = p; dist = d; },
+    /** Fige le clip courant à une fraction de son cycle. */
+    fige: u => { const a = anim.actuel; if (!a) return; a.paused = true; a.time = u * a.getClip().duration; a.getMixer().update(0); },
+    reprend: () => { const a = anim.actuel; if (a) a.paused = false; },
+  };
+  document.getElementById('load').remove();
+  boucle();
+}).catch(e => { document.getElementById('load').textContent = 'échec : ' + e.message; console.error(e); });
+
+let yaw = 0.15, pitch = 0.18, dist = 3.6;
+addEventListener('wheel', e => { dist = Math.max(1.2, Math.min(18, dist * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
+let drag = false, px = 0, py = 0;
+addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => drag = false);
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - px) * .006; pitch = Math.max(-0.2, Math.min(1.1, pitch + (e.clientY - py) * .005)); px = e.clientX; py = e.clientY; });
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const horloge = new THREE.Clock();
+function boucle() {
+  requestAnimationFrame(boucle);
+  if (anim) anim.update(horloge.getDelta());
+  const cible = new THREE.Vector3(0, 0.95, 0);
+  camera.position.set(cible.x + Math.sin(yaw) * Math.cos(pitch) * dist, cible.y + Math.sin(pitch) * dist + 0.2, cible.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(cible);
+  sun.target.position.copy(cible); sun.position.copy(cible).add(SUN.clone().multiplyScalar(12));
+  renderer.render(scene, camera);
+  const i = renderer.info;
+  document.getElementById('stats').textContent = i.render.calls + ' draw calls · ' + i.render.triangles.toLocaleString('fr-FR') + ' triangles';
+}
+</script>
+</body>
+</html>

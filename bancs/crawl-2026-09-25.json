@@ -1,0 +1,555 @@
+{
+ "m2": 1375000,
+ "suspects": 1586,
+ "zones": [
+  {
+   "type": "ENFONCÉ",
+   "m2": 199,
+   "ecartMax": 0.85,
+   "x": 16.5,
+   "z": -202.5,
+   "y": -0.44,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 133,
+   "ecartMax": 1.28,
+   "x": -432.5,
+   "z": 245.5,
+   "y": 0.25,
+   "lieu": "Clairière du vieux mage"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 95,
+   "ecartMax": 0.66,
+   "x": -190.5,
+   "z": -59.5,
+   "y": -0.52,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 72,
+   "ecartMax": 0.54,
+   "x": -338.5,
+   "z": -100.5,
+   "y": -0.71,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 53,
+   "ecartMax": 17.52,
+   "x": 2.5,
+   "z": -9.5,
+   "y": 1,
+   "lieu": "Donjon"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 49,
+   "ecartMax": 3.25,
+   "x": 172.5,
+   "z": 611.5,
+   "y": 6,
+   "lieu": "Façade de l'Esplanade"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 48,
+   "ecartMax": 1.51,
+   "x": -190.5,
+   "z": 565.5,
+   "y": 3.01,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 45,
+   "ecartMax": 0.57,
+   "x": -164.5,
+   "z": 255.5,
+   "y": -0.69,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 39,
+   "ecartMax": 6.89,
+   "x": -115.5,
+   "z": 20.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 34,
+   "ecartMax": 0.55,
+   "x": 93.5,
+   "z": 254.5,
+   "y": -1.22,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 31,
+   "ecartMax": 1.52,
+   "x": 497.5,
+   "z": 297.5,
+   "y": 1.12,
+   "lieu": "Pont du Petit Paradis"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 28,
+   "ecartMax": 6.74,
+   "x": 109.5,
+   "z": 87.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 27,
+   "ecartMax": 1.59,
+   "x": -265.5,
+   "z": -413.5,
+   "y": 6.63,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 27,
+   "ecartMax": 6.89,
+   "x": -73.5,
+   "z": -23.5,
+   "y": 6.9,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 27,
+   "ecartMax": 0.98,
+   "x": 60.5,
+   "z": 35.5,
+   "y": 1,
+   "lieu": "Place d'Armes"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 27,
+   "ecartMax": 0.98,
+   "x": -48.5,
+   "z": 43.5,
+   "y": 1,
+   "lieu": "Place d'Armes"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 26,
+   "ecartMax": 6.89,
+   "x": 124.5,
+   "z": 32.5,
+   "y": 6.9,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 25,
+   "ecartMax": 6.89,
+   "x": -22.5,
+   "z": 164.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 24,
+   "ecartMax": 6.89,
+   "x": 104.5,
+   "z": -15.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 23,
+   "ecartMax": 0.64,
+   "x": 219.5,
+   "z": 29.5,
+   "y": -1.21,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 23,
+   "ecartMax": 0.98,
+   "x": 15.5,
+   "z": 104.5,
+   "y": 1,
+   "lieu": "Place d'Armes"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 21,
+   "ecartMax": 0.73,
+   "x": 165.5,
+   "z": 274.5,
+   "y": -1.81,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 19,
+   "ecartMax": 0.44,
+   "x": 60.5,
+   "z": -289.5,
+   "y": -0.64,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 18,
+   "ecartMax": 0.46,
+   "x": 434.5,
+   "z": -30.5,
+   "y": -0.76,
+   "lieu": "Bois de la Deûle"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 18,
+   "ecartMax": 0.54,
+   "x": 450.5,
+   "z": -22.5,
+   "y": -0.82,
+   "lieu": "La voie des combattants"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 18,
+   "ecartMax": 1.08,
+   "x": 533.5,
+   "z": 326.5,
+   "y": -0.17,
+   "lieu": "Pont du Petit Paradis"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 18,
+   "ecartMax": 0.41,
+   "x": -161.5,
+   "z": 536.5,
+   "y": 1.14,
+   "lieu": "Avenue du 43e Régiment d'Infanterie"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 17,
+   "ecartMax": 1.88,
+   "x": 128.5,
+   "z": 21.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 17,
+   "ecartMax": 6.89,
+   "x": 49.5,
+   "z": 165.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 16,
+   "ecartMax": 6.89,
+   "x": 12.5,
+   "z": -74.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 16,
+   "ecartMax": 0.98,
+   "x": 45.5,
+   "z": 89.5,
+   "y": 1,
+   "lieu": "Place d'Armes"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 16,
+   "ecartMax": 1.24,
+   "x": 24.5,
+   "z": 622.5,
+   "y": -0.66,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 15,
+   "ecartMax": 0.42,
+   "x": -302.5,
+   "z": -113.5,
+   "y": -0.52,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 15,
+   "ecartMax": 0.98,
+   "x": -39.5,
+   "z": 90.5,
+   "y": 1,
+   "lieu": "Place d'Armes"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 15,
+   "ecartMax": 1.24,
+   "x": -41.5,
+   "z": 163.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 15,
+   "ecartMax": 1.08,
+   "x": 371.5,
+   "z": 549.5,
+   "y": 1.34,
+   "lieu": "Façade de l'Esplanade"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 14,
+   "ecartMax": 0.45,
+   "x": 36.5,
+   "z": -324.5,
+   "y": -0.36,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 14,
+   "ecartMax": 0.45,
+   "x": 474.5,
+   "z": -66.5,
+   "y": -1.46,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 14,
+   "ecartMax": 0.42,
+   "x": -197.5,
+   "z": 37.5,
+   "y": -1.17,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 13,
+   "ecartMax": 6.89,
+   "x": -26.5,
+   "z": -68.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 13,
+   "ecartMax": 0.62,
+   "x": -262.5,
+   "z": -36.5,
+   "y": -1.28,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 13,
+   "ecartMax": 1.45,
+   "x": 14.5,
+   "z": 163.5,
+   "y": 6.9,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 12,
+   "ecartMax": 1.08,
+   "x": 38.5,
+   "z": 660.5,
+   "y": -0.85,
+   "lieu": "Pont du Ramponneau"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 10,
+   "ecartMax": 0.6,
+   "x": 25.5,
+   "z": -85.5,
+   "y": -2.97,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 9,
+   "ecartMax": 0.45,
+   "x": 479.5,
+   "z": -105.5,
+   "y": -1.87,
+   "lieu": "Bois de la Deûle"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 9,
+   "ecartMax": 1.08,
+   "x": 345.5,
+   "z": 513.5,
+   "y": -0.88,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 8,
+   "ecartMax": 1.1,
+   "x": -426.5,
+   "z": -442.5,
+   "y": 4.24,
+   "lieu": "Les rues de Lille"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 8,
+   "ecartMax": 1.56,
+   "x": 82.5,
+   "z": 146.5,
+   "y": 4,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 7,
+   "ecartMax": 0.4,
+   "x": 445.5,
+   "z": -52.5,
+   "y": -0.93,
+   "lieu": "Bois de la Deûle"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 7,
+   "ecartMax": 0.44,
+   "x": 369.5,
+   "z": -30.5,
+   "y": -0.47,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 7,
+   "ecartMax": 0.45,
+   "x": 582.5,
+   "z": 34.5,
+   "y": -0.65,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 6,
+   "ecartMax": 0.38,
+   "x": 461.5,
+   "z": -46.5,
+   "y": -1.03,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 6,
+   "ecartMax": 0.44,
+   "x": -165.5,
+   "z": 35.5,
+   "y": -0.55,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "INVISIBLE",
+   "m2": 6,
+   "ecartMax": 1.55,
+   "x": 15.5,
+   "z": 166.5,
+   "y": 6.9,
+   "lieu": "Galeries"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 6,
+   "ecartMax": 1.6,
+   "x": 186.5,
+   "z": 669.5,
+   "y": -0.98,
+   "lieu": "La place du bourg"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.44,
+   "x": 495.5,
+   "z": -127.5,
+   "y": -1.84,
+   "lieu": "Bois de Boulogne"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.39,
+   "x": -266.5,
+   "z": -60.5,
+   "y": -0.48,
+   "lieu": "Fossés"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.47,
+   "x": -213.5,
+   "z": 38.5,
+   "y": -1.79,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.4,
+   "x": -180.5,
+   "z": 36.5,
+   "y": -0.75,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.38,
+   "x": 160.5,
+   "z": 182.5,
+   "y": -0.93,
+   "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 1.24,
+   "x": 223.5,
+   "z": 683.5,
+   "y": -0.98,
+   "lieu": "La Chapelle"
+  }
+ ]
+}

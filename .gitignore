@@ -1,0 +1,24 @@
+# .gitignore — ce qui ne part pas sur GitHub.
+# Le poids d'abord : les sources d'assets (≈ 9,5 Go) que le jeu ne charge pas. Puis ce qui
+# est propre à cette machine : la base locale, l'environnement Python, l'adresse du VPS.
+# (Ce qui ne doit pas être SERVI sur le web — les notes .md, le code du serveur — est une
+# autre liste : serveur/deploiement/exclure.txt, et les refus de nginx.)
+
+.DS_Store
+.claude/
+Claude outputs/
+__pycache__/
+*.Rhistory
+
+serveur/.venv/
+serveur/tloc.db*
+serveur/deploiement/vps.conf
+VERSION.json
+
+assets_back/_sources/
+assets_back/pine_forest/
+assets_back/00_previews/
+*.blend
+verdant_trail/
+hidden_alley/
+Universal Animation Library*/

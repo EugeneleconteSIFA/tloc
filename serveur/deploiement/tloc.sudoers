@@ -1,0 +1,3 @@
+# /etc/sudoers.d/tloc — le serveur du dev (utilisateur tloc) peut récupérer la version de
+# GitHub, la promouvoir et revenir en arrière, et rien d'autre
+tloc ALL=(root) NOPASSWD: /usr/local/bin/tloc-maj-dev, /usr/local/bin/tloc-promouvoir, /usr/local/bin/tloc-promouvoir revenir

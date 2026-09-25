@@ -1,0 +1,5 @@
+Poly Haven — textures et modèles (polyhaven.com)
+Licence : CC0 1.0 Universal (domaine public).
+Usage commercial, modification et redistribution libres. Attribution facultative.
+Texte complet : https://polyhaven.com/license
+Matériaux concernés : voir assets_back/03_textures/polyhaven/materiaux.json

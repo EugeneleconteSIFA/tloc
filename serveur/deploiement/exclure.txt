@@ -1,0 +1,37 @@
+# exclure.txt — ce qui ne part JAMAIS du Mac vers le VPS (rsync --exclude-from).
+# Deux raisons : le poids (10 Go de sources d'assets que le jeu ne charge pas) et la
+# discrétion (notes de travail, CLAUDE.md, adresse du VPS : rien de tout ça n'a à être
+# lisible sur le web).
+
+# le système et les outils
+.DS_Store
+.claude/
+.git/
+Claude outputs/
+__pycache__/
+
+# le serveur local : sa base, son environnement Python, l'adresse du VPS
+serveur/.venv/
+serveur/tloc.db*
+serveur/deploiement/vps.conf
+
+# les notes et les briefs : privés
+*.md
+*.jpg
+*.Rhistory
+
+# les outils de travail, pas le jeu
+outils_*.py
+bump.py
+carte/*.py
+demo-*.html
+assets-browser.html
+
+# les sources d'assets : le jeu ne charge que les dossiers « _web » et les kits
+assets_back/_sources/
+assets_back/pine_forest/
+assets_back/00_previews/
+*.blend
+verdant_trail/
+hidden_alley/
+Universal Animation Library*/

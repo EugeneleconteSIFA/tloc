@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Un pignon à redents doré sur brique : la silhouette de la Grand-Place tient à 16 px,
+       là où l'ancienne épée, trop fine, devenait un trait. -->
+  <rect width="32" height="32" rx="7" fill="#9C3B28"/>
+  <polygon points="6,27 6,16 9,16 9,12.5 12,12.5 12,9 14.5,9 14.5,5 17.5,5 17.5,9 20,9 20,12.5 23,12.5 23,16 26,16 26,27" fill="#E2B25A"/>
+  <path d="M14 27V19.5a2 2 0 0 1 4 0V27z" fill="#6B281B"/>
+  <circle cx="16" cy="12.4" r="1.5" fill="#6B281B"/>
+</svg>

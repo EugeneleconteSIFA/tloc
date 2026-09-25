@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>The Legend of Camille — La chaumière du vieux mage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#0b1020; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+  canvas#game { display:block; width:100%; height:100%; }
+  #hud { position:fixed; inset:0; pointer-events:none; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.7); }
+  #hearts { position:absolute; left:18px; top:14px; }
+  #zone { position:absolute; top:22px; left:50%; transform:translateX(-50%); font-size:30px; font-weight:bold; letter-spacing:2px;
+          opacity:0; transition:opacity .5s; color:#ffe7a3; }
+  #minimap { position:absolute; right:16px; top:14px; border-radius:50%; border:3px solid rgba(255,255,255,.55); background:rgba(0,0,0,.35); }
+  #counts { position:absolute; left:18px; top:62px; font-size:15px; line-height:1.5; }
+  #counts b { color:#ffe7a3; }
+  #bossbar { position:absolute; left:50%; bottom:78px; transform:translateX(-50%); width:420px; height:18px; border:2px solid #fff; border-radius:9px;
+             background:rgba(0,0,0,.5); display:none; overflow:hidden; }
+  #bossfill { height:100%; width:100%; background:linear-gradient(90deg,#c0392b,#ff6b4a); transition:width .15s; }
+  #bossbar span { position:absolute; left:0; right:0; top:-24px; text-align:center; font-weight:bold; font-size:15px; letter-spacing:1px; }
+  #msg { position:absolute; left:50%; bottom:150px; transform:translateX(-50%); max-width:640px; padding:12px 22px; border-radius:12px;
+         background:rgba(10,14,30,.78); border:2px solid rgba(255,231,163,.7); font-size:17px; line-height:1.4; opacity:0; transition:opacity .3s; text-align:center; }
+  /* l'aide des touches : un encart sur le côté droit, rempli par engine.js (majAide) avec
+     les seules touches qui servent maintenant — plus la ligne de pied d'écran qui disait tout */
+  #legend { position:absolute; right:14px; bottom:14px; display:grid; grid-template-columns:auto auto; gap:3px 10px; align-items:center;
+            padding:8px 12px; border-radius:10px; background:rgba(10,14,30,.42); border:1px solid rgba(255,231,163,.14); font-size:12.5px; }
+  #legend kbd { justify-self:end; font-family:inherit; font-size:11.5px; font-weight:700; color:#ffe7a3; background:rgba(255,255,255,.1);
+                border:1px solid rgba(255,231,163,.25); border-bottom-width:2px; border-radius:4px; padding:0 6px; white-space:nowrap; }
+  #legend span { color:#e8ecf6; white-space:nowrap; opacity:.9; }
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+             background:radial-gradient(ellipse at center, rgba(20,30,60,.85), rgba(5,8,20,.97)); color:#fff; text-align:center; }
+  #overlay h1 { font-size:54px; margin:0; color:#ffe7a3; text-shadow:0 4px 0 #7a4b12, 0 8px 20px rgba(0,0,0,.8); letter-spacing:2px; }
+  #overlay h2 { font-size:22px; font-weight:normal; margin:0 0 12px; opacity:.9; }
+  #overlay p { max-width:620px; line-height:1.55; margin:0; font-size:17px; }
+  #overlay .keys { display:grid; grid-template-columns:auto auto; gap:6px 18px; text-align:left; margin:10px 0; font-size:16px; }
+  #overlay kbd { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4); border-radius:5px; padding:2px 8px; }
+  #overlay .go { margin-top:14px; font-size:20px; color:#fff; }
+  #overlay .mitem { padding:6px 18px; opacity:.6; }
+  #overlay .mitem.sel { opacity:1; color:#ffe7a3; font-weight:bold; }
+  #counts small { opacity:.75; font-size:12px; }
+  #overlay.hidden { display:none; }
+  #prompt { position:absolute; left:50%; bottom:215px; transform:translateX(-50%); padding:6px 16px; border-radius:8px; background:rgba(255,231,163,.9); color:#2a1a08; font-weight:bold; font-size:15px; opacity:0; transition:opacity .2s; }
+  #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; z-index:5; }
+  #loading { position:fixed; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; background:#05070f; color:#ffe7a3; font-size:22px; letter-spacing:1px; }
+  #loading.hidden { display:none; }
+  .spinner { width:46px; height:46px; border:4px solid rgba(255,231,163,.25); border-top-color:#ffe7a3; border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="fade"></div>
+<div id="loading"><div class="spinner"></div><span>Camille pousse la porte de la chaumière…</span></div>
+<div id="hud">
+  <canvas id="hearts" width="400" height="40"></canvas>
+  <div id="zone"></div>
+  <canvas id="minimap" width="170" height="170"></canvas>
+  <div id="counts"></div>
+  <div id="bossbar"><div id="bossfill"></div><span>PHINAERT, géant de Lille</span></div>
+  <div id="prompt"></div>
+  <div id="msg"></div>
+  <div id="legend"></div>
+</div>
+
+<div id="overlay">
+  <h1>THE LEGEND OF CAMILLE</h1>
+  <h2>La Citadelle de Lille</h2>
+  <p id="ovtext">Phinaert, le géant brigand, a envahi la citadelle de Vauban avec ses corbeaux, ses moules mutantes et les fantômes de la garnison.
+     Camille, épée à la main, doit nettoyer les fossés, les remparts et les cinq bastions avant d'affronter le géant sur la place d'Armes.</p>
+  <div class="go" id="ovgo"></div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module" src="mage.js?v=27"></script>
+</body>
+</html>

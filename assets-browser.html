@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banque d'assets — The Legend of Camille</title>
+<style>
+:root{--bg:#14161a;--panel:#1c1f26;--line:#2b303a;--txt:#e6e8ec;--dim:#9aa2b1;--acc:#d9a441;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:10;background:rgba(20,22,26,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:14px 20px}
+h1{margin:0 0 10px;font-size:16px;letter-spacing:.02em}
+h1 span{color:var(--dim);font-weight:400}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=search]{background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:7px 11px;min-width:220px;font-size:14px}
+input[type=search]:focus{outline:none;border-color:var(--acc)}
+.chip{background:var(--panel);border:1px solid var(--line);color:var(--dim);border-radius:99px;padding:5px 12px;cursor:pointer;font-size:13px}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#1a1205;font-weight:600}
+#count{color:var(--dim);margin-left:auto;font-variant-numeric:tabular-nums}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:18px 20px 60px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;transition:border-color .12s,transform .12s}
+.card:hover{border-color:var(--acc);transform:translateY(-2px)}
+.thumb{width:100%;aspect-ratio:1;background:#22252c;display:block;object-fit:contain}
+.meta{padding:7px 9px;border-top:1px solid var(--line)}
+.nm{font-size:12px;word-break:break-word;line-height:1.3}
+.pk{font-size:10px;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.dim{font-size:10px;color:var(--acc);margin-top:2px;font-variant-numeric:tabular-nums;opacity:.85}
+.chip.tab{font-weight:600}
+#mats{display:none;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;padding:18px 20px 60px}
+#mats.on{display:grid}
+.mat{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer}
+.mat:hover{border-color:var(--acc)}
+.mat img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.mat .b{padding:9px 11px}
+.mat .t{font-size:13px;font-weight:600}
+.mat .u{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.35}
+.mat .s{font-size:11px;color:var(--acc);margin-top:5px;font-variant-numeric:tabular-nums}
+.badge{float:right;font-size:10px;border-radius:99px;padding:2px 7px;border:1px solid var(--line);color:var(--dim)}
+.badge.no{color:#e0736a;border-color:#5a3330}
+#matview{position:fixed;inset:0;background:rgba(10,11,14,.95);z-index:60;display:none;flex-direction:column}
+#matview.on{display:flex}
+#mvmaps{display:flex;gap:10px;padding:12px 20px;flex-wrap:wrap}
+#mvmaps figure{margin:0;text-align:center}
+#mvmaps img{width:130px;height:130px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+#mvmaps figcaption{font-size:11px;color:var(--dim);margin-top:4px}
+#overlay{position:fixed;inset:0;background:rgba(10,11,14,.93);z-index:50;display:none;flex-direction:column}
+#overlay.on{display:flex}
+#ovhead,#ovhead2{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+#ovhead b,#ovhead2 b{font-size:15px}
+#mvinfo{color:var(--acc);font-size:13px;font-variant-numeric:tabular-nums}
+#mvpath{color:var(--dim);font-size:12px;font-family:ui-monospace,Menlo,monospace;background:var(--panel);padding:4px 8px;border-radius:5px;border:1px solid var(--line)}
+#ovinfo{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+#ovpath{color:var(--dim);font-size:12px;font-family:ui-monospace,Menlo,monospace;background:var(--panel);padding:4px 8px;border-radius:5px;border:1px solid var(--line)}
+button{background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px}
+button:hover{border-color:var(--acc)}
+#stage{flex:1;position:relative}
+#stage canvas{display:block;width:100%;height:100%}
+#hint{position:absolute;left:20px;bottom:16px;color:var(--dim);font-size:12px}
+#loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Banque d'assets <span id="tot"></span></h1>
+  <div class="bar">
+    <button class="chip tab on" id="tabModeles">Modèles</button>
+    <button class="chip tab" id="tabMateriaux">Matériaux</button>
+    <input type="search" id="q" placeholder="Rechercher (roof, wall, tree, stairs…)" autocomplete="off">
+    <span id="chips"></span>
+    <span id="count"></span>
+  </div>
+</header>
+<div id="grid"></div>
+<div id="mats"></div>
+
+<div id="overlay">
+  <div id="ovhead">
+    <button id="close">← Retour</button>
+    <b id="ovname"></b>
+    <span id="ovinfo"></span>
+    <span id="ovpath"></span>
+    <button id="copy">Copier le chemin</button>
+  </div>
+  <div id="stage"><div id="loading">chargement…</div></div>
+  <div id="hint">glisser = tourner · molette = zoomer · Échap = fermer</div>
+</div>
+
+<div id="matview">
+  <div id="ovhead2">
+    <button id="mvclose">← Retour</button>
+    <b id="mvname"></b>
+    <span id="mvinfo"></span>
+    <span id="mvpath"></span>
+  </div>
+  <div id="mvstage" style="flex:1;position:relative"></div>
+  <div id="mvmaps"></div>
+</div>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const BLANK = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+// --- loaders : un « clay » qui ignore les textures, un complet pour la fiche
+const clayMgr = new THREE.LoadingManager();
+clayMgr.setURLModifier(u => /\.(png|jpe?g|webp|ktx2)$/i.test(u) ? BLANK : u);
+const clayLoader = new GLTFLoader(clayMgr);
+const fullLoader = new GLTFLoader();
+
+const CLAY = new THREE.MeshStandardMaterial({ color: 0xc9c2b4, roughness: .82, metalness: .02 });
+const CLAY_VC = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .82, metalness: .02, vertexColors: true });
+
+function lights(scene){
+  scene.add(new THREE.HemisphereLight(0xbcd2ff, 0x4a4238, 1.15));
+  const d = new THREE.DirectionalLight(0xfff0d8, 2.1); d.position.set(4, 7, 5); scene.add(d);
+  const f = new THREE.DirectionalLight(0x8fa8d0, .5); f.position.set(-5, 2, -4); scene.add(f);
+}
+// distance pour que la sphère englobante tienne dans le cadre, quel que soit le format
+function fitDistance(r, camera, pad = 1.12){
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  return pad * r / Math.sin(Math.min(vFov, hFov) / 2);
+}
+function frame(obj, camera){
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const c = box.getCenter(new THREE.Vector3());
+  obj.position.sub(c);
+  const r = Math.max(size.length() / 2, .001);
+  const d = fitDistance(r, camera);
+  const k = d / Math.sqrt(.78 * .78 + .62 * .62 + .78 * .78);
+  camera.position.set(k * .78, k * .62, k * .78);
+  camera.near = Math.max(d / 500, .001); camera.far = d * 20;
+  camera.lookAt(0, 0, 0); camera.updateProjectionMatrix();
+  return { size, r, d };
+}
+const fmtSize = s => s.map(v => v.toFixed(2).replace('.', ',')).join(' × ') + ' m';
+function countTris(obj){ let n = 0; obj.traverse(o => { if (o.isMesh && o.geometry){ const g = o.geometry; n += (g.index ? g.index.count : g.attributes.position.count) / 3; } }); return Math.round(n); }
+
+// ---------- vignettes : un seul renderer, une file d'attente ----------
+const tr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+tr.setSize(256, 256); tr.setPixelRatio(1); tr.outputColorSpace = THREE.SRGBColorSpace;
+tr.toneMapping = THREE.ACESFilmicToneMapping; tr.toneMappingExposure = 1.05;
+const tScene = new THREE.Scene(); lights(tScene);
+const tCam = new THREE.PerspectiveCamera(35, 1, .01, 1000);
+
+const queue = []; let busy = false;
+function enqueue(job){ queue.push(job); pump(); }
+function pump(){
+  if (busy || !queue.length) return;
+  busy = true;
+  const { path, img, clay } = queue.shift();
+  (clay ? clayLoader : fullLoader).load(path, g => {
+    const root = g.scene;
+    if (clay) root.traverse(o => {
+      if (!o.isMesh) return;
+      o.material = o.geometry.attributes.color ? CLAY_VC : CLAY;
+    });
+    tScene.add(root); frame(root, tCam);
+    tr.render(tScene, tCam);
+    img.src = tr.domElement.toDataURL('image/png');
+    tScene.remove(root);
+    root.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+    busy = false; setTimeout(pump, 0);
+  }, undefined, () => { img.alt = 'échec'; busy = false; setTimeout(pump, 0); });
+}
+
+// ---------- grille ----------
+let DATA = [], packs = [], active = new Set(), term = '';
+const grid = document.getElementById('grid');
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const img = e.target; io.unobserve(img);
+  enqueue({ path: img.dataset.model, img, clay: img.dataset.clay === '1' });
+}), { rootMargin: '300px' });
+
+function render(){
+  grid.innerHTML = '';
+  const t = term.trim().toLowerCase();
+  const list = DATA.filter(d => (!active.size || active.has(d.pack)) && (!t || d.name.toLowerCase().includes(t)));
+  document.getElementById('count').textContent = list.length + ' / ' + DATA.length + ' modèles';
+  const frag = document.createDocumentFragment();
+  for (const d of list){
+    const el = document.createElement('div'); el.className = 'card';
+    const img = document.createElement('img'); img.className = 'thumb'; img.loading = 'lazy'; img.alt = d.name;
+    img.dataset.model = d.path; img.dataset.clay = d.clay ? '1' : '0';
+    io.observe(img);
+    const m = document.createElement('div'); m.className = 'meta';
+    m.innerHTML = '<div class="nm"></div><div class="dim"></div><div class="pk"></div>';
+    m.querySelector('.nm').textContent = d.name;
+    m.querySelector('.dim').textContent = d.size ? fmtSize(d.size) : '';
+    m.querySelector('.pk').textContent = d.packLabel;
+    el.append(img, m); el.onclick = () => open(d);
+    frag.appendChild(el);
+  }
+  grid.appendChild(frag);
+}
+
+// ---------- fiche modèle ----------
+const ov = document.getElementById('overlay'), stage = document.getElementById('stage');
+let vGrid; let vr, vScene, vCam, vObj, raf = 0, yaw = .7, pitch = .5, zoom = 1, FIT = 5, R = 1;
+
+function initViewer(){
+  if (vr) return;
+  vr = new THREE.WebGLRenderer({ antialias: true });
+  vr.outputColorSpace = THREE.SRGBColorSpace; vr.toneMapping = THREE.ACESFilmicToneMapping; vr.toneMappingExposure = 1.05;
+  vr.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  stage.appendChild(vr.domElement);
+  vScene = new THREE.Scene(); vScene.background = new THREE.Color(0x15171c); lights(vScene);
+  vGrid = new THREE.GridHelper(20, 20, 0x3a4050, 0x262b35); vGrid.material.transparent = true; vGrid.material.opacity = .45; vScene.add(vGrid);
+  vCam = new THREE.PerspectiveCamera(35, 1, .01, 1000);
+  let drag = false, px = 0, py = 0;
+  stage.onpointerdown = e => { drag = true; px = e.clientX; py = e.clientY; stage.setPointerCapture(e.pointerId); };
+  stage.onpointermove = e => { if (!drag) return; yaw -= (e.clientX - px) * .01; pitch = Math.max(-1.4, Math.min(1.4, pitch + (e.clientY - py) * .01)); px = e.clientX; py = e.clientY; };
+  stage.onpointerup = () => drag = false;
+  stage.onwheel = e => { e.preventDefault(); zoom = Math.max(.25, Math.min(6, zoom * (1 + Math.sign(e.deltaY) * .12))); };
+}
+function loop(){
+  raf = requestAnimationFrame(loop);
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (vr.domElement.width !== w * vr.getPixelRatio() || vr.domElement.height !== h * vr.getPixelRatio()){
+    vr.setSize(w, h, false); vCam.aspect = w / h; vCam.updateProjectionMatrix();
+  }
+  const d = FIT * zoom;
+  vCam.position.set(Math.sin(yaw) * Math.cos(pitch) * d, Math.sin(pitch) * d + R * .1, Math.cos(yaw) * Math.cos(pitch) * d);
+  vCam.lookAt(0, 0, 0);
+  vr.render(vScene, vCam);
+}
+function open(d){
+  initViewer(); ov.classList.add('on');
+  document.getElementById('ovname').textContent = d.name;
+  document.getElementById('ovpath').textContent = d.path;
+  document.getElementById('ovinfo').textContent = '';
+  document.getElementById('loading').style.display = 'grid';
+  if (vObj){ vScene.remove(vObj); vObj = null; }
+  fullLoader.load(d.path, g => {
+    vObj = g.scene;
+    vObj.traverse(o => { if (o.isMesh){ o.castShadow = o.receiveShadow = true; } });
+    vScene.add(vObj);
+    const { size, r, d } = frame(vObj, vCam); R = r; FIT = d; zoom = 1;
+    if (vGrid){ const u = Math.max(1, Math.round(Math.max(size.x, size.z))); vGrid.scale.setScalar(u * 1.4 / 20 * 20 / 20); vGrid.position.y = -size.y / 2; }
+    const f = n => n.toFixed(2).replace('.', ',');
+    document.getElementById('ovinfo').textContent =
+      f(size.x) + ' × ' + f(size.y) + ' × ' + f(size.z) + ' m · ' + countTris(vObj).toLocaleString('fr-FR') + ' triangles';
+    document.getElementById('loading').style.display = 'none';
+    if (!raf) loop();
+  }, undefined, e => { document.getElementById('loading').textContent = 'échec : ' + e; });
+}
+function close(){ ov.classList.remove('on'); cancelAnimationFrame(raf); raf = 0; if (vObj){ vScene.remove(vObj); vObj = null; } }
+document.getElementById('close').onclick = close;
+document.getElementById('copy').onclick = () => navigator.clipboard.writeText(document.getElementById('ovpath').textContent);
+addEventListener('keydown', e => { if (e.key === 'Escape'){ close(); const v = document.getElementById('matview'); if (v.classList.contains('on')) document.getElementById('mvclose').onclick(); } });
+
+// ---------- démarrage ----------
+fetch('assets_back/manifest.json').then(r => r.json()).then(j => {
+  DATA = j;
+  document.getElementById('tot').textContent = '— ' + j.length + ' modèles chargeables';
+  const seen = new Map();
+  j.forEach(d => { if (!seen.has(d.pack)) seen.set(d.pack, { id: d.pack, label: d.packLabel, n: 0 }); seen.get(d.pack).n++; });
+  packs = [...seen.values()];
+  const cw = document.getElementById('chips');
+  packs.forEach(p => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = p.label + ' (' + p.n + ')';
+    b.onclick = () => { active.has(p.id) ? active.delete(p.id) : active.add(p.id); b.classList.toggle('on'); render(); };
+    cw.appendChild(b);
+  });
+  render();
+});
+document.getElementById('q').oninput = e => { term = e.target.value; render(); };
+
+// ---------- onglet Matériaux ----------
+let MATS = [], mvR, mvScene, mvCam, mvMesh, mvRaf = 0, mvYaw = .6, mvPitch = .5;
+const matsEl = document.getElementById('mats'), gridEl = document.getElementById('grid');
+const tabM = document.getElementById('tabModeles'), tabT = document.getElementById('tabMateriaux');
+
+function showTab(mats){
+  tabM.classList.toggle('on', !mats); tabT.classList.toggle('on', mats);
+  gridEl.style.display = mats ? 'none' : 'grid';
+  matsEl.classList.toggle('on', mats);
+  document.getElementById('chips').style.display = mats ? 'none' : '';
+  document.getElementById('q').style.display = mats ? 'none' : '';
+  document.getElementById('count').textContent = mats ? MATS.length + ' matériaux' : '';
+  if (!mats) render();
+}
+tabM.onclick = () => showTab(false);
+tabT.onclick = () => showTab(true);
+
+fetch('assets_back/03_textures/polyhaven/materiaux.json').then(r => r.json()).then(j => {
+  MATS = j;
+  const frag = document.createDocumentFragment();
+  for (const m of j){
+    const el = document.createElement('div'); el.className = 'mat';
+    const img = document.createElement('img'); img.loading = 'lazy'; img.src = m.maps.couleur; img.alt = m.slug;
+    const b = document.createElement('div'); b.className = 'b';
+    b.innerHTML = '<div class="t"></div><div class="u"></div><div class="s"></div>';
+    b.querySelector('.t').textContent = m.libelle;
+    const bd = document.createElement('span'); bd.className = 'badge' + (m.retenu ? '' : ' no');
+    bd.textContent = m.retenu ? 'retenu' : 'écarté';
+    b.querySelector('.t').prepend(bd);
+    b.querySelector('.u').textContent = m.usage;
+    b.querySelector('.s').textContent = 'tuile ≈ ' + String(m.tuile_m).replace('.', ',') + ' m · ' + Object.keys(m.maps).join(' · ');
+    el.append(img, b); el.onclick = () => openMat(m);
+    frag.appendChild(el);
+  }
+  matsEl.appendChild(frag);
+});
+
+const TEXCACHE = new Map();
+function loadTex(url, srgb){
+  const k = url + (srgb ? '|s' : '');
+  if (!TEXCACHE.has(k)){
+    const t = new THREE.TextureLoader().load(url);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    TEXCACHE.set(k, t);
+  }
+  return TEXCACHE.get(k);
+}
+function openMat(m){
+  const v = document.getElementById('matview'); v.classList.add('on');
+  document.getElementById('mvname').textContent = m.libelle;
+  document.getElementById('mvinfo').textContent = 'tuile ≈ ' + String(m.tuile_m).replace('.', ',') + ' m — plan de 4 × 4 m';
+  document.getElementById('mvpath').textContent = 'assets_back/03_textures/polyhaven/' + m.slug + '/';
+  const mm = document.getElementById('mvmaps'); mm.innerHTML = '';
+  for (const [k, u] of Object.entries(m.maps)){
+    const fg = document.createElement('figure');
+    const i = document.createElement('img'); i.src = u; i.loading = 'lazy';
+    const c = document.createElement('figcaption'); c.textContent = k;
+    fg.append(i, c); mm.appendChild(fg);
+  }
+  const stage = document.getElementById('mvstage');
+  if (!mvR){
+    mvR = new THREE.WebGLRenderer({ antialias: true });
+    mvR.outputColorSpace = THREE.SRGBColorSpace; mvR.toneMapping = THREE.ACESFilmicToneMapping;
+    mvR.setPixelRatio(Math.min(devicePixelRatio, 1.5)); stage.appendChild(mvR.domElement);
+    mvScene = new THREE.Scene(); mvScene.background = new THREE.Color(0x15171c); lights(mvScene);
+    mvCam = new THREE.PerspectiveCamera(40, 1, .05, 100);
+    let drag = false, px = 0, py = 0;
+    stage.onpointerdown = e => { drag = true; px = e.clientX; py = e.clientY; };
+    stage.onpointerup = () => drag = false;
+    stage.onpointermove = e => { if (!drag) return; mvYaw -= (e.clientX - px) * .008; mvPitch = Math.max(.12, Math.min(1.45, mvPitch + (e.clientY - py) * .006)); px = e.clientX; py = e.clientY; };
+  }
+  if (mvMesh){ mvScene.remove(mvMesh); mvMesh.geometry.dispose(); mvMesh.material.dispose(); }
+  const rep = 4 / m.tuile_m;                       // plan de 4 m, motif à l'échelle réelle
+  const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+  const set = (slot, key, srgb) => { if (m.maps[key]){ const t = loadTex(m.maps[key], srgb).clone(); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.needsUpdate = true; mat[slot] = t; } };
+  set('map', 'couleur', true); set('normalMap', 'normale', false);
+  set('roughnessMap', 'rugosite', false); set('metalnessMap', 'metal', false);
+  if (m.maps.metal) mat.metalness = 1;
+  mvMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), mat);
+  mvMesh.rotation.x = -Math.PI / 2; mvScene.add(mvMesh);
+  if (!mvRaf) mvLoop();
+}
+function mvLoop(){
+  mvRaf = requestAnimationFrame(mvLoop);
+  const st = document.getElementById('mvstage'), w = st.clientWidth, h = st.clientHeight;
+  if (mvR.domElement.width !== Math.round(w * mvR.getPixelRatio())){ mvR.setSize(w, h, false); mvCam.aspect = w / h; mvCam.updateProjectionMatrix(); }
+  const d = 5.2;
+  mvCam.position.set(Math.sin(mvYaw) * Math.cos(mvPitch) * d, Math.sin(mvPitch) * d, Math.cos(mvYaw) * Math.cos(mvPitch) * d);
+  mvCam.lookAt(0, 0, 0); mvR.render(mvScene, mvCam);
+}
+document.getElementById('mvclose').onclick = () => { document.getElementById('matview').classList.remove('on'); cancelAnimationFrame(mvRaf); mvRaf = 0; };
+
+</script>
+</body>
+</html>

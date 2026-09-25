@@ -1,0 +1,5 @@
+# vps.conf — copie ce fichier en « vps.conf » (même dossier) et mets-y l'adresse du VPS.
+# Il n'est jamais envoyé sur le serveur (voir exclure.txt).
+TLOC_VPS=root@0.0.0.0
+# une clé dédiée au VPS, sans phrase de passe (ssh-keygen -t ed25519 -f ~/.ssh/id_tloc_vps)
+TLOC_CLE=$HOME/.ssh/id_tloc_vps

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Personnages — banc d'essai</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1013;color:#e6e8ec;font:13px system-ui,sans-serif}
+canvas{display:block}
+#hud{position:fixed;left:14px;top:14px;background:rgba(18,20,25,.86);border:1px solid #2b303a;border-radius:9px;padding:10px 12px;line-height:1.7}
+#hud b{color:#d9a441}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:#0e1013;z-index:5;color:#9aa2b1}
+</style>
+</head>
+<body>
+<div id="load">chargement…</div>
+<div id="hud"><b>Personnages riggés</b> — repos · marche · course<div id="stats"></div></div>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as A from './assets.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
+const SUN = new THREE.Vector3(0.55, 0.62, 0.45).normalize();
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x4d6b35, 0.55));
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+sun.position.copy(SUN).multiplyScalar(10); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+const sc = sun.shadow.camera; sc.left = -4; sc.right = 4; sc.top = 4; sc.bottom = -3; sc.near = 1; sc.far = 24;
+scene.add(sun, sun.target);
+{ const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#2f6fc4'); g.addColorStop(.55, '#8fbfe8'); g.addColorStop(1, '#c6d6e2');
+  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(40, 20, 12), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })));
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new THREE.Scene().add(new THREE.Mesh(
+    new THREE.SphereGeometry(10, 16, 12), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })))).texture; }
+const sol = new THREE.Mesh(new THREE.CircleGeometry(12, 40), new THREE.MeshStandardMaterial({ color: 0x8a9a68, roughness: 1 }));
+sol.rotation.x = -Math.PI / 2; sol.receiveShadow = true; scene.add(sol);
+
+// ---------- animation par os : squelette du mannequin UE5 ----------
+// Le jeu pilote aujourd'hui des groupes de primitives (épaule, coude, hanche, genou).
+// Les mêmes angles s'appliquent aux os : c'est ce qui permet de garder la logique existante.
+const _qa = new THREE.Quaternion(), _va = new THREE.Vector3();
+// Sur le mannequin UE5, l'axe local X d'un os suit l'os. Depuis la pose en croix :
+//   Z fait descendre le bras le long du corps, X le fait balancer d'avant en arrière.
+//   Pour les jambes, seul X donne la foulée — Z les écarte sur le côté.
+function poser(p, t, vitesse, phase = 0) {
+  const os = p.os, repos = p.repos;
+  const R = (n, ...paires) => {
+    const b = os[n], r = repos[n]; if (!b || !r) return;
+    b.quaternion.copy(r);
+    for (const [ax, an] of paires) {
+      _va.set(ax === 'x' ? 1 : 0, ax === 'y' ? 1 : 0, ax === 'z' ? 1 : 0);
+      b.quaternion.multiply(_qa.setFromAxisAngle(_va, an));
+    }
+  };
+  const c = Math.cos, s = Math.sin;
+  const w = t * (2.2 + vitesse * 3.2) + phase;
+  const amp = 0.06 + vitesse * 0.52;              // repos : léger report ; course : grande foulée
+  const BRAS = 1.26;                              // bras le long du corps
+  const resp = s(t * 1.7) * 0.02 * (1 - vitesse);
+
+  R('spine_01', ['x', vitesse * 0.06], ['z', resp]);
+  R('spine_02', ['y', s(w) * 0.06 * vitesse]);
+  R('neck_01', ['x', -vitesse * 0.07]);
+  R('Head', ['y', s(t * 0.6 + phase) * 0.12 * (1 - vitesse)], ['x', -vitesse * 0.05]);
+
+  R('upperarm_l', ['z', -BRAS], ['x', -s(w) * amp * 0.85]);
+  R('upperarm_r', ['z', BRAS], ['x', s(w) * amp * 0.85]);
+  R('lowerarm_l', ['z', -0.22], ['x', -0.15 - Math.max(0, s(w)) * amp * 0.7]);
+  R('lowerarm_r', ['z', 0.22], ['x', -0.15 - Math.max(0, -s(w)) * amp * 0.7]);
+
+  R('thigh_l', ['x', s(w) * amp]);
+  R('thigh_r', ['x', -s(w) * amp]);
+  R('calf_l', ['x', -Math.max(0, -s(w)) * amp * 1.5]);
+  R('calf_r', ['x', -Math.max(0, s(w)) * amp * 1.5]);
+  R('foot_l', ['x', c(w) * amp * 0.3]);
+  R('foot_r', ['x', -c(w) * amp * 0.3]);
+}
+
+const persos = [];
+const IDS = ['tenues:Female_Peasant', 'tenues:Male_Peasant', 'tenues:Female_Ranger',
+             'corps:Superhero_Female_FullBody', 'corps:Superhero_Male_FullBody',
+             'coiffures_r:Hair_Long', 'coiffures_r:Hair_SimpleParted'];
+A.preload(IDS).then(() => {
+  const lot = [
+    ['tenues:Female_Peasant', -2.4, 0.0, 'coiffures_r:Hair_Long',        'corps:Superhero_Female_FullBody'],
+    ['tenues:Male_Peasant',    0.0, 0.5, 'coiffures_r:Hair_SimpleParted', 'corps:Superhero_Male_FullBody'],
+    ['tenues:Female_Ranger',   2.4, 1.0, null,                            'corps:Superhero_Female_FullBody'],
+  ];
+  for (const [id, x, vit, cheveux, base] of lot) {
+    const p = A.spawn(id, { x, z: 0 });
+    p.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    scene.add(p);
+    if (base) { const b = A.spawn(base, {}); A.greffeTete(b, p); }
+    if (cheveux && p.userData.os) {
+      const h = A.spawn(cheveux, {});
+      A.rebind(h, p);   // rebind reparente lui-même la coiffure dans le bon espace
+    }
+    persos.push({ obj: p, os: p.userData.os || {}, repos: p.userData.repos || {}, vit, phase: Math.random() * 6 });
+  }
+  document.getElementById('load').remove();
+  boucle();
+}).catch(e => { document.getElementById('load').textContent = 'échec : ' + e.message; });
+
+let yaw = 0.15, pitch = 0.18, dist = 6.2;
+addEventListener('wheel', e => { dist = Math.max(2, Math.min(18, dist * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
+let drag = false, px = 0, py = 0;
+addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => drag = false);
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - px) * .006; pitch = Math.max(-0.2, Math.min(1.1, pitch + (e.clientY - py) * .005)); px = e.clientX; py = e.clientY; });
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const t0 = performance.now();
+function boucle() {
+  requestAnimationFrame(boucle);
+  const t = (performance.now() - t0) / 1000;
+  for (const p of persos) poser(p, t, p.vit, p.phase);
+  const cible = new THREE.Vector3(0, 0.95, 0);
+  camera.position.set(cible.x + Math.sin(yaw) * Math.cos(pitch) * dist, cible.y + Math.sin(pitch) * dist + 0.2, cible.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(cible);
+  sun.target.position.copy(cible); sun.position.copy(cible).add(SUN.clone().multiplyScalar(12));
+  renderer.render(scene, camera);
+  const i = renderer.info;
+  document.getElementById('stats').textContent = i.render.calls + ' draw calls · ' + i.render.triangles.toLocaleString('fr-FR') + ' triangles';
+}
+</script>
+</body>
+</html>

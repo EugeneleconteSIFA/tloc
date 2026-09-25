@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>The Legend of Camille — La Citadelle de Lille</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Grenze+Gotisch:wght@700&family=Grenze:wght@500;600&display=swap">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#0b1020; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
+  canvas#game { display:block; width:100%; height:100%; }
+  #hud { position:fixed; inset:0; pointer-events:none; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.7); }
+  #hearts { position:absolute; left:18px; top:14px; }
+  #zone { position:absolute; top:22px; left:50%; transform:translateX(-50%); font-size:30px; font-weight:bold; letter-spacing:2px;
+          opacity:0; transition:opacity .5s; color:#ffe7a3;
+          font-family:"Grenze", Georgia, serif; font-weight:600; font-size:34px; letter-spacing:1.5px; }
+  #minimap { position:absolute; right:16px; top:14px; border-radius:50%; border:3px solid rgba(255,255,255,.55); background:rgba(0,0,0,.35); }
+  #counts { position:absolute; left:18px; top:62px; font-size:15px; line-height:1.5; }
+  #counts b { color:#ffe7a3; }
+  #bossbar { position:absolute; left:50%; bottom:78px; transform:translateX(-50%); width:420px; height:18px; border:2px solid #fff; border-radius:9px;
+             background:rgba(0,0,0,.5); display:none; overflow:hidden; }
+  #bossfill { height:100%; width:100%; background:linear-gradient(90deg,#c0392b,#ff6b4a); transition:width .15s; }
+  #bossbar span { position:absolute; left:0; right:0; top:-24px; text-align:center; font-weight:bold; font-size:15px; letter-spacing:1px; }
+  #msg { position:absolute; left:50%; bottom:150px; transform:translateX(-50%); max-width:640px; padding:12px 22px; border-radius:12px;
+         background:rgba(10,14,30,.78); border:2px solid rgba(255,231,163,.7); font-size:17px; line-height:1.4; opacity:0; transition:opacity .3s; text-align:center; }
+  /* l'aide des touches : un encart sur le côté droit, rempli par engine.js (majAide) avec
+     les seules touches qui servent maintenant — plus la ligne de pied d'écran qui disait tout */
+  #legend { position:absolute; right:14px; bottom:14px; display:grid; grid-template-columns:auto auto; gap:3px 10px; align-items:center;
+            padding:8px 12px; border-radius:10px; background:rgba(10,14,30,.42); border:1px solid rgba(255,231,163,.14); font-size:12.5px; }
+  #legend kbd { justify-self:end; font-family:inherit; font-size:11.5px; font-weight:700; color:#ffe7a3; background:rgba(255,255,255,.1);
+                border:1px solid rgba(255,231,163,.25); border-bottom-width:2px; border-radius:4px; padding:0 6px; white-space:nowrap; }
+  #legend span { color:#e8ecf6; white-space:nowrap; opacity:.9; }
+  /* écran titre et pause : « pierre, brique et or », comme le portail (tloc-portail.css) */
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+             padding:24px 16px 120px; box-sizing:border-box; overflow:auto;
+             background:rgba(15,20,32,.9); color:#EDE3CC; text-align:center; font-family:"Alegreya Sans", "Trebuchet MS", sans-serif; }
+  #overlay > :not(.ciel) { position:relative; z-index:1; }
+  /* le moteur écrit ses titres en capitales (« THE LEGEND OF CAMILLE », « PAUSE ») : en gothique,
+     des capitales ne se lisent plus, d'où la Grenze droite ici et la gothique ailleurs */
+  #overlay h1 { font-family:"Grenze", Georgia, serif; font-weight:600; font-size:clamp(44px,6vw,80px); line-height:1; margin:0;
+                color:#FFE3A1; text-shadow:0 4px 0 #6B281B, 0 12px 40px rgba(0,0,0,.6); letter-spacing:4px; }
+  #overlay h2 { font-family:"Grenze", Georgia, serif; font-size:22px; font-weight:500; letter-spacing:3px; margin:0 0 10px; color:#EDE3CC; }
+  #overlay p { max-width:600px; line-height:1.55; margin:0; font-size:18px; color:#EDE3CC; }
+  #overlay .keys { display:grid; grid-template-columns:auto auto; gap:6px 22px; text-align:left; margin:10px 0; font-size:15px;
+                   padding:18px 24px; border-radius:10px; background:rgba(26,32,48,.9); border:1px solid rgba(237,227,204,.14); }
+  #overlay kbd { display:inline-block; min-width:14px; text-align:center; font-family:inherit; font-size:13px; font-weight:700;
+                 background:#222A3D; border:1px solid rgba(237,227,204,.28); border-bottom-width:3px; border-radius:5px; padding:1px 7px; margin:0 1px; }
+  #overlay .go { margin-top:18px; display:flex; flex-direction:column; gap:4px; min-width:min(460px,90vw); }
+  #overlay .mitem { padding:12px 22px; border:1px solid transparent; border-radius:6px; text-align:left; opacity:1; color:#EDE3CC;
+                    font-family:"Grenze", Georgia, serif; font-size:24px; font-weight:500; }
+  #overlay .mitem.sel { color:#FFE3A1; font-weight:600; border-color:#E2B25A; background:rgba(226,178,90,.12); }
+  #overlay .aide-menu { margin-top:6px; font-size:14px; color:#A89F8A; }
+  #overlay .aide-menu kbd { color:#EDE3CC; }
+  #overlay.hidden { display:none; }
+  #prompt { position:absolute; left:50%; bottom:215px; transform:translateX(-50%); padding:6px 16px; border-radius:8px; background:rgba(255,231,163,.9); color:#2a1a08; font-weight:bold; font-size:15px; opacity:0; transition:opacity .2s; }
+  #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; z-index:5; }
+  #loading { position:fixed; inset:0; z-index:6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+             padding-bottom:18vh; box-sizing:border-box; background:#0A0E17; color:#EDE3CC; font-family:"Alegreya Sans", "Trebuchet MS", sans-serif; }
+  #loading.hidden { display:none; }
+  #loading > :not(.ciel) { position:relative; z-index:1; }
+  #loading .ciel { position:absolute; left:0; bottom:0; width:100%; height:min(280px,36vh); pointer-events:none; }
+  /* les fenêtres allumées sont un second calque, découvert de gauche à droite au fil du
+     chargement : la ville s'éveille à mesure que la citadelle se construit */
+  #loading .ciel-allume { clip-path:inset(0 calc(100% - var(--charge, 0%)) 0 0); transition:clip-path .35s cubic-bezier(.4,0,.2,1); }
+  .ciel .devant { fill:#0A0E17; } .ciel .cordons { fill:#20283A; } .ciel .eteintes { fill:#1A2132; } .ciel .allumees { fill:#E9B85E; }
+  .ciel .horloge { fill:none; stroke:#E2B25A; stroke-width:2; }
+  /* le fond du chargement est déjà la couleur des façades : un cran plus clair, sinon on ne
+     voit que des fenêtres qui flottent dans le noir */
+  #loading .ciel .devant { fill:#171E2E; } #loading .ciel .cordons { fill:#262F44; } #loading .ciel .eteintes { fill:#0F1420; }
+  #loadtitle { font-family:"Grenze Gotisch", Georgia, serif; font-weight:700; font-size:clamp(40px,5vw,64px); color:#FFE3A1; }
+  #endurance { width:190px; height:7px; margin:2px 0 6px 4px; border-radius:4px; background:rgba(0,0,0,.42);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); overflow:hidden; transition:opacity .3s; }
+  #endfill { width:100%; height:100%; border-radius:4px; background:linear-gradient(90deg,#3f7f4a,#8fd46a); transition:width .09s linear; }
+  #loadbar { width:min(520px,80vw); height:8px; border-radius:4px; background:rgba(237,227,204,.1); overflow:hidden; }
+  #loadfill { width:0%; height:100%; border-radius:4px; background:#E2B25A; transition:width .35s cubic-bezier(.4,0,.2,1); }
+  #loadline { width:min(520px,80vw); margin-top:-10px; display:flex; justify-content:space-between; font-size:16px; }
+  #loadlabel { color:#FFE3A1; }
+  #loadpct { font-variant-numeric:tabular-nums; color:#A89F8A; }
+  #loadtip { margin:8px 0 0; font-size:15px; color:#A89F8A; text-align:center; padding:0 16px; }
+  #loadtip kbd { display:inline-block; font-family:inherit; font-size:13px; font-weight:700; color:#EDE3CC; background:#222A3D;
+                 border:1px solid rgba(237,227,204,.28); border-bottom-width:3px; border-radius:5px; padding:1px 7px; margin:0 2px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="fade"></div>
+<div id="loading">
+  <svg class="ciel" viewBox="0 0 2400 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="devant"><rect x="1157" y="83" width="86" height="147"/><rect x="1167" y="46" width="65" height="39"/><polygon points="1167,46 1200,4 1233,46"/><rect x="1151" y="77" width="98" height="6"/><polygon points="-30,230 -30,115 -30,98 -16,98 -16,81 -2,81 -2,65 12,65 12,48 26,48 26,36 51,36 51,48 65,48 65,65 79,65 79,81 93,81 93,98 107,98 107,115 107,230"/><polygon points="113,230 113,101 113,83 129,83 129,65 144,65 144,47 159,47 159,29 174,29 174,16 200,16 200,29 216,29 216,47 231,47 231,65 246,65 246,83 261,83 261,101 261,230"/><polygon points="267,230 267,106 267,91 280,91 280,75 293,75 293,59 305,59 305,44 318,44 318,28 331,28 331,17 359,17 359,28 372,28 372,44 385,44 385,59 398,59 398,75 411,75 411,91 424,91 424,106 424,230"/><polygon points="430,230 430,94 430,78 442,78 442,63 454,63 454,48 467,48 467,33 479,33 479,18 491,18 491,8 518,8 518,18 531,18 531,33 543,33 543,48 555,48 555,63 568,63 568,78 580,78 580,94 580,230"/><polygon points="586,230 586,129 586,115 597,115 597,101 609,101 609,87 620,87 620,74 632,74 632,60 643,60 643,50 668,50 668,60 679,60 679,74 691,74 691,87 702,87 702,101 713,101 713,115 725,115 725,129 725,230"/><polygon points="731,230 731,94 731,78 744,78 744,62 758,62 758,46 771,46 771,30 785,30 785,19 809,19 809,30 822,30 822,46 836,46 836,62 849,62 849,78 863,78 863,94 863,230"/><polygon points="869,230 869,126 869,109 883,109 883,91 898,91 898,73 913,73 913,55 928,55 928,43 954,43 954,55 969,55 969,73 984,73 984,91 999,91 999,109 1013,109 1013,126 1013,230"/><polygon points="1019,230 1019,90 1019,74 1033,74 1033,59 1046,59 1046,43 1059,43 1059,27 1072,27 1072,16 1096,16 1096,27 1109,27 1109,43 1122,43 1122,59 1135,59 1135,74 1149,74 1149,90 1149,230"/><polygon points="1249,230 1249,106 1249,89 1264,89 1264,71 1279,71 1279,53 1294,53 1294,35 1309,35 1309,22 1335,22 1335,35 1350,35 1350,53 1365,53 1365,71 1380,71 1380,89 1395,89 1395,106 1395,230"/><polygon points="1401,230 1401,115 1401,100 1414,100 1414,85 1426,85 1426,70 1438,70 1438,55 1450,55 1450,40 1463,40 1463,30 1489,30 1489,40 1502,40 1502,55 1514,55 1514,70 1526,70 1526,85 1538,85 1538,100 1551,100 1551,115 1551,230"/><polygon points="1557,230 1557,128 1557,114 1568,114 1568,100 1580,100 1580,86 1591,86 1591,72 1602,72 1602,58 1614,58 1614,48 1639,48 1639,58 1651,58 1651,72 1662,72 1662,86 1673,86 1673,100 1685,100 1685,114 1696,114 1696,128 1696,230"/><polygon points="1702,230 1702,91 1702,79 1713,79 1713,66 1723,66 1723,53 1734,53 1734,40 1744,40 1744,28 1755,28 1755,19 1778,19 1778,28 1788,28 1788,40 1799,40 1799,53 1809,53 1809,66 1820,66 1820,79 1830,79 1830,91 1830,230"/><polygon points="1836,230 1836,95 1836,77 1851,77 1851,59 1866,59 1866,41 1881,41 1881,23 1896,23 1896,10 1923,10 1923,23 1938,23 1938,41 1953,41 1953,59 1968,59 1968,77 1983,77 1983,95 1983,230"/><polygon points="1989,230 1989,122 1989,110 1999,110 1999,98 2009,98 2009,85 2019,85 2019,73 2029,73 2029,61 2039,61 2039,53 2060,53 2060,61 2070,61 2070,73 2080,73 2080,85 2090,85 2090,98 2100,98 2100,110 2110,110 2110,122 2110,230"/><polygon points="2116,230 2116,92 2116,79 2126,79 2126,66 2137,66 2137,53 2148,53 2148,40 2158,40 2158,27 2169,27 2169,18 2192,18 2192,27 2203,27 2203,40 2213,40 2213,53 2224,53 2224,66 2235,66 2235,79 2245,79 2245,92 2245,230"/><polygon points="2251,230 2251,95 2251,78 2265,78 2265,62 2279,62 2279,45 2293,45 2293,29 2306,29 2306,17 2330,17 2330,29 2344,29 2344,45 2358,45 2358,62 2372,62 2372,78 2385,78 2385,95 2385,230"/><polygon points="2391,230 2391,98 2391,83 2404,83 2404,68 2417,68 2417,53 2429,53 2429,38 2442,38 2442,27 2464,27 2464,38 2477,38 2477,53 2490,53 2490,68 2502,68 2502,83 2515,83 2515,98 2515,230"/></g><g class="cordons"><rect x="-26" y="117" width="129" height="3"/><rect x="-26" y="163" width="129" height="3"/><rect x="117" y="103" width="139" height="3"/><rect x="117" y="149" width="139" height="3"/><rect x="271" y="108" width="149" height="3"/><rect x="271" y="154" width="149" height="3"/><rect x="434" y="96" width="142" height="3"/><rect x="434" y="142" width="142" height="3"/><rect x="590" y="131" width="131" height="3"/><rect x="590" y="177" width="131" height="3"/><rect x="735" y="96" width="124" height="3"/><rect x="735" y="142" width="124" height="3"/><rect x="873" y="128" width="137" height="3"/><rect x="873" y="174" width="137" height="3"/><rect x="1023" y="92" width="121" height="3"/><rect x="1023" y="138" width="121" height="3"/><rect x="1253" y="108" width="138" height="3"/><rect x="1253" y="154" width="138" height="3"/><rect x="1405" y="117" width="141" height="3"/><rect x="1405" y="163" width="141" height="3"/><rect x="1561" y="130" width="132" height="3"/><rect x="1561" y="176" width="132" height="3"/><rect x="1706" y="93" width="120" height="3"/><rect x="1706" y="139" width="120" height="3"/><rect x="1840" y="97" width="139" height="3"/><rect x="1840" y="143" width="139" height="3"/><rect x="1993" y="124" width="113" height="3"/><rect x="1993" y="170" width="113" height="3"/><rect x="2120" y="94" width="122" height="3"/><rect x="2120" y="140" width="122" height="3"/><rect x="2255" y="97" width="126" height="3"/><rect x="2255" y="143" width="126" height="3"/><rect x="2395" y="100" width="115" height="3"/><rect x="2395" y="146" width="115" height="3"/></g><circle class="horloge" cx="1200" cy="108" r="14"/><g class="eteintes"><circle cx="39" cy="85" r="6"/><rect x="299" y="116" width="14" height="24" rx="7"/><rect x="338" y="116" width="14" height="24" rx="7"/><rect x="377" y="116" width="14" height="24" rx="7"/><rect x="377" y="162" width="14" height="24" rx="7"/><circle cx="345" cy="71" r="6"/><rect x="498" y="104" width="14" height="24" rx="7"/><rect x="460" y="150" width="14" height="24" rx="7"/><rect x="498" y="150" width="14" height="24" rx="7"/><rect x="648" y="139" width="14" height="24" rx="7"/><rect x="683" y="139" width="14" height="24" rx="7"/><rect x="648" y="185" width="14" height="24" rx="7"/><circle cx="655" cy="98" r="6"/><rect x="790" y="150" width="14" height="24" rx="7"/><rect x="970" y="136" width="14" height="24" rx="7"/><rect x="1056" y="146" width="14" height="24" rx="7"/><rect x="1279" y="116" width="14" height="24" rx="7"/><rect x="1352" y="116" width="14" height="24" rx="7"/><circle cx="1322" cy="75" r="6"/><rect x="1469" y="171" width="14" height="24" rx="7"/><rect x="1585" y="138" width="14" height="24" rx="7"/><rect x="1620" y="138" width="14" height="24" rx="7"/><rect x="1781" y="101" width="14" height="24" rx="7"/><rect x="1903" y="105" width="14" height="24" rx="7"/><rect x="1866" y="151" width="14" height="24" rx="7"/><rect x="1903" y="151" width="14" height="24" rx="7"/><rect x="2022" y="178" width="14" height="24" rx="7"/><circle cx="2181" cy="63" r="6"/><rect x="2345" y="151" width="14" height="24" rx="7"/><rect x="2467" y="108" width="14" height="24" rx="7"/><rect x="2426" y="154" width="14" height="24" rx="7"/></g></svg><svg class="ciel ciel-allume" viewBox="0 0 2400 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g class="allumees"><rect x="-3" y="125" width="14" height="24" rx="7"/><rect x="32" y="125" width="14" height="24" rx="7"/><rect x="66" y="125" width="14" height="24" rx="7"/><rect x="-3" y="171" width="14" height="24" rx="7"/><rect x="32" y="171" width="14" height="24" rx="7"/><rect x="66" y="171" width="14" height="24" rx="7"/><rect x="143" y="111" width="14" height="24" rx="7"/><rect x="180" y="111" width="14" height="24" rx="7"/><rect x="217" y="111" width="14" height="24" rx="7"/><rect x="143" y="157" width="14" height="24" rx="7"/><rect x="180" y="157" width="14" height="24" rx="7"/><rect x="217" y="157" width="14" height="24" rx="7"/><circle cx="187" cy="69" r="6"/><rect x="299" y="162" width="14" height="24" rx="7"/><rect x="338" y="162" width="14" height="24" rx="7"/><rect x="460" y="104" width="14" height="24" rx="7"/><rect x="535" y="104" width="14" height="24" rx="7"/><rect x="535" y="150" width="14" height="24" rx="7"/><circle cx="505" cy="60" r="6"/><rect x="614" y="139" width="14" height="24" rx="7"/><rect x="614" y="185" width="14" height="24" rx="7"/><rect x="683" y="185" width="14" height="24" rx="7"/><rect x="757" y="104" width="14" height="24" rx="7"/><rect x="790" y="104" width="14" height="24" rx="7"/><rect x="823" y="104" width="14" height="24" rx="7"/><rect x="757" y="150" width="14" height="24" rx="7"/><rect x="823" y="150" width="14" height="24" rx="7"/><circle cx="797" cy="66" r="6"/><rect x="898" y="136" width="14" height="24" rx="7"/><rect x="934" y="136" width="14" height="24" rx="7"/><rect x="898" y="182" width="14" height="24" rx="7"/><rect x="934" y="182" width="14" height="24" rx="7"/><rect x="970" y="182" width="14" height="24" rx="7"/><circle cx="941" cy="95" r="6"/><rect x="1056" y="100" width="14" height="24" rx="7"/><rect x="1099" y="100" width="14" height="24" rx="7"/><rect x="1099" y="146" width="14" height="24" rx="7"/><circle cx="1084" cy="63" r="6"/><rect x="1315" y="116" width="14" height="24" rx="7"/><rect x="1279" y="162" width="14" height="24" rx="7"/><rect x="1315" y="162" width="14" height="24" rx="7"/><rect x="1352" y="162" width="14" height="24" rx="7"/><rect x="1432" y="125" width="14" height="24" rx="7"/><rect x="1469" y="125" width="14" height="24" rx="7"/><rect x="1506" y="125" width="14" height="24" rx="7"/><rect x="1432" y="171" width="14" height="24" rx="7"/><rect x="1506" y="171" width="14" height="24" rx="7"/><circle cx="1476" cy="82" r="6"/><rect x="1654" y="138" width="14" height="24" rx="7"/><rect x="1585" y="184" width="14" height="24" rx="7"/><rect x="1620" y="184" width="14" height="24" rx="7"/><rect x="1654" y="184" width="14" height="24" rx="7"/><circle cx="1627" cy="97" r="6"/><rect x="1738" y="101" width="14" height="24" rx="7"/><rect x="1738" y="147" width="14" height="24" rx="7"/><rect x="1781" y="147" width="14" height="24" rx="7"/><circle cx="1766" cy="64" r="6"/><rect x="1866" y="105" width="14" height="24" rx="7"/><rect x="1939" y="105" width="14" height="24" rx="7"/><rect x="1939" y="151" width="14" height="24" rx="7"/><circle cx="1910" cy="63" r="6"/><rect x="2022" y="132" width="14" height="24" rx="7"/><rect x="2063" y="132" width="14" height="24" rx="7"/><rect x="2063" y="178" width="14" height="24" rx="7"/><circle cx="2049" cy="96" r="6"/><rect x="2152" y="102" width="14" height="24" rx="7"/><rect x="2195" y="102" width="14" height="24" rx="7"/><rect x="2152" y="148" width="14" height="24" rx="7"/><rect x="2195" y="148" width="14" height="24" rx="7"/><rect x="2278" y="105" width="14" height="24" rx="7"/><rect x="2311" y="105" width="14" height="24" rx="7"/><rect x="2345" y="105" width="14" height="24" rx="7"/><rect x="2278" y="151" width="14" height="24" rx="7"/><rect x="2311" y="151" width="14" height="24" rx="7"/><circle cx="2318" cy="66" r="6"/><rect x="2426" y="108" width="14" height="24" rx="7"/><rect x="2467" y="154" width="14" height="24" rx="7"/><circle cx="2453" cy="72" r="6"/><rect x="1182" y="55" width="8" height="18" rx="4"/><rect x="1196" y="55" width="8" height="18" rx="4"/><rect x="1210" y="55" width="8" height="18" rx="4"/></g></svg>
+  <div id="loadtitle">The Legend of Camille</div>
+  <div id="loadbar" role="progressbar" aria-label="Chargement de la citadelle"><div id="loadfill"></div></div>
+  <div id="loadline"><span id="loadlabel">Chargement…</span><span id="loadpct">0 %</span></div>
+</div>
+<script>
+  // engine.js peint la largeur de la barre ; on la recopie sur les fenêtres de la ville plutôt
+  // que de toucher au moteur. Même source, donc la ville et la barre ne se contredisent jamais.
+  (() => {
+    const ld = document.getElementById('loading'), f = document.getElementById('loadfill'), bar = document.getElementById('loadbar');
+    const suivre = () => { const w = f.style.width || '0%'; ld.style.setProperty('--charge', w); bar.setAttribute('aria-valuenow', parseInt(w) || 0); };
+    new MutationObserver(suivre).observe(f, { attributes: true, attributeFilter: ['style'] });
+    suivre();
+  })();
+</script>
+<div id="hud">
+  <canvas id="hearts" width="400" height="40"></canvas>
+  <div id="endurance"><div id="endfill"></div></div>
+  <div id="zone"></div>
+  <canvas id="minimap" width="170" height="170"></canvas>
+  <div id="counts"></div>
+  <div id="bossbar"><div id="bossfill"></div><span>PHINAERT, géant de Lille</span></div>
+  <div id="prompt"></div>
+  <div id="msg"></div>
+  <div id="legend"></div>
+</div>
+
+<div id="overlay">
+  <h1>The Legend of Camille</h1>
+  <h2>La Citadelle de Lille</h2>
+  <p id="ovtext">Phinaert, le géant brigand, a enlevé le prince Eugène et s'est retranché dans la citadelle de Vauban avec ses corbeaux, ses moules mutantes et les fantômes de la garnison.
+     Camille, la jeune gardienne de la citadelle, part le délivrer : remparts, bastions, donjon, galeries souterraines… et un village qui a besoin d'elle.</p>
+  <div class="go" id="ovgo"></div>
+  <div class="aide-menu"><kbd>↑</kbd><kbd>↓</kbd> choisir &nbsp; <kbd>Entrée</kbd> valider</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module" src="game.js?v=27"></script>
+<script type="module" src="tloc-multi.js?v=27"></script>
+</body>
+</html>

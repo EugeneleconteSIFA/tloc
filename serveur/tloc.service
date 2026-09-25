@@ -1,0 +1,18 @@
+# /etc/systemd/system/tloc.service
+[Unit]
+Description=The Legend of Camille — serveur d'instances
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/tloc/serveur
+Environment=TLOC_DB=/var/lib/tloc/tloc.db
+ExecStart=/var/www/tloc/serveur/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8100 --workers 1
+Restart=always
+RestartSec=3
+# le relais garde l'état des salons en mémoire : un seul worker, sinon deux joueurs
+# du même salon peuvent atterrir dans deux processus qui ne se parlent pas.
+
+[Install]
+WantedBy=multi-user.target

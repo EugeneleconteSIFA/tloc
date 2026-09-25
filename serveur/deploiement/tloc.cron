@@ -1,0 +1,3 @@
+# /etc/cron.d/tloc — chaque nuit à 3 h 30 (heure de Paris), la base de la prod est
+# recopiée dans le dev, et sauvegardée
+30 3 * * * root /usr/local/bin/tloc-copier-base >> /var/log/tloc-copie.log 2>&1

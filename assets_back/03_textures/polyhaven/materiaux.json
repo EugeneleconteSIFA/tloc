@@ -1,0 +1,279 @@
+[
+ {
+  "slug": "brown_mud_03",
+  "libelle": "Terre boueuse",
+  "usage": "chemins, bords de fossé, champs",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/brown_mud_03/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/brown_mud_03/normale.webp"
+  }
+ },
+ {
+  "slug": "church_bricks_03",
+  "libelle": "Brique ancienne patinée",
+  "usage": "remparts et bastions de la citadelle",
+  "tuile_m": 2.3,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/church_bricks_03/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/church_bricks_03/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/church_bricks_03/rugosite.webp"
+  }
+ },
+ {
+  "slug": "clay_roof_tiles",
+  "libelle": "Tuiles canal anciennes, brun sombre",
+  "usage": "toits du village et des casernes — la variante sombre",
+  "tuile_m": 4.2,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/clay_roof_tiles/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/clay_roof_tiles/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/clay_roof_tiles/rugosite.webp"
+  }
+ },
+ {
+  "slug": "clay_roof_tiles_02",
+  "libelle": "Tuiles canal orangées",
+  "usage": "toits exposés au sud, granges, variante claire",
+  "tuile_m": 3.9,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/clay_roof_tiles_02/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/clay_roof_tiles_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/clay_roof_tiles_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "fabric_pattern_07",
+  "libelle": "Vichy rouge et blanc",
+  "usage": "auvents du marché, nappes de l'estaminet, linge",
+  "tuile_m": 0.45,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/fabric_pattern_07/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/fabric_pattern_07/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/fabric_pattern_07/rugosite.webp"
+  }
+ },
+ {
+  "slug": "forest_leaves_02",
+  "libelle": "Sol de feuilles mortes et mousse",
+  "usage": "sous-bois, cimetière, lisière des sapins",
+  "tuile_m": 1.8,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/forest_leaves_02/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/forest_leaves_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/forest_leaves_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "grass_ground",
+  "libelle": "Herbe rase et terre",
+  "usage": "sol de la plaine et des glacis",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/grass_ground/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/grass_ground/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/grass_ground/rugosite.webp"
+  }
+ },
+ {
+  "slug": "hinoki_planks",
+  "libelle": "Planches claires régulières",
+  "usage": "volets, cloisons, mobilier clair",
+  "tuile_m": 1.5,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/hinoki_planks/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/hinoki_planks/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/hinoki_planks/rugosite.webp"
+  }
+ },
+ {
+  "slug": "marble_rock_02",
+  "libelle": "Marbre clair lisse",
+  "usage": "statues, rien d'autre — peu flamand",
+  "tuile_m": 2.0,
+  "retenu": false,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/marble_rock_02/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/marble_rock_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/marble_rock_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "marble_rock_03",
+  "libelle": "Roche claire fracturée",
+  "usage": "falaises et montagnes du fond",
+  "tuile_m": 2.0,
+  "retenu": false,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/marble_rock_03/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/marble_rock_03/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/marble_rock_03/rugosite.webp"
+  }
+ },
+ {
+  "slug": "metal_plate_02",
+  "libelle": "Plaque de métal rouillée",
+  "usage": "herse, grilles, ferrures",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/metal_plate_02/couleur.webp",
+   "metal": "assets_back/03_textures/polyhaven/metal_plate_02/metal.webp",
+   "normale": "assets_back/03_textures/polyhaven/metal_plate_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/metal_plate_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "old_stone_wall_02",
+  "libelle": "Pierre de taille claire à assises fines",
+  "usage": "escarpe, murs de la citadelle, chapelle",
+  "tuile_m": 2.5,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/old_stone_wall_02/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/old_stone_wall_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/old_stone_wall_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "red_bricks_02",
+  "libelle": "Brique irrégulière mêlée de pierre",
+  "usage": "soubassements, ruines, voûtes de la galerie",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/red_bricks_02/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/red_bricks_02/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/red_bricks_02/rugosite.webp"
+  }
+ },
+ {
+  "slug": "rock_wall_14",
+  "libelle": "Galets clairs noyés dans le mortier",
+  "usage": "soubassements, margelles, mur du moulin",
+  "tuile_m": 2.5,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/rock_wall_14/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/rock_wall_14/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/rock_wall_14/rugosite.webp"
+  }
+ },
+ {
+  "slug": "rock_wall_17",
+  "libelle": "Moellons sombres en opus incertum",
+  "usage": "galeries de Vauban, caves, poterne",
+  "tuile_m": 2.5,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/rock_wall_17/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/rock_wall_17/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/rock_wall_17/rugosite.webp"
+  }
+ },
+ {
+  "slug": "rocks_ground_08",
+  "libelle": "Sol caillouteux",
+  "usage": "terre-plein des bastions, éboulis",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/rocks_ground_08/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/rocks_ground_08/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/rocks_ground_08/rugosite.webp"
+  }
+ },
+ {
+  "slug": "rocky_trail",
+  "libelle": "Chemin de terre caillouteuse",
+  "usage": "routes du village, sentiers, glacis",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/rocky_trail/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/rocky_trail/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/rocky_trail/rugosite.webp"
+  }
+ },
+ {
+  "slug": "stacked_brick_wall",
+  "libelle": "Brique rouge sombre dense",
+  "usage": "façades des maisons du village",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/stacked_brick_wall/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/stacked_brick_wall/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/stacked_brick_wall/rugosite.webp"
+  }
+ },
+ {
+  "slug": "withered_grass",
+  "libelle": "Herbe sèche paille",
+  "usage": "champ d'Émile, chaume coupé, bords de route",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/withered_grass/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/withered_grass/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/withered_grass/rugosite.webp"
+  }
+ },
+ {
+  "slug": "wood_cabinet_worn_long",
+  "libelle": "Bois sombre verni usé",
+  "usage": "portes, mobilier de l'estaminet",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/wood_cabinet_worn_long/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/wood_cabinet_worn_long/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/wood_cabinet_worn_long/rugosite.webp"
+  }
+ },
+ {
+  "slug": "wood_planks",
+  "libelle": "Planches larges usées",
+  "usage": "planchers, pont-levis, charrettes",
+  "tuile_m": 2.0,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/wood_planks/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/wood_planks/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/wood_planks/rugosite.webp"
+  }
+ },
+ {
+  "slug": "wool_boucle",
+  "libelle": "Lainage prince-de-galles",
+  "usage": "hors époque, à ne pas utiliser",
+  "tuile_m": 0.5,
+  "retenu": false,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/wool_boucle/couleur.webp",
+   "metal": "assets_back/03_textures/polyhaven/wool_boucle/metal.webp",
+   "normale": "assets_back/03_textures/polyhaven/wool_boucle/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/wool_boucle/rugosite.webp"
+  }
+ },
+ {
+  "slug": "worn_tile_floor",
+  "libelle": "Dallage de pierre usé",
+  "usage": "chapelle, intérieurs, porche",
+  "tuile_m": 1.6,
+  "retenu": true,
+  "maps": {
+   "couleur": "assets_back/03_textures/polyhaven/worn_tile_floor/couleur.webp",
+   "normale": "assets_back/03_textures/polyhaven/worn_tile_floor/normale.webp",
+   "rugosite": "assets_back/03_textures/polyhaven/worn_tile_floor/rugosite.webp"
+  }
+ }
+]

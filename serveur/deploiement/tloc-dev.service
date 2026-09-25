@@ -1,0 +1,16 @@
+# /etc/systemd/system/tloc-dev.service — le serveur de tloc-dev.kernse.fr
+[Unit]
+Description=The Legend of Camille — dev (tloc-dev.kernse.fr)
+After=network.target
+
+[Service]
+Type=simple
+User=tloc
+WorkingDirectory=/srv/tloc/dev/site/serveur
+EnvironmentFile=/etc/tloc/dev.env
+ExecStart=/srv/tloc/venv-dev/bin/uvicorn app:app --host 127.0.0.1 --port 8101 --workers 1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

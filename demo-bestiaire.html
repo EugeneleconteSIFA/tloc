@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Bestiaire — banc d'essai</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1013;color:#e6e8ec;font:13px system-ui,sans-serif}
+canvas#game{display:block;width:100vw;height:100vh}
+#hud,#overlay,#fade,#loading{display:none!important}
+#panneau{position:fixed;left:14px;top:14px;background:rgba(18,20,25,.88);border:1px solid #2b303a;border-radius:9px;padding:10px 12px;line-height:1.8;z-index:9}
+#panneau b{color:#d9a441}
+#panneau select,#panneau button{background:#1a1d24;color:#e6e8ec;border:1px solid #39404d;border-radius:5px;padding:3px 6px}
+#etiq{position:fixed;inset:0;pointer-events:none;z-index:8}
+#etiq div{position:absolute;transform:translate(-50%,0);font:11px ui-monospace,monospace;color:#ffd98a;text-shadow:0 1px 3px #000}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="fade"></div>
+<div id="loading"><span>Chargement…</span></div>
+<div id="hud">
+  <canvas id="hearts" width="400" height="40"></canvas><div id="zone"></div>
+  <canvas id="minimap" width="170" height="170"></canvas><div id="counts"></div>
+  <div id="bossbar"><div id="bossfill"></div></div><div id="prompt"></div><div id="msg"></div>
+</div>
+<div id="overlay"><p id="ovtext"></p><div id="ovkeys"></div><div id="ovgo"></div></div>
+
+<div id="panneau">
+  <div><b>Bestiaire</b> — chaque créature sur sa dalle, animée</div>
+  <div><select id="vue"><option value="tous">tous</option></select>
+       <label><input type="checkbox" id="fond" checked> sol</label>
+       <label><input type="checkbox" id="marche"> en mouvement</label>
+       <span id="stats"></span></div>
+</div>
+<div id="etiq"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as E from './engine.js?v=27';
+import * as GEANTS from './geants.js';
+
+// Les deux géants passent par le pipeline riggé quand la banque est là.
+const GEANTS_OK = await GEANTS.prepare();
+if (GEANTS_OK) E.setMaker('phinaert', () => GEANTS.buildGeant('phinaert'));
+
+const { scene, camera, renderer } = E;
+E.player.mesh.visible = false;          // Camille reste hors du banc
+renderer.shadowMap.enabled = true;
+
+// ---------- éclairage neutre, pour juger les matières et non l'ambiance ----------
+for (const o of [...scene.children]) if (o.isLight || o.isFog) scene.remove(o);
+scene.fog = null;
+scene.background = new THREE.Color(0x2a3440);
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x4a5a42, 1.05));
+const SUN = new THREE.Vector3(0.5, 0.72, 0.42).normalize();
+const sun = new THREE.DirectionalLight(0xfff2de, 3.1);
+sun.position.copy(SUN).multiplyScalar(30); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+{ const c = sun.shadow.camera; c.left = -26; c.right = 26; c.top = 20; c.bottom = -8; c.near = 1; c.far = 70; }
+scene.add(sun, sun.target);
+const remplissage = new THREE.DirectionalLight(0x8fb4d8, 0.5);
+remplissage.position.set(-8, 6, -10); scene.add(remplissage);
+
+const sol = new THREE.Mesh(new THREE.PlaneGeometry(90, 40),
+  new THREE.MeshStandardMaterial({ color: 0x6f7a5e, roughness: 1 }));
+sol.rotation.x = -Math.PI / 2; sol.receiveShadow = true; scene.add(sol);
+document.getElementById('fond').onchange = e => { sol.visible = e.target.checked; };
+
+// ---------- une bête par dalle ----------
+const ORDRE = ['rat', 'chauve', 'corbeau', 'moule', 'fantome', 'ratroi', 'phinaert'];
+const PAS = 4.2;
+const bestioles = [];
+const riggés = [];
+let x = 0;
+for (const kind of ORDRE) {
+  const k = E.KINDS[kind];
+  const ecart = kind === 'phinaert' ? 9 : (kind === 'ratroi' ? PAS * 1.4 : PAS);
+  x += ecart;
+  const e = E.spawnEnemy(kind, x, 0, null, k.fly);
+  e.bar.visible = false;
+  e.mesh.position.set(x, k.fly, 0);
+  e.mesh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  if (e.mesh.userData.anim) riggés.push(e.mesh);
+  bestioles.push({ kind, e, x, k });
+  const sel = document.getElementById('vue');
+  const o = document.createElement('option'); o.value = o.textContent = kind; sel.appendChild(o);
+}
+if (GEANTS_OK) {
+  const l = GEANTS.buildGeant('lyderic');
+  if (l) { x += 8; l.position.set(x, 0, 0); scene.add(l); riggés.push(l);
+    bestioles.push({ kind: 'lyderic', e: { mesh: l, anim: 0, bar: { visible: false }, state: 'idle', flash: 0 },
+                     x, k: { fly: 0, r: 2.0, label: 'Lydéric' } });
+    const sel = document.getElementById('vue'); const o = document.createElement('option');
+    o.value = o.textContent = 'lyderic'; sel.appendChild(o); }
+}
+const LARGEUR = x + 6;
+for (const b of bestioles) b.e.mesh.position.x -= LARGEUR / 2, b.x -= LARGEUR / 2;
+
+// étiquettes HTML : plus lisibles qu'un sprite et sans coût de rendu
+const etiq = document.getElementById('etiq');
+for (const b of bestioles) {
+  const d = document.createElement('div');
+  d.textContent = b.k.label + '  ·  ' + b.kind;
+  etiq.appendChild(d); b.etiq = d;
+}
+
+// ---------- animation : on rejoue la boucle d'ennemi du jeu, hors combat ----------
+const horloge = new THREE.Clock();
+let t = 0;
+function anime(dt) {
+  t += dt;
+  for (const m of riggés) m.userData.anim.update(dt);
+  for (const b of bestioles) {
+    const e = b.e;
+    e.anim = (e.anim || 0) + dt;
+    e.mesh.rotation.y = Math.sin(t * 0.25 + b.x) * 0.9;      // lent va-et-vient : on voit tous les profils
+    e.mesh.position.y = b.k.fly + (b.k.fly ? Math.sin(e.anim * 4) * 0.25 : 0);
+    // exactement la fonction du jeu, pas une copie qui divergerait
+    E.animeCreature(e, e.mesh, dt, marche ? 3 : 0);
+  }
+}
+let marche = false;
+document.getElementById('marche').onchange = ev => { marche = ev.target.checked; };
+
+// ---------- caméra ----------
+let cible = null, yaw = 0, pitch = 0.16, dist = LARGEUR * 1.15;
+const centre = new THREE.Vector3(0, 3.0, 0);
+const _bb = new THREE.Box3(), _t = new THREE.Vector3();
+document.getElementById('vue').onchange = ev => {
+  cible = ev.target.value === 'tous' ? null : bestioles.find(b => b.kind === ev.target.value);
+  if (!cible) { dist = LARGEUR * 1.15; centre.set(0, 3.0, 0); yaw = 0; pitch = 0.16; return; }
+  // cadrer sur la boîte réelle : plus de distance devinée au doigt mouillé
+  _bb.setFromObject(cible.e.mesh);
+  _bb.getCenter(centre); _bb.getSize(_t);
+  dist = Math.max(_t.x, _t.y, _t.z) * 1.9 + 0.6;
+  yaw = 0.5;
+};
+addEventListener('wheel', ev => { dist = Math.max(1.2, Math.min(70, dist * (1 + Math.sign(ev.deltaY) * .1))); }, { passive: true });
+let drag = false, px = 0, py = 0;
+addEventListener('pointerdown', ev => { drag = true; px = ev.clientX; py = ev.clientY; });
+addEventListener('pointerup', () => drag = false);
+addEventListener('pointermove', ev => { if (!drag) return; yaw -= (ev.clientX - px) * .006; pitch = Math.max(-0.25, Math.min(1.2, pitch + (ev.clientY - py) * .005)); px = ev.clientX; py = ev.clientY; });
+
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const _v = new THREE.Vector3();
+function boucle() {
+  requestAnimationFrame(boucle);
+  anime(Math.min(horloge.getDelta(), 0.05));
+  const c = centre;
+  camera.position.set(c.x + Math.sin(yaw) * Math.cos(pitch) * dist, c.y + Math.sin(pitch) * dist + 0.4, c.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(c);
+  sun.target.position.copy(c); sun.position.copy(c).add(SUN.clone().multiplyScalar(34));
+  renderer.render(scene, camera);
+  for (const b of bestioles) {
+    _v.set(b.x, b.k.fly + b.k.r * 2.4 + 0.5, 0).project(camera);
+    const vis = _v.z < 1 && Math.abs(_v.x) < 1.1;
+    b.etiq.style.display = vis ? '' : 'none';
+    b.etiq.style.left = (_v.x * 0.5 + 0.5) * innerWidth + 'px';
+    b.etiq.style.top = (-_v.y * 0.5 + 0.5) * innerHeight + 'px';
+  }
+  const i = renderer.info;
+  document.getElementById('stats').textContent = i.render.calls + ' appels · ' + i.render.triangles.toLocaleString('fr-FR') + ' tri.';
+}
+window.BANC = {
+  E,                       // le module moteur, pour que les scripts de test
+                           // n'aient pas à deviner le ?v= courant
+  bestioles, camera, scene,
+  voir: n => { const s = document.getElementById('vue'); s.value = n; s.onchange({ target: s }); },
+  /** Cadrage manuel pour les captures : facteur de distance, angles en radians. */
+  cadre: (n, f = 1, y = 0.5, p = 0.18) => { window.BANC.voir(n); dist *= f; yaw = y; pitch = p; },
+};
+boucle();
+</script>
+</body>
+</html>

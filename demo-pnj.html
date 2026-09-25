@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Habitants — banc d'essai</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1013;color:#e6e8ec;font:13px system-ui,sans-serif}
+canvas#game{display:block;width:100vw;height:100vh}
+#hud,#overlay,#fade,#loading{display:none!important}
+#panneau{position:fixed;left:14px;top:14px;background:rgba(18,20,25,.88);border:1px solid #2b303a;border-radius:9px;padding:10px 12px;line-height:1.8;z-index:9}
+#panneau b{color:#d9a441}
+#panneau select,#panneau button{background:#1a1d24;color:#e6e8ec;border:1px solid #39404d;border-radius:5px;padding:3px 6px}
+#etiq{position:fixed;inset:0;pointer-events:none;z-index:8}
+#etiq div{position:absolute;transform:translate(-50%,0);font:11px ui-monospace,monospace;color:#ffd98a;text-shadow:0 1px 3px #000}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="fade"></div>
+<div id="loading"><span>Chargement…</span></div>
+<div id="hud">
+  <canvas id="hearts" width="400" height="40"></canvas><div id="zone"></div>
+  <canvas id="minimap" width="170" height="170"></canvas><div id="counts"></div>
+  <div id="bossbar"><div id="bossfill"></div></div><div id="prompt"></div><div id="msg"></div>
+</div>
+<div id="overlay"><p id="ovtext"></p><div id="ovkeys"></div><div id="ovgo"></div></div>
+
+<div id="panneau">
+  <div><b>Habitants</b> — les six villageois riggés, chacun sur son idle</div>
+  <div><select id="mode"><option value="idle">idle</option><option value="marche">marche</option><option value="parle">parle</option></select>
+       <label><input type="checkbox" id="fond" checked> sol</label>
+       <span id="stats"></span></div>
+</div>
+<div id="etiq"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as E from './engine.js?v=27';
+import * as PNJ from './pnj.js';
+
+const { scene, camera, renderer } = E;
+E.player.mesh.visible = false;
+renderer.shadowMap.enabled = true;
+
+// éclairage neutre : on juge les matières, pas l'ambiance du jeu
+for (const o of [...scene.children]) if (o.isLight) scene.remove(o);
+scene.fog = null;
+scene.background = new THREE.Color(0x2a3440);
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x4a5a42, 1.05));
+const SUN = new THREE.Vector3(0.5, 0.72, 0.42).normalize();
+const sun = new THREE.DirectionalLight(0xfff2de, 3.0);
+sun.position.copy(SUN).multiplyScalar(32); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+{ const c = sun.shadow.camera; c.left = -14; c.right = 14; c.top = 9; c.bottom = -4; c.near = 1; c.far = 60; }
+scene.add(sun, sun.target);
+{ const rempl = new THREE.DirectionalLight(0x8fb4d8, 0.5); rempl.position.set(-8, 6, -10); scene.add(rempl); }
+
+const sol = new THREE.Mesh(new THREE.PlaneGeometry(70, 40), new THREE.MeshStandardMaterial({ color: 0x6f7a5e, roughness: 1 }));
+sol.rotation.x = -Math.PI / 2; sol.receiveShadow = true; scene.add(sol);
+document.getElementById('fond').onchange = e => { sol.visible = e.target.checked; };
+
+const gens = [], etiq = document.getElementById('etiq');
+// ce gabarit n'a pas de voile de chargement : on parle dans le panneau
+const dire = (t) => { const e = document.getElementById('stats'); if (e) e.textContent = t; };
+const NOMS = ['Aldegonde', 'Baptiste', 'Fernande', 'Désiré', 'Camille (rôdeuse)', 'Émile'];
+
+PNJ.prepare().then(ok => {
+  if (!ok) return dire('banque d\'assets indisponible');
+  for (let i = 0; i < 6; i++) {
+    const v = PNJ.buildVillageois(i);
+    if (!v) continue;
+    v.position.set((i - 2.5) * 2.25, 0, 0);
+    v.rotation.y = 0.2;
+    v.userData.talk = 0;
+    scene.add(v); gens.push(v);
+    const d = document.createElement('div'); d.textContent = NOMS[i] || ('habitant ' + i);
+    etiq.appendChild(d); v.userData.etiq = d;
+  }
+  window.BANC = {
+  E,                       // le module moteur, pour que les scripts de test
+                           // n'aient pas à deviner le ?v= courant gens, scene, camera,
+    mode: n => { document.getElementById('mode').value = n; },
+    vue: (y, p, d) => { yaw = y; pitch = p; dist = d; },
+    /** Change le point visé : indispensable pour cadrer un géant de 7 unités. */
+    viser: (x, y, z) => { cible.set(x, y, z); } };
+  boucle();
+}).catch(e => { dire('échec : ' + e.message); console.error(e); });
+
+const cible = new THREE.Vector3(0, 1.55, 0);
+let yaw = 0.12, pitch = 0.11, dist = 17;   // personnages à l'échelle du jeu (~2,85 unités)
+addEventListener('wheel', e => { dist = Math.max(1.2, Math.min(40, dist * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
+let drag = false, px = 0, py = 0;
+addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => drag = false);
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - px) * .006; pitch = Math.max(-0.2, Math.min(1.1, pitch + (e.clientY - py) * .005)); px = e.clientX; py = e.clientY; });
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const horloge = new THREE.Clock();
+const _v = new THREE.Vector3();
+function boucle() {
+  requestAnimationFrame(boucle);
+  const dt = Math.min(horloge.getDelta(), 0.05);
+  const mode = document.getElementById('mode').value;
+  for (const v of gens) { v.userData.talk = mode === 'parle' ? 1 : 0; PNJ.animeVillageois(v, dt, mode === 'marche'); }
+
+  camera.position.set(cible.x + Math.sin(yaw) * Math.cos(pitch) * dist, cible.y + Math.sin(pitch) * dist + 0.2, cible.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(cible);
+  sun.target.position.copy(cible); sun.position.copy(cible).add(SUN.clone().multiplyScalar(34));
+  renderer.render(scene, camera);
+  for (const v of gens) {
+    _v.set(v.position.x, 3.2, 0).project(camera);
+    v.userData.etiq.style.display = (_v.z < 1 && Math.abs(_v.x) < 1.1) ? '' : 'none';
+    v.userData.etiq.style.left = (_v.x * 0.5 + 0.5) * innerWidth + 'px';
+    v.userData.etiq.style.top = (-_v.y * 0.5 + 0.5) * innerHeight + 'px';
+  }
+  const i = renderer.info;
+  document.getElementById('stats').textContent = i.render.calls + ' appels · ' + i.render.triangles.toLocaleString('fr-FR') + ' tri.';
+}
+</script>
+</body>
+</html>

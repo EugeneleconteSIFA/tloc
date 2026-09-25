@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Démo décors — MegaKit</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#0e1013;color:#e6e8ec;font:13px system-ui,sans-serif}
+canvas{display:block}
+#hud{position:fixed;left:14px;top:14px;background:rgba(18,20,25,.86);border:1px solid #2b303a;border-radius:9px;padding:10px 12px;line-height:1.7;backdrop-filter:blur(6px)}
+#hud b{color:#d9a441}
+#hud kbd{background:#242830;border:1px solid #333a46;border-radius:4px;padding:1px 5px;font:11px ui-monospace,monospace}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:#0e1013;z-index:5;color:#9aa2b1}
+</style>
+</head>
+<body>
+<div id="load">chargement des modules…</div>
+<div id="hud">
+  <div><b>Démo décors</b> — village flamand en modules MegaKit</div>
+  <div id="stats"></div>
+  <div><kbd>glisser</kbd> tourner · <kbd>molette</kbd> zoom · <kbd>C</kbd> collisions · <kbd>W</kbd> fil de fer · <kbd>M</kbd> fusionner les statiques</div>
+</div>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as A from './assets.js';
+
+// ---------- rendu : mêmes réglages que engine.js ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xa8c2dc, 60, 190);
+const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 500);
+const SUN_DIR = new THREE.Vector3(0.55, 0.62, 0.45).normalize();
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x4d6b35, 0.55));
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+sun.position.copy(SUN_DIR).multiplyScalar(60);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const cam = sun.shadow.camera; cam.left = -40; cam.right = 40; cam.top = 40; cam.bottom = -40; cam.near = 1; cam.far = 160;
+scene.add(sun, sun.target);
+
+// ciel dégradé (équivalent de makeSky)
+{
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const g = c.getContext('2d').createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#2f6fc4'); g.addColorStop(.55, '#8fbfe8'); g.addColorStop(1, '#c6d6e2');
+  const x = c.getContext('2d'); x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(240, 24, 16), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide, fog: false }));
+  scene.add(sky);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new THREE.Scene().add(new THREE.Mesh(
+    new THREE.SphereGeometry(10, 16, 12), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })))).texture;
+}
+
+// sol
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: 0x6f7a5a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// ---------- catalogue utilisé ----------
+const M = 2;                       // pas de grille des modules, en mètres
+const WALL_H = 3.12;               // hauteur d'un niveau
+const WALLS = {
+  plaster: { plain: 'megakit:Wall_Plaster_Straight', win: 'megakit:Wall_Plaster_Window_Wide_Round', door: 'megakit:Wall_Plaster_Door_Round' },
+  brick:   { plain: 'megakit:Wall_UnevenBrick_Straight', win: 'megakit:Wall_UnevenBrick_Window_Wide_Round', door: 'megakit:Wall_UnevenBrick_Door_Round' },
+};
+const ROOFS = [ // [id, largeur, profondeur]
+  ['megakit:Roof_RoundTiles_4x4', 5.51, 5.56], ['megakit:Roof_RoundTiles_4x6', 5.51, 7.57],
+  ['megakit:Roof_RoundTiles_6x4', 8.25, 4.99], ['megakit:Roof_RoundTiles_6x6', 8.25, 8.03],
+  ['megakit:Roof_RoundTiles_6x8', 8.25, 9.68],
+];
+const GABLES = [['megakit:Roof_Front_Brick4', 4], ['megakit:Roof_Front_Brick6', 6], ['megakit:Roof_Front_Brick8', 8]];
+const EXTRA = [...GABLES.map(g => g[0]), 'megakit:Corner_Exterior_Brick', 'megakit:Floor_Brick', 'megakit:Prop_Chimney',
+  'megakit:Prop_Crate', 'megakit:Prop_Wagon', 'megakit:Prop_WoodenFence_Single', 'megakit:Prop_Vine1', 'megakit:Prop_Vine5',
+  'megakit:WindowShutters_Wide_Round_Open', 'megakit:Stairs_Exterior_Straight',
+  'megakit:Prop_ExteriorBorder_Straight1'];
+
+const IDS = [...Object.values(WALLS).flatMap(o => Object.values(o)), ...ROOFS.map(r => r[0]), ...EXTRA];
+
+// ---------- assemblage ----------
+const village = new THREE.Group(); scene.add(village);
+const boxes = [];   // collisions, au format engine.js
+const helpers = new THREE.Group(); helpers.visible = false; scene.add(helpers);
+
+function pickRoof(w, d) {
+  let best = ROOFS[0], err = Infinity;
+  for (const r of ROOFS) {
+    const e = Math.abs(r[1] - (w + 1.6)) + Math.abs(r[2] - (d + 1.6));
+    if (e < err) { err = e; best = r; }
+  }
+  return best;
+}
+
+/** maison de cw × cd cellules (2 m), floors niveaux, façade vers −Z */
+function house(cx, cz, cw, cd, floors, kind, rotY = 0) {
+  const g = new THREE.Group();
+  g.position.set(cx, 0, cz); g.rotation.y = rotY; village.add(g);
+  const W = WALLS[kind], w = cw * M, d = cd * M;
+  const x0 = -w / 2, z0 = -d / 2;
+
+  for (let f = 0; f < floors; f++) {
+    const y = f * WALL_H;
+    for (let i = 0; i < cw; i++) {
+      const x = x0 + M / 2 + i * M;
+      const front = (f === 0 && i === Math.floor(cw / 2)) ? W.door : (f === 0 ? W.plain : W.win);
+      g.add(A.spawn(front, { x, y, z: -z0, rotY: Math.PI }));
+      g.add(A.spawn(f === 0 ? W.plain : W.win, { x, y, z: z0, rotY: 0 }));
+      if (f > 0) g.add(A.spawn('megakit:WindowShutters_Wide_Round_Open', { x, y: y + 1.05, z: -z0 + .24, rotY: Math.PI }));
+    }
+    for (let i = 0; i < cd; i++) {
+      const z = z0 + M / 2 + i * M;
+      g.add(A.spawn(f === 0 ? W.plain : W.win, { x: x0, y, z, rotY: -Math.PI / 2 }));
+      g.add(A.spawn(f === 0 ? W.plain : W.win, { x: -x0, y, z, rotY: Math.PI / 2 }));
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])
+      g.add(A.spawn('megakit:Corner_Exterior_Brick', { x: sx * w / 2, y, z: sz * d / 2 }));
+  }
+  const [rid] = pickRoof(w, d);
+  g.add(A.spawn(rid, { y: floors * WALL_H, rotY: 0 }));
+  // pignons : ferment les deux extrémités du toit
+  const gab = GABLES.reduce((a, b) => Math.abs(b[1] - w) < Math.abs(a[1] - w) ? b : a)[0];
+  g.add(A.spawn(gab, { y: floors * WALL_H, z: -d / 2 + .05, rotY: 0 }));
+  g.add(A.spawn(gab, { y: floors * WALL_H, z: d / 2 - .05, rotY: Math.PI }));
+  g.add(A.spawn('megakit:Prop_Chimney', { x: w / 2 - 1, y: floors * WALL_H + 1.4, z: 0 }));
+
+  // collision : une boîte pour tout le volume
+  const c = Math.cos(rotY), s = Math.sin(rotY);
+  const hw = Math.abs(c) * w / 2 + Math.abs(s) * d / 2, hd = Math.abs(s) * w / 2 + Math.abs(c) * d / 2;
+  const b = { x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd, top: floors * WALL_H };
+  boxes.push(b);
+  const hm = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, b.top, hd * 2),
+    new THREE.MeshBasicMaterial({ color: 0xff4d4d, wireframe: true }));
+  hm.position.set(cx, b.top / 2, cz); helpers.add(hm);
+  return g;
+}
+
+function pave(x, z, nx, nz) {
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++)
+    village.add(A.spawn('megakit:Floor_Brick', { x: x + i * M, y: .01, z: z + j * M }));
+}
+
+// ---------- boucle ----------
+let yaw = .35, pitch = .30, dist = 44, target = new THREE.Vector3(0, 3, 0), wire = false, merged = null, info = '';
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'c') helpers.visible = !helpers.visible;
+  if (k === 'm' && !merged) { merged = A.mergeStatics(village); info = ' · fusionné : ' + merged.before + ' → ' + merged.after + ' meshes'; }
+  if (k === 'w') { wire = !wire; scene.traverse(o => { if (o.isMesh && o.material && !helpers.getObjectById(o.id)) { const m = Array.isArray(o.material) ? o.material : [o.material]; m.forEach(x => x.wireframe = wire); } }); }
+});
+let drag = false, px = 0, py = 0;
+addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => drag = false);
+addEventListener('pointermove', e => { if (!drag) return; yaw -= (e.clientX - px) * .006; pitch = Math.max(.08, Math.min(1.3, pitch + (e.clientY - py) * .005)); px = e.clientX; py = e.clientY; });
+addEventListener('wheel', e => { dist = Math.max(10, Math.min(140, dist * (1 + Math.sign(e.deltaY) * .1))); }, { passive: true });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+function tick() {
+  requestAnimationFrame(tick);
+  camera.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * dist, target.y + Math.sin(pitch) * dist, target.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(target);
+  sun.target.position.copy(target); sun.position.copy(target).add(SUN_DIR.clone().multiplyScalar(70));
+  renderer.render(scene, camera);
+  const i = renderer.info;
+  document.getElementById('stats').textContent =
+    i.render.calls + ' draw calls · ' + i.render.triangles.toLocaleString('fr-FR') + ' triangles' + info;
+}
+
+A.preload(IDS).then(() => {
+  pave(-14, -10, 15, 11);
+  house(-12, 0, 4, 3, 2, 'brick', 0);
+  house(0, 2, 3, 3, 3, 'plaster', 0);
+  house(11, -1, 4, 4, 2, 'plaster', Math.PI / 2);
+  village.add(A.spawn('megakit:Prop_Wagon', { x: 5, z: -8, rotY: .6 }));
+  village.add(A.spawn('megakit:Prop_Crate', { x: -6, z: -7 }));
+  village.add(A.spawn('megakit:Prop_Crate', { x: -5.1, z: -7.5, rotY: .5 }));
+  village.add(A.spawn('megakit:Prop_Vine5', { x: -8.2, z: -4.5, rotY: Math.PI / 2 }));
+  for (let i = 0; i < 5; i++) village.add(A.spawn('megakit:Prop_WoodenFence_Single', { x: -16 + i * 2.04, z: 9 }));
+  village.add(A.spawn('megakit:Prop_Vine1', 'megakit:Prop_Vine5', { x: -12, y: 0, z: -3.1 }));
+  document.getElementById('load').remove();
+  tick();
+}).catch(e => { document.getElementById('load').textContent = 'échec : ' + e.message; });
+</script>
+</body>
+</html>

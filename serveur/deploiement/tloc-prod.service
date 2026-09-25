@@ -1,0 +1,19 @@
+# /etc/systemd/system/tloc-prod.service — le serveur de tloc.kernse.fr, là où l'on joue
+[Unit]
+Description=The Legend of Camille — prod (tloc.kernse.fr)
+After=network.target
+
+[Service]
+Type=simple
+User=tloc
+# « site » est un lien vers la version en cours (releases/…) : la promotion le fait
+# pointer sur la nouvelle, puis redémarre ce service
+WorkingDirectory=/srv/tloc/prod/site/serveur
+EnvironmentFile=/etc/tloc/prod.env
+ExecStart=/srv/tloc/venv-prod/bin/uvicorn app:app --host 127.0.0.1 --port 8100 --workers 1
+Restart=always
+RestartSec=3
+# un seul worker : les salons du multi vivent en mémoire du processus
+
+[Install]
+WantedBy=multi-user.target
