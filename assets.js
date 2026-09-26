@@ -138,11 +138,31 @@ export function footprint(obj, shrink = 0) {
  * `mat` est une entrée de 03_textures/polyhaven/materiaux.json ; `w` et `h` sont les dimensions
  * réelles de la surface à couvrir, en mètres — même principe que brickScaled() dans engine.js.
  */
+/**
+ * Une texture dont l'image est DÉCODÉE PAR LE NAVIGATEUR, EN TÂCHE DE FOND, dès l'arrivée
+ * du fichier (createImageBitmap). Avec TextureLoader, le décodage des 240 webp se faisait
+ * au premier envoi à la carte graphique, sur le fil principal : 3,8 s de texSubImage2D au
+ * profil du chargement (27 septembre). L'image est retournée à la lecture
+ * (imageOrientation : flipY), d'où flipY = false sur la texture. Même usage que
+ * TextureLoader.load : la texture revient tout de suite, l'image la remplit ensuite.
+ */
+const decodeur = new THREE.ImageBitmapLoader().setOptions({ imageOrientation: 'flipY' });
+const enCours = new Set();
+export function chargerTexture(url, surErreur) {
+  const t = new THREE.Texture();
+  t.flipY = false;
+  const p = new Promise((fin) => decodeur.load(url, (bmp) => { t.image = bmp; t.needsUpdate = true; fin(); }, undefined, (e) => { if (surErreur) surErreur(e); fin(); }));
+  enCours.add(p); p.then(() => enCours.delete(p));
+  return t;
+}
+/** Les décodages pas encore finis : la préparation du rendu les attend avant d'envoyer. */
+export function texturesEnAttente() { return [...enCours]; }
+
 const TEX = new Map();
 function tex(url, srgb, rx, ry) {
   const k = url + '|' + srgb;
   if (!TEX.has(k)) {
-    const t = new THREE.TextureLoader().load(url);
+    const t = chargerTexture(url);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;

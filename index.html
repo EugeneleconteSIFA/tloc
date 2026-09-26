@@ -134,6 +134,52 @@
 <script type="importmap">
 { "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
 </script>
+<!-- Tous les modules demandés d'un coup : sans cette liste, le navigateur ne découvre
+     chaque module qu'après avoir lu celui qui l'importe — cinq à six allers-retours en
+     cascade avant de pouvoir commencer. Les adresses doivent être EXACTEMENT celles des
+     import (même ?v=), sinon le module est chargé deux fois. bump.py ne touche que les
+     ?v= d'engine.js et des scripts : le lien d'engine.js suit (même motif « src= »/« href= »
+     à vérifier après un bump). APRÈS l'importmap : avant elle, les modules préchargés ne
+     savaient pas résoudre « three », et le chargement restait bloqué à 0 %. -->
+<link rel="modulepreload" href="engine.js?v=27">
+<link rel="modulepreload" href="lib/three.module.js">
+<link rel="modulepreload" href="carte.js">
+<link rel="modulepreload" href="etat.js">
+<link rel="modulepreload" href="nature.js">
+<link rel="modulepreload" href="foret.js">
+<link rel="modulepreload" href="pnj.js">
+<link rel="modulepreload" href="citadelle.js">
+<link rel="modulepreload" href="quartier.js">
+<link rel="modulepreload" href="promenade.js">
+<link rel="modulepreload" href="quetes.js">
+<link rel="modulepreload" href="hud.js">
+<link rel="modulepreload" href="tloc-compte.js?v=1">
+<link rel="modulepreload" href="bourse.js">
+<link rel="modulepreload" href="look.js">
+<link rel="modulepreload" href="atlas.js">
+<link rel="modulepreload" href="assets.js">
+<link rel="modulepreload" href="menuiserie.js">
+<link rel="modulepreload" href="campagne.js">
+<link rel="modulepreload" href="village.js">
+<link rel="modulepreload" href="banque.js">
+<link rel="modulepreload" href="geants.js">
+<link rel="modulepreload" href="locomotion.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/EffectComposer.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/RenderPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/ShaderPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/UnrealBloomPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/BokehPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/OutputPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/MaskPass.js">
+<link rel="modulepreload" href="lib/addons/postprocessing/Pass.js">
+<link rel="modulepreload" href="lib/addons/utils/BufferGeometryUtils.js">
+<link rel="modulepreload" href="lib/addons/utils/SkeletonUtils.js">
+<link rel="modulepreload" href="lib/addons/geometries/RoundedBoxGeometry.js">
+<link rel="modulepreload" href="lib/addons/loaders/GLTFLoader.js">
+<link rel="modulepreload" href="lib/addons/shaders/CopyShader.js">
+<link rel="modulepreload" href="lib/addons/shaders/LuminosityHighPassShader.js">
+<link rel="modulepreload" href="lib/addons/shaders/BokehShader.js">
+<link rel="modulepreload" href="lib/addons/shaders/OutputShader.js">
 <script type="module" src="game.js?v=27"></script>
 <script type="module" src="tloc-multi.js?v=27"></script>
 </body>

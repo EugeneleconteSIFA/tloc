@@ -8,6 +8,7 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { chargerTexture, texturesEnAttente } from './assets.js';     // les textures décodées en tâche de fond
 export { THREE };
 
 // =====================================================================
@@ -43,6 +44,10 @@ export function pointInPoly(px, pz, poly) {
 // =====================================================================
 const canvas = document.getElementById('game');
 export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+// La vérification des shaders (getProgramInfoLog) force le navigateur à finir chaque
+// compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
+// pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
+renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -696,8 +701,7 @@ const phCache = new Map();
 function phTex(slug, map) {
   const k = slug + '/' + map;
   if (!phCache.has(k)) {
-    const t = new THREE.TextureLoader().load(PH_BASE + slug + '/' + map + '.webp',
-      undefined, undefined, () => console.warn('texture Poly Haven absente :', k));
+    const t = chargerTexture(PH_BASE + slug + '/' + map + '.webp', () => console.warn('texture Poly Haven absente :', k));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (map === 'couleur') t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -3157,7 +3161,8 @@ export function mergeStatics() {
         const n = ge.attributes.position.count;
         ge.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3));
       }
-      if (!ge.index) ge = ge.toNonIndexed(); else ge = ge.toNonIndexed();
+      // déjà à plat, toNonIndexed() ne fait que râler : 1 281 avertissements à chaque chargement
+      if (ge.index) ge = ge.toNonIndexed();
       geos.push(ge);
     }
     const mg = mergeGeometries(geos, false);
@@ -3411,6 +3416,9 @@ export function finCharge() {
 const CARTES_TEX = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap', 'displacementMap', 'lightMap'];
 async function prechaufferRendu() {
   const t0 = performance.now(), textures = new Set();
+  // les images décodées en tâche de fond (assets.js) : on les attend, sinon celles qui
+  // arrivent après partiraient à la première image du jeu — un à-coup juste après « Prêt »
+  { const att = texturesEnAttente(); if (att.length) { peindreCharge(`préparation du rendu — ${att.length} images à décoder`, chargeP); await Promise.all(att); } }
   scene.traverse((o) => {
     const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
     for (const m of ms) for (const k of CARTES_TEX) if (m && m[k] && m[k].isTexture && m[k].image) textures.add(m[k]);

@@ -15,6 +15,9 @@ touches = []
 for f in glob.glob('*.html'):
     s = open(f, encoding='utf-8').read()
     n = re.sub(r'src="([A-Za-z0-9_-]+)\.js(\?v=[^"]*)?"', r'src="\1.js?v=' + v + '"', s)
+    # le préchargement d'engine.js (index.html) : même version que ses import, sinon il
+    # précharge un fichier que personne ne demande
+    n = re.sub(r'href="engine\.js\?v=[^"]*"', 'href="engine.js?v=' + v + '"', n)
     if n != s: open(f, 'w', encoding='utf-8').write(n); touches.append(f)
 
 # tout fichier qui importe engine.js, quel qu'il soit

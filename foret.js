@@ -265,8 +265,7 @@ export async function chargerModeles() {
 export const FOR_BASE = 'assets_back/03_textures/foret/';
 const FRONDES = [[0.093, 0.230, 0.111, 0.949], [0.321, 0.453, 0.024, 0.857], [0.517, 0.664, 0.026, 0.966], [0.724, 0.834, 0.109, 1.000]];
 export function carteForet(nom) {
-  const t = new THREE.TextureLoader().load(FOR_BASE + nom + '.webp', undefined, undefined,
-    () => console.warn('carte de forêt absente :', nom));
+  const t = A.chargerTexture(FOR_BASE + nom + '.webp', () => console.warn('carte de forêt absente :', nom));
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

@@ -16,9 +16,18 @@ import { THREE, clamp, lerp, rand, TAU, distSeg, pointInPoly, scene, T, mat, pbr
 export const patinerMat = (m, o) => patiner(m, o);
 import { PARTAGE } from './etat.js';
 
+// Les quatre fichiers de la carte partent ENSEMBLE, dès l'évaluation du module : attendus
+// l'un après l'autre (chaque `await fetch` plus bas), ils coûtaient quatre allers-retours au
+// serveur avant la première étape du chargement. Un échec rend une réponse « pas ok ».
+const aTelecharger = (u) => fetch(u).catch((e) => ({ ok: false, status: e.message }));
+const TELECHARGES = {
+  citadelle: aTelecharger('carte/citadelle.json'), relief: aTelecharger('carte/relief.json'),
+  ign: aTelecharger('carte/ign.json'), cuit: aTelecharger('carte/relief-cuit.bin'),
+};
+
 export let TRACE = null;
 try {
-  TRACE = construireTrace(await fetch('carte/citadelle.json').then((r) => {
+  TRACE = construireTrace(await TELECHARGES.citadelle.then((r) => {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   }));
@@ -37,7 +46,7 @@ try {
 
 export let MNT = null;
 try {
-  MNT = await fetch('carte/relief.json').then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  MNT = await TELECHARGES.relief.then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   console.log('relief IGN : %d × %d au pas de %g m, de %+.2f à %+.2f m', MNT.nx, MNT.nz, MNT.pas, MNT.min, MNT.max);
 } catch (e) { console.warn('relief IGN indisponible, terrain plat :', e.message); }
 
@@ -61,7 +70,7 @@ export function mntBrut(x, z) {
 
 export let IGN = { bati: [], haies: [], foret: [], eau: [], cours: [] };
 try {
-  IGN = await fetch('carte/ign.json').then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  IGN = await TELECHARGES.ign.then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   console.log('couches IGN : %d bâtiments (%d avec hauteur), %d haies, %d parcelles de forêt',
     IGN.bati.length, IGN.bati.filter((b) => b.h > 0).length, IGN.haies.length, IGN.foret.length);
 } catch (e) { console.warn('couches IGN indisponibles :', e.message); }
@@ -606,13 +615,47 @@ export function eauVisible(x, z) {
 // La grille n'est publiée qu'une fois pleine : pendant la cuisson, terrainNaturel()
 // appelle margeLieux() -> roadPts() -> preparerPonts(), et un RELIEF déjà assigné mais
 // encore à zéro faisait croire le relief prêt — les ponts se calaient sur un sol plat.
+// LE RELIEF CUIT D'AVANCE. 724 000 appels à terrainNaturel, les mêmes à chaque chargement :
+// 2,5 s de calcul (règle 8). Le résultat est rangé dans carte/relief-cuit.bin, en
+// centimètres, chaque ligne en différences d'un point au suivant (des petits nombres,
+// que gzip réduit bien) ; `node bancs/cuire-relief.mjs` le refait. Garde-fou : on
+// recalcule 400 points pris dans toute la grille ; si un seul s'écarte de plus de 2 cm,
+// la carte a changé depuis la cuisson et on recalcule tout, comme avant.
+let reliefCuit = null;
+try {
+  const r = await TELECHARGES.cuit;
+  if (r.ok) reliefCuit = new Int16Array(await r.arrayBuffer());
+} catch (e) { /* pas de relief cuit : on calcule */ }
+
 export function cuireRelief() {
   const g = new Float32Array(RG_N * RG_N);
+  const recuire = typeof window !== 'undefined' && window.__CUIRE_RELIEF;
+  if (reliefCuit && reliefCuit.length === RG_N * RG_N && !recuire) {
+    for (let j = 0; j < RG_N; j++) {
+      let v = 0;
+      for (let i = 0; i < RG_N; i++) { v += reliefCuit[j * RG_N + i]; g[j * RG_N + i] = v / 100; }
+    }
+    let ecart = 0;
+    for (let k = 0; k < 400; k++) {
+      const n = (k * 1811 + 97) % (RG_N * RG_N), i = n % RG_N, j = (n / RG_N) | 0;
+      ecart = Math.max(ecart, Math.abs(g[n] - terrainNaturel(RG_0 + i * RG_PAS, RG_0 + j * RG_PAS)));
+    }
+    if (ecart < 0.02) { RELIEF = g; return; }
+    console.warn('relief cuit périmé (écart %s m) : on recalcule — refaire node bancs/cuire-relief.mjs', ecart.toFixed(2));
+  }
   for (let j = 0; j < RG_N; j++) for (let i = 0; i < RG_N; i++) {
     const x = RG_0 + i * RG_PAS, z = RG_0 + j * RG_PAS;
     g[j * RG_N + i] = terrainNaturel(x, z);
   }
   RELIEF = g;
+  if (recuire) {                                   // pour bancs/cuire-relief.mjs
+    const c = new Int16Array(RG_N * RG_N);
+    for (let j = 0; j < RG_N; j++) {
+      let prec = 0;
+      for (let i = 0; i < RG_N; i++) { const v = Math.round(g[j * RG_N + i] * 100); c[j * RG_N + i] = v - prec; prec = v; }
+    }
+    window.__RELIEF_CUIT = c;
+  }
 }
 // LE SOL MARCHABLE EST LE SOL DESSINÉ. Le maillage de la plaine est plus lâche que la
 // grille du relief (3 m) : ses triangles coupent les buttes et les berges en corde, et
