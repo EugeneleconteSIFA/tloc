@@ -1044,8 +1044,10 @@ function peindreArmure() {
 // (le serveur, après 45 s). Le modèle (Quaternius, CC0 ; animaux/glb.py) ne se charge
 // qu'en instance, à l'arrivée du premier cheval : le solo ne le paie pas.
 // SELLE : de combien la pose assise (bassin à hauteur de chaise) monte pour tomber sur le dos
-// du cheval ; DOS_CHEVAL : le modèle regarde vers −z, le joueur vers +z
-const CHEVAL_PV = 10, CHEVAL_VITESSE = 1.7, SELLE = 0.62, DOS_CHEVAL = Math.PI;
+// du cheval. Le modèle regarde vers +z, comme le joueur. SELLE_AV : de combien le cheval
+// est avancé sous Camille pour qu'elle tombe au creux du dos (réglé au banc, de profil :
+// à 0, elle était déjà un peu sur la croupe).
+const CHEVAL_PV = 10, CHEVAL_VITESSE = 1.7, SELLE = 0.62, SELLE_AV = -0.1;
 let modeleCheval = null, chargeCheval = null, cheval = null, monte = false, chevalPv = CHEVAL_PV;
 let vitessePied = 0, arretT = 0, brouteT = 0, ecurie = null;
 
@@ -1102,7 +1104,13 @@ function majCheval() {
     if (monte && !etaitMonte) { chevalPv = o.pv || CHEVAL_PV; vitessePied = vitessePied || player.speed; player.speed = vitessePied * CHEVAL_VITESSE; }
     if (!monte && etaitMonte) player.speed = vitessePied || player.speed;
     G.monte = monte; G.selle = SELLE;
-    if (o.porteur == null && !o.retour) { cheval.g.position.set(o.p[0], o.y, o.p[1]); cheval.g.rotation.y = (o.yaw || 0) + DOS_CHEVAL; }
+    if (o.porteur == null && !o.retour) { cheval.g.position.set(o.p[0], o.y, o.p[1]); cheval.g.rotation.y = o.yaw || 0; }
+    // en selle : Camille se pose sur le dos du cheval, dans son axe (il ne saute plus vers elle)
+    if (monte && !etaitMonte) {
+      const y = o.yaw || 0;
+      player.pos.set(o.p[0] - Math.sin(y) * SELLE_AV, player.pos.y, o.p[1] - Math.cos(y) * SELLE_AV);
+      player.yaw = G.camYaw = y;
+    }
     peindreArmure();
   });
 }
@@ -1116,7 +1124,8 @@ function monter() { if (!monte) envoyer({ t: 'objet-prendre', o: 'cheval' }); }
 function descendre() {
   if (!monte) return;
   const p = player, dx = Math.cos(p.yaw), dz = -Math.sin(p.yaw);     // on met pied à terre sur la gauche
-  envoyer({ t: 'objet-poser', o: 'cheval', p: [+p.pos.x.toFixed(2), +p.pos.z.toFixed(2)], y: +p.pos.y.toFixed(2), pv: chevalPv, yaw: +p.yaw.toFixed(2) });
+  const cx = p.pos.x + Math.sin(p.yaw) * SELLE_AV, cz = p.pos.z + Math.cos(p.yaw) * SELLE_AV;     // là où est le cheval
+  envoyer({ t: 'objet-poser', o: 'cheval', p: [+cx.toFixed(2), +cz.toFixed(2)], y: +p.pos.y.toFixed(2), pv: chevalPv, yaw: +p.yaw.toFixed(2) });
   p.pos.x += dx * 1.4; p.pos.z += dz * 1.4;
 }
 // le cheval prend les coups avant son cavalier
@@ -1151,7 +1160,7 @@ function tickCheval(now) {
     const a = autres.get(o.porteur);
     if (a) { qui = { x: a.mesh.position.x, y: a.mesh.position.y, z: a.mesh.position.z, yaw: a.yaw }; vitesse = a.marche * 12; }
   }
-  if (qui) { cheval.g.position.set(qui.x, qui.y, qui.z); cheval.g.rotation.y = qui.yaw + DOS_CHEVAL; }
+  if (qui) { cheval.g.position.set(qui.x + Math.sin(qui.yaw) * SELLE_AV, qui.y, qui.z + Math.cos(qui.yaw) * SELLE_AV); cheval.g.rotation.y = qui.yaw; }
   // les allures : galop, pas, et à l'arrêt il broute — et reprend des forces
   if (vitesse > 9) cheval.jouer('Gallop', 0.2);
   else if (vitesse > 0.8) cheval.jouer('Walk', 0.25);
