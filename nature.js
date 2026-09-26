@@ -28,7 +28,7 @@ import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
   bastionAt, essenceAt, libreNature, margeBatie, margePlate, nearHouse, nearTown, sdEau, sdPent, sdPoly,
-  solPlaine, sousBois,
+  solPlaine, sousBois, boisDuParc,
 } from './carte.js';
 
 export const perf = { leaves: [], grass: null, flowers: [], reeds: null, roots: null, lights: [] };
@@ -736,8 +736,10 @@ export function buildVegetation() {
     if (!blocked(p[0], p[1], 3, false, 0)) cour.push({ x: p[0], z: p[1] });
   const FRT = FORET.planterForet({
     libre: libreNature,
-    essence: essenceAt,          // BD Forêt v2 : l'inventaire dit quoi planter où
-    bois: sousBois,
+    // BD Forêt v2 : l'inventaire dit quoi planter où ; le bois du parc (carte.js), que
+    // l'inventaire ignore, est un bois de feuillus comme le vrai
+    essence: (x, z) => essenceAt(x, z) || (boisDuParc(x, z) > 0.3 ? 'Feuillus' : null),
+    bois: (x, z) => Math.max(sousBois(x, z), boisDuParc(x, z)),
     marge: margePlate,
     sol: solPlaine,
     rayons: { lis0: LISIERE_R0, lis1: LISIERE_R1, marche: MARCHE_R, plaine: PLAINE_R },

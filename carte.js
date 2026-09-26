@@ -275,7 +275,7 @@ export function enQuartier(x, z, marge = 0) {
 export function libreNature(x, z, marge = 0, rMax = PLAINE_R - 8) {
   if (Math.hypot(x, z) > rMax) return false;
   if (sdEnceinte(x, z) > -(marge + 4)) return false;      // rien ne pousse hors du relevé
-  if (sdPent(x, z) < GLACIS + marge) return false;                               // glacis dégagé
+  if (sdPent(x, z) < LISIERE_GLACIS + marge) return false;                       // la bande nue autour du fossé
   if (nearTown(x, z, marge + 4)) return false;
   if (Math.hypot(x - HOUSE.x, z - HOUSE.z) < 34 + marge) return false;
   if (Math.hypot(x - MAGE.x, z - MAGE.z) < MAGE.clair + marge) return false;   // clairière du vieux mage
@@ -2288,6 +2288,32 @@ export function haiesIGN() {
   g.add(m);
   return g;
 }
+// LE BOIS DU PARC DE LA CITADELLE. Le relevé de Lille ne compte que 24 ha de « bois »
+// autour de la place (dont 16 pour le bois de la Deûle) : entre le glacis et la Deûle, le
+// jeu montrait une prairie rase bordée d'une allée. Le vrai site est un massif continu — le
+// parc de la Citadelle et le bois de Boulogne —, percé d'allées et de pelouses (Eugène,
+// 27 septembre). On boise donc tout l'anneau qui va du pied du glacis à PARC_BOIS_R, sauf
+// les pelouses, prairies et jardins relevés (lisière de 12 m), avec des trouées lentes. Les
+// allées, la Deûle, le bourg et les lieux du jeu restent libres : libreNature y veille.
+export const PARC_BOIS_R = 400;          // distance au tracé de la place où le bois s'éclaircit
+// La nature ne s'arrêtait qu'au bout du glacis (110 m après le fossé) : une pelouse de cent
+// mètres faisait le tour de la place. Le glacis est aujourd'hui le bois de Boulogne : on
+// plante dès 40 m après le fossé, derrière la voie des combattants (MOAT_OUT + 24).
+export const LISIERE_GLACIS = MOAT_OUT + 40;
+export function boisDuParc(x, z) {
+  const sd = sdPent(x, z);
+  if (sd < LISIERE_GLACIS || sd > PARC_BOIS_R) return 0;
+  let k = lisse((sd - LISIERE_GLACIS) / 25) * (1 - lisse((sd - (PARC_BOIS_R - 90)) / 90));
+  k *= 0.72 + 0.28 * Math.sin(x / 41 + 1.3) * Math.sin(z / 53 - 0.7);      // trouées et bosquets
+  if (k <= 0.02) return 0;
+  for (const couche of [LILLE.parcs, LILLE.herbe, LILLE.jardins]) for (const o of couche) {
+    if (Math.hypot(x - o.c[0], z - o.c[1]) - o.rr > 12) continue;
+    const s = sdPoly(x, z, o.poly);
+    if (s < 12) k = Math.min(k, lisse(Math.max(0, s) / 12));
+  }
+  return k;
+}
+
 // densité de sous-bois relevée, 0 à 1, avec une lisière de 14 m
 
 export function sousBois(x, z) {
