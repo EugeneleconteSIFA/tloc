@@ -154,8 +154,13 @@ function peindre() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const IMPORTANCE = { maison: 0, village: 1, beffroi: 2, donjon: 2, place: 3, chapelle: 4, estaminet: 4, moulin: 4, mage: 4, poterne: 5 };
   const pts = [];
+  let quartier = null;
   for (const l of lieux) {
     const x = ax(l.x), y = az(l.z);
+    // LE VILLAGE n'est pas un point parmi d'autres : c'est le quartier où tiennent le
+    // beffroi, l'estaminet, la chapelle et l'école. Point et nom classiques, il perdait
+    // toujours la place à ses voisins et ne s'écrivait jamais (Eugène, 27 septembre).
+    if (l.id === 'village') { if (x > -80 && x < W + 80 && y > -40 && y < H + 40) quartier = { l, x, y }; continue; }
     if (x < -80 || x > W + 80 || y < -40 || y > H + 40) continue;
     // sa propre maison, Camille la connaît : elle n'a pas à la « découvrir »
     const vu = estDecouvert(l.id) || l.id === 'maison';
@@ -169,6 +174,20 @@ function peindre() {
   const pris = pts.map((p) => [p.x - 7, p.y - 7, p.x + 7, p.y + 7]);      // les points eux-mêmes
   const ecrits = [];
   const libre = (r) => pris.every((q) => r[2] < q[0] || r[0] > q[2] || r[3] < q[1] || r[1] > q[3]);
+  // le nom du quartier d'abord, plus grand, à l'écart de la grappe de points du bourg
+  if (quartier) {
+    const vu = estDecouvert('village');
+    ctx.font = (vu ? 'italic bold ' : 'italic ') + '16px Georgia, serif';
+    const nom = 'LE VILLAGE', w = ctx.measureText(nom).width + 16, h = 18;
+    for (const [dx, dy] of [[0, 46], [0, -46], [w / 2 + 40, 30], [-w / 2 - 40, 30], [w / 2 + 40, -30], [-w / 2 - 40, -30], [0, 70], [0, -70]]) {
+      const cx = quartier.x + dx, cy = quartier.y + dy, r = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+      if (!libre(r)) continue;
+      pris.push(r);
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,11,22,.9)'; ctx.strokeText(nom, cx, cy);
+      ctx.fillStyle = vu ? '#f4c98a' : 'rgba(210,216,230,.75)'; ctx.fillText(nom, cx, cy);
+      break;
+    }
+  }
   pts.sort((a, b) => a.rang - b.rang);
   for (const p of pts) {
     const nom = p.l.nom.charAt(0).toUpperCase() + p.l.nom.slice(1);

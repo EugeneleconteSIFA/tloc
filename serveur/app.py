@@ -59,7 +59,10 @@ BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mise
 # l'arbitrage. OBJET_RETOUR ne sert plus qu'aux objets qui reviennent seuls.
 # Le cheval (27 septembre) : pris à l'écurie par qui le monte, laissé là où l'on descend ;
 # mort, il revient à l'écurie après OBJET_RETOUR secondes. Sa vie (pv) suit l'objet.
-OBJETS = ("armure", "bouclier", "cheval")
+# Deux exemplaires de certains (Eugène, 27 septembre) : chaque objet a donc son identifiant
+# (« armure-1 », « cheval-blanc »…), son type dit ce qu'il fait. L'arc se garde, comme l'écu.
+OBJETS = ("armure", "bouclier", "cheval", "arc")
+OBJETS_MAX = 10
 CHEVAL_PV = 10
 OBJET_PORTEE = 4.0
 OBJET_RETOUR = int(os.environ.get("TLOC_OBJET_RETOUR", 45))
@@ -1227,7 +1230,7 @@ class Salon:
         p = qui.etat.get("p")
         for k in rendus:
             self.objets[k]["porteur"] = None
-            if k == "cheval" and p:                  # le cheval reste là où son cavalier l'a quitté
+            if self.objets[k]["type"] == "cheval" and p:   # le cheval reste là où son cavalier l'a quitté
                 self.objets[k].update(p=[p[0], p[2]], y=p[1])
         if rendus:
             await self.annoncer_objets()
@@ -1604,15 +1607,15 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             # (et complètent ceux qui manquent : un salon ouvert avant l'arrivée du cheval)
             if moi.est_bot:
                 return
-            for o in (m.get("objets") or [])[:len(OBJETS)]:
+            for o in (m.get("objets") or [])[:OBJETS_MAX]:
                 try:
-                    typ, x, z, y = o["type"], float(o["p"][0]), float(o["p"][1]), float(o.get("y", 0))
+                    oid, typ, x, z, y = str(o["id"]), o["type"], float(o["p"][0]), float(o["p"][1]), float(o.get("y", 0))
                 except (KeyError, TypeError, ValueError, IndexError):
                     continue
-                if typ in OBJETS and typ not in salon.objets:
-                    salon.objets[typ] = {"type": typ, "p": [x, z], "y": y, "porteur": None, "retour": None}
+                if typ in OBJETS and re.fullmatch(r"[a-z]+(-[a-z0-9]+)?", oid) and oid not in salon.objets and len(salon.objets) < OBJETS_MAX:
+                    salon.objets[oid] = {"type": typ, "p": [x, z], "y": y, "porteur": None, "retour": None}
                     if typ == "cheval":
-                        salon.objets[typ].update(maison={"p": [x, z], "y": y}, pv=CHEVAL_PV)
+                        salon.objets[oid].update(maison={"p": [x, z], "y": y}, pv=CHEVAL_PV)
             await salon.annoncer_objets()
 
         elif t == "objet-prendre":
@@ -1620,10 +1623,12 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             p = moi.etat.get("p")
             if not o or not p or o["porteur"] is not None or o["retour"] or o.get("brise") or moi.est_bot:
                 return
+            if any(v["porteur"] == moi.id and v["type"] == o["type"] for v in salon.objets.values()):
+                return                                      # une armure, un cheval… à la fois
             if ((p[0] - o["p"][0]) ** 2 + (p[2] - o["p"][1]) ** 2) ** 0.5 > OBJET_PORTEE:
                 return
             o["porteur"] = moi.id
-            await salon.annoncer_objets(evt="pris", o=o["type"], par=moi.id, perso=moi.perso)
+            await salon.annoncer_objets(evt="pris", o=o["type"], id=str(m.get("o")), par=moi.id, perso=moi.perso)
 
         elif t == "objet-poser":
             # descendre de cheval : il reste où il est, avec la vie qu'il lui reste
@@ -1636,7 +1641,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             except (KeyError, TypeError, ValueError, IndexError):
                 pass
             o["porteur"] = None
-            await salon.annoncer_objets(evt="pose", o="cheval", par=moi.id, perso=moi.perso)
+            await salon.annoncer_objets(evt="pose", o="cheval", id=str(m.get("o")), par=moi.id, perso=moi.perso)
 
         elif t == "objet-casse":
             o = salon.objets.get(str(m.get("o")))
@@ -1644,18 +1649,19 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 return
             if o["type"] != "cheval":
                 o.update(porteur=None, brise=True)      # jusqu'à la manche suivante (raz_objets)
-                await salon.annoncer_objets(evt="casse", o=o["type"], par=moi.id, perso=moi.perso)
+                await salon.annoncer_objets(evt="casse", o=o["type"], id=str(m.get("o")), par=moi.id, perso=moi.perso)
                 return
             # le cheval tombe : un cheval frais revient à l'écurie
             o.update(porteur=None, retour=time.time() + OBJET_RETOUR, p=list(o["maison"]["p"]), y=o["maison"]["y"], pv=CHEVAL_PV)
-            await salon.annoncer_objets(evt="casse", o="cheval", par=moi.id, perso=moi.perso)
+            oid = str(m.get("o"))
+            await salon.annoncer_objets(evt="casse", o="cheval", id=oid, par=moi.id, perso=moi.perso)
             marque = o["retour"]
 
             async def revenir():
                 await asyncio.sleep(OBJET_RETOUR)
                 if o["retour"] == marque:
                     o["retour"] = None
-                    await salon.annoncer_objets(evt="retour", o="cheval")
+                    await salon.annoncer_objets(evt="retour", o="cheval", id=oid)
             asyncio.create_task(revenir())
 
         elif t == "coup":

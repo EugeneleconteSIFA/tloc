@@ -311,3 +311,18 @@ rentre à l'écurie, reposé. Les autres voient le cavalier en selle (`ch` dans 
   réglages `MONTE`, choisis au banc entre une quinzaine d'essais). Pas encore : une vraie
   frappe en selle (le coup rejoue le clip debout), et les bots ne montent pas.
 
+### Deux de chaque, et l'arc (27 septembre)
+
+Eugène : deux enclos à chevaux, deux spots d'arc, deux d'armure. Chaque objet a donc un
+identifiant (`PLAN_OBJETS`, tloc-multi.js) et un type ; le serveur refuse qu'un joueur
+porte deux objets du même type. Où ils sont :
+- `armure-1`, `armure-2` : deux casernes (à défaut de la seconde, le donjon) ;
+- `bouclier` : la place d'Armes ;
+- `arc-1` : la poterne ; `arc-2` : la chapelle Saint-Roch. L'arc donne l'arc (s'il manque)
+  et vingt flèches ; il repart avec la manche (`arcPris`), pas celui du coffre de Turenne ;
+- `cheval-beige` (cheval.glb) : l'écurie du moulin ; `cheval-blanc` (cheval_blanc.glb) :
+  l'écurie de la chaumière du vieux mage, à l'autre bout de la carte.
+Sur la carte du beffroi, « LE VILLAGE » s'écrit maintenant en nom de quartier (atlas.js) :
+comme simple point, il perdait toujours la place au beffroi, à l'estaminet, à la chapelle
+et à l'école, et ne s'écrivait jamais.
+
