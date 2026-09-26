@@ -586,6 +586,19 @@ de Lille, écu, cuirasse) et la masse de Phinaert enfin dans sa main (`prise()`,
 la main du géant est gonflée ×15 × 9 × 13, un décalage fixe l'envoyait à 75 cm). Reste :
 la frappe en selle, 6, 3, 7.
 
+### J. Le style : réaliste, pas cartoon (Eugène, 27 septembre)
+
+« Tu as tendance à créer des choses avec un thème cartoon alors que le thème avec les
+textures est plus réaliste. » Règle : tout objet neuf prend une matière Poly Haven
+(`phMat`) ; un objet qui porte un DESSIN (armoiries, enseigne) passe par `phPeint`
+(engine.js) : le dessin remplace la couleur, le relief et la rugosité de la matière
+restent. Couleurs passées et usure plutôt que teintes pures. Repris le 27 : épée (plaque
+de métal), rondache et écu (peints sur planches, usés), cuirasse (cuir sur bois patiné,
+mailles et plates sur métal), devantures et enseignes (bois patiné), lanternes et potences
+(fer), présentoirs, bonnet (tissu), gâteau (relief sans couleur), cheval (normales
+lissées au chargement : il était ombré par facette). Reste à reprendre : ce qui date
+d'avant (bestiaire en primitives, quelques décors du bourg) si Eugène le relève.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

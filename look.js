@@ -11,7 +11,7 @@
 //     leur NOM (_Body, _Legs, Hair…), et la coiffure se regreffe depuis la banque.
 
 import {
-  G, SFX, THREE, camera, makeHead, player, saveGame, showMessage, state,
+  G, SFX, THREE, camera, makeHead, phMat, player, saveGame, showMessage, state,
 } from './engine.js?v=27';
 
 // =====================================================================
@@ -297,7 +297,8 @@ function caler(o, [dy, s]) {
 // « Hair_… » pour partir avec les autres coiffures quand on en change.
 function bonnet(perso, L) {
   const tete = perso.userData.os && perso.userData.os.Head; if (!tete) return;
-  const laine = new THREE.MeshStandardMaterial({ color: new THREE.Color(TUNIQUE[L.tunique].hex).multiplyScalar(0.8), roughness: 1 });
+  // un vrai tissu (Poly Haven) teint de la couleur de la tunique : une teinte unie faisait jouet
+  const laine = phMat('fabric_pattern_07', 0.12, 0.12, { color: new THREE.Color(TUNIQUE[L.tunique].hex).multiplyScalar(0.9).getHex(), roughness: 1 });
   const g = new THREE.Group(); g.name = 'Hair_Bonnet';
   const calotte = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), laine);
   calotte.scale.set(1.02, 1.12, 1.04); calotte.name = 'Hair_BonnetCalotte'; g.add(calotte);

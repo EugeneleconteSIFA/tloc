@@ -733,6 +733,19 @@ export function phMat(slug, uSize, vSize, extra = {}) {
   return m;
 }
 
+/**
+ * Une matière Poly Haven qui porte un DESSIN : armoiries d'un écu, motif d'une enseigne.
+ * Le dessin (un canevas) remplace la couleur de la matière ; son relief et sa rugosité
+ * restent — le bois garde son grain sous la peinture, le fer ses rayures. Peint seul sur
+ * un matériau uni, le même dessin faisait jouet à côté des murs photographiés (Eugène,
+ * 27 septembre : « tu as tendance à créer des choses avec un thème cartoon »).
+ */
+export function phPeint(slug, uSize, vSize, dessin, extra = {}) {
+  const m = phMat(slug, uSize, vSize, extra);
+  m.map = dessin; m.color.setHex(0xffffff);
+  return m;
+}
+
 // =====================================================================
 //  Patine : variation à grande échelle sur les grandes surfaces
 // =====================================================================

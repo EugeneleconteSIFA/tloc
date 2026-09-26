@@ -15,7 +15,7 @@
 // triangles pour les volumes ; la variation d'un bâtiment à l'autre passe par la couleur
 // de sommet, ce qui ne coûte pas un appel de dessin de plus.
 import {
-  THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat,
+  THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat, phPeint,
 } from './engine.js?v=27';
 import {
   ENCEINTE, ENCEINTE_H, GLACIS, IGN, MOAT_OUT, PLAINE_R, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
@@ -350,7 +350,7 @@ function texVitrail() {
 const METIERS_Q = ['pain', 'biere', 'drap', 'fer'];
 function texDevantures() {
   const W = 256, H = 256, [c, g] = makeCanvas(W * 4, H);
-  const bois = ['#3f5a42', '#7a2e2a', '#2f4a6b', '#8a6a2a'];
+  const bois = ['#44574a', '#6e3b33', '#3b4b60', '#7a6440'];      // des peintures passées, pas des couleurs de jouet
   METIERS_Q.forEach((m, k) => {
     const x0 = k * W;
     g.fillStyle = bois[k]; g.fillRect(x0, 0, W, H);                          // le bâti de bois peint
@@ -448,9 +448,10 @@ function materiaux() {
     colombage: patiner(mat(0xffffff, { map: texColombage(), vertexColors: true, roughness: 0.95 }),
       { echelle: 20, force: 0.22, humide: 2.6, pluie: 0.16 }),
     ardoiseU: mat(0xffffff, { vertexColors: true, roughness: 0.62, metalness: 0.06 }),
-    devanture: mat(0xffffff, { map: texDevantures(), roughness: 0.6 }),
-    enseigne: mat(0xffffff, { map: texEnseignes(), roughness: 0.7, side: THREE.DoubleSide }),
-    ferRue: mat(0x2c2a28, { roughness: 0.55, metalness: 0.6 }),
+    // peintes sur du vrai bois (grain, joints) et du vrai fer : cf. phPeint, engine.js
+    devanture: phPeint('wood_cabinet_worn_long', 2.4, 2.4, texDevantures(), { roughness: 0.7 }),
+    enseigne: (() => { const m = phPeint('wood_cabinet_worn_long', 0.9, 0.7, texEnseignes(), { roughness: 0.75 }); m.side = THREE.DoubleSide; return m; })(),
+    ferRue: phMat('metal_plate_02', 0.3, 0.3, { color: 0x4a4540, roughness: 0.6 }),
     verreRue: mat(0xffe2a0, { emissive: 0xffb04a, emissiveIntensity: 0.6, roughness: 0.3 }),
     boisRue: phMat('wood_planks', 1, 1, { color: 0x8a6a48 }),
   };
@@ -794,8 +795,8 @@ export function batirQuartier() {
           { const sc = (colPorte + 0.5) * pas + 1.0, sE = prendre(M.enseigne), y0 = ySol + 2.9, d0 = 0.35, d1 = 1.15;
             const P0 = X(sc, d0, y0), P1 = X(sc, d1, y0), P2 = X(sc, d1, y0 + 0.7), P3 = X(sc, d0, y0 + 0.7);
             quad(sE, P0, P1, P2, P3, [metier / 4, 0], [metier / 4 + 0.25, 0], [metier / 4 + 0.25, 1], [metier / 4, 1], BLANC, [tx, 0, tz]);
-            quad(prendre(M.pierreT), X(sc, 0.03, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.84), X(sc, 0.03, y0 + 0.84),
-              [0, 0], [1, 0], [1, 0.06], [0, 0.06], [0.3, 0.28, 0.26], [tx, 0, tz]);     // la potence
+            quad(prendre(M.ferRue), X(sc, 0.03, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.84), X(sc, 0.03, y0 + 0.84),
+              [0, 0], [1, 0], [1, 0.06], [0, 0.06], BLANC, [tx, 0, tz]);     // la potence de fer
           }
           boutiques++; vitrines.push({ x: a[0] + tx * L / 2, z: a[1] + tz * L / 2, nx, nz });
         }

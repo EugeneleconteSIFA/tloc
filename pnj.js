@@ -5,7 +5,7 @@
 // casse jamais faute d'un fichier.
 import * as THREE from 'three';
 import * as A from './assets.js';
-import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat } from './engine.js?v=27';
+import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, phMat, phPeint } from './engine.js?v=27';
 
 export const IDS = [
   'tenues:Female_Peasant', 'tenues:Male_Peasant', 'tenues:Female_Ranger', 'tenues:Male_Ranger',
@@ -798,15 +798,29 @@ function boisPeint(x, w, h, couleur, planches) {
   for (let i = 1; i < planches; i++) { x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(i * w / planches - 1, 0, 2, h); }
   for (let k = 0; k < 900; k++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,240,220'},${Math.random() * 0.06})`; x.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 6 + Math.random() * 30); }
 }
+// L'usure : une peinture de bouclier neuve lit comme un jouet. Des rayures claires (le bois
+// mis à nu), des écailles, la crasse qui s'amasse vers les bords.
+function user(x, w, h, rond) {
+  for (let k = 0; k < 140; k++) {                                  // rayures et écailles
+    const cx = Math.random() * w, cy = Math.random() * h, l = 6 + Math.random() * 40, a = Math.random() * Math.PI;
+    x.strokeStyle = `rgba(${Math.random() < 0.6 ? '150,112,70' : '40,28,18'},${0.25 + Math.random() * 0.4})`; x.lineWidth = 1 + Math.random() * 2.5;
+    x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * l, cy + Math.sin(a) * l); x.stroke();
+  }
+  const g = rond ? x.createRadialGradient(w / 2, h / 2, w * 0.2, w / 2, h / 2, w * 0.52) : x.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(20,14,8,0)'); g.addColorStop(1, 'rgba(20,14,8,0.45)');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+}
 const texRondache = unique(() => canevas(512, 512, (x, w, h) => {
-  boisPeint(x, w, h, '#a3231d', 6);
-  lys(x, w / 2, h / 2 + 6, h * 0.66, '#eef0f2', '#5a1210');
-  x.strokeStyle = '#e8c35a'; x.lineWidth = 10; x.beginPath(); x.arc(w / 2, h / 2, w * 0.455, 0, TAU); x.stroke();
+  boisPeint(x, w, h, '#7c2a22', 6);                                  // un gueules passé, pas un rouge de jouet
+  lys(x, w / 2, h / 2 + 6, h * 0.66, '#cfc8b8', '#3e140f');
+  x.strokeStyle = '#b8964a'; x.lineWidth = 10; x.beginPath(); x.arc(w / 2, h / 2, w * 0.455, 0, TAU); x.stroke();
+  user(x, w, h, true);
 }, (t) => { t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; }));      // le couvercle du disque tourne la peinture d'un quart
 const texEcu = unique(() => canevas(512, 704, (x, w, h) => {
-  boisPeint(x, w, h, '#1f4a8c', 5);
-  const or = '#e9c14f', trait = '#5c4210';
+  boisPeint(x, w, h, '#26406a', 5);
+  const or = '#bf9c46', trait = '#4a3510';
   lys(x, w * 0.29, h * 0.3, w * 0.36, or, trait); lys(x, w * 0.71, h * 0.3, w * 0.36, or, trait); lys(x, w * 0.5, h * 0.62, w * 0.38, or, trait);
+  user(x, w, h, false);
 }));
 const texCuir = unique(() => canevas(256, 256, (x, w, h) => {
   x.fillStyle = '#6b4424'; x.fillRect(0, 0, w, h);
@@ -843,16 +857,18 @@ const texPlates = unique(() => canevas(256, 256, (x, w, h) => {
 /** L'épée de Camille : lame biseautée à gouttière, garde courbe, fusée gainée, pommeau en disque. */
 export function faireEpee() {
   const e = new THREE.Group();
-  const acier = mat(0xdfe4ea, { metalness: 0.95, roughness: 0.22 }), laiton = mat(0xc9a03a, { metalness: 0.85, roughness: 0.3 });
+  // de la vraie plaque de métal (Poly Haven) : rayures et reflets cassés, pas un chrome lisse
+  const acier = phMat('metal_plate_02', 0.12, 0.9, { color: 0xe6ebf0, roughness: 0.4 });
+  const laiton = phMat('metal_plate_02', 0.2, 0.2, { color: 0xd4a94a, roughness: 0.45 });
   const forme = new THREE.Shape();
   forme.moveTo(-0.024, 0.06); forme.lineTo(-0.021, 0.6); forme.lineTo(0, 0.73); forme.lineTo(0.021, 0.6); forme.lineTo(0.024, 0.06); forme.closePath();
   const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.004, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.006, bevelSegments: 1 });
   geo.translate(0, 0, -0.002); e.add(new THREE.Mesh(geo, acier));
-  for (const z of [-0.0065, 0.0065]) e.add(mesh(boxG(0.009, 0.44, 0.002), mat(0x7d848d, { metalness: 0.9, roughness: 0.35 }), 0, 0.32, z));   // la gouttière
+  for (const z of [-0.0065, 0.0065]) e.add(mesh(boxG(0.009, 0.44, 0.002), phMat('metal_plate_02', 0.05, 0.5, { color: 0x8a919a }), 0, 0.32, z));   // la gouttière
   const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.1, 0.075, 0), new THREE.Vector3(0, 0.035, 0), new THREE.Vector3(0.1, 0.075, 0));
   e.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 12, 0.011, 6), laiton));
   for (const s of [-1, 1]) e.add(mesh(sphG(0.017, 8), laiton, s * 0.1, 0.077, 0));
-  e.add(mesh(new THREE.CylinderGeometry(0.017, 0.019, 0.11, 10), mat(0x3b2616, { roughness: 0.85 }), 0, -0.015, 0));
+  e.add(mesh(new THREE.CylinderGeometry(0.017, 0.019, 0.11, 10), phMat('wood_cabinet_worn_long', 0.1, 0.1, { color: 0x3b2616 }), 0, -0.015, 0));   // le cuir de la fusée
   for (let k = 0; k < 4; k++) e.add(mesh(new THREE.TorusGeometry(0.018, 0.003, 4, 12), mat(0x24160c), 0, -0.06 + k * 0.03, 0).rotateX(Math.PI / 2));
   e.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.017, 16), laiton, 0, -0.085, 0).rotateX(Math.PI / 2));
   e.add(mesh(sphG(0.011, 8), laiton, 0, -0.1, 0));
@@ -863,12 +879,14 @@ export function faireEpee() {
 /** La rondache : bois peint aux armes de Lille, légèrement bombée, cerclée de fer. */
 export function faireRondache() {
   const b = new THREE.Group();
-  const R = 0.19, face = new THREE.MeshStandardMaterial({ map: texRondache(), roughness: 0.7 });
-  const dos = mat(0x5e4128, { roughness: 0.9 });
+  // la peinture posée sur de vrai bois : le grain et les joints des planches restent
+  const R = 0.19, face = phPeint('wood_planks', 0.4, 0.4, texRondache(), { roughness: 0.85 });
+  const dos = phMat('wood_planks', 0.4, 0.4, { color: 0x8a6a48 });
   const disque = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.02, 32), [dos, face, dos]);
   disque.rotation.x = Math.PI / 2; b.add(disque);                  // la face peinte (le couvercle haut) vers +z
-  b.add(mesh(new THREE.TorusGeometry(R, 0.012, 6, 32), IRON(), 0, 0, 0));
-  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; b.add(mesh(sphG(0.009, 6), IRON(), Math.cos(a) * (R - 0.02), Math.sin(a) * (R - 0.02), 0.012)); }
+  const fer = phMat('metal_plate_02', 0.2, 0.2, { color: 0x6a6e74 });
+  b.add(mesh(new THREE.TorusGeometry(R, 0.012, 6, 32), fer, 0, 0, 0));
+  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; b.add(mesh(sphG(0.009, 6), fer, Math.cos(a) * (R - 0.02), Math.sin(a) * (R - 0.02), 0.012)); }
   b.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return b;
 }
@@ -883,24 +901,32 @@ export function faireEcu() {
   geo.translate(0, 0, -0.007);
   const t = texEcu().clone(); t.needsUpdate = true;
   t.repeat.set(1 / 0.34, 1 / 0.47); t.offset.set(0.5, 0.27 / 0.47);          // UV des faces = coordonnées de la forme
-  const peint = new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 }), chant = mat(0x4a3322, { roughness: 0.85 });
+  const peint = phPeint('wood_planks', 0.34, 0.47, t, { roughness: 0.85 }), chant = phMat('wood_cabinet_worn_long', 0.3, 0.3, { color: 0x6a4a30 });
   e.add(new THREE.Mesh(geo, [peint, chant]));
   const cercle = new THREE.Group(); cercle.visible = false;
   const pts = forme.getPoints(24).map((p) => new THREE.Vector3(p.x, p.y, 0.014));
-  cercle.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, 0.011, 6, true), IRON()));
-  cercle.add(mesh(sphG(0.034, 14, 8), mat(0xb8bec6, { metalness: 0.85, roughness: 0.3 }), 0, 0.02, 0.012));   // l'umbo, d'acier clair : il ne mange pas les lys
-  for (const [px, py] of [[-0.12, 0.15], [0.12, 0.15], [-0.1, -0.08], [0.1, -0.08]]) cercle.add(mesh(sphG(0.01, 6), IRON(), px, py, 0.016));
+  const ferE = phMat('metal_plate_02', 0.2, 0.2, { color: 0x6a6e74 });
+  cercle.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, 0.011, 6, true), ferE));
+  cercle.add(mesh(sphG(0.034, 14, 8), phMat('metal_plate_02', 0.1, 0.1, { color: 0xc8ced6 }), 0, 0.02, 0.012));   // l'umbo, d'acier clair : il ne mange pas les lys
+  for (const [px, py] of [[-0.12, 0.15], [0.12, 0.15], [-0.1, -0.08], [0.1, -0.08]]) cercle.add(mesh(sphG(0.01, 6), ferE, px, py, 0.016));
   e.add(cercle); e.userData.cercle = cercle;
   e.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return e;
 }
 
 /** La cuirasse galbée, et ses trois matières : cuir clouté, mailles, plates. */
-const MATS_CUIRASSE = unique(() => [null,
-  new THREE.MeshStandardMaterial({ map: texCuir(), roughness: 0.75, side: THREE.DoubleSide }),
-  new THREE.MeshStandardMaterial({ map: (() => { const t = texMailles().clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 2); return t; })(), metalness: 0.7, roughness: 0.45, side: THREE.DoubleSide }),
-  new THREE.MeshStandardMaterial({ map: texPlates(), metalness: 0.6, roughness: 0.38, side: THREE.DoubleSide }),
-]);
+// Les dessins (coutures et clous, anneaux, lames) sur de vraies matières : le cuir sur le
+// bois patiné (son relief imite le cuir tanné), les mailles et les plates sur la plaque de
+// métal — rayures et reflets cassés au lieu d'un plastique lisse.
+const MATS_CUIRASSE = unique(() => {
+  const d = (m) => { m.side = THREE.DoubleSide; return m; };
+  const mailles = texMailles().clone(); mailles.needsUpdate = true; mailles.wrapS = mailles.wrapT = THREE.RepeatWrapping; mailles.repeat.set(5, 2);
+  return [null,
+    d(phPeint('wood_cabinet_worn_long', 0.4, 0.4, texCuir(), { roughness: 0.8 })),
+    d(phPeint('metal_plate_02', 0.25, 0.25, mailles, { roughness: 0.55 })),
+    d(phPeint('metal_plate_02', 0.6, 0.6, texPlates(), { roughness: 0.42 })),
+  ];
+});
 export function faireCuirasse(niveau = 1) {
   const c = new THREE.Group();
   const m = MATS_CUIRASSE()[niveau];

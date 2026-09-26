@@ -4,7 +4,7 @@
 // et la boucle de jeu propre au niveau (update). Le décor lui est donné tout bâti.
 import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
-  followActor, getH, hideMenu, lerp, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
+  followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state,
 } from './engine.js?v=27';
 import {
@@ -230,8 +230,11 @@ export function debut() {
 // le gâteau : trois étages de crème, des fraises, des bougies — et il ne survivra pas
 function faireGateau() {
   const g = new THREE.Group();
-  const creme = new THREE.MeshStandardMaterial({ color: 0xf6ead0, roughness: 0.55 });
-  const biscuit = new THREE.MeshStandardMaterial({ color: 0xc98f4e, roughness: 0.8 });
+  // le glaçage et le biscuit : le RELIEF et la rugosité de matières photographiées, sans
+  // leur couleur — une crème unie faisait plastique, et les fissures de la chaux, crasse
+  const sansDessin = (m, c) => { m.map = null; m.color.setHex(c); m.needsUpdate = true; return m; };
+  const creme = sansDessin(phMat('chaux_craquelee', 0.3, 0.3, { roughness: 0.55 }), 0xfff3e0);
+  const biscuit = sansDessin(phMat('terre_battue', 0.3, 0.3), 0xc98f4e);
   const fraise = new THREE.MeshStandardMaterial({ color: 0xc81e2a, roughness: 0.35 });
   const cire = new THREE.MeshStandardMaterial({ color: 0xfff4e0, roughness: 0.6 });
   const flamme = new THREE.MeshBasicMaterial({ color: 0xffc040 });

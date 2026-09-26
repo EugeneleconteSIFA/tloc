@@ -927,7 +927,7 @@ function placeEcurie(l) {
 
 function presentoir(type) {
   const g = new THREE.Group();
-  const bois = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.85 });
+  const bois = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x6b4a2a });
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.14, 12), bois));
   const mat_ = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), bois); mat_.position.y = 0.8; g.add(mat_);
   // les mêmes pièces que celles que portera Camille (pnj.js), à la taille d'un mannequin
@@ -1071,8 +1071,18 @@ let vitessePied = 0, arretT = 0, brouteT = 0, posePied = null;
 const modeles = new Map();                                  // fichier -> promesse du modèle
 
 function chargerCheval(fichier) {
-  if (!modeles.has(fichier)) modeles.set(fichier, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js')])
-    .then(([L, S]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier).then((g) => {
+  if (!modeles.has(fichier)) modeles.set(fichier, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')])
+    .then(([L, S, U]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier).then((g) => {
+      // LISSER LES FACETTES. Le modèle (Quaternius) est ombré à plat, une normale par face :
+      // à côté des murs photographiés, il faisait jouet. On soude les sommets que les faces
+      // partagent et on recalcule des normales lissées — la silhouette ne bouge pas, c'est
+      // la lumière qui glisse sur la robe au lieu de casser à chaque arête.
+      g.scene.traverse((o) => {
+        if (!o.isSkinnedMesh) return;
+        let ge = o.geometry.clone(); ge.deleteAttribute('normal');
+        ge = U.mergeVertices(ge, 1e-4); ge.computeVertexNormals(); o.geometry = ge;
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.flatShading = false; m.roughness = 0.82; m.metalness = 0; m.needsUpdate = true; }
+      });
       // la hauteur vraie : celle du maillage DÉFORMÉ par les os (la boîte brute donne 4,8 m)
       g.scene.updateMatrixWorld(true);
       const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
