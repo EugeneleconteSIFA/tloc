@@ -531,6 +531,19 @@ bouclier, cheval**. On les **ramasse** à des lieux fixes, et on les **améliore
   Boulogne, esplanade).
 - Monter la qualité des maisons du bourg (cf. BRIEF-DESIGN, règle 5 : décor et
   personnages montent ensemble).
+**Fait le 27 septembre.**
+- **Le bois du parc** (`boisDuParc`, carte.js ; nature.js le passe au semeur) : l'anneau
+  du pied du glacis à `PARC_BOIS_R` (400 m du tracé) est boisé de feuillus, sauf pelouses,
+  prairies et jardins relevés et les allées. La nature poussait à partir du bout du glacis
+  (110 m) ; elle pousse dès `LISIERE_GLACIS` (40 m, derrière la voie des combattants).
+  5 021 → 8 167 arbres ; végétation +0,2 s au chargement ; images/s comparables.
+- **Les rues de Lille** (Eugène : façades plates, rues vides), quartier.js : appuis et
+  linteaux de pierre en saillie sous et sur chaque baie, marche et encadrement aux portes
+  (500 000 triangles, par tuile, sous LOD : rien au-delà de 140 m) ; une maison sur quatre
+  donnant sur une rue ouvre boutique (330 : devanture peinte, vitrine garnie — pain, bière,
+  drap, fer —, enseigne en potence), 793 lanternes, tonneaux et caisses instanciés, avec
+  collision. « quartier » 1,6 → 2,3 s (les triangles poussés un à un : à optimiser avec
+  des tableaux typés si le budget se tend). Reste possible : des passants.
 
 **4. Petites améliorations du multi.**
 - La pause entre deux manches est trop courte (`MANCHE_PAUSE`, 12 s) : la porter à 25–30 s.

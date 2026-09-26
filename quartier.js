@@ -21,6 +21,7 @@ import {
   ENCEINTE, ENCEINTE_H, GLACIS, IGN, MOAT_OUT, PLAINE_R, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
   solPlaine, surVoie, townLocal,
 } from './carte.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------------------------------------------------------------------
 //  Géométrie de contour
@@ -338,6 +339,80 @@ function texVitrail() {
 }
 
 // ---------------------------------------------------------------------
+//  La vie de la rue : boutiques, enseignes, lanternes, tonneaux
+// ---------------------------------------------------------------------
+// « Rues vides » (Eugène, 27 septembre) : mille sept cents façades et pas un commerce. Une
+// maison sur quatre qui donne sur une rue ouvre boutique au rez-de-chaussée — devanture de
+// bois peint, vitrine garnie selon le métier, enseigne pendue en potence — et la rue reçoit
+// des lanternes près des portes, des tonneaux et des caisses devant les échoppes. Tout est
+// dans des atlas (un canevas pour quatre métiers) et fusionné ou instancié : quelques
+// appels de dessin pour toute la ville.
+const METIERS_Q = ['pain', 'biere', 'drap', 'fer'];
+function texDevantures() {
+  const W = 256, H = 256, [c, g] = makeCanvas(W * 4, H);
+  const bois = ['#3f5a42', '#7a2e2a', '#2f4a6b', '#8a6a2a'];
+  METIERS_Q.forEach((m, k) => {
+    const x0 = k * W;
+    g.fillStyle = bois[k]; g.fillRect(x0, 0, W, H);                          // le bâti de bois peint
+    g.fillStyle = 'rgba(0,0,0,.25)'; for (let i = 0; i < 6; i++) g.fillRect(x0 + i * 44 + 4, 170, 3, 86);   // panneaux bas
+    g.fillStyle = '#1d242a'; g.fillRect(x0 + 16, 18, W - 32, 140);             // la vitrine
+    const grd = g.createLinearGradient(0, 18, 0, 158); grd.addColorStop(0, 'rgba(170,190,205,.45)'); grd.addColorStop(1, 'rgba(30,36,42,.2)');
+    g.fillStyle = grd; g.fillRect(x0 + 16, 18, W - 32, 140);
+    // la marchandise, sur deux tablettes
+    for (const [ty, n] of [[100, 5], [150, 6]]) {
+      g.fillStyle = '#5b4028'; g.fillRect(x0 + 18, ty, W - 36, 6);
+      for (let i = 0; i < n; i++) {
+        const cx = x0 + 34 + i * ((W - 68) / (n - 1)), cy = ty - 2;
+        if (m === 'pain') { g.fillStyle = '#c08a45'; g.beginPath(); g.ellipse(cx, cy - 10, 16, 10, 0, 0, Math.PI * 2); g.fill(); }
+        else if (m === 'biere') { g.fillStyle = i % 2 ? '#3a5a34' : '#6b4a2a'; g.fillRect(cx - 6, cy - 34, 12, 34); g.fillRect(cx - 3, cy - 42, 6, 8); }
+        else if (m === 'drap') { g.fillStyle = ['#8a2f3a', '#2f5a86', '#c9a23c', '#3f6f4a', '#d8cfba', '#6b3d78'][i % 6]; g.fillRect(cx - 14, cy - 26, 28, 26); }
+        else { g.fillStyle = '#6a6f76'; g.fillRect(cx - 2, cy - 30, 4, 30); g.fillRect(cx - 10, cy - 34, 20, 7); }
+      }
+    }
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x0 + W / 2 - 3, 18, 6, 140); // le meneau
+    g.strokeStyle = '#1a140e'; g.lineWidth = 6; g.strokeRect(x0 + 16, 18, W - 32, 140);
+  });
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function texEnseignes() {
+  const W = 128, H = 96, [c, g] = makeCanvas(W * 4, H);
+  METIERS_Q.forEach((m, k) => {
+    const x0 = k * W;
+    g.fillStyle = '#2a1d14'; g.fillRect(x0, 0, W, H);
+    g.strokeStyle = '#d9b24a'; g.lineWidth = 5; g.strokeRect(x0 + 5, 5, W - 10, H - 10);
+    g.fillStyle = '#e9c14f'; g.strokeStyle = '#e9c14f'; g.lineWidth = 7; g.lineCap = 'round';
+    const cx = x0 + W / 2, cy = H / 2;
+    if (m === 'pain') { g.beginPath(); g.ellipse(cx, cy, 34, 20, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.moveTo(cx - 20, cy); g.lineTo(cx + 20, cy); g.stroke(); }
+    else if (m === 'biere') { g.fillRect(cx - 16, cy - 22, 32, 44); g.strokeRect(cx + 16, cy - 12, 12, 22); g.fillStyle = '#f4ead0'; g.fillRect(cx - 18, cy - 28, 36, 9); }
+    else if (m === 'drap') { g.beginPath(); g.arc(cx - 14, cy + 12, 10, 0, Math.PI * 2); g.arc(cx + 14, cy + 12, 10, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.moveTo(cx - 10, cy + 4); g.lineTo(cx + 18, cy - 26); g.moveTo(cx + 10, cy + 4); g.lineTo(cx - 18, cy - 26); g.stroke(); }
+    else { g.beginPath(); g.arc(cx, cy + 2, 24, Math.PI * 0.15, Math.PI * 0.85, true); g.stroke(); }
+  });
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+// les objets de rue, instanciés : une géométrie chacun, fusionnée une fois
+function geoLanterne() {
+  const fer = [], verre = [];
+  const b = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g; };
+  fer.push(b(0.05, 0.05, 0.55, 0, 0.35, 0.27), b(0.26, 0.04, 0.26, 0, 0.21, 0.55), b(0.26, 0.04, 0.26, 0, -0.12, 0.55));
+  const toit = new THREE.ConeGeometry(0.2, 0.16, 4); toit.rotateY(Math.PI / 4); toit.translate(0, 0.3, 0.55); fer.push(toit);
+  verre.push(b(0.2, 0.3, 0.2, 0, 0.05, 0.55));
+  return { fer: mergeGeometries(fer.map((g) => g.toNonIndexed())), verre: mergeGeometries(verre.map((g) => g.toNonIndexed())) };
+}
+function geoTonneau() {
+  const g = new THREE.CylinderGeometry(0.34, 0.34, 0.9, 12); g.translate(0, 0.45, 0);
+  const cercles = [0.12, 0.78].map((y) => { const t = new THREE.CylinderGeometry(0.37, 0.37, 0.07, 12, 1, true); t.translate(0, y, 0); return t; });
+  return { bois: g, fer: mergeGeometries(cercles) };
+}
+function instancier(geo, m, poses, ombre = true) {
+  if (!poses.length) return null;
+  const im = new THREE.InstancedMesh(geo, m, poses.length);
+  const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  poses.forEach((p, i) => { Q.setFromAxisAngle(Y, p.yaw); S.setScalar(p.s || 1); im.setMatrixAt(i, M4.compose(P.set(p.x, p.y, p.z), Q, S)); });
+  im.castShadow = ombre; im.receiveShadow = true; im.computeBoundingSphere();
+  return im;
+}
+
+// ---------------------------------------------------------------------
 //  Matériaux
 // ---------------------------------------------------------------------
 // Tous en couleurs de sommet : la teinte change d'un bâtiment à l'autre sans multiplier
@@ -373,6 +448,11 @@ function materiaux() {
     colombage: patiner(mat(0xffffff, { map: texColombage(), vertexColors: true, roughness: 0.95 }),
       { echelle: 20, force: 0.22, humide: 2.6, pluie: 0.16 }),
     ardoiseU: mat(0xffffff, { vertexColors: true, roughness: 0.62, metalness: 0.06 }),
+    devanture: mat(0xffffff, { map: texDevantures(), roughness: 0.6 }),
+    enseigne: mat(0xffffff, { map: texEnseignes(), roughness: 0.7, side: THREE.DoubleSide }),
+    ferRue: mat(0x2c2a28, { roughness: 0.55, metalness: 0.6 }),
+    verreRue: mat(0xffe2a0, { emissive: 0xffb04a, emissiveIntensity: 0.6, roughness: 0.3 }),
+    boisRue: phMat('wood_planks', 1, 1, { color: 0x8a6a48 }),
   };
 }
 // hasard reproductible : le même bâtiment doit avoir la même teinte à chaque chargement
@@ -428,9 +508,18 @@ export function batirQuartier() {
   // dessiné, dans l'image comme dans l'ombre.
   let tuile = '';
   const prendre = (m) => { const k = m.uuid + '|' + tuile; let s = sacs.get(k); if (!s) sacs.set(k, s = sac(m)); return s; };
+  // LE RELIEF DES FAÇADES. Fenêtres et portes étaient des images collées à cinq centimètres
+  // du mur : de près, la rue lisait plate (Eugène, 27 septembre). Chaque baie reçoit un appui
+  // et un linteau de pierre EN SAILLIE, chaque porte une marche et un encadrement : des
+  // arêtes qui prennent la lumière. 56 000 baies × 8 triangles, c'est trop pour toute la
+  // ville à la fois : ce relief vit dans des sacs à part, par tuile, que des LOD n'affichent
+  // qu'à moins de 140 m — au-delà, on ne le distinguerait pas.
+  const reliefs = new Map();
+  const prendreRelief = () => { let s = reliefs.get(tuile); if (!s) reliefs.set(tuile, s = sac(M.pierreT)); return s; };
   const grp = new THREE.Group();
   grp.name = 'quartier';
-  let bati = 0, ecarte = 0, caps = 0, baies = 0, bourg = 0, pignons = 0, cheminees = 0, lucarnes = 0;
+  let bati = 0, ecarte = 0, caps = 0, baies = 0, bourg = 0, pignons = 0, cheminees = 0, lucarnes = 0, boutiques = 0;
+  const lanternes = [], tonneaux = [], caisses = [], vitrines = [];   // vitrines : pour les bancs d'essai
   const compteToit = { pans: 0, croupe: 0, terrasse: 0 };
 
   for (let idx = 0; idx < IGN.bati.length; idx++) {
@@ -644,6 +733,33 @@ export function batirQuartier() {
             [ox + tx * w / 2, y0 + hh, oz + tz * w / 2], [ox - tx * w / 2, y0 + hh, oz - tz * w / 2],
             [0, 0], [1, 0], [1, 1], [0, 1], BLANC, [nx, 0, nz]);
         };
+        // une tablette de pierre en saillie : dessus (ou dessous) et face, en mètres d'UV
+        const X = (sc, d, y) => [a[0] + tx * sc + nx * d, y, a[1] + tz * sc + nz * d];
+        const tablette = (sR, s0, s1, yb, yh, d0, d1, dessous) => {
+          const yF = dessous ? yb : yh;
+          quad(sR, X(s0, d0, yF), X(s1, d0, yF), X(s1, d1, yF), X(s0, d1, yF),
+            [0, 0], [s1 - s0, 0], [s1 - s0, d1 - d0], [0, d1 - d0], tpierre, [0, dessous ? -1 : 1, 0]);
+          quad(sR, X(s0, d1, yb), X(s1, d1, yb), X(s1, d1, yh), X(s0, d1, yh),
+            [0, 0], [s1 - s0, 0], [s1 - s0, yh - yb], [0, yh - yb], tpierre, [nx, 0, nz]);
+        };
+        const reliefBaie = (sc, y0, w, hh) => {
+          const sR = prendreRelief();
+          tablette(sR, sc - w / 2 - 0.12, sc + w / 2 + 0.12, y0 - 0.1, y0, 0.03, 0.17, false);        // l'appui
+          tablette(sR, sc - w / 2 - 0.08, sc + w / 2 + 0.08, y0 + hh, y0 + hh + 0.17, 0.03, 0.12, true);   // le linteau
+        };
+        const reliefPorte = (sc, y0, w, hh) => {
+          const sR = prendreRelief();
+          tablette(sR, sc - w / 2 - 0.25, sc + w / 2 + 0.25, y0 - 0.02, y0 + 0.16, 0.03, 0.4, false);    // la marche
+          for (const sx of [-1, 1]) {                                                                  // les piédroits
+            const e0 = sc + sx * (w / 2), e1 = sc + sx * (w / 2 + 0.18);
+            const [s0, s1] = sx < 0 ? [e1, e0] : [e0, e1];
+            quad(sR, X(s0, 0.13, y0 + 0.16), X(s1, 0.13, y0 + 0.16), X(s1, 0.13, y0 + hh + 0.2), X(s0, 0.13, y0 + hh + 0.2),
+              [0, 0], [0.18, 0], [0.18, hh], [0, hh], tpierre, [nx, 0, nz]);
+            quad(sR, X(e0, 0.03, y0 + 0.16), X(e0, 0.13, y0 + 0.16), X(e0, 0.13, y0 + hh + 0.2), X(e0, 0.03, y0 + hh + 0.2),
+              [0, 0], [0.1, 0], [0.1, hh], [0, hh], tpierre, [-tx * sx, 0, -tz * sx]);
+          }
+          tablette(sR, sc - w / 2 - 0.18, sc + w / 2 + 0.18, y0 + hh + 0.2, y0 + hh + 0.42, 0.03, 0.15, true);  // le linteau
+        };
         const ySol = solPlaine(a[0] + tx * L / 2, a[1] + tz * L / 2);
         if (eglise) {
           const ne = Math.floor(L / 5.2);
@@ -656,16 +772,48 @@ export function batirQuartier() {
         if (nc < 1) continue;
         const pas = L / nc;
         const colPorte = i === iPorte ? Math.floor(nc / 2) : -1;
+        // une boutique : façade de la porte, sur une voie, une maison sur quatre
+        const surRue = colPorte >= 0 && surVoie(a[0] + tx * L / 2 + nx * 5, a[1] + tz * L / 2 + nz * 5);
+        const boutique = surRue && hache(gr * 31 + 7) < 0.26 && nc >= 2 && ySol + 3.4 < yEgout;
+        const metier = Math.floor(hache(gr * 53 + 1) * 4);
+        if (boutique) {
+          const sD = prendre(M.devanture), u0 = metier / 4, u1 = u0 + 0.25;
+          for (let ci = 0; ci < nc; ci++) {
+            if (ci === colPorte) continue;
+            const sc = (ci + 0.5) * pas, w = pas - 0.25, y0 = ySol + 0.1, hh = 2.5;
+            const ox = a[0] + tx * sc + nx * 0.06, oz = a[1] + tz * sc + nz * 0.06;
+            quad(sD, [ox - tx * w / 2, y0, oz - tz * w / 2], [ox + tx * w / 2, y0, oz + tz * w / 2],
+              [ox + tx * w / 2, y0 + hh, oz + tz * w / 2], [ox - tx * w / 2, y0 + hh, oz - tz * w / 2],
+              [u0, 0], [u1, 0], [u1, 1], [u0, 1], BLANC, [nx, 0, nz]);
+            if (hache(gr + ci * 3) < 0.55) {                   // de la marchandise devant
+              const px = a[0] + tx * (sc + 0.4) + nx * 0.8, pz = a[1] + tz * (sc + 0.4) + nz * 0.8;
+              (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz), z: pz, yaw: hache(gr + ci) * 6.28 });
+            }
+          }
+          // l'enseigne en potence, à côté de la porte
+          { const sc = (colPorte + 0.5) * pas + 1.0, sE = prendre(M.enseigne), y0 = ySol + 2.9, d0 = 0.35, d1 = 1.15;
+            const P0 = X(sc, d0, y0), P1 = X(sc, d1, y0), P2 = X(sc, d1, y0 + 0.7), P3 = X(sc, d0, y0 + 0.7);
+            quad(sE, P0, P1, P2, P3, [metier / 4, 0], [metier / 4 + 0.25, 0], [metier / 4 + 0.25, 1], [metier / 4, 1], BLANC, [tx, 0, tz]);
+            quad(prendre(M.pierreT), X(sc, 0.03, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.78), X(sc, d1 + 0.05, y0 + 0.84), X(sc, 0.03, y0 + 0.84),
+              [0, 0], [1, 0], [1, 0.06], [0, 0.06], [0.3, 0.28, 0.26], [tx, 0, tz]);     // la potence
+          }
+          boutiques++; vitrines.push({ x: a[0] + tx * L / 2, z: a[1] + tz * L / 2, nx, nz });
+        }
+        // une lanterne près d'une porte sur trois qui donne sur la rue
+        if (surRue && hache(gr * 17 + 5) < 0.4) {
+          const sc = (colPorte + 0.5) * pas - 1.0, ly = ySol + 2.7;
+          lanternes.push({ x: a[0] + tx * sc + nx * 0.02, y: ly, z: a[1] + tz * sc + nz * 0.02, yaw: Math.atan2(nx, nz) });
+        }
         for (let ci = 0; ci < nc; ci++) {
           const sc = (ci + 0.5) * pas;
           for (let f = 0; f < 7; f++) {
             const appui = ySol + 0.95 + f * 3.15;
             if (appui + 1.6 > yEgout - 0.4) break;
-            if (f === 0 && ci === colPorte) continue;
-            baie(sFen, sc, appui, 1.24, 1.56); baies++;
+            if (f === 0 && (ci === colPorte || boutique)) continue;
+            baie(sFen, sc, appui, 1.24, 1.56); reliefBaie(sc, appui, 1.24, 1.56); baies++;
           }
         }
-        if (colPorte >= 0 && ySol + 2.35 < yEgout - 0.3) baie(sPor, (colPorte + 0.5) * pas, ySol + 0.02, 1.18, 2.3);
+        if (colPorte >= 0 && ySol + 2.35 < yEgout - 0.3) { baie(sPor, (colPorte + 0.5) * pas, ySol + 0.02, 1.18, 2.3); reliefPorte((colPorte + 0.5) * pas, ySol + 0.02, 1.18, 2.3); }
       }
       // plafond à l'égout : sans lui on voit l'intérieur du volume par-dessous le toit
       {
@@ -764,8 +912,28 @@ export function batirQuartier() {
   }
 
   for (const s of sacs.values()) { const o = cuire(s); if (o) grp.add(o); }
+  // le relief, par tuile, sous un LOD : présent de près, rien au-delà de 140 m. Pas de
+  // `fusionne` : mergeStatics le regrouperait, et le LOD ne pourrait plus l'éteindre.
+  let triRelief = 0;
+  for (const s of reliefs.values()) {
+    const o = cuire(s); if (!o) continue;
+    o.userData.fusionne = false; o.castShadow = false; triRelief += s.n;
+    const g = o.geometry; g.computeBoundingSphere();
+    const lod = new THREE.LOD(); lod.position.copy(g.boundingSphere.center);
+    g.translate(-lod.position.x, -lod.position.y, -lod.position.z); g.computeBoundingSphere();
+    lod.addLevel(o, 0); lod.addLevel(new THREE.Object3D(), 140 + g.boundingSphere.radius);
+    grp.add(lod);
+  }
+  console.log('relief des façades : %d triangles en %d tuiles, affichés à moins de 140 m', triRelief, reliefs.size);
+  // les objets de rue, instanciés
+  { const gl = geoLanterne(), gt = geoTonneau(), gc = new THREE.BoxGeometry(0.6, 0.5, 0.6).translate(0, 0.25, 0);
+    for (const o of [instancier(gl.fer, M.ferRue, lanternes, false), instancier(gl.verre, M.verreRue, lanternes, false),
+      instancier(gt.bois, M.boisRue, tonneaux), instancier(gt.fer, M.ferRue, tonneaux, false), instancier(gc, M.boisRue, caisses)]) if (o) grp.add(o);
+    for (const o of [...tonneaux, ...caisses]) addCap(o.x, o.z, o.x, o.z, 0.38, 0.95);        // on ne les traverse pas
+    console.log('la rue : %d boutiques, %d lanternes, %d tonneaux, %d caisses', boutiques, lanternes.length, tonneaux.length, caisses.length); }
   console.log('quartier relevé : %d bâtiments élevés (%d écartés, dont %d sur l’îlot du bourg), %d toits à deux pans, %d à croupe, %d terrasses, %d baies, %d pignons à redents, %d cheminées, %d lucarnes, %d capsules de façade',
     bati, ecarte, bourg, compteToit.pans, compteToit.croupe, compteToit.terrasse, baies, pignons, cheminees, lucarnes, caps);
+  grp.userData.vitrines = vitrines;
   return grp;
 }
 
