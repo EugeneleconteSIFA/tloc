@@ -28,7 +28,7 @@ import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
   bastionAt, essenceAt, libreNature, margeBatie, margePlate, nearHouse, nearTown, sdEau, sdPent, sdPoly,
-  solPlaine, sousBois, boisDuParc,
+  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN,
 } from './carte.js';
 
 export const perf = { leaves: [], grass: null, flowers: [], reeds: null, roots: null, lights: [] };
@@ -611,6 +611,18 @@ export function tickNature(dt) {
 //   — les roseaux, les nénuphars, les saules. Une berge nue ne se lit pas comme une
 //     berge ; ce qui dit « eau », de loin, c'est la ceinture de roseaux.
 
+// Un tronc ne se plante ni sur un tablier (culées comprises) ni à moins de deux mètres du
+// bord d'une voie relevée : c'est là qu'on passe.
+function surLeChemin(x, z) {
+  for (const [dx, dz] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]]) if (surPont(x + dx, z + dz) !== null) return true;
+  for (const [lst, demi] of [[LILLE.routes, (o) => LARGEUR_ROUTE[Math.min(3, o.r)] / 2], [LILLE.chemins, () => LARGEUR_CHEMIN / 2]])
+    for (const o of lst) for (let i = 0; i < o.pts.length - 1; i++) {
+      const a = o.pts[i], b = o.pts[i + 1];
+      if (Math.min(a[0], b[0]) > x + 20 || Math.max(a[0], b[0]) < x - 20 || Math.min(a[1], b[1]) > z + 20 || Math.max(a[1], b[1]) < z - 20) continue;
+      if (distSeg(x, z, a[0], a[1], b[0], b[1]) < demi(o) + 2) return true;
+    }
+  return false;
+}
 export function habillerEaux() {
   // 1. la matière — et c'est tout ce qu'il faut pour les fossés de la citadelle
   // eau de rivière, pas de bassin : elle est mate, elle laisse voir le fond près des rives
@@ -707,6 +719,10 @@ export function habillerEaux() {
           // rabat donc sur la marge BÂTIE, qui ne connaît que les lieux du jeu.
           if (margeBatie(x, z) < 5 || Math.hypot(x, z) > PLAINE_R - 12) continue;
           if (blocked(x, z, 2.5, false, 0)) continue;
+          // Le saule échappe à libreNature (cf. ci-dessus) : il perdait aussi l'interdit des
+          // ponts et des chemins. On en trouvait un sur la culée du pont Napoléon, en plein
+          // axe du tablier : on ne passait plus. Ni sur un tablier, ni sur une voie relevée.
+          if (surLeChemin(x, z)) continue;
           const h = rand(saule.sp.h[0], saule.sp.h[1]);
           P.set(x, getH(x, z, 0) - 0.15, z);
           QT.setFromEuler(EU.set(rand(-0.09, 0.09), rand(0, TAU), rand(-0.09, 0.09), 'YXZ'));

@@ -2515,7 +2515,7 @@ export function levelH(x, z) {
   // (le tablier des ponts de la Deûle n'est PLUS le sol : c'est une plateforme, posée
   //  par preparerPonts — sans quoi on ne peut pas passer dessous)
   { const o = dehorsAt(x, z); if (o) return o.h; }
-  if (BOURG_CALE && inTown(x, z)) return Math.max(TOWN.y, solPlaine(x, z));   // dallage du bourg (cf. calerBourg)
+  if (BOURG_CALE && inTown(x, z)) return solBourg(x, z);   // dallage du bourg (cf. calerBourg)
   return solPlaine(x, z);
 }
 
@@ -2704,6 +2704,22 @@ export function calerBourg() {
   TOWN.y = Number.isFinite(m) ? m + 0.02 : 0;
   BOURG_CALE = true;
   return TOWN.y;
+}
+
+// LE BORD DU BOURG. Le dallage est à plat à TOWN.y, le plus haut du sol sous son cœur ; le
+// relevé, lui, descend jusqu'à 0,74 m plus bas au bout ouest de la grand-rue et 0,51 m au
+// débouché de la rue du marché. Au bord de la boîte, c'était une marche — et tryMove ne
+// monte pas un demi-mètre : on sortait du bourg, on n'y rentrait plus (« une rue libre et
+// un mur invisible »). Le dallage rejoint donc le relevé en pente douce sur les
+// RAMPE_BOURG dernières unités de la boîte. Il ne fait que DESCENDRE vers le terrain : là
+// où le relevé est plus haut que la place (coins nord), le sol reste le relevé.
+export const RAMPE_BOURG = 5;                    // unités locales (7,5 m) : 10 % au pire
+export function solBourg(x, z) {
+  const s = solPlaine(x, z);
+  if (TOWN.y <= s) return s;
+  const [lx, lz] = townLocal(x, z), B = TOWN_BOITE;
+  const bord = Math.min(lx - B.x0, B.x1 - lx, lz - B.z0, B.z1 - lz);
+  return s + (TOWN.y - s) * lisse(bord / RAMPE_BOURG);
 }
 
 export function townWorld(lx, lz) {

@@ -18,7 +18,7 @@ import {
   THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat, phPeint,
 } from './engine.js?v=27';
 import {
-  ENCEINTE, ENCEINTE_H, GLACIS, IGN, MOAT_OUT, PLAINE_R, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
+  ENCEINTE, ENCEINTE_H, GLACIS, IGN, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
   solPlaine, surVoie, townLocal,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -471,7 +471,10 @@ function pignonRedents(sMur, sPierre, P, hl, hw, yEg, yFa, sg, tmur, tpierre, n)
   const dessus = [];                                   // (t, y) du profil en gradins, d'un bord au faîte
   for (let k = 0; k <= n; k++) {
     const t1 = hw * (1 - k / n), t0 = hw * (1 - (k + 1) / n);
-    const y = yEg + (yFa - yEg) * (k / n);
+    // Le gradin monte jusqu'au toit à son bord INTÉRIEUR (k + 1). Arrêté à la hauteur du toit
+    // à son bord extérieur, il laissait le pan de tuiles dépasser en dents de scie entre les
+    // marches : vu de biais, une bande de tuiles en diagonale hors du pignon.
+    const y = yEg + (yFa - yEg) * ((k + 1) / n);
     dessus.push([t1, y], [t0, y]);
   }
   const EP = 0.22, CH = 0.16;                          // saillie du pignon, épaisseur du chaperon
@@ -501,6 +504,97 @@ function pignonRedents(sMur, sPierre, P, hl, hw, yEg, yFa, sg, tmur, tpierre, n)
   }
 }
 
+function dansPoly(x, z, p) {
+  let c = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++)
+    if ((p[i][1] > z) !== (p[j][1] > z) && x < (p[j][0] - p[i][0]) * (z - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c;
+  return c;
+}
+function barrePont(p) {
+  for (const P of PONTS) for (let i = 0; i < P.pts.length - 1; i++) {
+    const a = P.pts[i], b = P.pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(L);
+    for (let k = 0; k <= n; k++) if (dansPoly(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, p)) return true;
+  }
+  return false;
+}
+// Les axes des cours et des sentiers relevés (voies de classe 0 et 1, chemins), un point par
+// mètre, rangés par cases de 20 m : de quoi savoir vite si une emprise en est traversée.
+let COURS = null;
+function traverseCour(p) {
+  if (!COURS) {
+    COURS = new Map();
+    const ranger = (m, x, z, v) => { const g = Math.floor(x / 20) * 100003 + Math.floor(z / 20); let l = m.get(g); if (!l) m.set(g, l = []); l.push(x, z, v); };
+    const cours = LILLE.routes.filter((r) => r.r <= 1).concat(LILLE.chemins);
+    // toutes les voies, pour savoir où une cour inachevée retrouve la rue
+    const VOIE = new Map(), toutes = LILLE.routes.concat(LILLE.chemins);
+    toutes.forEach((o, v) => { for (let i = 0; i < o.pts.length - 1; i++) {
+      const a = o.pts[i], b = o.pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
+      for (let k = 0; k <= n; k++) ranger(VOIE, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, v); } });
+    const pres = (x, z, sauf) => { const l = VOIE.get(Math.floor(x / 20) * 100003 + Math.floor(z / 20)); if (!l) return false;
+      for (let i = 0; i < l.length; i += 3) if (l[i + 2] !== sauf && Math.abs(l[i] - x) < 1.5 && Math.abs(l[i + 1] - z) < 1.5) return true; return false; };
+    for (const o of cours) {
+      const v = toutes.indexOf(o);
+      for (let i = 0; i < o.pts.length - 1; i++) {
+        const a = o.pts[i], b = o.pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
+        for (let k = 0; k <= n; k++) ranger(COURS, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, v);
+      }
+      // Une cour que le relevé arrête à quelques mètres d'une rue, une maison entre les deux :
+      // c'est le porche qui manque au tracé. On prolonge le bout dans l'axe, douze mètres au
+      // plus, et seulement s'il retrouve une autre voie.
+      for (const [q, r] of [[o.pts[0], o.pts[1]], [o.pts[o.pts.length - 1], o.pts[o.pts.length - 2]]]) {
+        const L = Math.hypot(q[0] - r[0], q[1] - r[1]) || 1, ux = (q[0] - r[0]) / L, uz = (q[1] - r[1]) / L;
+        if (pres(q[0], q[1], v)) continue;                                  // il débouche déjà
+        let d = 1; while (d <= 12 && !pres(q[0] + ux * d, q[1] + uz * d, v)) d++;
+        if (d <= 12) for (let k = 1; k <= d; k++) ranger(COURS, q[0] + ux * k, q[1] + uz * k, v);
+      }
+    }
+  }
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const q of p) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1]; }
+  for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gz = Math.floor(z0 / 20); gz <= Math.floor(z1 / 20); gz++) {
+    const l = COURS.get(gx * 100003 + gz); if (!l) continue;
+    for (let i = 0; i < l.length; i += 3) if (dansPoly(l[i], l[i + 1], p)) return true;
+  }
+  return false;
+}
+// Un lot rectangulaire recule chaque mur qui passe à moins de COUR_DEMI de l'axe d'une cour.
+// Renvoie vrai s'il a reculé, faux sinon, null s'il y perdrait près de la moitié de sa
+// profondeur (on ne l'élève pas : la cour s'élargit d'autant).
+const COUR_DEMI = 1.2;
+function degagerCour(PA) {
+  if (PA.poly.length !== 4 || !COURS) return false;
+  // des copies : le contour d'un lot entier EST celui du relevé (IGN.bati), partagé
+  const q = PA.poly.map((v) => v.slice()), r = { ...PA.r };
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const v of q) { x0 = Math.min(x0, v[0]); x1 = Math.max(x1, v[0]); z0 = Math.min(z0, v[1]); z1 = Math.max(z1, v[1]); }
+  const pts = [];
+  for (let gx = Math.floor((x0 - 2) / 20); gx <= Math.floor((x1 + 2) / 20); gx++) for (let gz = Math.floor((z0 - 2) / 20); gz <= Math.floor((z1 + 2) / 20); gz++) {
+    const l = COURS.get(gx * 100003 + gz); if (!l) continue;
+    for (let i = 0; i < l.length; i += 3) if (l[i] > x0 - 2 && l[i] < x1 + 2 && l[i + 1] > z0 - 2 && l[i + 1] < z1 + 2) pts.push(l[i], l[i + 1]);
+  }
+  if (!pts.length) return false;
+  const sens = aireSignee(q) < 0 ? -1 : 1;
+  let bouge = false;
+  for (let i = 0; i < 4; i++) {
+    const a = q[i], c = q[(i + 1) % 4], L = Math.hypot(c[0] - a[0], c[1] - a[1]); if (L < 0.05) continue;
+    const tx = (c[0] - a[0]) / L, tz = (c[1] - a[1]) / L, nx = tz * sens, nz = -tx * sens;   // normale sortante
+    let besoin = 0;
+    for (let k = 0; k < pts.length; k += 2) {
+      const ex = pts[k] - a[0], ez = pts[k + 1] - a[1], le = ex * tx + ez * tz, d = ex * nx + ez * nz;
+      if (le > -0.3 && le < L + 0.3 && d > -0.01 && d < COUR_DEMI) besoin = Math.max(besoin, COUR_DEMI - d);
+    }
+    if (besoin <= 0.02) continue;
+    const b2 = q[(i + 2) % 4], prof = Math.hypot(b2[0] - c[0], b2[1] - c[1]);
+    if (besoin > prof * 0.45) return null;
+    a[0] -= nx * besoin; a[1] -= nz * besoin; c[0] -= nx * besoin; c[1] -= nz * besoin;
+    if (Math.abs(nx * r.ux + nz * r.uz) > 0.7) r.L -= besoin; else r.W -= besoin;
+    r.cx -= nx * besoin / 2; r.cz -= nz * besoin / 2; r.A = r.L * r.W; PA.aire = r.A;
+    bouge = true;
+  }
+  if (bouge) { PA.poly = q; PA.r = r; }
+  return bouge;
+}
+const RMUR = 0.3;                // rayon des capsules de façade (cf. « collisions » dans batirQuartier)
 export function batirQuartier() {
   const M = materiaux();
   const sacs = new Map();
@@ -519,6 +613,7 @@ export function batirQuartier() {
   const prendreRelief = () => { let s = reliefs.get(tuile); if (!s) reliefs.set(tuile, s = sac(M.pierreT)); return s; };
   const grp = new THREE.Group();
   grp.name = 'quartier';
+  let porches = 0, degages = 0;
   let bati = 0, ecarte = 0, caps = 0, baies = 0, bourg = 0, pignons = 0, cheminees = 0, lucarnes = 0, boutiques = 0;
   const lanternes = [], tonneaux = [], caisses = [], vitrines = [];   // vitrines : pour les bancs d'essai
   const compteToit = { pans: 0, croupe: 0, terrasse: 0 };
@@ -547,6 +642,9 @@ export function batirQuartier() {
       if (lx > B.x0 - 3 && lx < B.x1 + 3 && lz > B.z0 - 3 && lz < B.z1 + 3) { ecarte++; bourg++; continue; } }
     if (!dansEnceinte(cx, cz) || Math.hypot(cx, cz) > PLAINE_R - 25) { ecarte++; continue; }
     if (sdEau(cx, cz) < 2) { ecarte++; continue; }            // le relevé pose quelques hangars sur la rive
+    // une emprise sur l'axe d'un pont (culées prolongées comprises) : la passerelle de
+    // Soubise arrivait droit dans une façade, on ne la traversait plus
+    if (barrePont(p)) { ecarte++; continue; }
 
     const rB = rectMin(p);
     if (!rB) { ecarte++; continue; }
@@ -568,14 +666,6 @@ export function batirQuartier() {
     for (const q of p) { const y = solPlaine(q[0], q[1]); if (y < yBas) yBas = y; if (y > yHaut) yHaut = y; }
     const base = yBas - 1.6;
     const pleinB = A / Math.max(1, rB.A);     // 1 = le bâtiment EST son rectangle
-
-    // ---- collisions : le contour RELEVÉ, une fois pour toutes ----
-    // (et non les parcelles : les murs mitoyens ne se franchissent pas, ils n'existent pas)
-    for (let i = 0; i < p.length; i++) {
-      const a = p[i], c = p[(i + 1) % p.length];
-      if (Math.hypot(c[0] - a[0], c[1] - a[1]) < 0.05) continue;
-      addCap(a[0], a[1], c[0], c[1], 0.45, yHaut + HB + 4); caps++;
-    }
 
     // ---------------------------------------------------------------
     //  DÉCOUPE EN PARCELLES
@@ -618,6 +708,40 @@ export function batirQuartier() {
             H: HB * (0.86 + 0.26 * hq), aire: pu * R.W, graine: gm + i * 17, seule: false,
           });
         }
+      }
+    }
+
+    // ---- les porches ----
+    // Le relevé fait passer 130 cours et sentiers À TRAVERS une emprise bâtie : c'est un
+    // porche, la cour s'ouvre sous la maison. Dessinée pleine, la maison enfermait la cour
+    // (Corderie, Cygne, Cado…) — une rue dessinée au fond d'un îlot, où l'on n'entre pas.
+    // Le lot traversé n'est pas élevé : la cour débouche sur la rue par une ruelle.
+    // (chaque lot, et pas seulement le contour : un rectangle d'approximation déborde du
+    // relevé jusqu'à 1,25 m, et c'est lui qui bouchait l'entrée de la cour de la Corderie)
+    for (let i = parcelles.length - 1; i >= 0; i--) if (traverseCour(parcelles[i].poly)) { parcelles.splice(i, 1); porches++; }
+    // Et les lots qui la bordent reculent : leurs rectangles approchent le contour à
+    // ±1,25 m, et une cour de deux mètres n'était plus qu'une fente entre deux façades.
+    for (let i = parcelles.length - 1; i >= 0; i--) { const e = degagerCour(parcelles[i]);
+      if (e === null) { parcelles.splice(i, 1); porches++; } else if (e) degages++; }
+
+    // ---- collisions : les murs DESSINÉS ----
+    // Elles suivaient le contour relevé, alors que les murs, eux, suivent les parcelles —
+    // des rectangles qui approchent le contour à ±1,25 m (decouperRectangles), et qui
+    // laissent tomber les redans de moins de 1,6 m. Partout où le dessin rentrait, il
+    // restait un mur invisible dans la rue ; partout où il débordait, on entrait dans la
+    // façade. Et la capsule de 0,45 était CENTRÉE sur le mur : ajoutée au rayon de Camille,
+    // elle l'arrêtait à près d'un mètre des façades, et une cour de deux mètres ne passait
+    // plus (Eugène, 26 septembre : « des routes libres mais impossible d'avancer »). Chaque
+    // capsule est donc posée sur un mur de parcelle, décalée vers l'intérieur de son rayon :
+    // son bord affleure la façade. Les murs mitoyens en reçoivent une aussi ; on ne les
+    // atteint jamais, elles ne coûtent qu'un peu de mémoire.
+    for (const PA of parcelles) {
+      const q = PA.poly, sens = aireSignee(q) < 0 ? -1 : 1;   // les lots découpés ne sont pas orientés
+      for (let i = 0; i < q.length; i++) {
+        const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c[0] - a[0], c[1] - a[1]);
+        if (L < 0.05) continue;
+        const ix = -(c[1] - a[1]) / L * RMUR * sens, iz = (c[0] - a[0]) / L * RMUR * sens;   // normale rentrante
+        addCap(a[0] + ix, a[1] + iz, c[0] + ix, c[1] + iz, RMUR, yHaut + HB + 4); caps++;
       }
     }
 
@@ -932,6 +1056,7 @@ export function batirQuartier() {
       instancier(gt.bois, M.boisRue, tonneaux), instancier(gt.fer, M.ferRue, tonneaux, false), instancier(gc, M.boisRue, caisses)]) if (o) grp.add(o);
     for (const o of [...tonneaux, ...caisses]) addCap(o.x, o.z, o.x, o.z, 0.38, 0.95);        // on ne les traverse pas
     console.log('la rue : %d boutiques, %d lanternes, %d tonneaux, %d caisses', boutiques, lanternes.length, tonneaux.length, caisses.length); }
+  console.log('porches : %d lots traversés par une cour relevée, laissés ouverts ; %d lots reculés au bord d’une cour', porches, degages);
   console.log('quartier relevé : %d bâtiments élevés (%d écartés, dont %d sur l’îlot du bourg), %d toits à deux pans, %d à croupe, %d terrasses, %d baies, %d pignons à redents, %d cheminées, %d lucarnes, %d capsules de façade',
     bati, ecarte, bourg, compteToit.pans, compteToit.croupe, compteToit.terrasse, baies, pignons, cheminees, lucarnes, caps);
   grp.userData.vitrines = vitrines;

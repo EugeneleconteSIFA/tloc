@@ -1,0 +1,173 @@
+{
+ "x0": 32,
+ "z0": 496,
+ "N": 680,
+ "PAS": 0.5,
+ "rueTot": 62461,
+ "rueLibre": 60961,
+ "rueAtteinte": 60774,
+ "murs": 21775,
+ "mursRue": 2,
+ "marches": 44,
+ "zMurs": [
+  {
+   "type": "MUR",
+   "n": 1,
+   "x": 206.3,
+   "z": 645.3,
+   "local": [
+    -6.9,
+    8.1
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 0.25,
+   "qui": [
+    [
+     "village.js:1155 < village.js:1178 < village.js:1054",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "MUR",
+   "n": 1,
+   "x": 217.8,
+   "z": 657.3,
+   "local": [
+    -11.8,
+    -1.8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 0.25,
+   "qui": [
+    [
+     "village.js:1155 < village.js:1467 < citadelle.js:339",
+     1
+    ]
+   ]
+  }
+ ],
+ "zMarches": [
+  {
+   "type": "MARCHE",
+   "n": 30,
+   "x": 365.8,
+   "z": 541,
+   "local": [
+    -129.2,
+    42.4
+   ],
+   "y": -2.04,
+   "lieu": "Façade de l'Esplanade",
+   "dMax": 4.33
+  },
+  {
+   "type": "MARCHE",
+   "n": 12,
+   "x": 342.3,
+   "z": 520.5,
+   "local": [
+    -118.4,
+    60.2
+   ],
+   "y": 0.65,
+   "lieu": "Bois de Boulogne",
+   "dMax": 3.1
+  },
+  {
+   "type": "MARCHE",
+   "n": 2,
+   "x": 38.8,
+   "z": 661,
+   "local": [
+    102.7,
+    31.7
+   ],
+   "y": -1.09,
+   "lieu": "Pont du Ramponneau",
+   "dMax": 0.57
+  }
+ ],
+ "zPerdues": [
+  {
+   "type": "COUPÉE",
+   "n": 99,
+   "x": 163.8,
+   "z": 828.8,
+   "local": [
+    56.9,
+    -100
+   ],
+   "y": -0.4,
+   "lieu": "Cour Notre-Dame",
+   "m2": 24.75
+  },
+  {
+   "type": "COUPÉE",
+   "n": 38,
+   "x": 185.8,
+   "z": 650.8,
+   "local": [
+    7.2,
+    8.7
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 9.5
+  },
+  {
+   "type": "COUPÉE",
+   "n": 19,
+   "x": 205.8,
+   "z": 642.8,
+   "local": [
+    -7.1,
+    9.8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 4.75
+  },
+  {
+   "type": "COUPÉE",
+   "n": 17,
+   "x": 212.8,
+   "z": 667.3,
+   "local": [
+    -6.7,
+    -7.2
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 4.25
+  },
+  {
+   "type": "COUPÉE",
+   "n": 10,
+   "x": 165.8,
+   "z": 658.3,
+   "local": [
+    21.4,
+    8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 2.5
+  },
+  {
+   "type": "COUPÉE",
+   "n": 4,
+   "x": 32.3,
+   "z": 835.3,
+   "local": [
+    141.8,
+    -77.8
+   ],
+   "y": 1.32,
+   "lieu": "Résidence du Beau Bouquet",
+   "m2": 1
+  }
+ ]
+}

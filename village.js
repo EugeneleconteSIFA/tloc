@@ -12,9 +12,10 @@ import { mouldingProfile,
   wallBox, world,
 } from './engine.js?v=27';
 import {
-  COBBLE_M, TOWN, TOWN_BOITE, calerBourg, cobbles, lisse, normale, patinerMat, townWorld,
+  COBBLE_M, TOWN, TOWN_BOITE, calerBourg, cobbles, levelH, lisse, normale, patinerMat, townWorld,
 } from './carte.js';
 import * as ATLAS from './atlas.js';
+import { especeGeo } from './foret.js';
 import {
   DOOR_COLORS, FERN, VITRE_CHAUDE, makeDoor, makeParavent, makeToile, makeVolet,
 } from './menuiserie.js';
@@ -51,12 +52,31 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
   // pilastres aux angles de la façade
   for (const sx of [-1, 1]) { const pl = pilaster(h - 0.4, 0.22, stone, stone); pl.position.set(sx * (w / 2 - 0.1), 0.7, d / 2 + 0.12); g.add(pl); }
   // toit : deux pans, faîtière arrondie, lucarnes ; pignons à redents avec chaperons arrondis et fleuron
-  const roofH = w * 0.55;
-  const tri = new THREE.Shape(); tri.moveTo(-w / 2 - 0.3, 0); tri.lineTo(w / 2 + 0.3, 0); tri.lineTo(0, roofH); tri.closePath();
-  const roofM = pbrRepeat(T.plank, 2, 2, { color: opts.roof || 0x6a4a3a, roughness: 0.9 });
-  const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: d + 0.6, bevelEnabled: false }), roofM); roof.position.set(0, h, -d / 2 - 0.3); roof.castShadow = true; g.add(roof);
-  g.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, d + 0.7, 8), mat(0x4a3a30), 0, h + roofH, 0).rotateX(Math.PI / 2));
-  const nd = w > 6 ? 2 : 1; for (let k = 0; k < nd; k++) { const dm = dormer(1.3, 1.3, stone, roofM, glass); const x = (k - (nd - 1) / 2) * 2.2, t = 0.45; dm.position.set(x, h + roofH * t - 0.2, (1 - t) * (w / 2 + 0.3) * (d + 0.6) / (w + 0.6) * 0 + (d / 2 + 0.3) * (1 - t) - 0.4); dm.position.z = (d / 2 + 0.3) * (1 - t) - 0.5; g.add(dm); }
+  // LES PANS SONT EN TUILES. C'étaient des planches teintées presque noir : vu d'en haut, le
+  // bourg faisait une grappe de toits sombres au milieu des tuiles de terre cuite du quartier
+  // relevé (quartier.js). Chaque pan est un quad dont les UV sont en MÈTRES, rangs parallèles
+  // au faîtage ; le prisme d'origine reste dessous, en bois sombre : c'est la charpente qu'on
+  // voit sous l'égout et au bout des pignons.
+  const roofH = w * 0.55, eX = w / 2 + 0.3, zL = d / 2 + 0.3, pente = Math.hypot(eX, roofH);
+  const tri = new THREE.Shape(); tri.moveTo(-eX, 0); tri.lineTo(eX, 0); tri.lineTo(0, roofH); tri.closePath();
+  const charpente = pbrRepeat(T.plank, 2, 2, { color: 0x4a3a2e, roughness: 0.9 });
+  const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: 2 * zL, bevelEnabled: false }), charpente); roof.position.set(0, h, -zL); roof.castShadow = true; g.add(roof);
+  const tuileM = patinerMat(phMat('clay_roof_tiles_02', 1, 1, { color: opts.roof || 0xc9896a, roughness: 0.9 }), { echelle: 14, force: 0.24, humide: 0, pluie: 0.14 });
+  for (const s of [-1, 1]) {
+    const nx = s * roofH / pente * 0.04, ny = eX / pente * 0.04;          // quatre centimètres au-dessus du prisme
+    const pos = [[s * eX, h, -zL], [s * eX, h, zL], [0, h + roofH, zL], [0, h + roofH, -zL]].flatMap(([x, y, z]) => [x + nx, y + ny, z]);
+    const uv = [0, 0, 2 * zL * MS, 0, 2 * zL * MS, pente * MS, 0, pente * MS];
+    const gp = new THREE.BufferGeometry();
+    gp.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gp.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    gp.setIndex(s > 0 ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]); gp.computeVertexNormals();
+    const pan = new THREE.Mesh(gp, tuileM); pan.castShadow = pan.receiveShadow = true; g.add(pan);
+  }
+  g.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, d + 0.7, 8), TUILV(1, 1, { color: 0x9a5a3e }), 0, h + roofH, 0).rotateX(Math.PI / 2));
+  // Les lucarnes regardaient la rue en sortant du milieu d'un pan qui monte de côté : elles
+  // se posent maintenant SUR les pans, tournées vers le côté, une par pan.
+  // Le pied de la face vitrée se pose sur le pan (xf) ; le corps s'enfonce dans la pente derrière.
+  for (const s of [-1, 1]) { const xf = eX * 0.62, dm = dormer(1.2, 1.15, stone, TUILV(1, 1, { color: 0xb87a5c }), glass);
+    dm.position.set(s * (xf - 0.6), h + roofH * (1 - xf / eX) - 0.05, 0); dm.rotation.y = s * Math.PI / 2; g.add(dm); }
   const stepMat = phMat('stacked_brick_wall', (w + 0.4) * MS, (roofH / 5 + 0.15) * MS, { color: tintClair });
   for (const side of [1, -1]) {
     const steps = 5;
@@ -715,7 +735,8 @@ function sechoirDrapier(ctx) {
     const b = CHENE(0.2, 2.6, { color: 0x7a6242 });
     for (const sz of [-1, 1]) g.add(mesh(boxG(0.18, 2.6, 0.18), b, 0, 1.3, sz * len / 2));
     for (const y of [0.85, 2.45]) g.add(mesh(boxG(0.14, 0.14, len), b, 0, y, 0));
-    const dr = new THREE.Mesh(new THREE.PlaneGeometry(len - 0.2, 1.5, 6, 3), ETOFFE(len, 1.5, { color: col, side: THREE.DoubleSide }));
+    // teinte éclaircie : le drap multiplie une photo de tissu déjà sombre, et les rames lisaient comme des panneaux noirs
+    const dr = new THREE.Mesh(new THREE.PlaneGeometry(len - 0.2, 1.5, 6, 3), ETOFFE(len, 1.5, { color: clair2(col, 0.45), side: THREE.DoubleSide }));
     const po = dr.geometry.attributes.position;
     for (let i = 0; i < po.count; i++) po.setZ(i, Math.sin(po.getX(i) * 2.2) * 0.04 + Math.sin(po.getY(i) * 3) * 0.03);
     po.needsUpdate = true; dr.geometry.computeVertexNormals();
@@ -723,7 +744,11 @@ function sechoirDrapier(ctx) {
     for (let k = 0; k < 7; k++) g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 4), FERN(), 0, 2.38, -len / 2 + 0.3 + k * (len - 0.6) / 6));
     addCap(x, z - len / 2, x, z + len / 2, 0.22, 2.7);
   };
-  rame(21.2, -1.8, 3.4, tons[0]); rame(21.2, 1.9, 3.4, tons[1]); rame(22.6, 0.1, 3.4, tons[2]);
+  // Les trois rames barraient la grand-rue d'un trottoir à l'autre, à son bout est — là où
+  // elle rejoint les rues du quartier : on butait sur les poteaux et sur leurs collisions
+  // (« une rue libre et un mur »). Elles sèchent maintenant dans la cour, contre le pignon
+  // de la dernière maison de la rangée sud, perpendiculaires à la rue.
+  rame(20.8, 8.2, 3.4, tons[0]); rame(22.0, 8.0, 3.4, tons[1]); rame(23.2, 8.3, 3.4, tons[2]);
   // la cuve de teinture et son foyer, la pile de bois, les écheveaux
   { const CX2 = 20.6, CZ2 = -5.4;
     scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.68, 0.95, 14), PIERV(1.5, 0.95, { color: 0x8a7f6c }), CX2, 0.55, CZ2));
@@ -734,14 +759,14 @@ function sechoirDrapier(ctx) {
     tache(ctx, CX2, CZ2 + 1.2, 1.7, 0x3a4060, 0.45);
     flaque(ctx, CX2 - 1.1, CZ2 + 1.5, 0.5); }
   tasBuches(ctx, 22.4, -6.4, Math.PI / 2, 2.0, 0.95);
-  { const pa = panier(0.42, 0.45); pa.position.set(19.9, 0, -3.1); scene.add(pa);
+  { const pa = panier(0.42, 0.45); pa.position.set(20.0, 0, -4.9); scene.add(pa);
     for (let k = 0; k < 5; k++) { const e = mesh(new THREE.TorusGeometry(0.11, 0.05, 6, 10), ETOFFE(0.3, 0.3, { color: tons[k % 4] }), rand(-0.12, 0.12), 0.46, rand(-0.12, 0.12));
       e.rotation.x = rand(0, 1); pa.add(e); } }
-  { const p = mesh(boxG(0.14, 2.3, 0.14), CHENE(0.2, 2.3, { color: 0x6a5238 }), 19.6, 1.15, 0.6); scene.add(p);
+  { const p = mesh(boxG(0.14, 2.3, 0.14), CHENE(0.2, 2.3, { color: 0x6a5238 }), 20.4, 1.15, 5.4); scene.add(p);
     const ens = enseignePeinte('SÉCHOIR', 'drap', 1.5, 0.82, { simple: true });
-    ens.position.set(19.6, 2.0, 0.6); ens.rotation.y = -Math.PI / 2; scene.add(ens);
-    ctx.addCap(19.6, 0.6, 19.6, 0.6, 0.2, 2.4); }
-  tache(ctx, 21.4, -1.0, 4.0, 0x83745c, 0.4);
+    ens.position.set(20.4, 2.0, 5.4); scene.add(ens);
+    ctx.addCap(20.4, 5.4, 20.4, 5.4, 0.2, 2.4); }
+  tache(ctx, 22.0, 8.0, 3.2, 0x83745c, 0.4);
 }
 
 // ---------------------------------------------------------------------
@@ -1037,7 +1062,7 @@ function divers(ctx, RUE) {
   linge(ctx, -8.15, ZN + 0.1, -8.15, ZS - 0.1, 5.6, 6);
   linge(ctx, 16.2, ZN + 0.1, 16.2, ZS - 0.1, 5.2, 7);
   for (const [x, z] of [[-7.4, -4.55], [-7.85, 4.55], [7.85, -4.55], [7.5, 4.55], [-21.6, -2.95], [-21.6, 2.95], [14.45, 4.55], [-14.4, -4.55]]) chasseRoue(ctx, x, z);
-  ornieres(ctx, -27, 0.25, 17.5, 0.25, 1.05);
+  ornieres(ctx, -22.5, 0.25, 17.5, 0.25, 1.05);        // à plat : elles s'arrêtent avant la rampe du bord
   ornieres(ctx, 0.3, -17, 0.3, 17, 1.05);
   for (const [x, z, r] of [[-1.8, 3.95, 0.6], [2.6, -3.85, 0.45], [-18.4, 0.8, 0.55], [14.2, 1.3, 0.5], [-22.5, -0.6, 0.7], [4.4, -1.3, 0.4]]) flaque(ctx, x, z, r);
   { const e = echelle(4.2); e.position.set(-15.0, 0, ZN + 0.62); e.rotation.x = -0.16; scene.add(e); }   // appuyée contre la façade, donc DEVANT elle
@@ -1049,7 +1074,7 @@ function divers(ctx, RUE) {
   millesime(ctx, -17, 3.8, ZN + 0.04, 0, 'IN DEN ZWAAN — 1648');
   millesime(ctx, 17, 3.8, ZS - 0.04, Math.PI, 'DE DRIE SLEUTELS — 1655');
   // devant la Porte des Flandres : la boue, le crottin et le fagot du corps de garde
-  tache(ctx, -22.8, 0, 3.2, 0x6f5f47, 0.5);
+  tache(ctx, -21.2, 0, 2.2, 0x6f5f47, 0.5);
   for (let k = 0; k < 3; k++) { const f = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8), pbrRepeat(T.bark, 1, 1), -21.2, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5);
     f.rotation.z = Math.PI / 2; f.rotation.y = rand(-0.2, 0.2); scene.add(f);
     for (const sy of [-0.3, 0.3]) scene.add(mesh(new THREE.TorusGeometry(0.23, 0.02, 4, 10), UNI(0x7a6a4a), -21.2 + sy, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5).rotateY(Math.PI / 2)); }
@@ -1093,28 +1118,51 @@ export function buildTown() {
   // Le bourg est maintenant TOURNÉ (dans l'axe des rues relevées) : aucune conversion
   // local -> monde ne peut plus s'écrire « TOWN.x + x * S ». Tout passe par townWorld().
   const W2 = (x, z) => townWorld(x, z);
+  // Un sol dessiné qui épouse le sol MARCHABLE (levelH) : à plat sur le cœur du bourg, en
+  // pente douce sur ses bords (solBourg, carte.js), et y0 au-dessus, en unités locales.
+  const draper = (geo, y0) => {
+    const po = geo.attributes.position;
+    for (let i = 0; i < po.count; i++) { const [x, z] = W2(po.getX(i), po.getZ(i)); po.setY(i, (levelH(x, z) - TOWN.y) / S + y0); }
+    po.needsUpdate = true; geo.computeVertexNormals(); return geo;
+  };
   // LE SOCLE DU BOURG. Le sol marchable est à la cote du dallage sur toute la boîte du bourg
   // (levelH, carte.js : TOWN_BOITE), mais on ne dessinait de sol que sous les pavés et leur
   // fondu : sur les bords, Camille marchait 0,5 à 0,8 m au-dessus de l'herbe du quartier
-  // (banc arpenteur). Un socle de terre battue couvre toute la boîte, son dessus un
-  // centimètre sous les pavés, et ses flancs descendent jusqu'au terrain : là où le relevé
-  // est plus bas, on voit une petite marche au lieu d'un sol invisible.
-  { const B = TOWN_BOITE, ep = 3;
-    const socle = new THREE.Mesh(new THREE.BoxGeometry(B.x1 - B.x0, ep, B.z1 - B.z0),
-      phMat('rocks_ground_08', (B.x1 - B.x0) * S, (B.z1 - B.z0) * S, { color: 0xd5c4a0, roughness: 1 }));
-    socle.position.set((B.x0 + B.x1) / 2, -ep / 2 + 0.02, (B.z0 + B.z1) / 2);
-    socle.receiveShadow = true; scene.add(socle); }
+  // (banc arpenteur). Un socle de terre battue couvre toute la boîte, un centimètre sous
+  // les pavés. C'était une boîte à flancs verticaux : la marche qu'on y voyait était aussi
+  // une marche pour les pieds, et le bord ouest (0,74 m) ne se remontait pas. Le socle est
+  // maintenant une nappe drapée sur le sol marchable, qui rejoint le relevé en pente.
+  // Son bord était un rectangle franc posé sur la pelouse de l'Esplanade et en travers du
+  // boulevard : il s'efface maintenant sur ses quatre dernières unités — là où, par la rampe,
+  // il a rejoint le relevé —, et l'herbe ou la chaussée de la ville reprennent sans couture.
+  { const B = TOWN_BOITE, FONDU = 4;
+    const geo = new THREE.PlaneGeometry(B.x1 - B.x0, B.z1 - B.z0, B.x1 - B.x0, B.z1 - B.z0).rotateX(-Math.PI / 2)
+      .translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2);
+    const po = geo.attributes.position, col = [];
+    for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i);
+      col.push(1, 1, 1, lisse(Math.min(x - B.x0, B.x1 - x, z - B.z0, B.z1 - z) / FONDU)); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    const socle = new THREE.Mesh(draper(geo, 0.02),
+      phMat('rocks_ground_08', (B.x1 - B.x0) * S, (B.z1 - B.z0) * S, { color: 0xd5c4a0, roughness: 1, transparent: true, depthWrite: false, vertexColors: true }));
+    socle.receiveShadow = true; socle.renderOrder = 1; scene.add(socle);
+    // le cœur, opaque, sous la nappe : c'est lui qui porte les ombres et que voient les bancs
+    // (crawl.mjs, murs.mjs écartent les transparents)
+    const W = B.x1 - B.x0 - 2 * FONDU, D = B.z1 - B.z0 - 2 * FONDU;
+    const coeur = new THREE.Mesh(draper(new THREE.PlaneGeometry(W, D, W, D).rotateX(-Math.PI / 2).translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2), 0.019),
+      phMat('rocks_ground_08', W * S, D * S, { color: 0xd5c4a0, roughness: 1 }));
+    coeur.receiveShadow = true; scene.add(coeur); }
   // top est une hauteur LOCALE : elle se compte depuis le dallage du bourg, pas depuis 0
   const addCap = (ax, az, bx, bz, r, top = Infinity) => E.addCap(...W2(ax, az), ...W2(bx, bz), r * S, TOWN.y + top * S);
   // addBox pose une boîte ALIGNÉE sur les axes du monde : sous rotation elle ne veut plus
-  // rien dire. On la remplace par une capsule tendue le long du grand axe de la boîte,
-  // de rayon la demi-largeur — le stade inscrit dans le rectangle. Les quatre coins ne
-  // sont plus couverts, ce qui vaut mieux que de bloquer un mètre de rue en biais.
+  // rien dire. C'était un stade inscrit dans le rectangle (une capsule de rayon la
+  // demi-largeur) : les coins n'étaient pas couverts, et l'on entrait de près de deux
+  // mètres dans l'angle de chaque maison. Ce sont maintenant quatre capsules minces, une
+  // par mur, rentrées de leur rayon : leur bord affleure la façade, coins compris.
   const addBox = (x0, x1, z0, z1, top) => {
-    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, hw = (x1 - x0) / 2, hd = (z1 - z0) / 2;
-    const r = Math.min(hw, hd), l = Math.max(hw, hd) - r;
-    const ux = hw >= hd ? l : 0, uz = hw >= hd ? 0 : l;
-    return addCap(cx - ux, cz - uz, cx + ux, cz + uz, r, top);
+    const r = Math.min(0.3 / S, (x1 - x0) / 2, (z1 - z0) / 2);
+    const a0 = x0 + r, a1 = x1 - r, b0 = z0 + r, b1 = z1 - r;
+    addCap(a0, b0, a1, b0, r, top); addCap(a1, b0, a1, b1, r, top);
+    addCap(a1, b1, a0, b1, r, top); return addCap(a0, b1, a0, b0, r, top);
   };
   const addInteract = (it) => { const [wx, wz] = W2(it.pos.x, it.pos.z);
     return E.addInteract({ ...it, pos: new THREE.Vector3(wx, TOWN.y + it.pos.y * S, wz), r: it.r * S }); };
@@ -1164,7 +1212,8 @@ export function buildTown() {
         const A = i * NR + k, B = (i + 1) * NR + k;
         idx.push(A, B, A + 1, A + 1, B, B + 1);
       }
-      const o = new THREE.Mesh(plat(pos, uv, col, idx), m); o.receiveShadow = true; return o;
+      // drapé lui aussi : son fondu déborde de la boîte, là où le relevé descend
+      const o = new THREE.Mesh(draper(plat(pos, uv, col, idx), y), m); o.receiveShadow = true; return o;
     };
     const terre = (extra) => phMat('rocks_ground_08', 1, 1, { color: 0xd5c4a0, side: THREE.DoubleSide, ...extra });
     const sol = nappe([[-24, 1], [-2, 1], [1.5, 0.55], [4.5, 0]],
@@ -1174,11 +1223,16 @@ export function buildTown() {
   // Chaque nappe de pavés monte d'un demi-millimètre sur la précédente : posées à la même
   // altitude, elles se disputaient le z-buffer et la place virait aux taches bleutées.
   let pavY = 0.040;
-  const paved = (x0, z0, w, d) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pbrRepeat(C, w / COBBLE_TILE, d / COBBLE_TILE, { roughness: 0.9 })); m.rotation.x = -Math.PI / 2; m.position.set(tx + x0, pavY += 0.0006, tz + z0); m.receiveShadow = true; scene.add(m); };
+  // drapés sur le sol marchable (cf. draper) : ils suivent la pente du bord de la boîte
+  const paved = (x0, z0, w, d) => {
+    const geo = new THREE.PlaneGeometry(w, d, Math.ceil(w), Math.ceil(d)).rotateX(-Math.PI / 2).translate(tx + x0, 0, tz + z0);
+    const m = new THREE.Mesh(draper(geo, pavY += 0.0006), pbrRepeat(C, w / COBBLE_TILE, d / COBBLE_TILE, { roughness: 0.9 })); m.receiveShadow = true; scene.add(m); };
   const RUE = 4.4;                       // demi-largeur de la chaussée, en unités locales
   // la grand-rue ne court plus jusqu'à une porte qui n'existe plus : elle se raccorde
-  // aux rues relevées du quartier, aux deux bouts
-  paved(0, 0, 46, RUE * 2); paved(0, 0, RUE * 1.8, R2 * 2 + 4); paved(0, 0, 18, 18);
+  // aux rues relevées du quartier, aux deux bouts. Elle s'arrêtait à ±23 et la rue du
+  // marché à 18 : cinq unités de terre battue entre le pavé du bourg et celui de la ville.
+  // Elles courent maintenant jusqu'au bord de la boîte, en suivant la rampe.
+  paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, 2, RUE * 1.8, R2 * 2 + 8); paved(0, 0, 18, 18);
   // trottoirs/bordures en pierre le long de la grand-rue
   for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), stoneMat, tx, 0.09, tz + sz * (RUE - 0.3)));
   // maisons de part et d'autre de la grand-rue (façades vers la rue)
@@ -1417,25 +1471,36 @@ export function buildTown() {
   // taille, la nef jouable faisait 9 m de long, moins que la salle de l'estaminet.
   { const cx = tx, cz = tz - 22, NW = 9, ND = 14, NH = 6.4, HN = NW / 2, HD = ND / 2;
     const ch = new THREE.Group(); ch.position.set(cx, 0, cz);
-    const wallC = pbrRepeat(T.stone, 3 * S, 2 * S, { color: 0xc8c0b0 }), stoneC = pbr(T.stone, { roughness: 0.85, color: 0xe0d8c8 }), slate = mat(0x3b4a5c, { roughness: 0.7 }), vitrail = mat(0x6a8ab8, { roughness: 0.2, emissive: 0x304060, emissiveIntensity: 0.3 });
+    // LA PIERRE DE LA CHAPELLE. Les murs portaient la pierre peinte du moteur (T.stone), étirée
+    // sur toute la nef : de près, un gris flou, sans joint ni relief. Ils prennent le moellon
+    // photographié (old_stone_wall_02), chaque pièce à la taille de SA face ; le toit, des
+    // tuiles plates teintées ardoise au lieu d'un aplat bleu.
+    const pierreC = (() => { const memo = new Map(); return (l, h) => { const k = l + '|' + h;
+      if (!memo.has(k)) memo.set(k, patinerMat(phMat('old_stone_wall_02', l * S, h * S, { color: 0xe2d9c6 }), { echelle: 14, force: 0.22, humide: 2.2, pluie: 0.16 }));
+      return memo.get(k); }; })();
+    const ardoiseC = (l, h, tourne) => { const m = phMat('clay_roof_tiles_02', l * S, h * S, { color: 0x77808c, roughness: 0.75 });
+      // sur un prisme extrudé, u monte la pente : on tourne la tuile pour que les rangs suivent le faîtage
+      if (tourne) for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.rotation = Math.PI / 2;
+      return m; };
+    const wallC = pierreC(1, 1), stoneC = pbr(T.stone, { roughness: 0.85, color: 0xe0d8c8 }), slate = mat(0x3b4a5c, { roughness: 0.7 }), vitrail = mat(0x6a8ab8, { roughness: 0.2, emissive: 0x304060, emissiveIntensity: 0.3 });
     // nef aux arêtes adoucies, soubassement, corniche ; contreforts à glacis entre les fenêtres en arc ; abside semi-circulaire au nord
-    const nave = new THREE.Mesh(rboxG(NW, NH, ND, 0.15, 3), wallC); nave.position.y = NH / 2; nave.castShadow = nave.receiveShadow = true; ch.add(nave);
+    const nave = new THREE.Mesh(rboxG(NW, NH, ND, 0.15, 3), pierreC((NW + ND) / 2, NH)); nave.position.y = NH / 2; nave.castShadow = nave.receiveShadow = true; ch.add(nave);
     ch.add(mesh(rboxG(NW + 0.4, 0.5, ND + 0.4, 0.06, 2), stoneC, 0, 0.25, 0)); corniceAround(ch, 0, NH - 0.4, 0, HN, HD, stoneC, 0.4, 0.3, 'cyma');
     for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) { const z = -6 + k * 3; const bt = new THREE.Group(); bt.position.set(sx * HN, 0, z);
-      bt.add(mesh(boxG(0.8, 4.2, 0.9), wallC, sx * 0.4, 2.1, 0)); bt.add(mesh(boxG(0.6, 1.5, 0.9), wallC, sx * 0.3, 4.95, 0));
+      bt.add(mesh(boxG(0.8, 4.2, 0.9), pierreC(0.9, 4.2), sx * 0.4, 2.1, 0)); bt.add(mesh(boxG(0.6, 1.5, 0.9), pierreC(0.9, 1.5), sx * 0.3, 4.95, 0));
       const gl = mesh(new THREE.CylinderGeometry(0.02, 0.55, 0.9, 4), stoneC, sx * 0.6, 4.65, 0); gl.rotation.y = Math.PI / 4; gl.rotation.z = sx * -0.15; bt.add(gl); bt.add(mesh(new THREE.ConeGeometry(0.5, 0.7, 4), stoneC, sx * 0.3, 6.05, 0).rotateY(Math.PI / 4)); ch.add(bt); }
     for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) { const wv = archWindow(1.15, 3.1, vitrail, stoneC, { bars: false }); wv.position.set(sx * (HN + 0.06), 1.9, -4.5 + k * 3); wv.rotation.y = sx * Math.PI / 2; ch.add(wv);
       wv.add(mesh(boxG(0.05, 2.5, 0.03), stoneC, 0, 1.25, 0.03)); wv.add(mesh(boxG(1.15, 0.05, 0.03), stoneC, 0, 1.2, 0.03)); }
     const HALF = [18, 1, false, Math.PI / 2, Math.PI]; // moitié nord (z<0)
     const AR = 4.2, AZ = -HD;                          // rayon et centre de l'abside
-    const apse = mesh(new THREE.CylinderGeometry(AR, AR, NH - 0.4, ...HALF), wallC, 0, (NH - 0.4) / 2, AZ); ch.add(apse);
+    const apse = mesh(new THREE.CylinderGeometry(AR, AR, NH - 0.4, ...HALF), pierreC(Math.PI * AR, NH - 0.4), 0, (NH - 0.4) / 2, AZ); ch.add(apse);
     ch.add(mesh(new THREE.CylinderGeometry(AR + 0.2, AR + 0.2, 0.5, ...HALF), stoneC, 0, 0.25, AZ));
     ch.add(mesh(new THREE.CylinderGeometry(AR + 0.3, AR, 0.4, ...HALF), stoneC, 0, NH - 0.2, AZ));
-    ch.add(mesh(new THREE.ConeGeometry(AR + 0.5, 3.0, ...HALF), slate, 0, NH + 1.6, AZ)); ch.add(mesh(new THREE.CylinderGeometry(AR + 0.5, AR + 0.5, 0.3, ...HALF), slate, 0, NH + 0.25, AZ));
+    ch.add(mesh(new THREE.ConeGeometry(AR + 0.5, 3.0, ...HALF), ardoiseC(Math.PI * (AR + 0.5), 5.6), 0, NH + 1.6, AZ)); ch.add(mesh(new THREE.CylinderGeometry(AR + 0.5, AR + 0.5, 0.3, ...HALF), slate, 0, NH + 0.25, AZ));
     for (let k = -1; k <= 1; k++) { const a = Math.PI + k * Math.PI / 3.2; const wv = archWindow(0.85, 2.4, vitrail, stoneC, { bars: false }); wv.position.set(Math.sin(a) * (AR + 0.02), 2.3, AZ + Math.cos(a) * (AR + 0.02)); wv.rotation.y = a; ch.add(wv); }
     // toit à faîtière arrondie et flèche ; façade avec rosace, portail à voussures et pilastres
     const tri = new THREE.Shape(); tri.moveTo(-HN - 0.4, 0); tri.lineTo(HN + 0.4, 0); tri.lineTo(0, 4.2); tri.closePath();
-    const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: ND + 0.6, bevelEnabled: false }), slate); roof.position.set(0, NH - 0.4, -HD - 0.3); roof.castShadow = true; ch.add(roof);
+    const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: ND + 0.6, bevelEnabled: false }), ardoiseC(1, 1, true)); roof.position.set(0, NH - 0.4, -HD - 0.3); roof.castShadow = true; ch.add(roof);
     ch.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, ND + 0.8, 8), mat(0x2f3d4c), 0, NH + 3.85, 0).rotateX(Math.PI / 2));
     ch.add(mesh(new THREE.CylinderGeometry(0.45, 0.65, 0.6, 8), stoneC, 0, NH + 3.9, 4)); ch.add(mesh(new THREE.ConeGeometry(0.5, 2.4, 8), slate, 0, NH + 5.4, 4)); ch.add(mesh(sphG(0.14, 8), GOLD(), 0, NH + 6.7, 4));
     { const gt = new THREE.Shape(); gt.moveTo(-HN - 0.1, 0); gt.lineTo(HN + 0.1, 0); gt.lineTo(0, 3.9); gt.closePath(); const gable = new THREE.Mesh(new THREE.ExtrudeGeometry(gt, { depth: 0.35, bevelEnabled: false }), wallC); gable.position.set(0, NH - 0.4, HD + 0.15); gable.castShadow = true; ch.add(gable);
@@ -1456,10 +1521,10 @@ export function buildTown() {
       for (let k = 0; k < 3; k++) pg.add(mesh(new THREE.CylinderGeometry(1.9 - k * 0.12, 1.95 - k * 0.12, 0.14, 20, 1, false, 0, Math.PI), stoneC, 0, 0.07 + k * 0.001, 0.45 + k * 0.3)); }
     // clocher-porche : fût arrondi, bandeaux, abat-sons en arc, flèche octogonale sur corniche, croix
     const tw = new THREE.Group(); tw.position.set(2.9, 0, HD + 0.6); ch.add(tw);
-    const tower = new THREE.Mesh(rboxG(2.9, 13, 2.9, 0.22, 3), pbrRepeat(T.stone, 1.5 * S, 5 * S, { color: 0xc8c0b0 })); tower.position.y = 6.5; tower.castShadow = true; tw.add(tower);
+    const tower = new THREE.Mesh(rboxG(2.9, 13, 2.9, 0.22, 3), pierreC(2.9, 13)); tower.position.y = 6.5; tower.castShadow = true; tw.add(tower);
     tw.add(mesh(rboxG(3.4, 0.6, 3.4, 0.06, 2), stoneC, 0, 0.3, 0)); corniceAround(tw, 0, 6.2, 0, 1.45, 1.45, stoneC, 0.22, 0.2, 'torus'); corniceAround(tw, 0, 12.6, 0, 1.45, 1.45, stoneC, 0.42, 0.36, 'cyma');
     for (const [dx, dz, ry] of [[0, 1.47, 0], [0, -1.47, Math.PI], [1.47, 0, Math.PI / 2], [-1.47, 0, -Math.PI / 2]]) { const ab = archWindow(0.9, 2.0, mat(0x10141c), stoneC, { bars: false }); ab.position.set(dx, 9.6, dz); ab.rotation.y = ry; tw.add(ab); for (let k = 0; k < 4; k++) { const sl = mesh(boxG(0.8, 0.08, 0.32), stoneC, 0, 0.32 + k * 0.42, 0.1); sl.rotation.x = -0.5; ab.add(sl); } }
-    tw.add(mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.4, 8), stoneC, 0, 13.2, 0)); tw.add(mesh(new THREE.ConeGeometry(1.75, 4.4, 8), slate, 0, 15.6, 0));
+    tw.add(mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.4, 8), stoneC, 0, 13.2, 0)); tw.add(mesh(new THREE.ConeGeometry(1.75, 4.4, 8), ardoiseC(11, 4.7), 0, 15.6, 0));
     tw.add(mesh(boxG(0.15, 1.5, 0.15), GOLD(), 0, 18.6, 0)); tw.add(mesh(boxG(0.85, 0.15, 0.15), GOLD(), 0, 18.9, 0));
     tw.add(mesh(new THREE.CylinderGeometry(0.42, 0.58, 0.85, 10), mat(0xb8862a, { metalness: 0.9, roughness: 0.35 }), 0, 10.2, 0));
     scene.add(ch);
@@ -1477,7 +1542,15 @@ export function buildTown() {
       scene.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 12, 1, false, 0, Math.PI), pbrRepeat(T.stone, 0.5, 0.5, { color: 0xa8a098 }), px, 1.3, pz).rotateX(Math.PI / 2).rotateY(0));
       scene.add(mesh(boxG(1.1, 0.2, 2.0), stoneMat, px, 0.1, pz + 1.0)); if (k % 3 === 0) scene.add(mesh(boxG(0.1, 0.5, 0.08), IRON(), px, 1.55, pz - 0.1)); if (k % 3 === 0) scene.add(mesh(boxG(0.3, 0.08, 0.08), IRON(), px, 1.65, pz - 0.1));
       addCap(px, pz, px, pz, 0.5, 1.4); }
-    const yew = mesh(new THREE.ConeGeometry(1.4, 5, 9), mat(0x2f4f34, { roughness: 1 }), gx + 3, 2.5, gz + 3.5); scene.add(yew); addCap(gx + 3, gz + 3.5, gx + 3, gz + 3.5, 0.6);
+    // l'if : c'était un cône vert uni, un jouet au milieu des tombes photographiées. Il prend
+    // l'arbre de la forêt (foret.js, le sapin : tronc d'écorce Poly Haven, rameaux en cartes),
+    // à la hauteur d'un vieil if de cimetière, et plus trapu.
+    { const esp = especeGeo('sapin');
+      if (esp) { const g = new THREE.Group(); g.position.set(gx + 3, 0, gz + 3.5); g.scale.set(6, 5, 6); g.rotation.y = 0.7;
+        const t = new THREE.Mesh(esp.tronc, esp.matT), hp = new THREE.Mesh(esp.houppier, esp.matH);
+        t.castShadow = hp.castShadow = true; g.add(t, hp); scene.add(g); }
+      else scene.add(mesh(new THREE.ConeGeometry(1.4, 5, 9), mat(0x2f4f34, { roughness: 1 }), gx + 3, 2.5, gz + 3.5)); }
+    addCap(gx + 3, gz + 3.5, gx + 3, gz + 3.5, 0.6);
     for (let k = 0; k < 6; k++) scene.add(mesh(sphG(0.12, 6), mat([0xffffff, 0xffe066, 0xff6fa0][k % 3]), gx - 3.5 + (k % 4) * 2.2 + rand(-0.3, 0.3), 0.3, gz - 1.5 + Math.floor(k / 4) * 4 + rand(-0.3, 0.3)));
   }
   // villageois (parlent quand on appuie sur Entrée)
@@ -1536,14 +1609,15 @@ export function buildTown() {
   // maison de la rangée.
   { const CX = 6.5, CZ = 19.5;
     const col = PNJ.buildRole('colporteur') || makeVillager(1);
-    { const [wx, wz] = W2(CX, CZ); col.position.set(wx, TOWN.y, wz);
+    // posé sur le sol marchable et non à TOWN.y : il est dans la rampe du bord sud (solBourg)
+    { const [wx, wz] = W2(CX, CZ); col.position.set(wx, levelH(wx, wz), wz);
       const [fx, fz] = W2(0, 14); col.rotation.y = Math.atan2(fx - wx, fz - wz); }   // il regarde la rue
     col.scale.setScalar(E.G.echelle); E.scene.add(col);
     col.userData.anim = rand(0, 10); col.userData.name = 'Le colporteur';
     if (col.userData.perso || col.userData.legs) PARTAGE.villagers.push(col);
     addCap(CX, CZ, CX, CZ, 0.5);
     // la charrette : un plateau, deux roues, des ballots et un coffre de colifichets
-    const cg = new THREE.Group(); { const [wx, wz] = W2(CX + 2.3, CZ + 0.4); cg.position.set(wx, TOWN.y, wz); }
+    const cg = new THREE.Group(); { const [wx, wz] = W2(CX + 2.3, CZ + 0.4); cg.position.set(wx, levelH(wx, wz), wz); }
     cg.rotation.y = col.rotation.y + Math.PI / 2; cg.scale.setScalar(TOWN.s * 0.8); E.scene.add(cg);
     const bois = pbrRepeat(T.plank, 1, 1, { color: 0x7a5a3a });
     cg.add(mesh(boxG(1.9, 0.12, 1.1), bois, 0, 0.62, 0));
@@ -1590,7 +1664,8 @@ export function buildTown() {
   for (const [sx, col] of [[-1, 0x8a2a2a], [1, 0x2a5a4a]]) {
     const pv = makeParavent(1.6, 1.95, col);
     pv.position.set(tx + EST_X + sx * 5.6, 0, tz + EST_Z + 2.1); pv.rotation.y = Math.PI / 2; scene.add(pv);
-    addCap(tx + EST_X + sx * 5.6, tz + EST_Z + 0.6, tx + EST_X + sx * 5.6, tz + EST_Z + 3.6, 0.3, 2.0);
+    // la collision faisait trois unités pour un paravent de 1,6 : 1,4 de mur invisible sur la rue
+    addCap(tx + EST_X + sx * 5.6, tz + EST_Z + 1.4, tx + EST_X + sx * 5.6, tz + EST_Z + 2.8, 0.2, 2.0);
   }
   { const bx = tx + EST_X - 4.6, bz = tz + EST_Z + 1.1;      // tonneau-table et son ardoise
     scene.add(mesh(new THREE.CylinderGeometry(0.52, 0.46, 1.1, 14), pbrRepeat(T.plank, 1, 1, { color: 0x8a6440 }), bx, 0.55, bz));

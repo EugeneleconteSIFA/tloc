@@ -206,8 +206,13 @@ export async function buildCitadel() {
       // deux côtés, et on ne pouvait plus entrer. On recule les capsules d'un rayon, et on
       // rebouche les deux piédroits avec des capsules fines, qui laissent le passage libre.
       const JAMB = GATE_HW + WALL_T / 2;                    // 10,5 m : là où la capsule peut s'arrêter
-      addCap(a[0], a[1], JAMB, APO, WALL_T / 2, WALL_H + 1.4);
-      addCap(-JAMB, APO, b[0], b[1], WALL_T / 2, WALL_H + 1.4);
+      // Et du côté des bastions, même chose : le bout arrondi dépassait de 5,5 m l'extrémité
+      // du mur, sur le sol de la place au pied du bastion du Roy, où rien n'est dessiné
+      // (banc murs.mjs, 13 m²). La capsule part donc d'un rayon en deçà de l'épaule.
+      const rentre = (p, q) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1; return [p[0] + (q[0] - p[0]) / L * WALL_T / 2, p[1] + (q[1] - p[1]) / L * WALL_T / 2]; };
+      const a2 = rentre(a, [JAMB, APO]), b2 = rentre(b, [-JAMB, APO]);
+      addCap(a2[0], a2[1], JAMB, APO, WALL_T / 2, WALL_H + 1.4);
+      addCap(-JAMB, APO, b2[0], b2[1], WALL_T / 2, WALL_H + 1.4);
       for (const sx of [-1, 1]) {
         const px = sx * (GATE_HW + 2.6);
         addCap(px, APO - WALL_T / 2 + 0.6, px, APO + WALL_T / 2 - 0.6, 2.4, WALL_H + 1.4);

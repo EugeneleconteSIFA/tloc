@@ -9,7 +9,7 @@ import {
   pbrRepeat, phMat, rand, rboxG, scene, sphG, state, stoneMat, tex, wallBox, world,
 } from './engine.js?v=27';
 import {
-  CHAMPS, ECH, FERME, HOUSE, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
+  CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
   nearTown, patinerMat, roadPts, sdPent, solPlaine, HOUSE_SMOKE_TOP,
 } from './carte.js';
 import { makeDoor, makeVolet } from './menuiserie.js';
@@ -431,9 +431,11 @@ function semerHaie(s0, s1, cote, o = {}) {
       HAIE.push({ x: p.x, y: p.y + 0.28, z: p.z, h, l: h * rand(0.78, 1.05), ry: rand(0, TAU), t: rand(0, 1) });
     }
   }
-  // collision : une seule capsule par tronçon de 6 m, sinon on paie mille capsules pour une haie
-  for (let s = s0; s < s1 - 0.5; s += 6) {
-    const a = rte(s, off), b = rte(Math.min(s1, s + 6), off);
+  // collision : une seule capsule par tronçon de 6 m, sinon on paie mille capsules pour une haie.
+  // Elle s'arrête un mètre avant chaque bout : la haie s'y amincit à rien (creux), et la
+  // capsule de 0,95 barrait encore deux mètres de passage là où l'on ne voyait plus rien.
+  for (let s = s0 + 1; s < s1 - 1.5; s += 6) {
+    const a = rte(s, off), b = rte(Math.min(s1 - 1, s + 6), off);
     addCap(a.x, a.z, b.x, b.z, 0.95, 2.4);
   }
 }
@@ -1186,6 +1188,31 @@ export function buildRoute() {
   // --- les bornes, tous les huitièmes du trajet, alternées
   for (let k = 0; k < 8; k++) borne(at(0.07 + k * 0.122), k % 2 ? 1 : -1, false);
   borne(at(0.50), -1, true);
+
+  // --- les voies relevées qui croisent la haie
+  // La haie et le fossé couraient d'un trou à l'autre sans regarder le relevé : une rue, un
+  // chemin du parc qui venait buter sur la route du pont y trouvait une haie d'aubépine et
+  // un fossé en travers — le chemin continuait de l'autre côté, on ne passait pas. Chaque
+  // croisement ouvre un trou, la largeur de la voie plus deux mètres et demi de chaque côté.
+  { const voies = [];
+    const P0 = rte(A), P1 = rte(B), m = 40;
+    const bx0 = Math.min(P0.x, P1.x) - 400, bx1 = Math.max(P0.x, P1.x) + 400, bz0 = Math.min(P0.z, P1.z) - 400, bz1 = Math.max(P0.z, P1.z) + 400;
+    for (const [lst, demi] of [[LILLE.routes, (o) => LARGEUR_ROUTE[Math.min(3, o.r)] / 2], [LILLE.chemins, () => LARGEUR_CHEMIN / 2]])
+      for (const o of lst) for (let i = 0; i < o.pts.length - 1; i++) {
+        const a = o.pts[i], b = o.pts[i + 1];
+        if (Math.max(a[0], b[0]) < bx0 - m || Math.min(a[0], b[0]) > bx1 + m || Math.max(a[1], b[1]) < bz0 - m || Math.min(a[1], b[1]) > bz1 + m) continue;
+        voies.push([a[0], a[1], b[0], b[1], demi(o) + 0.8]);
+      }
+    const surUneVoie = (x, z) => voies.some(([ax, az, cx, cz, d]) => distSeg(x, z, ax, az, cx, cz) < d);
+    for (const c of [-1, 1]) {
+      let debut = null;
+      for (let s = A; s <= B; s += 1) {
+        const p = rte(s, c * 5.9), v = surUneVoie(p.x, p.z);
+        if (v && debut === null) debut = s;
+        if (!v && debut !== null) { trou(c, debut - 2.5, s + 2.5); debut = null; }
+      }
+      if (debut !== null) trou(c, debut - 2.5, B + 1);
+    } }
 
   // --- fossés, talus et haies sur ce que les trous laissent
   for (const c of [-1, 1]) {

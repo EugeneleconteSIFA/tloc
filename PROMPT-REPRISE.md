@@ -599,6 +599,71 @@ mailles et plates sur métal), devantures et enseignes (bois patiné), lanternes
 lissées au chargement : il était ombré par facette). Reste à reprendre : ce qui date
 d'avant (bestiaire en primitives, quelques décors du bourg) si Eugène le relève.
 
+### K. Le bourg praticable (26 septembre)
+
+Eugène : « des routes libres d'accès mais impossible d'avancer, comme s'il y avait un mur ».
+**Nouveau banc `node bancs/murs.mjs [origine] [demi-côté, 170 m] [--photos]`** (5 s de
+mesure, ~45 s avec le chargement) : autour du bourg, case de 0,5 m par case, il cherche les
+collisions sans rien de dessiné (MUR, avec la ligne de code de chaque capsule), les marches
+≥ 0,5 m entre deux cases libres de la rue (MARCHE : `tryMove` ne les monte pas), et inonde
+depuis la place aux règles de Camille (rayon 0,5) pour lister la rue qu'on n'atteint pas.
+Carte en couleurs : `bancs/murs-<date>.png` (gris rue atteinte, orange coupée, rouge mur).
+Pièges du banc : un objet mince (poteau, rame) ne se voit pas d'en haut — on prend le plus
+haut dessiné à une case près ; les voies relevées passent SOUS les maisons du bourg et sous
+l'eau des fossés — une case sous un toit n'est plus « rue », et les MUR « levelBlocked » des
+fossés sont de l'eau, pas des murs ; les « marches » sur les ponts sont les rives du tablier.
+
+Ce qu'il a trouvé, et ce qui est corrigé (Camille rejouée au `tryMove` dans les deux sens
+avant/après : 2 entrées sur 6 passaient, 6 sur 6 maintenant) :
+- **Le bord du bourg était une marche** : dallage à plat à `TOWN.y`, relevé 0,74 m plus bas au
+  bout ouest de la grand-rue, 0,51 m au sud — on sortait du bourg, on n'y rentrait plus.
+  `solBourg()` (carte.js) rejoint le relevé en pente sur `RAMPE_BOURG` (5 unités, 7,5 m) ;
+  le socle, les pavés et le fondu de terre sont DRAPÉS sur le sol marchable (`draper`,
+  village.js). Les pavés de la grand-rue et de la rue du marché vont jusqu'au bord de la
+  boîte et rejoignent le boulevard ; le bord du socle s'efface sur 4 unités (plus de
+  rectangle franc sur la pelouse de l'Esplanade), un cœur opaque reste dessous.
+- **Le séchoir du drapier barrait le bout est de la grand-rue** : rames déplacées dans la
+  cour, contre le pignon de la dernière maison sud. Collision des paravents à leur taille.
+- **Maisons du bourg** : un stade inscrit laissait entrer de 1,9 m dans chaque angle →
+  quatre capsules minces par maison (`addBox` local). Toits en **tuiles** (pans en UV
+  mètres, lucarnes posées sur les pans, tournées de côté) au lieu de planches presque
+  noires ; chapelle en moellon photographié et tuiles teintées ardoise.
+- **Quartier** : les capsules suivaient le contour relevé, les murs les parcelles (±1,25 m,
+  redans < 1,6 m abandonnés) ; et elles étaient centrées sur le mur (0,45 + 0,5 : arrêt à
+  près d'un mètre). Elles suivent maintenant les murs DESSINÉS, rentrées de leur rayon
+  (`RMUR`, 17 800 capsules). Rue atteinte depuis la place (1 km²) : 95,2 → 96,9 %.
+- **Campagne** : haies et fossés de la route du pont coupaient les voies relevées (avenue
+  du 43e, voie des combattants, allées du bois) → un trou à chaque croisement ; la capsule
+  de haie s'arrête avant les bouts amincis.
+- Chargement : somme des étapes 11,9 à 15,1 s sur trois passages (bruit de la machine),
+  dans le budget ; « quartier » sans écart net au-delà du bruit.
+
+**Suite du même jour : ce qui restait, fait.**
+- **Les cours enfermées** (Corderie, Cygne, Cado, Soubespin) : le relevé fait passer ses cours
+  et sentiers À TRAVERS 130 emprises — des porches. Tout lot de maison traversé par l'axe
+  d'une cour n'est pas élevé (`traverseCour`, quartier.js ; 162 lots) ; un bout de cour que
+  le relevé arrête à moins de 12 m d'une autre voie est prolongé jusqu'à elle ; les lots qui
+  la bordent reculent pour lui laisser 1,2 m de chaque côté (`degagerCour` ; 109 lots, un
+  lot qui y perdrait près de la moitié de sa profondeur n'est pas élevé). Piège : tester le
+  LOT, pas le contour — un rectangle d'approximation déborde du relevé jusque sur la cour.
+  La Corderie se traverse de bout en bout (Camille rejouée au `tryMove`).
+- **Les ponts** : les 10 ponts relevés se traversent dans les deux sens (test de marche le
+  long de leur tracé). Deux étaient barrés : le pont Napoléon (Esplanade) par un saule planté
+  sur sa culée — les saules de berge échappaient à `libreNature` (`surLeChemin`, nature.js :
+  ni tablier, ni voie relevée à moins de 2 m) — et la passerelle de Soubise par une maison du
+  quartier en travers (`barrePont`, quartier.js). La « marche » du pont du Ramponneau était
+  la rive du tablier : on y monte par le bout.
+- **Le rempart de la Porte Royale** : la capsule de courtine dépassait de 5,5 m le bout du
+  mur, au pied du bastion du Roy ; elle part maintenant d'un rayon en deçà de l'épaule.
+- **Les pignons à redents** (quartier.js) : chaque gradin s'arrêtait au toit à son bord
+  extérieur, le pan de tuiles dépassait en dents de scie entre les marches (la « bande de
+  tuiles en diagonale »). Le gradin monte au toit à son bord intérieur.
+- **L'if du cimetière** : l'arbre de la forêt (`especeGeo('sapin')`, foret.js) au lieu du
+  cône uni.
+Mesures : rue atteinte depuis la place (1 km²) 96,5 % (les restes : des îles de la
+citadelle, le bout du monde rue de l'Arc, l'arrière des étals) ; arpenteur 1 603 m² suspects
+(1 586 avant, bruit) ; chargement, somme des étapes 12,0 à 13,2 s.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et
@@ -714,6 +779,11 @@ d'avant (bestiaire en primitives, quelques décors du bourg) si Eugène le relè
   `inWater`) : on ne bute ni ne se noie dans une eau qu'on ne voit pas. Symptôme à
   reconnaître : « il faut sauter pour avancer » — le saut passe au-dessus de la règle
   `y < 0,5`, et on atterrit « dans l'eau ».
+- **Une marche de 0,5 m est un mur** (`tryMove`, `maxStep` 0,5) : tout sol posé à plat sur
+  un relevé qui ondule (bourg, socles, terrasses) doit rejoindre le terrain en pente, et le
+  sol DESSINÉ doit suivre la même fonction que le sol marchable (cf. `draper`, village.js).
+- **Une capsule centrée sur un mur double la distance d'arrêt** : rayon de la capsule plus
+  rayon de Camille (0,5). Poser la capsule sur le mur, rentrée de son rayon.
 - **`addCap(…, top)` prend une cote ABSOLUE**, pas une hauteur au-dessus du sol : sur le
   relevé, où le sol va de −2 à +0,3 m, une clôture à `top = 1,1` barrait trop ou trop
   peu. Toujours `sol + hauteur` (clôtures des champs, moulin corrigés ; bancs de
