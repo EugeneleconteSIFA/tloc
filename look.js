@@ -28,12 +28,16 @@ export const CHEVEUX = [
   P('Auburn', 0x6a2f20), P('Cendré', 0x8a7a68), P('Blanc', 0xc2bcae),
 ];
 export const COIFFURES = [
-  { nom: 'Courts', style: 'short', asset: 'coiffures_r:Hair_SimpleParted' },
+  // cale : [descente le long de l'axe de la tête (unités de l'os Head, ≈ mètres), agrandissement
+  // autour du centre du crâne]. Ces deux coupes ont été modelées pour un crâne plus haut et
+  // plus étroit que celui de Camille : elles flottaient 7 et 4 cm au-dessus, tempes et nuque
+  // à nu ; descendues seules, le crâne les traversait par plaques.
+  { nom: 'Courts', style: 'short', asset: 'coiffures_r:Hair_SimpleParted', cale: [-0.05, 1.12] },
   { nom: 'En bataille', style: 'spiky', asset: 'coiffures_r:Hair_BuzzedFemale' },
   { nom: 'Longs', style: 'long', asset: 'coiffures_r:Hair_Long' },
   { nom: 'Chignon', style: 'bun', asset: 'coiffures_r:Hair_Buns' },
   { nom: 'Bonnet', style: 'bonnet', asset: null },
-  { nom: 'Ras', style: 'bald', asset: 'coiffures_r:Hair_Buzzed' },
+  { nom: 'Ras', style: 'bald', asset: 'coiffures_r:Hair_Buzzed', cale: [-0.03, 1.08] },
 ];
 export const TUNIQUE = [
   P('Bleu de garde', 0x3f6f88), P('Rouge de Flandre', 0x8a2f3a), P('Vert de houblon', 0x2f6f4a),
@@ -249,10 +253,10 @@ async function coifferRigge(m, perso, L) {
     if (c.asset && A.load) await A.load(c.asset).catch(() => {});
     // on retire les cheveux en place (ceux du modèle comme ceux qu'on a greffés)
     const aRetirer = [];
-    m.traverse((o) => { if ((o.isMesh || o.isSkinnedMesh) && /^Hair/i.test(o.name || '')) aRetirer.push(o); });
+    m.traverse((o) => { if ((o.isMesh || o.isSkinnedMesh || o.name === 'Hair_Bonnet') && /^Hair/i.test(o.name || '')) aRetirer.push(o); });
     for (const o of aRetirer) if (o.parent) o.parent.remove(o);
     m.userData.coiffureTLOC = L.coiffure;
-    if (!c.asset) return;                        // « Bonnet » n'existe pas dans la banque
+    if (!c.asset) { if (c.style === 'bonnet') bonnet(perso, L); return; }   // pas dans la banque : on le tricote
     const p = A.spawn(c.asset, {});
     if (!p) return;
     // A.rebind REPARENTE les morceaux sous le corps : après l'appel, `p` est vide. Il faut
@@ -266,9 +270,43 @@ async function coifferRigge(m, perso, L) {
       if (!o.name || !/^Hair/i.test(o.name)) o.name = 'Hair_' + (o.name || c.nom);
       morceaux.push(o);
     });
-    if (A.rebind(p, perso)) for (const o of morceaux) teinterMaillage(o, CHEVEUX[L.cheveux].hex, 'multiplie');
+    if (A.rebind(p, perso)) for (const o of morceaux) { if (c.cale) caler(o, c.cale); teinterMaillage(o, CHEVEUX[L.cheveux].hex, 'multiplie'); }
   } catch (e) { /* pas de banque : la coiffure d'origine reste */ }
   finally { m.userData.coiffureEnCoursTLOC = null; }
+}
+
+// Descend une coupe le long de l'axe de la tête. Elle est « skinnée » : on déplace donc sa
+// géométrie dans l'espace de liaison, du vecteur qui, au repos, suit l'axe Y de l'os Head.
+// La géométrie est clonée d'abord : la banque la partage entre toutes les Camille.
+function caler(o, [dy, s]) {
+  const sk = o.skeleton; if (!sk || !o.isSkinnedMesh) return;
+  const i = sk.bones.findIndex((b) => /^head$/i.test(b.name)); if (i < 0) return;
+  const Mh = sk.boneInverses[i].clone().invert();
+  // le centre du crâne, 14 cm au-dessus de l'os (mesuré au banc), ramené dans la géométrie
+  const vers = new THREE.Matrix4().multiplyMatrices(o.bindMatrixInverse, Mh);
+  const centre = new THREE.Vector3(0, 0.142, -0.01).applyMatrix4(vers);
+  const d = new THREE.Vector3(0, dy, 0).applyMatrix3(new THREE.Matrix3().setFromMatrix4(vers));
+  o.geometry = o.geometry.clone();
+  o.geometry.translate(-centre.x, -centre.y, -centre.z); o.geometry.scale(s, s, s);
+  o.geometry.translate(centre.x + d.x, centre.y + d.y, centre.z + d.z);
+}
+
+// Le bonnet : aucune coiffure de la banque n'en est un, et « Bonnet » laissait Camille
+// chauve. Un bonnet de laine, à revers, porté un peu en arrière, accroché à l'os de la tête
+// (le crâne y est centré 14 cm au-dessus de l'os, rayon 12,5 cm — mesuré au banc). Nommé
+// « Hair_… » pour partir avec les autres coiffures quand on en change.
+function bonnet(perso, L) {
+  const tete = perso.userData.os && perso.userData.os.Head; if (!tete) return;
+  const laine = new THREE.MeshStandardMaterial({ color: new THREE.Color(TUNIQUE[L.tunique].hex).multiplyScalar(0.8), roughness: 1 });
+  const g = new THREE.Group(); g.name = 'Hair_Bonnet';
+  const calotte = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), laine);
+  calotte.scale.set(1.02, 1.12, 1.04); calotte.name = 'Hair_BonnetCalotte'; g.add(calotte);
+  const revers = new THREE.Mesh(new THREE.TorusGeometry(0.134, 0.024, 8, 24), laine);
+  revers.rotation.x = Math.PI / 2; revers.position.y = -0.03; revers.scale.set(1.04, 1.06, 1); revers.name = 'Hair_BonnetRevers'; g.add(revers);
+  // centré sur le crâne (13 cm au-dessus de l'os), rayon ≈ 10 cm : le crâne fait 19 cm de large
+  g.position.set(0, 0.135, -0.015); g.rotation.x = -0.1; g.scale.set(0.74, 0.8, 0.76);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  tete.add(g);
 }
 
 function appliquerRigge(m, perso, L) {

@@ -23,7 +23,7 @@ import { TOWN, sdEau, townWorld } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
-  AIDE, G, SFX, THREE, TAU, addInteract, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
+  AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   hideMenu, menu, player, saveGame, scene, showMenu, showMessage, state, tryMove, world,
 } from './engine.js?v=27';
 
@@ -1097,15 +1097,39 @@ function faireCheval(modele) {
   ch.jouer('Idle');
   return ch;
 }
-// L'écurie : un auvent de planches sur quatre poteaux, un râtelier de foin, une auge.
+// L'écurie : un appentis comme les granges de la campagne — poteaux et sablières de chêne
+// patiné, toit de chaume à deux pans (celui de la chaumière du mage), fond et joue de
+// planches, litière de paille, râtelier et auge. Les matières sont celles des maisons de
+// campagne.js (Poly Haven, déjà chargées) : les couleurs unies faisaient jouet.
 function batirEcurie(o) {
-  const g = new THREE.Group(), bois = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.9 });
-  const toit = new THREE.MeshStandardMaterial({ color: 0x5a3b22, roughness: 0.95 }), foin = new THREE.MeshStandardMaterial({ color: 0xd6b25a, roughness: 1 });
-  for (const [x, z] of [[-2.2, -1.6], [2.2, -1.6], [-2.2, 1.6], [2.2, 1.6]]) { const pt = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.9, 0.18), bois); pt.position.set(x, 1.45, z); g.add(pt); }
-  const t = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.12, 4.2), toit); t.position.set(0, 3.0, 0.15); t.rotation.x = -0.12; g.add(t);
-  const fond = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.2, 0.12), bois); fond.position.set(0, 1.1, -1.65); g.add(fond);
-  const ratelier = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.45), foin); ratelier.position.set(0, 1.35, -1.35); g.add(ratelier);
-  const auge = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.55), bois); auge.position.set(1.2, 0.3, -1.2); g.add(auge);
+  const g = new THREE.Group();
+  const bois = phMat('wood_cabinet_worn_long', 2.0, 2.0, { color: 0x5b4330 });
+  const planche = phMat('wood_planks', 2.0, 2.0, { color: 0x8a6a48 });
+  const chaume = phMat('withered_grass', 2.4, 2.4, { color: 0xac9660, roughness: 1 });
+  const paille = phMat('withered_grass', 1.2, 1.2, { color: 0xd8bd72, roughness: 1 });
+  const boite = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  const L = 5.2, P = 4.0, H = 2.6;
+  for (const [x, z] of [[-L / 2, -P / 2], [L / 2, -P / 2], [-L / 2, P / 2], [L / 2, P / 2], [0, -P / 2]]) boite(0.24, H, 0.24, bois, x, H / 2, z);
+  for (const z of [-P / 2, P / 2]) boite(L + 0.4, 0.22, 0.26, bois, 0, H, z);          // les sablières
+  for (const x of [-L / 2, 0, L / 2]) boite(0.2, 0.2, P + 0.3, bois, x, H + 0.05, 0);    // les entraits
+  // le chaume, deux pans épais qui débordent, et le faîtage arrondi
+  for (const sz of [-1, 1]) {
+    const pan = boite(L + 1.2, 0.38, P / 2 + 1.0, chaume, 0, H + 0.75, sz * (P / 4 + 0.35));
+    pan.rotation.x = sz * 0.52;
+  }
+  const faite = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, L + 1.2, 10), chaume);
+  faite.rotation.z = Math.PI / 2; faite.position.set(0, H + 1.33, 0); g.add(faite);
+  boite(L, 1.9, 0.1, planche, 0, 0.95, -P / 2 + 0.06);                                   // le fond de planches
+  boite(0.1, 1.5, P, planche, -L / 2 + 0.06, 0.75, 0);                                    // une joue, côté vent
+  boite(L - 0.3, 0.04, P - 0.3, paille, 0, 0.03, 0);                                      // la litière
+  // le râtelier : des barreaux en biais sur le fond, le foin dedans
+  const rat = new THREE.Group(); rat.position.set(-0.8, 1.45, -P / 2 + 0.3); rat.rotation.x = -0.35; g.add(rat);
+  for (let k = 0; k < 9; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.7, 0.05), bois); b.position.set(-0.9 + k * 0.225, 0, 0); rat.add(b); }
+  for (const y of [-0.35, 0.35]) { const b = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.07, 0.07), bois); b.position.y = y; rat.add(b); }
+  const foin = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8), paille); foin.scale.set(1.6, 0.6, 0.55); foin.position.set(0, 0.15, -0.12); rat.add(foin);
+  // l'auge : un bac de planches sur deux tréteaux
+  boite(1.5, 0.3, 0.5, planche, 1.4, 0.55, -P / 2 + 0.45);
+  for (const x of [0.8, 2.0]) boite(0.08, 0.4, 0.45, bois, x, 0.2, -P / 2 + 0.45);
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
   g.position.set(o.maison.p[0], o.maison.y, o.maison.p[1]);     // ouverte vers +z : le cheval y attend tête dehors
   g.userData.dynamic = true; scene.add(g);

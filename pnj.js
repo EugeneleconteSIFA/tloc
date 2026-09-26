@@ -1037,15 +1037,35 @@ export function buildCamille(makeBow) {
  * Traduit l'état du joueur en clip. Renvoie false si Camille n'est pas riggée,
  * pour que engine.js reprenne son animation en primitives.
  */
-// La pose assise est celle d'une chaise : genoux joints devant soi. Sur un cheval, les
-// cuisses s'écartent de part et d'autre de la selle et les jambes retombent le long des
-// flancs. On corrige les os APRÈS le mixer, à chaque image (il les réécrit).
-export const MONTE = { ecart: 0.3, tombe: 0.9, genou: 0.6, axeEcart: 'z', axeTombe: 'x' };
-function enfourcher(os) {
-  for (const [c, s] of [['l', 1], ['r', -1]]) {
-    const cuisse = os['thigh_' + c], mollet = os['calf_' + c];
-    if (cuisse) { cuisse.rotation[MONTE.axeEcart] += s * MONTE.ecart; cuisse.rotation[MONTE.axeTombe] += MONTE.tombe; }
-    if (mollet) mollet.rotation[MONTE.axeTombe] -= MONTE.tombe * MONTE.genou;
+// À cheval. La pose assise est celle d'une chaise : genoux joints devant soi. Ajouter des
+// angles aux os par-dessus faisait partir les pieds n'importe où (Eugène, 27 septembre) :
+// l'orientation propre de chaque os dépend du squelette et de l'image du clip. On VISE
+// donc, après le mixer : chaque segment de jambe est tourné pour pointer une direction
+// donnée dans le repère du personnage (x vers sa gauche, y en haut, z devant) — la cuisse
+// en avant et en dehors, le bas de la jambe le long du flanc, le pied devant.
+export const MONTE = {
+  cuisse: [0.42, -0.55, 0.62], mollet: [0.14, -1, -0.12], pied: [0.12, -0.3, 1],
+};
+const _v0 = new THREE.Vector3(), _v1 = new THREE.Vector3(), _vw = new THREE.Vector3();
+const _qd = new THREE.Quaternion(), _qw = new THREE.Quaternion(), _qpa = new THREE.Quaternion(), _qra = new THREE.Quaternion();
+function viser(os, enfant, dir, sx) {
+  if (!os || !enfant) return;
+  os.updateMatrixWorld(true);
+  os.getWorldPosition(_v0); enfant.getWorldPosition(_v1);
+  const cur = _v1.sub(_v0).normalize();
+  _vw.set(dir[0] * sx, dir[1], dir[2]).normalize().applyQuaternion(_qra);
+  _qd.setFromUnitVectors(cur, _vw);
+  os.getWorldQuaternion(_qw); _qw.premultiply(_qd);
+  os.parent.getWorldQuaternion(_qpa);
+  os.quaternion.copy(_qpa.invert().multiply(_qw));
+  os.updateMatrixWorld(true);
+}
+function enfourcher(os, racine) {
+  racine.getWorldQuaternion(_qra);
+  for (const [c, sx] of [['l', 1], ['r', -1]]) {
+    viser(os['thigh_' + c], os['calf_' + c], MONTE.cuisse, sx);
+    viser(os['calf_' + c], os['foot_' + c], MONTE.mollet, sx);
+    viser(os['foot_' + c], os['ball_' + c], MONTE.pied, sx);
   }
 }
 
@@ -1086,7 +1106,7 @@ export function animeCamille(m, p, dt, ctx) {
   if (ud.arc) ud.arc.visible = !!(drawing || bowOut);
   if (ud.arcDos) ud.arcDos.visible = ctx.arcTrouve && !(drawing || bowOut);
   a.update(dt);
-  if (ctx.monte) enfourcher(ud.os);
+  if (ctx.monte) enfourcher(ud.os, m);
   return true;
 }
 

@@ -1916,10 +1916,13 @@ function majAide() {
   if (!el) return;
   const P = state.poche && Array.isArray(state.poche.objets) ? state.poche.objets : [];
   const gaufres = P.some((o) => o && o.id === 'gaufre' && o.n > 0);
-  const l = [['Z Q S D', 'se déplacer'], ['Souris', 'regarder'], ['Z + S', 'courir'], ['Espace', 'sauter']];
+  // à cheval (G.monte, tloc-multi.js) : ni saut ni roulade — l'aide ne promet que ce qui marche
+  const l = [['Z Q S D', G.monte ? 'mener le cheval' : 'se déplacer'], ['Souris', 'regarder'], ['Z + S', G.monte ? 'galoper' : 'courir']];
+  if (!G.monte) l.push(['Espace', 'sauter']);
   if (state.sword || (state.bow && G.bowOut)) l.push(['Clic G · F', state.bow && G.bowOut ? 'tirer' : 'frapper, faucher']);
-  if (G.bouclier) l.push(['Clic D', 'lever le bouclier'], ['Maj', 'roulade']);
-  else l.push(['Clic D · Maj', 'roulade']);
+  if (G.bouclier) l.push(['Clic D', 'lever le bouclier']);
+  if (G.monte) l.push(['Entrée', 'descendre de cheval']);
+  else l.push([G.bouclier ? 'Maj' : 'Clic D · Maj', 'roulade']);
   if (state.bow) l.push(['C', G.bowOut ? 'ranger l’arc' : 'sortir l’arc']);
   if (state.bourse || P.length) l.push(['I', 'poche']);
   if (gaufres) l.push(['G', 'manger une gaufre']);
