@@ -1106,7 +1106,19 @@ export function animeCamille(m, p, dt, ctx) {
   if (ud.arc) ud.arc.visible = !!(drawing || bowOut);
   if (ud.arcDos) ud.arcDos.visible = ctx.arcTrouve && !(drawing || bowOut);
   a.update(dt);
-  if (ctx.monte) enfourcher(ud.os, m);
+  if (ctx.monte) {
+    // LA FRAPPE EN SELLE. Les coups d'épée sont des clips debout : le bassin y est à hauteur
+    // d'homme, un demi-mètre au-dessus de celui de la pose assise — Camille se dressait
+    // au-dessus du cheval à chaque coup. On garde donc le bassin où la pose assise le met
+    // (relevé tant qu'elle est assise), et les jambes en selle : le buste et le bras jouent
+    // le coup, le reste reste en selle.
+    const bassin = ud.os.pelvis;
+    if (bassin) {
+      if (p.attackT < 0) (ud.bassinAssis ||= new THREE.Vector3()).copy(bassin.position);
+      else if (ud.bassinAssis) bassin.position.copy(ud.bassinAssis);
+    }
+    enfourcher(ud.os, m);
+  }
   return true;
 }
 
