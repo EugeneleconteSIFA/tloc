@@ -308,6 +308,30 @@ Total : 27 s → 21,4 s.
 4. **En ligne** : cache HTTP long sur `assets_back/` (nginx), le serveur de dev servant
    tout en `no-store`.
 
+**Chantier du 27 septembre** (Eugène : « le chargement »). Somme des étapes 16,4 → 11-12 s
+en local ; à travers une connexion de testeur simulée (20 Mbit/s, 40 ms, cache vide) :
+prod 26,5 s / 32 Mo → dev **20,6 s / 22,6 Mo**, et 16,2 s à la visite suivante.
+- **Cartes de relief et de rugosité en 512²** (106 fichiers, 23 → 6,5 Mo) : écarts au niveau
+  du bruit de relance sur cinq vues. Originaux : `~/Documents/tloc-sauvegardes/textures-normales-1024/`.
+  En attente du feu vert d'Eugène (publié sur le dev seulement).
+- **Relief cuit d'avance** : `carte/relief-cuit.bin` (Int16 en différences, 1,45 Mo, 379 Ko
+  gzippé), `node bancs/cuire-relief.mjs` le refait. 400 points recalculés au chargement :
+  s'il a vieilli, le jeu recalcule tout et le dit dans la console. « relief » 2,5 s → 0,12 s.
+- **Textures décodées en tâche de fond** (`chargerTexture`, assets.js : ImageBitmapLoader,
+  imageOrientation flipY, `texture.flipY = false`) ; la préparation du rendu attend les
+  décodages en cours (`texturesEnAttente`).
+- **Shaders** : `renderer.debug.checkShaderErrors` coupé (sauf `?debug`) — 1,3 s d'attente.
+- **Réseau** : les quatre fichiers de `carte.js` partent ensemble ; `modulepreload` de tous
+  les modules dans index.html (APRÈS l'importmap : placés avant, « three » ne se résolvait
+  pas et le chargement restait bloqué à 0 %, une fois sur deux). bump.py suit le lien d'engine.js.
+- **nginx** (VPS, prod et dev, et `serveur/deploiement/nginx-tloc-*.conf`) : `.js/.css/.json`
+  en `no-cache` (revérifiés à chaque visite — ils étaient gardés 7 jours, un module sans
+  ?v= pouvait rester périmé une semaine) ; textures et modèles gardés 1 jour ; `.bin` et
+  `.glb` compressés.
+- 1 281 avertissements `toNonIndexed` supprimés à la source (mergeStatics).
+Reste, par ordre de gain : l'envoi des textures (3,5 s — KTX2/Basis, il faut l'outil
+`basisu`), « sols » 1,8 s et `sdPoly` (1 s au profil), « quartier » 1,6 s (`tri`).
+
 ### E bis. Performance en jeu, suite possible
 
 **Unification des matériaux — faite le 24 septembre** (`unifierMateriaux()` dans
