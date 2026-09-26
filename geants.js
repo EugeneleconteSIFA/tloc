@@ -87,11 +87,31 @@ function socket(g, perso, nomOs, obj, pos = [0, 0, 0], rot = [0, 0, 0], suitRot 
   (g.userData.sockets ||= []).push({
     os, obj,
     p: new THREE.Vector3(...pos),
-    q: new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
+    q: rot.isQuaternion ? rot.clone() : new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)),
     suitRot,
     base: obj.scale.x || 1,        // l'objet peut avoir sa propre échelle : on la garde
   });
   return obj;
+}
+
+/**
+ * La prise d'un poing fermé, calculée sur les os des doigts plutôt que réglée à l'œil.
+ * La main du géant est gonflée de façon inégale (×15, ×9, ×13 en monde pour Phinaert) :
+ * un décalage fixe de quelques centimètres « d'os » envoyait la masse à 75 cm de la
+ * paume, et un angle fixe la tenait droite comme un cierge. Ici, le manche passe au creux
+ * de la paume (aux 6/10 du chemin vers la base du majeur) et suit la ligne des jointures,
+ * de l'auriculaire vers l'index — la tête de l'arme sort donc du côté du pouce, comme dans
+ * un vrai poing. L'axe se calcule À L'ÉCHELLE de l'os, puisque socket() ne reprend que sa
+ * rotation.
+ */
+function prise(perso, cote = 'r') {
+  const os = perso.userData.os || {};
+  const main = os['hand_' + cote], maj = os['middle_01_' + cote], idx = os['index_01_' + cote], aur = os['pinky_01_' + cote];
+  if (!main || !maj || !idx || !aur) return null;
+  perso.updateWorldMatrix(true, true);
+  const sc = new THREE.Vector3(); main.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), sc);
+  const axe = idx.position.clone().sub(aur.position).multiply(sc).normalize();
+  return { p: maj.position.clone().multiplyScalar(0.6).toArray(), q: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axe) };
 }
 
 /** Repose les objets accrochés sur leurs os. À appeler après le mixer. */
@@ -242,6 +262,9 @@ export function buildGeant(role = 'phinaert') {
     // gourdin ferré
     const club = new THREE.Group();
     club.add(mesh(new THREE.CylinderGeometry(0.048, 0.082, 0.95, 10), pbrRepeat(T.bark, 1, 2), 0, 0.42, 0));
+    // la poignée gainée de cuir (là où le poing se ferme) et deux frettes de fer sous la tête
+    club.add(mesh(new THREE.CylinderGeometry(0.056, 0.058, 0.26, 10), mat(0x3a2414, { roughness: 0.9 }), 0, 0.02, 0));
+    for (const y of [0.72, 0.8]) club.add(mesh(new THREE.TorusGeometry(0.08, 0.014, 6, 14), IRON(), 0, y, 0).rotateX(Math.PI / 2));
     const tete = mesh(sphG(0.145, 12), IRON(), 0, 0.95, 0);
     club.add(tete);
     for (let i = 0; i < 10; i++) {
@@ -249,7 +272,7 @@ export function buildGeant(role = 'phinaert') {
       const sp = mesh(new THREE.ConeGeometry(0.024, 0.11, 5), STEEL(), Math.cos(a) * 0.145, 0.95 + e, Math.sin(a) * 0.145);
       sp.lookAt(0, 0.95 + e, 0); sp.rotateX(-Math.PI / 2); club.add(sp);
     }
-    socket(g, perso, 'hand_r', club, [0, 0.06, 0.03], [Math.PI - 0.35, 0, 0]);   // centre de la paume
+    { const pr = prise(perso); if (pr) socket(g, perso, 'hand_r', club, pr.p, pr.q); else socket(g, perso, 'hand_r', club, [0, 0.06, 0.03], [Math.PI - 0.35, 0, 0]); }
   } else {
     // heaume à plumet et épée longue
     const acier = mat(0xc9a03a, { metalness: 0.9, roughness: 0.3 });
@@ -266,7 +289,7 @@ export function buildGeant(role = 'phinaert') {
     lame.scale.z = 0.33; epee.add(lame);
     epee.add(mesh(boxG(0.19, 0.028, 0.045), GOLD(), 0, 0.035, 0));
     epee.add(mesh(sphG(0.028, 8), GOLD(), 0, -0.05, 0));
-    socket(g, perso, 'hand_r', epee, [0, 0.06, 0.03], [Math.PI - 0.2, 0, 0]);    // centre de la paume
+    { const pr = prise(perso); if (pr) socket(g, perso, 'hand_r', epee, pr.p, pr.q); else socket(g, perso, 'hand_r', epee, [0, 0.06, 0.03], [Math.PI - 0.2, 0, 0]); }
   }
 
   // ---------- animation ----------

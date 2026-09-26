@@ -760,6 +760,167 @@ export function animeVillageois(v, dt, enMarche) {
 }
 
 // ---------------------------------------------------------------------------
+//  Les armes et les armures de Camille (et de l'équipement du multi)
+// ---------------------------------------------------------------------------
+// Eugène (27 septembre) : « l'armure et le bouclier sont vraiment pas beaux ». Ils étaient
+// faits de primitives unies — un cylindre, un disque, un losange. Ils gagnent ici ce qui
+// fait lire l'objet de loin : une silhouette juste (lame biseautée à gouttière, garde
+// courbe ; écu en pointe bombé ; cuirasse galbée) et un décor peint, flamand de préférence :
+// la rondache de Camille porte les armes de Lille (la fleur de lys d'argent sur gueules),
+// l'écu de la garnison celles de France (trois lys d'or sur azur). Les peintures sont des
+// canevas faits une fois pour toutes. Chaque bouclier a sa face peinte vers +z.
+const canevas = (w, h, f, apres) => {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (apres) apres(t); return t;
+};
+const unique = (f) => { let v = null; return () => (v ||= f()); };
+
+/** La fleur de lys héraldique, dans une boîte de côté h centrée en (cx, cy). */
+function lys(x, cx, cy, h, fond, trait) {
+  const P = (u, v) => [cx + (u - 0.5) * h, cy + (v - 0.5) * h];
+  const chemin = (f) => { x.beginPath(); f(); x.closePath(); x.fillStyle = fond; x.fill(); x.lineWidth = h * 0.022; x.strokeStyle = trait; x.stroke(); };
+  const bz = (a, b, c) => x.bezierCurveTo(...P(...a), ...P(...b), ...P(...c));
+  for (const s of [-1, 1]) {                       // les pétales de côté, qui s'enroulent vers le bas
+    const u = (v) => 0.5 + s * (v - 0.5);
+    chemin(() => { x.moveTo(...P(u(0.53), 0.56)); bz([u(0.64), 0.28], [u(0.96), 0.2], [u(0.93), 0.46]);
+      bz([u(0.91), 0.6], [u(0.8), 0.62], [u(0.76), 0.52]); bz([u(0.72), 0.6], [u(0.62), 0.62], [u(0.56), 0.6]); });
+    chemin(() => { x.moveTo(...P(u(0.53), 0.66)); bz([u(0.62), 0.72], [u(0.72), 0.8], [u(0.7), 0.94]);
+      bz([u(0.62), 0.86], [u(0.56), 0.8], [u(0.51), 0.76]); });
+  }
+  chemin(() => { x.moveTo(...P(0.5, 0.03)); bz([0.64, 0.18], [0.62, 0.42], [0.54, 0.6]); x.lineTo(...P(0.46, 0.6));
+    bz([0.38, 0.42], [0.36, 0.18], [0.5, 0.03]); });                      // le pétale du milieu, en fer de lance
+  chemin(() => { x.moveTo(...P(0.5, 0.63)); x.lineTo(...P(0.45, 0.76)); x.lineTo(...P(0.5, 0.9)); x.lineTo(...P(0.55, 0.76)); });
+  chemin(() => { x.rect(...P(0.3, 0.58), 0.4 * h, 0.07 * h); });          // la bande qui lie les pétales
+}
+// le fil du bois sous la peinture, et l'usure : sans eux, la peinture fait plastique
+function boisPeint(x, w, h, couleur, planches) {
+  x.fillStyle = couleur; x.fillRect(0, 0, w, h);
+  for (let i = 1; i < planches; i++) { x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(i * w / planches - 1, 0, 2, h); }
+  for (let k = 0; k < 900; k++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,240,220'},${Math.random() * 0.06})`; x.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 6 + Math.random() * 30); }
+}
+const texRondache = unique(() => canevas(512, 512, (x, w, h) => {
+  boisPeint(x, w, h, '#a3231d', 6);
+  lys(x, w / 2, h / 2 + 6, h * 0.66, '#eef0f2', '#5a1210');
+  x.strokeStyle = '#e8c35a'; x.lineWidth = 10; x.beginPath(); x.arc(w / 2, h / 2, w * 0.455, 0, TAU); x.stroke();
+}, (t) => { t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; }));      // le couvercle du disque tourne la peinture d'un quart
+const texEcu = unique(() => canevas(512, 704, (x, w, h) => {
+  boisPeint(x, w, h, '#1f4a8c', 5);
+  const or = '#e9c14f', trait = '#5c4210';
+  lys(x, w * 0.29, h * 0.3, w * 0.36, or, trait); lys(x, w * 0.71, h * 0.3, w * 0.36, or, trait); lys(x, w * 0.5, h * 0.62, w * 0.38, or, trait);
+}));
+const texCuir = unique(() => canevas(256, 256, (x, w, h) => {
+  x.fillStyle = '#6b4424'; x.fillRect(0, 0, w, h);
+  for (let k = 0; k < 1400; k++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? '30,15,5' : '160,110,70'},${Math.random() * 0.12})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  x.strokeStyle = 'rgba(230,200,150,.55)'; x.setLineDash([5, 5]); x.lineWidth = 2;        // les coutures
+  for (const y of [8, h / 2, h - 8]) { x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); }
+  x.setLineDash([]);
+  for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) {                               // les clous de laiton
+    const cx = (k + 0.5 + (r % 2) * 0.5) * w / 4, cy = (r + 0.5) * h / 4 + 10;
+    const gr = x.createRadialGradient(cx - 2, cy - 2, 1, cx, cy, 8); gr.addColorStop(0, '#fff2b0'); gr.addColorStop(0.5, '#c99a33'); gr.addColorStop(1, '#4a3510');
+    x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, 7, 0, TAU); x.fill();
+  }
+}));
+const texMailles = unique(() => canevas(256, 256, (x, w, h) => {
+  x.fillStyle = '#202328'; x.fillRect(0, 0, w, h);
+  for (let r = 0; r < 16; r++) for (let k = 0; k < 17; k++) {               // des anneaux imbriqués, rang sur rang
+    const cx = k * 16 + (r % 2) * 8, cy = r * 16 + 8;
+    x.strokeStyle = '#9aa0a8'; x.lineWidth = 3.2; x.beginPath(); x.ellipse(cx, cy, 7, 5.5, 0, 0, TAU); x.stroke();
+    x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 1.2; x.beginPath(); x.ellipse(cx, cy, 7, 5.5, 0, Math.PI * 1.1, Math.PI * 1.6); x.stroke();
+  }
+}));
+const texPlates = unique(() => canevas(256, 256, (x, w, h) => {
+  const lames = 4;
+  for (let i = 0; i < lames; i++) {                                        // des lames qui se recouvrent
+    const y0 = i * h / lames, gr = x.createLinearGradient(0, y0, 0, y0 + h / lames);
+    gr.addColorStop(0, '#b9c0c9'); gr.addColorStop(0.5, '#7d858f'); gr.addColorStop(1, '#3f444b');   // acier bruni, pas chromé
+    x.fillStyle = gr; x.fillRect(0, y0, w, h / lames);
+    x.fillStyle = '#c9a03a'; x.fillRect(0, y0 + h / lames - 5, w, 3);           // le liseré de laiton
+    for (let k = 0; k < 6; k++) { x.fillStyle = '#e9d27a'; x.beginPath(); x.arc((k + 0.5) * w / 6, y0 + 8, 3.2, 0, TAU); x.fill(); }
+  }
+  for (let k = 0; k < 400; k++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.08})`; x.fillRect(Math.random() * w, Math.random() * h, 20 + Math.random() * 40, 1); }
+}));
+
+/** L'épée de Camille : lame biseautée à gouttière, garde courbe, fusée gainée, pommeau en disque. */
+export function faireEpee() {
+  const e = new THREE.Group();
+  const acier = mat(0xdfe4ea, { metalness: 0.95, roughness: 0.22 }), laiton = mat(0xc9a03a, { metalness: 0.85, roughness: 0.3 });
+  const forme = new THREE.Shape();
+  forme.moveTo(-0.024, 0.06); forme.lineTo(-0.021, 0.6); forme.lineTo(0, 0.73); forme.lineTo(0.021, 0.6); forme.lineTo(0.024, 0.06); forme.closePath();
+  const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.004, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.006, bevelSegments: 1 });
+  geo.translate(0, 0, -0.002); e.add(new THREE.Mesh(geo, acier));
+  for (const z of [-0.0065, 0.0065]) e.add(mesh(boxG(0.009, 0.44, 0.002), mat(0x7d848d, { metalness: 0.9, roughness: 0.35 }), 0, 0.32, z));   // la gouttière
+  const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.1, 0.075, 0), new THREE.Vector3(0, 0.035, 0), new THREE.Vector3(0.1, 0.075, 0));
+  e.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 12, 0.011, 6), laiton));
+  for (const s of [-1, 1]) e.add(mesh(sphG(0.017, 8), laiton, s * 0.1, 0.077, 0));
+  e.add(mesh(new THREE.CylinderGeometry(0.017, 0.019, 0.11, 10), mat(0x3b2616, { roughness: 0.85 }), 0, -0.015, 0));
+  for (let k = 0; k < 4; k++) e.add(mesh(new THREE.TorusGeometry(0.018, 0.003, 4, 12), mat(0x24160c), 0, -0.06 + k * 0.03, 0).rotateX(Math.PI / 2));
+  e.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.017, 16), laiton, 0, -0.085, 0).rotateX(Math.PI / 2));
+  e.add(mesh(sphG(0.011, 8), laiton, 0, -0.1, 0));
+  e.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return e;
+}
+
+/** La rondache : bois peint aux armes de Lille, légèrement bombée, cerclée de fer. */
+export function faireRondache() {
+  const b = new THREE.Group();
+  const R = 0.19, face = new THREE.MeshStandardMaterial({ map: texRondache(), roughness: 0.7 });
+  const dos = mat(0x5e4128, { roughness: 0.9 });
+  const disque = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.02, 32), [dos, face, dos]);
+  disque.rotation.x = Math.PI / 2; b.add(disque);                  // la face peinte (le couvercle haut) vers +z
+  b.add(mesh(new THREE.TorusGeometry(R, 0.012, 6, 32), IRON(), 0, 0, 0));
+  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; b.add(mesh(sphG(0.009, 6), IRON(), Math.cos(a) * (R - 0.02), Math.sin(a) * (R - 0.02), 0.012)); }
+  b.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return b;
+}
+
+/** L'écu en pointe de la garnison. Niveau 2 (la forge) : cerclé de fer, avec un umbo. */
+export function faireEcu() {
+  const e = new THREE.Group();
+  const forme = new THREE.Shape();
+  forme.moveTo(-0.17, 0.2); forme.lineTo(0.17, 0.2); forme.lineTo(0.17, 0.02);
+  forme.quadraticCurveTo(0.15, -0.18, 0, -0.27); forme.quadraticCurveTo(-0.15, -0.18, -0.17, 0.02); forme.closePath();
+  const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.014, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.008, bevelSegments: 2 });
+  geo.translate(0, 0, -0.007);
+  const t = texEcu().clone(); t.needsUpdate = true;
+  t.repeat.set(1 / 0.34, 1 / 0.47); t.offset.set(0.5, 0.27 / 0.47);          // UV des faces = coordonnées de la forme
+  const peint = new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 }), chant = mat(0x4a3322, { roughness: 0.85 });
+  e.add(new THREE.Mesh(geo, [peint, chant]));
+  const cercle = new THREE.Group(); cercle.visible = false;
+  const pts = forme.getPoints(24).map((p) => new THREE.Vector3(p.x, p.y, 0.014));
+  cercle.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 64, 0.011, 6, true), IRON()));
+  cercle.add(mesh(sphG(0.034, 14, 8), mat(0xb8bec6, { metalness: 0.85, roughness: 0.3 }), 0, 0.02, 0.012));   // l'umbo, d'acier clair : il ne mange pas les lys
+  for (const [px, py] of [[-0.12, 0.15], [0.12, 0.15], [-0.1, -0.08], [0.1, -0.08]]) cercle.add(mesh(sphG(0.01, 6), IRON(), px, py, 0.016));
+  e.add(cercle); e.userData.cercle = cercle;
+  e.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return e;
+}
+
+/** La cuirasse galbée, et ses trois matières : cuir clouté, mailles, plates. */
+const MATS_CUIRASSE = unique(() => [null,
+  new THREE.MeshStandardMaterial({ map: texCuir(), roughness: 0.75, side: THREE.DoubleSide }),
+  new THREE.MeshStandardMaterial({ map: (() => { const t = texMailles().clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 2); return t; })(), metalness: 0.7, roughness: 0.45, side: THREE.DoubleSide }),
+  new THREE.MeshStandardMaterial({ map: texPlates(), metalness: 0.6, roughness: 0.38, side: THREE.DoubleSide }),
+]);
+export function faireCuirasse(niveau = 1) {
+  const c = new THREE.Group();
+  const m = MATS_CUIRASSE()[niveau];
+  // le buste, du bas vers le col : taille, poitrine, épaules, col
+  const profil = [[0.165, -0.24], [0.172, -0.16], [0.192, -0.06], [0.207, 0.04], [0.2, 0.11], [0.178, 0.16], [0.125, 0.2]].map(([r, y]) => new THREE.Vector2(r, y));
+  const buste = new THREE.Mesh(new THREE.LatheGeometry(profil, 28), m); buste.scale.z = 0.8; buste.position.z = 0.02; c.add(buste);
+  const braconniere = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.17, -0.235), new THREE.Vector2(0.2, -0.33)], 28), m);   // la jupe de lames
+  braconniere.scale.z = 0.82; braconniere.position.z = 0.02; c.add(braconniere);
+  c.add(mesh(new THREE.TorusGeometry(0.115, 0.018, 8, 20), m, 0, 0.19, 0.02).rotateX(Math.PI / 2));            // le colletin
+  for (const sx of [-1, 1]) for (let k = 0; k < 2; k++) {                    // les épaulières, deux lames
+    const ep = new THREE.Mesh(new THREE.SphereGeometry(0.105 - k * 0.012, 14, 8, 0, TAU, 0, Math.PI / 2), m);
+    ep.position.set(sx * (0.19 + k * 0.02), 0.13 - k * 0.045, 0.005); ep.scale.set(1.1, 0.62, 1.05); ep.rotation.z = -sx * (0.35 + k * 0.25); c.add(ep);
+  }
+  c.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  c.userData.niv = niveau;
+  c.userData.changer = (n) => { if (n === c.userData.niv || !n) return; c.userData.niv = n; const nm = MATS_CUIRASSE()[n]; c.traverse((o) => { if (o.isMesh) o.material = nm; }); };
+  return c;
+}
+
+// ---------------------------------------------------------------------------
 //  Camille
 // ---------------------------------------------------------------------------
 // Choix assumé : on garde son identité. Base rôdeuse SANS capuche, reteintée à
@@ -839,67 +1000,21 @@ export function buildCamille(makeBow) {
   bourse.add(mesh(new THREE.TorusGeometry(0.046, 0.009, 6, 12), cuir, 0, 0.04, 0).rotateX(Math.PI / 2));
   socket(g, perso, 'pelvis', bourse, [0.115, 0.06, 0.03], [0, 0, 0], false);
 
-  // ---------- armes ----------
-  const epee = new THREE.Group();
-  {
-    const lame = mesh(new THREE.CylinderGeometry(0.055, 0.016, 0.66, 4), STEEL(), 0, 0.39, 0);
-    lame.scale.z = 0.30; epee.add(lame);                       // section losange, pas un jonc
-    epee.add(mesh(boxG(0.21, 0.028, 0.05), mat(0x8a7a3a, { metalness: 0.8, roughness: 0.3 }), 0, 0.05, 0));
-    epee.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.11, 8), cuir, 0, -0.02, 0));
-    epee.add(mesh(sphG(0.028, 8), mat(0x8a7a3a, { metalness: 0.8, roughness: 0.3 }), 0, -0.08, 0));
-  }
+  // ---------- armes (cf. « Les armes et les armures de Camille », plus haut) ----------
+  const epee = faireEpee();
   socket(g, perso, 'hand_r', epee, [0, 0.03, 0.015], [-0.18, 0, 0]);
-
-  const bouclier = new THREE.Group();
-  {
-    bouclier.add(mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.026, 18), pbrRepeat(T.plank, 1, 1), 0, 0, 0).rotateX(Math.PI / 2));
-    bouclier.add(mesh(new THREE.TorusGeometry(0.19, 0.016, 6, 20), IRON(), 0, 0, 0));
-    bouclier.add(mesh(sphG(0.045, 10), IRON(), 0, 0, -0.018));
-  }
-  socket(g, perso, 'lowerarm_l', bouclier, [0.02, 0.10, -0.05], [0, Math.PI / 2, 0]);
+  // les boucliers ont leur face peinte vers +z : au bras, elle regarde donc dehors à −π/2
+  const bouclier = faireRondache();
+  socket(g, perso, 'lowerarm_l', bouclier, [0.02, 0.10, -0.05], [0, -Math.PI / 2, 0]);
 
   // ---------- l'équipement du multi (tloc-multi.js) ----------
-  // L'écu remplace la rondache quand on l'a ramassé : plus grand, en pointe, il se voit de
-  // loin — c'est lui qui pare. Deux niveaux : bois peint, puis cerclé de fer. Il y en a
-  // deux : l'un au bras, l'autre tenu devant la poitrine quand on lève la garde (le clip
-  // Sword_Block lève l'épée, pas l'avant-bras gauche : l'écu du bras restait sur le côté).
-  const faireEcu = () => {
-    const e = new THREE.Group(); e.visible = false;
-    const forme = new THREE.Shape();
-    forme.moveTo(-0.17, 0.2); forme.lineTo(0.17, 0.2); forme.lineTo(0.17, 0.02);
-    forme.quadraticCurveTo(0.15, -0.18, 0, -0.27); forme.quadraticCurveTo(-0.15, -0.18, -0.17, 0.02); forme.closePath();
-    const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.022, bevelEnabled: false }); geo.translate(0, 0, -0.011);
-    e.add(new THREE.Mesh(geo, mat(0x8a2a24, { roughness: 0.75 })));
-    e.add(mesh(boxG(0.05, 0.42, 0.03), mat(0xd9b24a, { metalness: 0.7, roughness: 0.35 }), 0, -0.02, 0.012));   // la bande d'or
-    const cercle = new THREE.Group(); cercle.visible = false;         // niveau 2 : les ferrures
-    // posées en saillie sur la face (z > 0,011), assez épaisses pour se voir à dix mètres
-    cercle.add(mesh(boxG(0.37, 0.035, 0.02), IRON(), 0, 0.185, 0.02));
-    for (const sx of [-1, 1]) cercle.add(mesh(boxG(0.035, 0.2, 0.02), IRON(), sx * 0.155, 0.09, 0.02));
-    cercle.add(mesh(boxG(0.3, 0.03, 0.02), IRON(), 0, -0.06, 0.02));
-    cercle.add(mesh(sphG(0.055, 12), IRON(), 0, 0.04, 0.03));
-    e.add(cercle); e.userData.cercle = cercle;
-    e.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    return e;
-  };
-  const ecu = faireEcu(), ecuGarde = faireEcu();
-  socket(g, perso, 'lowerarm_l', ecu, [0.03, 0.10, -0.06], [0, Math.PI / 2, 0]);
+  // L'écu remplace la rondache quand on l'a ramassé. Il y en a deux : l'un au bras, l'autre
+  // tenu devant la poitrine quand on lève la garde (le clip Sword_Block lève l'épée, pas
+  // l'avant-bras gauche : l'écu du bras restait sur le côté).
+  const ecu = faireEcu(), ecuGarde = faireEcu(); ecu.visible = ecuGarde.visible = false;
+  socket(g, perso, 'lowerarm_l', ecu, [0.03, 0.10, -0.06], [0, -Math.PI / 2, 0]);
   socket(g, perso, 'spine_03', ecuGarde, [0.07, 0.02, 0.27], [0.12, 0.3, 0]);
-  // La cuirasse : trois niveaux qu'on distingue de loin — cuir clouté, mailles, plates.
-  const cuirasse = new THREE.Group(); cuirasse.visible = false;
-  {
-    const m = mat(0x6a4526, { roughness: 0.7, side: THREE.DoubleSide });
-    // un peu plus large que le buste de la tenue : sinon elle disparaît dedans
-    const plastron = mesh(new THREE.CylinderGeometry(0.2, 0.17, 0.36, 18, 1, true), m, 0, -0.03, 0.02);
-    plastron.scale.z = 0.82; cuirasse.add(plastron);
-    for (const sx of [-1, 1]) {             // les épaulières
-      const ep = mesh(sphG(0.1, 12), m, sx * 0.19, 0.14, 0); ep.scale.set(1.15, 0.6, 1.05); cuirasse.add(ep);
-    }
-    const clous = new THREE.Group();        // le cuir clouté : des rivets sur le plastron
-    for (let r = 0; r < 3; r++) for (let k = -2; k <= 2; k++) clous.add(mesh(sphG(0.012, 6), GOLD(), k * 0.06, 0.08 - r * 0.1, 0.165));
-    cuirasse.add(clous); cuirasse.userData.clous = clous;
-    cuirasse.userData.mat = m;
-    cuirasse.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  }
+  const cuirasse = faireCuirasse(1); cuirasse.visible = false;
   socket(g, perso, 'spine_03', cuirasse, [0, -0.02, 0]);
 
   const arc = makeBow ? makeBow() : null;
@@ -951,15 +1066,7 @@ export function animeCamille(m, p, dt, ctx) {
     ud.ecu.visible = !!ctx.bouclier && !ctx.garde && !(drawing || bowOut); ud.ecuGarde.visible = !!ctx.bouclier && !!ctx.garde;
     ud.ecu.userData.cercle.visible = ud.ecuGarde.userData.cercle.visible = ctx.bouclier > 1;
   }
-  if (ud.cuirasse) {
-    ud.cuirasse.visible = ctx.armure > 0;
-    if (ctx.armure > 0 && ud.cuirasse.userData.niv !== ctx.armure) {      // cuir, mailles, plates
-      ud.cuirasse.userData.niv = ctx.armure;
-      const m = ud.cuirasse.userData.mat, n = ctx.armure;
-      m.color.setHex([0, 0x6a4526, 0x8d9096, 0xaab0b8][n]); m.metalness = [0, 0.05, 0.6, 0.85][n]; m.roughness = [0, 0.75, 0.55, 0.28][n];
-      ud.cuirasse.userData.clous.visible = n === 1;
-    }
-  }
+  if (ud.cuirasse) { ud.cuirasse.visible = ctx.armure > 0; ud.cuirasse.userData.changer(ctx.armure); }   // cuir, mailles, plates
   if (ud.arc) ud.arc.visible = !!(drawing || bowOut);
   if (ud.arcDos) ud.arcDos.visible = ctx.arcTrouve && !(drawing || bowOut);
   a.update(dt);

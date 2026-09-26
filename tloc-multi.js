@@ -30,7 +30,7 @@ import {
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
 const DEGATS_EPEE = 1;        // un demi-cœur de moins qu'un coup de géant : les duels durent
-const DEGATS_FLECHE = 2;
+const DEGATS_FLECHE = 1;      // un demi-cœur (Eugène, 27 septembre) : l'arc harcèle, l'épée tranche
 const INVULN = 0.9;
 
 // =====================================================================
@@ -871,7 +871,7 @@ if (actif) {
 // celui qui les porte, comme ses cœurs : l'écu pare les coups de face tant qu'on le lève
 // (clic droit maintenu, engine.js), l'armure encaisse avant les cœurs et se fend. La forge
 // du bourg les renforce contre des écus. Une manche neuve rend tout à sa place.
-const ARMURE_PTS = [0, 4, 6, 8];            // demi-cœurs encaissés : cuir clouté, mailles, plates
+const ARMURE_PTS = [0, 8, 10, 12];          // demi-cœurs encaissés : cuir clouté (4 cœurs), mailles, plates
 const ARMURE_NOM = ['', 'cuir clouté', 'mailles', 'plates'];
 const ECU_ANGLE = [0, 1.05, 1.45];           // demi-angle de parade : bois peint, cerclé de fer
 const OBJET_LIEU = { armure: 'aux casernes', bouclier: 'sur la place d’Armes' };
@@ -901,18 +901,9 @@ function presentoir(type) {
   const fer = new THREE.MeshStandardMaterial({ color: 0x8d9096, metalness: 0.6, roughness: 0.45 });
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.14, 12), bois));
   const mat_ = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), bois); mat_.position.y = 0.8; g.add(mat_);
-  if (type === 'armure') {
-    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.62, 16), fer); pl.scale.z = 0.75; pl.position.y = 1.22; g.add(pl);
-    for (const sx of [-1, 1]) { const ep = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fer); ep.scale.set(1.1, 0.55, 1); ep.position.set(sx * 0.3, 1.5, 0); g.add(ep); }
-  } else {
-    const forme = new THREE.Shape();
-    forme.moveTo(-0.34, 0.4); forme.lineTo(0.34, 0.4); forme.lineTo(0.34, 0.04);
-    forme.quadraticCurveTo(0.3, -0.36, 0, -0.54); forme.quadraticCurveTo(-0.3, -0.36, -0.34, 0.04); forme.closePath();
-    const ecuM = new THREE.Mesh(new THREE.ExtrudeGeometry(forme, { depth: 0.05, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: 0x8a2a24, roughness: 0.75 }));
-    ecuM.position.set(0, 1.1, 0.07); g.add(ecuM);
-    const bande = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.84, 0.03), new THREE.MeshStandardMaterial({ color: 0xd9b24a, metalness: 0.7, roughness: 0.35 }));
-    bande.position.set(0, 1.07, 0.13); g.add(bande);
-  }
+  // les mêmes pièces que celles que portera Camille (pnj.js), à la taille d'un mannequin
+  if (type === 'armure') { const c = PNJ.faireCuirasse(1); c.scale.setScalar(1.45); c.position.y = 1.3; g.add(c); }
+  else { const e = PNJ.faireEcu(); e.scale.setScalar(1.9); e.position.set(0, 1.12, 0.08); e.rotation.x = -0.12; g.add(e); }
   const lueur = new THREE.PointLight(0xffd070, 3, 7); lueur.position.y = 1.9; g.add(lueur);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   g.scale.setScalar((G.echelle || 1) / 0.6);     // à l'échelle de Camille (1,80 m dehors)
@@ -929,9 +920,9 @@ function majObjets(m) {
   for (const o of objets) {
     let pr = presentoirs.get(o.type);
     if (!pr) { pr = presentoir(o.type); pr.position.set(o.p[0], o.y, o.p[1]); scene.add(pr); presentoirs.set(o.type, pr); }
-    pr.visible = o.porteur == null && !o.retour;
+    pr.visible = o.porteur == null && !o.retour && !o.brise;
   }
-  PARTAGE.marques = objets.filter((o) => o.porteur == null && !o.retour)
+  PARTAGE.marques = objets.filter((o) => o.porteur == null && !o.retour && !o.brise)
     .map((o) => ({ x: o.p[0], z: o.p[1], fond: o.type === 'armure' ? '#c9ccd2' : '#d0463a', bord: '#1a1a1a' }));
   const qui = m.par === moiId ? null : (m.perso || 'Quelqu’un');
   const nom = m.o === 'armure' ? 'l’armure' : 'l’écu';
@@ -941,7 +932,7 @@ function majObjets(m) {
       else { ecu = 1; showMessage('Tu prends l’écu ! Clic droit maintenu pour le lever : il pare les coups de face. La forge du bourg le cercle de fer.', 6); }
       try { SFX.pickup(); } catch (e) {}
     } else showMessage(`${qui} prend ${nom} ${OBJET_LIEU[m.o]}.`, 3);
-  } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats.`, 3);
+  } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats : plus d’armure jusqu’à la prochaine manche.`, 4);
   else if (m.evt === 'retour') showMessage(`Une armure neuve attend ${OBJET_LIEU.armure}.`, 4);
   else if (m.evt === 'raz' && objets.length) showMessage('Nouvelle manche : l’armure est aux casernes, l’écu sur la place d’Armes.', 5);
   peindreArmure();
@@ -981,32 +972,45 @@ function absorber(degats) {
   burst(p.pos.x, p.pos.y + 1.3, p.pos.z, 0xc9ccd2, 8, 4, 0.4);
   if (armurePts <= 0) {
     armure = 0; envoyer({ t: 'objet-casse', o: 'armure' });
-    showMessage('Ton armure vole en éclats ! Une neuve reviendra aux casernes.', 4);
+    showMessage('Ton armure vole en éclats ! Il n’y en aura plus avant la prochaine manche.', 4);
     try { SFX.stomp(); } catch (e) {}
   }
   peindreArmure();
   return degats - pris;
 }
 
-// la jauge d'armure, au bout des cœurs : une plaque par cœur encaissable
+// La jauge d'armure : des cœurs d'acier au bout des cœurs rouges, du même dessin (Eugène
+// voulait y lire des cœurs, pas des plaques). Un cœur d'acier = deux demi-cœurs encaissés.
 let jaugeArmure = null;
+function coeur(g, x, y, s, couleur) {        // le cœur d'engine.js (drawHearts), trait pour trait
+  g.fillStyle = couleur; g.beginPath();
+  g.moveTo(x + s / 2, y + s * 0.95);
+  g.bezierCurveTo(x - s * 0.15, y + s * 0.5, x + s * 0.05, y - s * 0.05, x + s / 2, y + s * 0.3);
+  g.bezierCurveTo(x + s * 0.95, y - s * 0.05, x + s * 1.15, y + s * 0.5, x + s / 2, y + s * 0.95);
+  g.fill();
+}
 function peindreArmure() {
   if (!actif) return;
   if (!jaugeArmure) {
-    jaugeArmure = document.createElement('div');
-    jaugeArmure.style.cssText = 'position:absolute; top:19px; display:flex; gap:4px; align-items:center; pointer-events:none;';
+    jaugeArmure = document.createElement('canvas');
+    jaugeArmure.width = 240; jaugeArmure.height = 40;
+    jaugeArmure.style.cssText = 'position:absolute; top:14px; pointer-events:none;';
     (document.getElementById('hud') || document.body).appendChild(jaugeArmure);
   }
-  jaugeArmure.style.left = `${18 + 6 + (player.maxHp / 2) * 34 + 6}px`;
-  jaugeArmure.style.display = armure ? 'flex' : 'none';
+  jaugeArmure.style.left = `${18 + (player.maxHp / 2) * 34 + 4}px`;
+  jaugeArmure.style.display = armure ? '' : 'none';
   if (!armure) return;
-  const n = ARMURE_PTS[armure] / 2, plein = armurePts / 2;
-  let h = `<span style="font-size:11px; letter-spacing:1px; color:#dfe3ea; margin-right:2px">${ARMURE_NOM[armure].toUpperCase()}</span>`;
+  const g = jaugeArmure.getContext('2d'), n = ARMURE_PTS[armure] / 2;
+  g.clearRect(0, 0, 240, 40);
+  const acier = g.createLinearGradient(0, 6, 0, 32);           // un reflet d'acier poli
+  acier.addColorStop(0, '#f2f4f7'); acier.addColorStop(0.5, '#aab0b8'); acier.addColorStop(1, '#6d737c');
   for (let i = 0; i < n; i++) {
-    const r = Math.max(0, Math.min(1, plein - i));
-    h += `<span style="width:14px; height:18px; border-radius:3px 3px 7px 7px; border:1.5px solid #1a1d22; background:linear-gradient(90deg, #c9ccd2 ${r * 100}%, #3a3f48 ${r * 100}%)"></span>`;
+    const x = 6 + i * 34, y = 6, plein = armurePts >= (i + 1) * 2, demi = !plein && armurePts >= i * 2 + 1;
+    coeur(g, x - 1.5, y - 1.5, 29, '#15181d');                  // le liseré sombre
+    coeur(g, x, y, 26, '#2c3038');
+    if (plein) coeur(g, x, y, 26, acier);
+    else if (demi) { g.save(); g.beginPath(); g.rect(x, y - 2, 13, 34); g.clip(); coeur(g, x, y, 26, acier); g.restore(); }
   }
-  jaugeArmure.innerHTML = h;
 }
 
 // La forge du bourg : on y renforce ce qu'on porte, contre des écus. Y aller est un risque
@@ -1018,10 +1022,10 @@ function poserForge() {
   addInteract({ pos: new THREE.Vector3(x, TOWN.y, z), r: 3.2, prompt: () => 'la forge : renforcer ton équipement', fn: () => {
     const peu = (n) => `il faut d’abord ${n}`;
     BOURSE.boutique('La forge', 'À l’enclume', 'Le forgeron renforce ce que tu portes. Ce qui est brisé ne se répare pas : il faut en reprendre.', [
-      { label: 'Armure de mailles (3 cœurs à encaisser)', prix: 40, dispo: () => armure === 1, indispo: armure ? 'déjà renforcée' : peu('l’armure des casernes'),
-        acheter: () => { armure = 2; armurePts = ARMURE_PTS[2]; peindreArmure(); showMessage('Mailles neuves : 3 cœurs d’armure.', 3); } },
-      { label: 'Armure de plates (4 cœurs à encaisser)', prix: 70, dispo: () => armure === 2, indispo: armure === 3 ? 'déjà en plates' : peu('les mailles'),
-        acheter: () => { armure = 3; armurePts = ARMURE_PTS[3]; peindreArmure(); showMessage('Plates d’acier : 4 cœurs d’armure.', 3); } },
+      { label: 'Armure de mailles (5 cœurs à encaisser)', prix: 40, dispo: () => armure === 1, indispo: armure ? 'déjà renforcée' : peu('l’armure des casernes'),
+        acheter: () => { armure = 2; armurePts = ARMURE_PTS[2]; peindreArmure(); showMessage('Mailles neuves : 5 cœurs d’armure.', 3); } },
+      { label: 'Armure de plates (6 cœurs à encaisser)', prix: 70, dispo: () => armure === 2, indispo: armure === 3 ? 'déjà en plates' : peu('les mailles'),
+        acheter: () => { armure = 3; armurePts = ARMURE_PTS[3]; peindreArmure(); showMessage('Plates d’acier : 6 cœurs d’armure.', 3); } },
       { label: 'Réparer l’armure', prix: 12, dispo: () => armure > 0 && armurePts < ARMURE_PTS[armure], indispo: armure ? 'elle est intacte' : peu('une armure'),
         acheter: () => { armurePts = ARMURE_PTS[armure]; peindreArmure(); } },
       { label: 'Cercler l’écu de fer (pare plus large)', prix: 50, dispo: () => ecu === 1, indispo: ecu ? 'déjà cerclé' : peu('l’écu de la place d’Armes'),

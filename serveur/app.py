@@ -54,8 +54,9 @@ BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mise
 # L'équipement du multi : une armure et un écu, posés à des lieux fixes de la carte (le
 # premier client les propose, le serveur les garde), au premier qui les atteint. L'écu se
 # garde ; l'armure se fend sous les coups (le client de celui qui la porte compte, comme
-# pour ses cœurs) et, brisée, revient à son lieu après OBJET_RETOUR secondes. Les niveaux
-# achetés à la forge restent l'affaire du client : ils ne changent rien à l'arbitrage.
+# pour ses cœurs) et, brisée, ne revient qu'à la manche suivante (Eugène, 27 septembre).
+# Les niveaux achetés à la forge restent l'affaire du client : ils ne changent rien à
+# l'arbitrage. OBJET_RETOUR ne sert plus qu'aux objets qui reviennent seuls.
 OBJETS = ("armure", "bouclier")
 OBJET_PORTEE = 4.0
 OBJET_RETOUR = int(os.environ.get("TLOC_OBJET_RETOUR", 45))
@@ -1210,7 +1211,8 @@ class Salon:
     def vue_objets(self) -> list:
         maintenant = time.time()
         return [{"id": k, "type": o["type"], "p": o["p"], "y": o["y"], "porteur": o["porteur"],
-                 "retour": max(0, round(o["retour"] - maintenant)) if o["retour"] else None}
+                 "retour": max(0, round(o["retour"] - maintenant)) if o["retour"] else None,
+                 "brise": bool(o.get("brise"))}
                 for k, o in self.objets.items()]
 
     async def annoncer_objets(self, **evt):
@@ -1229,7 +1231,7 @@ class Salon:
         if not self.objets:
             return
         for o in self.objets.values():
-            o.update(porteur=None, retour=None)
+            o.update(porteur=None, retour=None, brise=False)
         await self.annoncer_objets(evt="raz")
 
     def vue_bannieres(self) -> dict:
@@ -1605,7 +1607,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         elif t == "objet-prendre":
             o = salon.objets.get(str(m.get("o")))
             p = moi.etat.get("p")
-            if not o or not p or o["porteur"] is not None or o["retour"] or moi.est_bot:
+            if not o or not p or o["porteur"] is not None or o["retour"] or o.get("brise") or moi.est_bot:
                 return
             if ((p[0] - o["p"][0]) ** 2 + (p[2] - o["p"][1]) ** 2) ** 0.5 > OBJET_PORTEE:
                 return
@@ -1616,16 +1618,8 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             o = salon.objets.get(str(m.get("o")))
             if not o or o["porteur"] != moi.id:
                 return
-            o.update(porteur=None, retour=time.time() + OBJET_RETOUR)
+            o.update(porteur=None, brise=True)          # jusqu'à la manche suivante (raz_objets)
             await salon.annoncer_objets(evt="casse", o=o["type"], par=moi.id, perso=moi.perso)
-            marque = o["retour"]
-
-            async def revenir():
-                await asyncio.sleep(OBJET_RETOUR)
-                if o["retour"] == marque:
-                    o["retour"] = None
-                    await salon.annoncer_objets(evt="retour", o=o["type"])
-            asyncio.create_task(revenir())
 
         elif t == "coup":
             cible = salon.joueurs.get(m.get("c"))
