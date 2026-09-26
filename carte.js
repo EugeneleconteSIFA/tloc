@@ -2148,8 +2148,39 @@ export function solVille(pas = 6) {
     polygonOffset: true, polygonOffsetFactor: -1,
   }));
   m.name = 'sol-du-quartier'; m.receiveShadow = true; m.renderOrder = 0;
+  // DEUX NAPPES PAR-DESSUS LA TERRE. Tout le sol du quartier était de la terre battue : vue
+  // d'en haut, la ville lisait comme un chantier, chaque cœur d'îlot un grand aplat brun.
+  // Le long des voies, entre la chaussée et les façades, le pavé de la rue continue jusqu'au
+  // pied des murs ; au cœur des îlots, loin de toute voie (ou dans un jardin relevé), ce
+  // sont des jardins et des cours herbues. Mêmes sommets, un autre poids par sommet.
+  const grp = new THREE.Group(); grp.name = 'sol-du-quartier'; grp.add(m);
+  { const CEL = 20, cases = new Map();
+    for (const o of LILLE.routes) for (let i = 0; i < o.pts.length - 1; i++) {
+      const a = o.pts[i], b = o.pts[i + 1], demi = LARGEUR_ROUTE[Math.min(3, o.r)] / 2;
+      for (let gx = Math.floor((Math.min(a[0], b[0]) - 30) / CEL); gx <= Math.floor((Math.max(a[0], b[0]) + 30) / CEL); gx++)
+        for (let gz = Math.floor((Math.min(a[1], b[1]) - 30) / CEL); gz <= Math.floor((Math.max(a[1], b[1]) + 30) / CEL); gz++) {
+          const k = gx * 100003 + gz; let l = cases.get(k); if (!l) cases.set(k, l = []); l.push([a[0], a[1], b[0], b[1], demi]); }
+    }
+    // distance au BORD de la chaussée la plus proche (30 m au plus)
+    const bordVoie = (x, z) => { let d = 30; for (const [ax, az, bx, bz, demi] of cases.get(Math.floor(x / CEL) * 100003 + Math.floor(z / CEL)) || [])
+      d = Math.min(d, distSeg(x, z, ax, az, bx, bz) - demi); return d; };
+    const pave = [], jardin = [];
+    for (let v = 0; v < pos.length / 3; v++) {
+      const x = pos[v * 3], z = pos[v * 3 + 2], w = col[v * 4 + 3];
+      const d = bordVoie(x, z);
+      const jr = coucheAt(LILLE.jardins, x, z, 0) || coucheAt(LILLE.herbe, x, z, 0) ? 1 : 0;
+      pave.push(1, 1, 1, w * (1 - lisse((d - 2.5) / 3.5)) * (1 - jr));
+      jardin.push(1, 1, 1, w * Math.max(jr, lisse((d - 11) / 7)));
+    }
+    const nappe = (poids, mat, ordre) => { const ge = g.clone(); ge.setAttribute('color', new THREE.Float32BufferAttribute(poids, 4));
+      const o = new THREE.Mesh(ge, mat); o.receiveShadow = true; o.renderOrder = ordre; grp.add(o); };
+    nappe(jardin, phMat('grass_ground', 1, 1, { color: 0x9aae70, roughness: 1, transparent: true, depthWrite: false, vertexColors: true,
+      polygonOffset: true, polygonOffsetFactor: -1.5 }), 0);
+    // la même dalle que les trottoirs (carte.js, voiriesLille) : du trottoir au pied des murs
+    nappe(pave, MAT_DALLE({ transparent: true, depthWrite: false, vertexColors: true, polygonOffsetFactor: -1.5 }), 0);
+  }
   console.log('sol du quartier : %d mailles de %d m', n, pas);
-  return m;
+  return grp;
 }
 
 // Les chemins relevés — allées du parc, sentiers de sous-bois, berges de la Deûle — et
@@ -2162,12 +2193,63 @@ export function voiriesLille() {
   // un liseré blanc tout autour du fossé et de la Deûle, visible jusqu'en vue aérienne.
   ajoute(rubanGeo(LILLE.chemins, LARGEUR_CHEMIN, 0.14),
     phMat('rocks_ground_08', 1.6, 1.6, { color: 0x94866c, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
-  const petites = LILLE.routes.filter((o) => o.r <= 1), grandes = LILLE.routes.filter((o) => o.r >= 2);
-  ajoute(rubanGeo(petites, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.16),
+  // DES RUES HOMOGÈNES. Les petites voies étaient en terre et les grandes en pavé, si bien
+  // qu'en ville une rue changeait de sol à chaque carrefour. En ville, toute voie est pavée ;
+  // seules les voies de campagne (loin de tout bâti) restent en terre.
+  const enVille = (o) => { const m = o.pts[o.pts.length >> 1]; return distBati(m[0], m[1]) < 18 || distBati(o.pts[0][0], o.pts[0][1]) < 12; };
+  const urbaines = LILLE.routes.filter(enVille), champs = LILLE.routes.filter((o) => !enVille(o));
+  ajoute(rubanGeo(champs, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.16),
     phMat('brown_mud_03', 2, 2, { color: 0x8d7d64, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
-  ajoute(rubanGeo(grandes, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.18),
+  ajoute(rubanGeo(urbaines, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.18),
     pbrRepeat(cobbles(), 1 / COBBLE_M, 1 / COBBLE_M, { roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 }));
+  // LES TROTTOIRS. De chaque côté d'une rue de ville : une bordure de pierre, puis un
+  // trottoir de dalles (1,6 m), que le sol du quartier prolonge jusqu'aux façades (même
+  // dalle, cf. solVille). Au ras de la chaussée et un peu sous elle : aux carrefours, c'est
+  // la chaussée transversale qui passe par-dessus le trottoir, comme dans une vraie rue.
+  const bord = (o) => LARGEUR_ROUTE[Math.min(3, o.r)] / 2;
+  const trottoirs = urbaines.filter((o) => o.r >= 1);
+  ajoute(bandesGeo(trottoirs, (o) => [bord(o) + 0.24, bord(o) + 1.85], 0.15), MAT_DALLE());
+  ajoute(bandesGeo(trottoirs, (o) => [bord(o), bord(o) + 0.26], 0.155),
+    phMat('marble_rock_02', 0.6, 0.6, { color: 0xb8b2a8, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -1.8 }));
   return g;
+}
+// la dalle des trottoirs : pierre usée, jointoyée, teintée gris clair (la photo est sombre)
+export function MAT_DALLE(extra = {}) {
+  return phMat('worn_tile_floor', 1.6, 1.6, { color: new THREE.Color(0xe8e0d4).multiplyScalar(1.3), roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -1.7, ...extra });
+}
+// Deux bandes parallèles à une voie, une de chaque côté, entre les distances d0 et d1 de
+// son axe. Mêmes règles que rubanGeo : chaque bord prend le sol sous lui ; rien hors de
+// l'enceinte, sur l'eau, sur un tablier, ni loin du bâti (une route de campagne n'a pas de
+// trottoir).
+function bandesGeo(lignes, distances, y, pasMax = 4) {
+  const pos = [], uv = [], idx = [];
+  for (const o of lignes) {
+    const [d0, d1] = distances(o);
+    for (const cote of [1, -1]) {
+      let s = 0, base = -1;
+      for (let i = 0; i < o.pts.length - 1; i++) {
+        const a = o.pts[i], b = o.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
+        if (L < 0.01) continue;
+        const nx = -dz / L * cote, nz = dx / L * cote, pas = Math.max(1, Math.ceil(L / pasMax));
+        for (let k = (i === 0 ? 0 : 1); k <= pas; k++) {
+          const t = k / pas, cx = a[0] + dx * t, cz = a[1] + dz * t; s += L / pas * (k === 0 ? 0 : 1);
+          const mx = cx + nx * (d0 + d1) / 2, mz = cz + nz * (d0 + d1) / 2;
+          if (sdEnceinte(mx, mz) > 6 || sdEau(mx, mz) < 1 || surPont(mx, mz) !== null || onBridge(mx, mz) || distBati(mx, mz) > 16) { base = -1; continue; }
+          const n0 = pos.length / 3;
+          pos.push(cx + nx * d0, solPlaine(cx + nx * d0, cz + nz * d0) + y, cz + nz * d0, cx + nx * d1, solPlaine(cx + nx * d1, cz + nz * d1) + y, cz + nz * d1);
+          uv.push(d0 * cote, s, d1 * cote, s);
+          if (base >= 0) idx.push(...(cote < 0 ? [base, n0, base + 1, base + 1, n0, n0 + 1] : [base, base + 1, n0, base + 1, n0 + 1, n0]));   // face vers le ciel
+          base = n0;
+        }
+      }
+    }
+  }
+  if (!pos.length) return null;
+  const ge = new THREE.BufferGeometry();
+  ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  ge.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  ge.setIndex(idx); ge.computeVertexNormals();
+  return ge;
 }
 
 // le polygone d'une couche sous le point, ou null — rejet par cercle englobant d'abord,

@@ -696,6 +696,8 @@ export const PH = {
   chaux_craquelee:        { tuile: 2.4, maps: ['couleur', 'normale', 'rugosite'], repli: 0xcfc6b4 },
   gravier:                { tuile: 1.6, maps: ['couleur', 'normale', 'rugosite'], repli: 0x9a8d78 },
   brique_rouge_06:        { tuile: 2.2, maps: ['couleur', 'normale', 'rugosite'], repli: 0x9a5a42 },
+  // pierre blanche de taille, veinée : les moulures et les mascarons de la fontaine du bourg
+  marble_rock_02:         { tuile: 2.0, maps: ['couleur', 'normale', 'rugosite'], repli: 0xc6b39a },
 };
 const phCache = new Map();
 function phTex(slug, map) {
@@ -847,9 +849,15 @@ export function patiner(m, opts = {}) {
 }
 
 export const stoneMat = pbr(T.stone, { roughness: 0.85, color: 0xb8b0a0 });
-export const IRON = () => mat(0x3a3a40, { metalness: 0.85, roughness: 0.4 });
-export const STEEL = () => mat(0xcfd6dd, { metalness: 0.9, roughness: 0.25 });
-export const GOLD = () => mat(0xd9b24a, { metalness: 0.9, roughness: 0.3 });
+// Les trois métaux communs prennent la tôle photographiée (metal_plate_02 : rayures, reprises
+// de martelage, oxydation), teintée. Ils étaient des aplats parfaitement lisses : sur une
+// grille, une couronne, une ferrure, le métal lisait comme du plastique. La photo est sombre
+// (luminance ≈ 0,3) : la teinte est relevée d'autant. Un matériau neuf à chaque appel, comme
+// avant — l'éclair rouge d'un coup reçu modifie le matériau de la créature touchée.
+const metalPh = (c, r) => phMat('metal_plate_02', 0.45, 0.45, { color: new THREE.Color(c).multiplyScalar(2.6), roughness: r });
+export const IRON = () => metalPh(0x3a3a40, 0.5);
+export const STEEL = () => metalPh(0xb8c0c8, 0.3);
+export const GOLD = () => metalPh(0xd9b24a, 0.32);
 export function mesh(geo, m, x = 0, y = 0, z = 0) {
   const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; return o;
 }
@@ -1520,7 +1528,7 @@ export function makeGrille(w, h, bars = 7) {
 }
 export function makeTorch() {
   const g = new THREE.Group();
-  g.add(mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.8, 6), mat(0x4a3220), 0, 0, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.8, 6), phMat('wood_cabinet_worn_long', 0.2, 0.8, { color: 0x9a7050 }), 0, 0, 0));
   g.add(mesh(new THREE.CylinderGeometry(0.1, 0.07, 0.2, 6), IRON(), 0, 0.42, 0));
   const flame = mesh(sphG(0.14, 8), new THREE.MeshBasicMaterial({ color: 0xffa030 }), 0, 0.62, 0); flame.scale.set(1, 1.6, 1); g.add(flame);
   const light = new THREE.PointLight(0xff9a40, 6, 14, 1.6); light.position.y = 0.7; g.add(light);
@@ -1651,23 +1659,25 @@ export function makeMoule() {
   const lower = new THREE.Mesh(valveGeo, shellMat); lower.scale.set(1, 0.42, 1); lower.position.set(0, 0.36, 0); lower.castShadow = true; g.add(lower);
   const top = new THREE.Group(); top.position.set(0, 0.42, -1.25); // charnière à l'arrière
   const upper = new THREE.Mesh(valveGeo, shellMat); upper.scale.set(1, 0.42, 1); upper.position.set(0, 0.02, 1.25); upper.castShadow = true; top.add(upper);
-  for (let i = -3; i <= 3; i++) top.add(mesh(new THREE.ConeGeometry(0.07, 0.3, 5), mat(0xf4ecd8), i * 0.19, -0.1, 2.35 - Math.abs(i) * 0.12).rotateX(Math.PI));
+  const dent = phMat('marble_rock_02', 0.2, 0.2, { color: 0xfffaf0, roughness: 0.35 });
+  for (let i = -3; i <= 3; i++) top.add(mesh(new THREE.ConeGeometry(0.07, 0.3, 5), dent, i * 0.19, -0.1, 2.35 - Math.abs(i) * 0.12).rotateX(Math.PI));
   top.rotation.x = -0.3; g.add(top);
   // chair : langue orange, gencives, dents du bas, œil unique jaune et gros
   const inner = mesh(sphG(0.62, 14), flesh, 0, 0.42, 0.15); inner.scale.set(0.95, 0.4, 1.3); g.add(inner);
   const tongue = mesh(capG(0.16, 0.5, 8), fleshDark, 0, 0.5, 0.9); tongue.rotation.x = Math.PI / 2 - 0.3; g.add(tongue);
-  for (let i = -3; i <= 3; i++) g.add(mesh(new THREE.ConeGeometry(0.07, 0.32, 5), mat(0xf4ecd8), i * 0.19, 0.62, 1.15 - Math.abs(i) * 0.12));
+  for (let i = -3; i <= 3; i++) g.add(mesh(new THREE.ConeGeometry(0.07, 0.32, 5), dent, i * 0.19, 0.62, 1.15 - Math.abs(i) * 0.12));
   for (const sx of [-1, 1]) { const st = mesh(capG(0.06, 0.5, 6), flesh, sx * 0.32, 0.9, 0.55); st.rotation.z = -sx * 0.4; st.rotation.x = -0.3; g.add(st);
     const eye = mesh(sphG(0.17, 12), mat(0xffe27a, { roughness: 0.15 }), sx * 0.46, 1.2, 0.62); g.add(eye);
     const pu = mesh(sphG(0.08, 8), mat(0x101010), sx * 0.46, 1.2, 0.77); pu.scale.set(0.35, 1.3, 0.6); g.add(pu); }
   // byssus (barbe de filaments) à la charnière et tentacules autour
-  for (let i = 0; i < 7; i++) { const th = mesh(new THREE.CylinderGeometry(0.012, 0.02, rand(0.5, 0.9), 4), mat(0x3a2a20, { roughness: 1 }), rand(-0.3, 0.3), 0.25, -1.3 - rand(0, 0.3)); th.rotation.x = rand(1.0, 1.5); th.rotation.z = rand(-0.5, 0.5); g.add(th); }
+  for (let i = 0; i < 7; i++) { const th = mesh(new THREE.CylinderGeometry(0.012, 0.02, rand(0.5, 0.9), 4), creatureMat(CT.membrane, 1, 2, { color: 0x6a5040 }), rand(-0.3, 0.3), 0.25, -1.3 - rand(0, 0.3)); th.rotation.x = rand(1.0, 1.5); th.rotation.z = rand(-0.5, 0.5); g.add(th); }
   for (let i = 0; i < 6; i++) { const a = -1.9 + i * 0.76; const dx = Math.sin(a), dz = Math.cos(a);
     const t1 = mesh(capG(0.06, 0.55, 6), flesh, dx * 1.0, 0.08, dz * 1.3); t1.rotation.order = 'YXZ'; t1.rotation.y = a; t1.rotation.x = Math.PI / 2 - 0.15; g.add(t1);
     const t2 = mesh(capG(0.04, 0.45, 6), fleshDark, dx * 1.45, 0.05, dz * 1.85); t2.rotation.order = 'YXZ'; t2.rotation.y = a + 0.3; t2.rotation.x = Math.PI / 2; g.add(t2); }
   for (let i = 0; i < 5; i++) g.add(mesh(sphG(rand(0.05, 0.11), 8), slime, rand(-0.5, 0.5), 0.3 + rand(0, 0.5), rand(0.3, 1.1)));
   // bernacles sur la coquille
-  for (let i = 0; i < 6; i++) { const bn = mesh(new THREE.ConeGeometry(0.09, 0.09, 6, 1, true), mat(0xd8d0c0, { side: THREE.DoubleSide }), rand(-0.6, 0.6), 0.55 + rand(0, 0.1), rand(-0.9, 0.4)); bn.rotation.x = 0; g.add(bn); }
+  const calcaire = phMat('old_stone_wall_02', 0.3, 0.3, { color: 0xf0e8d8, side: THREE.DoubleSide });
+  for (let i = 0; i < 6; i++) { const bn = mesh(new THREE.ConeGeometry(0.09, 0.09, 6, 1, true), calcaire, rand(-0.6, 0.6), 0.55 + rand(0, 0.1), rand(-0.9, 0.4)); bn.rotation.x = 0; g.add(bn); }
   g.userData.top = top;
   g.userData.dynamic = true;
   return g;
@@ -1677,30 +1687,52 @@ export function makeFantome() {
   const ghost = new THREE.MeshStandardMaterial({ color: 0xcfd8e8, transparent: true, opacity: 0.55, roughness: 0.6, emissive: 0x5a78c8, emissiveIntensity: 0.35, depthWrite: false });
   ghost.userData.linceul = true;      // seul ce matériau respire (cf. animeCreature)
   const coat = creatureMat(CT.membrane, 3, 3, { color: 0x2a3a7a, transparent: true, opacity: 0.85, roughness: 0.85 });
-  const robe = mesh(capG(0.42, 1.0, 14), ghost, 0, 1.3, 0); robe.scale.set(1, 1, 0.75); g.add(robe);
-  for (let i = 0; i < 7; i++) { const a = i * TAU / 7; const rag = mesh(new THREE.ConeGeometry(0.18, rand(0.7, 1.2), 5), ghost, Math.cos(a) * 0.32, 0.45, Math.sin(a) * 0.26); rag.rotation.x = Math.PI; g.add(rag); }
-  g.add(mesh(capG(0.4, 0.3, 14), coat, 0, 1.7, 0).rotateZ(Math.PI / 2)); // veste
-  for (let i = 0; i < 4; i++) g.add(mesh(sphG(0.05, 6), mat(0xd9b24a, { metalness: 0.8, roughness: 0.3 }), 0, 1.9 - i * 0.2, 0.42));
-  const os = creatureMat(CT.peauLisse, 1.5, 1.5, { color: 0xe8e2cc, roughness: 0.62 });
+  // LE LINCEUL. C'était une capsule blanche et sept cônes pointés vers le bas : un bonhomme
+  // de neige. C'est maintenant une étoffe ouverte qui s'évase en tombant, froissée, dont
+  // l'ourlet part en lambeaux de longueurs inégales — et le grain d'une toile photographiée.
+  ghost.map = phTex('enduit_gris', 'couleur').clone(); ghost.map.wrapS = ghost.map.wrapT = THREE.RepeatWrapping; ghost.map.repeat.set(2, 2);
+  ghost.side = THREE.DoubleSide; ghost.needsUpdate = true;
+  { const geo = new THREE.CylinderGeometry(0.34, 0.78, 2.0, 22, 8, true), po = geo.attributes.position;
+    for (let i = 0; i < po.count; i++) {
+      const x = po.getX(i), y = po.getY(i), z = po.getZ(i), a = Math.atan2(z, x), bas = (1 - (y + 1) / 2);   // 0 en haut, 1 à l'ourlet
+      const pli = 1 + Math.sin(a * 7 + y * 2.3) * 0.08 * bas + Math.sin(a * 13) * 0.03;
+      const lambeau = bas > 0.99 ? (0.5 + 0.5 * Math.sin(a * 9.7 + 1.3)) * 0.55 + (Math.sin(a * 23) > 0.3 ? 0.25 : 0) : 0;
+      po.setXYZ(i, x * pli, y + lambeau, z * pli * 0.8);
+    }
+    geo.computeVertexNormals();
+    g.add(mesh(geo, ghost, 0, 1.05, 0)); }
+  // l'habit du soldat : un torse qui s'évase vers les basques, des épaules tombantes, un
+  // col — et non plus une capsule couchée qui faisait la boule d'un bonhomme de neige
+  { const habit = mesh(new THREE.CylinderGeometry(0.3, 0.44, 0.95, 14), coat, 0, 1.72, 0); habit.scale.z = 0.72; g.add(habit);
+    for (const sx of [-1, 1]) { const ep = mesh(sphG(0.15, 10), coat, sx * 0.33, 2.1, 0); ep.scale.set(1.2, 0.7, 0.9); g.add(ep);
+      const bras = mesh(capG(0.09, 0.55, 8), coat, sx * 0.42, 1.75, 0.05); bras.rotation.z = sx * 0.18; g.add(bras); }
+    g.add(mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.14, 10), coat, 0, 2.24, 0)); }
+  for (let i = 0; i < 4; i++) g.add(mesh(sphG(0.05, 6), GOLD(), 0, 1.9 - i * 0.2, 0.42));
+  // l'os : une pierre blanche veinée, patinée — la peau lisse teinte lisait comme du carton
+  const os = phMat('marble_rock_02', 0.5, 0.5, { color: 0xf2ead6, roughness: 0.62 });
   const skull = mesh(sphG(0.33, 16), os, 0, 2.4, 0); skull.scale.set(0.95, 1.1, 0.95); g.add(skull);
   g.add(mesh(boxG(0.38, 0.22, 0.26), os, 0, 2.12, 0.1)); // mâchoire
-  for (const sx of [-1, 1]) { const s = mesh(sphG(0.09, 10), mat(0x050508, { emissive: 0x2a5aff, emissiveIntensity: 1.2 }), sx * 0.13, 2.44, 0.27); s.scale.set(1, 1.1, 0.5); g.add(s); }
+  // orbites creuses et sombres, une lueur froide au fond (et non deux billes bleues)
+  for (const sx of [-1, 1]) { const s = mesh(sphG(0.085, 10), mat(0x020204, { roughness: 1 }), sx * 0.13, 2.44, 0.25); s.scale.set(1, 1.15, 0.5); g.add(s);
+    g.add(mesh(sphG(0.025, 8), mat(0x8ab0ff, { emissive: 0x5a8aff, emissiveIntensity: 2.2 }), sx * 0.13, 2.43, 0.275)); }
   const nose = mesh(new THREE.ConeGeometry(0.05, 0.1, 4), mat(0x050508), 0, 2.32, 0.33); nose.rotation.x = -Math.PI / 2; g.add(nose);
   for (let i = -2; i <= 2; i++) g.add(mesh(boxG(0.04, 0.07, 0.04), mat(0xf0ead8), i * 0.06, 2.2, 0.24));
-  const hat = mesh(new THREE.CylinderGeometry(0.58, 0.64, 0.24, 3), mat(0x1a1a24, { roughness: 0.9 }), 0, 2.74, 0); hat.rotation.y = Math.PI / 6; g.add(hat);
-  hat.add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.26, 12), mat(0x1a1a24), 0, 0.18, 0));
-  hat.add(mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 10), mat(0xd9b24a, { metalness: 0.8 }), 0.4, 0.05, -0.3));
+  // tricorne de feutre usé (le grain d'un enduit, très sombre) et sa cocarde de laiton
+  const feutre = phMat('enduit_gris', 0.6, 0.6, { color: 0x3a3a4a, roughness: 1 });
+  const hat = mesh(new THREE.CylinderGeometry(0.58, 0.64, 0.24, 3), feutre, 0, 2.74, 0); hat.rotation.y = Math.PI / 6; g.add(hat);
+  hat.add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.26, 12), feutre, 0, 0.18, 0));
+  hat.add(mesh(new THREE.TorusGeometry(0.1, 0.03, 6, 10), GOLD(), 0.4, 0.05, -0.3));
   const musket = new THREE.Group(); musket.position.set(0.62, 1.55, 0.3); musket.rotation.x = Math.PI / 2 - 0.35;
-  musket.add(mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.0, 8), mat(0x555a60, { metalness: 0.85, roughness: 0.35 }), 0, 0.3, 0));
-  musket.add(mesh(boxG(0.09, 1.1, 0.12), mat(0x5a3a1e), 0, -0.4, -0.04));
-  musket.add(mesh(new THREE.ConeGeometry(0.02, 0.5, 5), mat(0xcfd6dd, { metalness: 0.9, roughness: 0.2 }), 0, 1.5, 0.05));
+  musket.add(mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.0, 8), IRON(), 0, 0.3, 0));
+  musket.add(mesh(boxG(0.09, 1.1, 0.12), phMat('wood_cabinet_worn_long', 0.3, 1.1, { color: 0xb08060 }), 0, -0.4, -0.04));
+  musket.add(mesh(new THREE.ConeGeometry(0.02, 0.5, 5), STEEL(), 0, 1.5, 0.05));
   g.add(musket);
   g.userData.dynamic = true;
   return g;
 }
 export function makeChest() {
   const g = new THREE.Group();
-  const wood = mat(0x6b4322, { roughness: 0.8 }), iron = mat(0x3a3a40, { metalness: 0.85, roughness: 0.4 }), gold = mat(0xd9b24a, { metalness: 0.9, roughness: 0.3 });
+  const wood = phMat('wood_cabinet_worn_long', 1.6, 0.8, { color: 0xc89060, roughness: 0.8 }), iron = IRON(), gold = GOLD();
   g.add(mesh(boxG(1.6, 0.8, 1.0), wood, 0, 0.4, 0));
   for (const x of [-0.6, 0.6]) g.add(mesh(boxG(0.12, 0.84, 1.04), iron, x, 0.4, 0));
   const lid = new THREE.Group(); lid.position.set(0, 0.8, -0.5);
@@ -1715,7 +1747,7 @@ export function makeChest() {
 }
 export function makeBow() {
   const g = new THREE.Group();
-  g.add(mesh(new THREE.TorusGeometry(0.75, 0.035, 6, 20, Math.PI * 1.1), mat(0x5a3a1e, { roughness: 0.6 }), 0, 0, 0).rotateZ(-Math.PI * 0.05));
+  g.add(mesh(new THREE.TorusGeometry(0.75, 0.035, 6, 20, Math.PI * 1.1), phMat('wood_cabinet_worn_long', 0.3, 2.4, { color: 0xb07a50, roughness: 0.6 }), 0, 0, 0).rotateZ(-Math.PI * 0.05));
   const str = mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.45, 4), mat(0xe0e0d0), 0.05, 0, 0); str.rotation.z = 0.05; g.add(str);
   return g;
 }
@@ -1731,7 +1763,8 @@ export function makeArrow() {
 }
 export function makeGaufre() {
   const g = new THREE.Group();
-  const dough = mat(0xd9962e, { roughness: 0.8 }), dark = mat(0x9a5f1c, { roughness: 0.9 });
+  // pâte dorée : le grain fin de la terre battue photographiée, teinté — elle était lisse comme du plastique
+  const dough = phMat('terre_battue', 0.5, 0.5, { color: 0xffc070, roughness: 0.8 }), dark = phMat('terre_battue', 0.5, 0.5, { color: 0xb87838, roughness: 0.9 });
   g.add(mesh(boxG(0.9, 0.18, 0.7), dough, 0, 0, 0));
   for (let i = -1; i <= 1; i++) { g.add(mesh(boxG(0.06, 0.22, 0.72), dark, i * 0.28, 0, 0)); g.add(mesh(boxG(0.92, 0.22, 0.06), dark, 0, 0, i * 0.22)); }
   g.add(mesh(boxG(0.35, 0.08, 0.3), mat(0xfff6e0, { roughness: 1 }), 0.1, 0.14, 0.05));

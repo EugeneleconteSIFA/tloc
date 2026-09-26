@@ -40,8 +40,18 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
   // la teinte de la maison est éclaircie : elle multiplie une photo, pas un aplat
   const tintClair = new THREE.Color(tint).lerp(new THREE.Color(0xffffff), 0.55).getHex();
   const MS = TOWN.s;   // échelle du groupe village : les tailles de matériau se comptent en mètres MONDE
-  const bodyMat = patinerMat(phMat('stacked_brick_wall', w * MS, h * MS, { color: tintClair }), { echelle: 11, force: 0.20, humide: 1.6, pluie: 0.16 });
-  const stone = pbr(T.stone, { roughness: 0.85, color: 0xd8d0c0 }), frameM = mat(0xf4efe4, { roughness: 0.8 }), glass = mat(0x8fb0d0, { roughness: 0.15, metalness: 0.2 });
+  // LE MUR. Les douze maisons du bourg sortaient toutes de la même brique : on les
+  // distinguait à la teinte des volets. Chacune reçoit son parement — trois briques, un
+  // enduit à la chaux (teinté, comme les maisons peintes des Flandres), un moellon.
+  // (l'enduit est lisse, badigeonné crème ou ocre : la chaux craquelée lisait comme du granit)
+  const MURS = { brique: 'stacked_brick_wall', rouge: 'brique_rouge_06', flamande: 'red_bricks_02', enduit: 'enduit_gris', pierre: 'old_stone_wall_02' };
+  const murSlug = MURS[opts.mur] || MURS.brique;
+  const BADIGEONS = [0xf6e6c4, 0xf0d6a4, 0xe8dcc8, 0xf2d8b8];
+  const teinteMur = opts.mur === 'enduit' ? new THREE.Color(BADIGEONS[Math.round(w * 7 + d * 3) % 4]).multiplyScalar(1.75)
+    : opts.mur === 'pierre' ? 0xe8e0d0 : tintClair;
+  const bodyMat = patinerMat(phMat(murSlug, w * MS, h * MS, { color: teinteMur }), { echelle: 11, force: 0.20, humide: 1.6, pluie: 0.16 });
+  // pierre de taille : la pierre blanche photographiée (marble_rock_02), plus la pierre peinte du moteur
+  const stone = PIERRE_TAILLE(), frameM = UNI(0xf4efe4, { roughness: 0.8 }), glass = mat(0x8fb0d0, { roughness: 0.15, metalness: 0.2 });
   const shutterM = mat(opts.shutter || 0x3a6a4a, { roughness: 0.9 });
   // corps aux arêtes arrondies, soubassement mouluré, bandeaux entre étages, corniche en doucine
   const body = new THREE.Mesh(rboxG(w, h, d, 0.16, 3), bodyMat); body.position.y = h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
@@ -59,7 +69,7 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
   // voit sous l'égout et au bout des pignons.
   const roofH = w * 0.55, eX = w / 2 + 0.3, zL = d / 2 + 0.3, pente = Math.hypot(eX, roofH);
   const tri = new THREE.Shape(); tri.moveTo(-eX, 0); tri.lineTo(eX, 0); tri.lineTo(0, roofH); tri.closePath();
-  const charpente = pbrRepeat(T.plank, 2, 2, { color: 0x4a3a2e, roughness: 0.9 });
+  const charpente = CHENE(1, 1, { color: 0x6a5a4e, roughness: 0.9 });
   const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: 2 * zL, bevelEnabled: false }), charpente); roof.position.set(0, h, -zL); roof.castShadow = true; g.add(roof);
   const tuileM = patinerMat(phMat('clay_roof_tiles_02', 1, 1, { color: opts.roof || 0xc9896a, roughness: 0.9 }), { echelle: 14, force: 0.24, humide: 0, pluie: 0.14 });
   for (const s of [-1, 1]) {
@@ -77,7 +87,7 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
   // Le pied de la face vitrée se pose sur le pan (xf) ; le corps s'enfonce dans la pente derrière.
   for (const s of [-1, 1]) { const xf = eX * 0.62, dm = dormer(1.2, 1.15, stone, TUILV(1, 1, { color: 0xb87a5c }), glass);
     dm.position.set(s * (xf - 0.6), h + roofH * (1 - xf / eX) - 0.05, 0); dm.rotation.y = s * Math.PI / 2; g.add(dm); }
-  const stepMat = phMat('stacked_brick_wall', (w + 0.4) * MS, (roofH / 5 + 0.15) * MS, { color: tintClair });
+  const stepMat = phMat(murSlug, (w + 0.4) * MS, (roofH / 5 + 0.15) * MS, { color: teinteMur });
   for (const side of [1, -1]) {
     const steps = 5;
     for (let k = 0; k < steps; k++) { const t = k / steps, sw = (w + 0.4) * (1 - t);
@@ -117,7 +127,7 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
     const vd = makeVolet(WW / 2 + 0.07, WH + 0.14, shutCol, -1); vd.position.set(WW / 2 + 0.07, 0, 0.1);
     vd.rotation.y = r2 < 0.6 ? -Math.PI * 0.93 : 0; wg.add(vd);
     if (r3 > 0.72) {                                                                                             // jardinière
-      wg.add(mesh(boxG(WW + 0.1, 0.26, 0.3), pbrRepeat(T.plank, 1, 1, { color: 0x7a5a3a }), 0, -0.78, 0.26));
+      wg.add(mesh(boxG(WW + 0.1, 0.26, 0.3), BOIS(1.2, 0.3, { color: 0x8a6a4a }), 0, -0.78, 0.26));
       for (let k = 0; k < 5; k++) wg.add(mesh(sphG(0.11, 7), mat([0xd8456a, 0xe8a030, 0xf0e0f0, 0xc23a5a][k % 4]), -WW / 2 + 0.18 + k * (WW - 0.16) / 4, -0.6, 0.26));
     }
     g.add(wg);
@@ -130,7 +140,7 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
     else rectWin(x, f * 3.3 + 2.0, d / 2 + 0.06);
   }
   for (let f = 0; f < floors; f++) { rectWin(-w / 2 - 0.06, f * 3.3 + 2.0, 0, -Math.PI / 2); rectWin(w / 2 + 0.06, f * 3.3 + 2.0, 0, Math.PI / 2); }
-  if (opts.balcony && floors > 1) { const bl = balcony(2.6, 0.9, stone, mat(0x2a2a30, { metalness: 0.8, roughness: 0.4 })); bl.position.set(opts.balcony === 'left' ? -w / 4 : 0, 3.3 + 0.1, d / 2 + 0.05); g.add(bl); }
+  if (opts.balcony && floors > 1) { const bl = balcony(2.6, 0.9, stone, FERN()); bl.position.set(opts.balcony === 'left' ? -w / 4 : 0, 3.3 + 0.1, d / 2 + 0.05); g.add(bl); }
   // porte : vantail à panneaux, imposte vitrée, encadrement à claveaux (cf. makeDoor)
   const dg = makeDoor(1.5, 2.7, {
     color: opts.doorColor !== undefined ? opts.doorColor : DOOR_COLORS[Math.abs(Math.round(w * 3 + d * 5 + floors)) % DOOR_COLORS.length],
@@ -145,11 +155,11 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
       g.add(mesh(boxG(0.06, 1.0, 0.06), FERN(), sx * w * 0.4, 3.35, d / 2 + 0.1).rotateX(0.6));
     }
   }
-  if (opts.sign) { const sg = mesh(rboxG(1.6, 0.6, 0.08, 0.04, 2), pbrRepeat(T.plank, 1, 1), w / 2 + 0.9, 3.6, d / 2 - 0.5); sg.rotation.y = Math.PI / 2; g.add(sg); g.add(mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 12, Math.PI), IRON(), w / 2 + 0.55, 3.95, d / 2 - 0.5).rotateY(Math.PI / 2)); g.add(mesh(boxG(0.1, 0.5, 0.1), IRON(), w / 2 + 0.05, 3.8, d / 2 - 0.5)); }
+  if (opts.sign) { const sg = mesh(rboxG(1.6, 0.6, 0.08, 0.04, 2), CHENE(1.6, 0.6), w / 2 + 0.9, 3.6, d / 2 - 0.5); sg.rotation.y = Math.PI / 2; g.add(sg); g.add(mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 12, Math.PI), IRON(), w / 2 + 0.55, 3.95, d / 2 - 0.5).rotateY(Math.PI / 2)); g.add(mesh(boxG(0.1, 0.5, 0.1), IRON(), w / 2 + 0.05, 3.8, d / 2 - 0.5)); }
   // cheminée à couronnement mouluré et mitrons, gouttières
   const chim = new THREE.Group(); chim.position.set(w * 0.25, h + roofH * 0.5 + 0.8, -d * 0.2);
   chim.add(mesh(rboxG(0.8, 2.2, 0.8, 0.06, 2), brickScaled(0.9 * MS, 2.4 * MS), 0, 0, 0)); corniceAround(chim, 0, 0.95, 0, 0.4, 0.4, stone, 0.16, 0.14, 'cyma');
-  for (const sx of [-1, 1]) chim.add(mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.5, 8), mat(0xb08060), sx * 0.2, 1.35, 0)); g.add(chim);
+  for (const sx of [-1, 1]) chim.add(mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.5, 8), TERRE(0xb07050), sx * 0.2, 1.35, 0)); g.add(chim);
   for (const sx of [-1, 1]) g.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, d + 0.4, 6), IRON(), sx * (w / 2 + 0.28), h + 0.2, 0).rotateX(Math.PI / 2));
   g.userData.size = { w, d, h: h + roofH };
   return g;
@@ -201,11 +211,25 @@ function BRIQV(l, h, e) {
   return _MEMBR.get(k);
 }
 const _MEMUNI = new Map();
+// La couleur « unie » du bourg n'est plus un aplat : elle multiplie le grain fin d'un enduit
+// photographié (enduit_gris, luminance ≈ 0,52, d'où la teinte ×1,8). Fruits, sacs, cruches,
+// linge et paille gardent leur couleur, mais prennent des taches, un grain, une rugosité qui
+// varie : l'aplat faisait jouet à côté des murs (cf. le style réaliste, § 4.J).
 function UNI(c, o) {
   const k = c + '|' + (o ? JSON.stringify(o) : '-');
-  if (!_MEMUNI.has(k)) _MEMUNI.set(k, mat(c, { roughness: 0.9, ...o }));
+  if (!_MEMUNI.has(k)) _MEMUNI.set(k, phMat('enduit_gris', 0.7, 0.7, { roughness: 0.9, ...o, color: new THREE.Color(c).multiplyScalar(1.8) }));
   return _MEMUNI.get(k);
 }
+// terre cuite et grès : la terre battue photographiée, fine et ocre
+const TERRE = (c, o) => { const k = 'T' + c + JSON.stringify(o || 0);
+  if (!_MEMUNI.has(k)) _MEMUNI.set(k, phMat('terre_battue', 0.6, 0.6, { roughness: 0.6, ...o, color: new THREE.Color(c).multiplyScalar(1.5) }));
+  return _MEMUNI.get(k); };
+// pierre blanche de taille (moulures, encadrements, chaperons), bois d'écorce, bronze
+const _MEMP = new Map(), memo = (k, f) => { if (!_MEMP.has(k)) _MEMP.set(k, f()); return _MEMP.get(k); };
+// (la chaux craquelée, éclaircie : le marbre veiné lisait comme du marbre sur les pilastres)
+function PIERRE_TAILLE() { return memo('pierreT', () => phMat('chaux_craquelee', 1.2, 1.2, { color: 0xfff6e6, roughness: 0.85 })); }
+function ECORCE() { return memo('ecorce', () => phMat('tree_trunk', 0.8, 0.8, { color: 0xc8b8a0 })); }
+function BRONZE() { return memo('bronze', () => phMat('metal_plate_02', 0.6, 0.6, { color: 0xe8b060, roughness: 0.35 })); }
 const sombre = (c, f) => new THREE.Color(c).multiplyScalar(f).getHex();
 const clair2 = (c, f) => new THREE.Color(c).lerp(new THREE.Color(0xffffff), f).getHex();
 
@@ -251,8 +275,8 @@ function cruche(h, col = 0x8d6a4a, anse = true) {
   const g = new THREE.Group(), V = (a, b) => new THREE.Vector2(a * h, b * h);
   g.add(mesh(new THREE.LatheGeometry([V(0, 0), V(0.3, 0), V(0.34, 0.08), V(0.4, 0.3), V(0.36, 0.52),
     V(0.24, 0.68), V(0.17, 0.8), V(0.19, 0.93), V(0.23, 1.0), V(0.2, 1.0), V(0.15, 0.92), V(0.13, 0.7), V(0, 0.66)], 12),
-    UNI(col, { roughness: 0.55 }), 0, 0, 0));
-  if (anse) g.add(mesh(new THREE.TorusGeometry(h * 0.16, h * 0.035, 5, 10, Math.PI * 1.15), UNI(col, { roughness: 0.55 }), h * 0.28, h * 0.8, 0).rotateZ(-0.5));
+    TERRE(col, { roughness: 0.55 }), 0, 0, 0));
+  if (anse) g.add(mesh(new THREE.TorusGeometry(h * 0.16, h * 0.035, 5, 10, Math.PI * 1.15), TERRE(col, { roughness: 0.55 }), h * 0.28, h * 0.8, 0).rotateZ(-0.5));
   return g;
 }
 // Seau de bois cerclé.
@@ -504,7 +528,7 @@ function tasBuches(ctx, x, z, yaw, len = 2.4, haut = 1.15) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = yaw; ctx.scene.add(g);
   const nr = Math.max(3, Math.round(haut / 0.24)), nc = Math.max(4, Math.round(len / 0.25));
   const geo = new THREE.CylinderGeometry(0.115, 0.115, 0.52, 7).rotateZ(Math.PI / 2);
-  const im = new THREE.InstancedMesh(geo, pbrRepeat(T.bark, 1, 1), nr * nc * 2);
+  const im = new THREE.InstancedMesh(geo, ECORCE(), nr * nc * 2);
   const M4 = new THREE.Matrix4(), Qt = new THREE.Quaternion(), Pv = new THREE.Vector3(), Sv = new THREE.Vector3(), Eu = new THREE.Euler();
   let n = 0;
   for (let r = 0; r < nr; r++) for (let c2 = 0; c2 < nc; c2++) for (const dz of [-0.27, 0.27]) {
@@ -686,7 +710,7 @@ function forge(ctx) {
     scene.add(mesh(boxG(0.06, 0.06, 0.9), CHENE(0.1, 0.9, { color: 0x6a4c32 }), FX - 0.35, 1.72, HZ2 - 1.6).rotateX(0.35)); }
   // l'enclume sur son billot, marteau posé dessus
   { const AX = FX - 1.2, AZ = FZ + 0.25;
-    scene.add(mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.56, 10), pbrRepeat(T.bark, 1, 1), AX, 0.28, AZ));
+    scene.add(mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.56, 10), ECORCE(), AX, 0.28, AZ));
     const acier = UNI(0x3f4248, { metalness: 0.8, roughness: 0.42 });
     scene.add(mesh(boxG(0.34, 0.1, 0.26), acier, AX, 0.61, AZ));
     scene.add(mesh(boxG(0.22, 0.16, 0.2), acier, AX, 0.72, AZ));
@@ -1075,7 +1099,7 @@ function divers(ctx, RUE) {
   millesime(ctx, 17, 3.8, ZS - 0.04, Math.PI, 'DE DRIE SLEUTELS — 1655');
   // devant la Porte des Flandres : la boue, le crottin et le fagot du corps de garde
   tache(ctx, -21.2, 0, 2.2, 0x6f5f47, 0.5);
-  for (let k = 0; k < 3; k++) { const f = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8), pbrRepeat(T.bark, 1, 1), -21.2, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5);
+  for (let k = 0; k < 3; k++) { const f = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8), ECORCE(), -21.2, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5);
     f.rotation.z = Math.PI / 2; f.rotation.y = rand(-0.2, 0.2); scene.add(f);
     for (const sy of [-0.3, 0.3]) scene.add(mesh(new THREE.TorusGeometry(0.23, 0.02, 4, 10), UNI(0x7a6a4a), -21.2 + sy, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5).rotateY(Math.PI / 2)); }
   addCap(-21.2, -3.6, -21.2, -2.9, 0.4, 1.1);
@@ -1234,7 +1258,7 @@ export function buildTown() {
   // Elles courent maintenant jusqu'au bord de la boîte, en suivant la rampe.
   paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, 2, RUE * 1.8, R2 * 2 + 8); paved(0, 0, 18, 18);
   // trottoirs/bordures en pierre le long de la grand-rue
-  for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), stoneMat, tx, 0.09, tz + sz * (RUE - 0.3)));
+  for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), phLocal('old_stone_wall_02', R2 * 2 + 4, 0.4, { color: 0xc8c0b0 }), tx, 0.09, tz + sz * (RUE - 0.3)));
   // maisons de part et d'autre de la grand-rue (façades vers la rue)
   const tints = [0xd08a6a, 0xb8654a, 0xe0c090, 0xf0e6d6, 0xc07060, 0xd9a070];
   // La dernière maison de la rangée n'a que 3,5 de profondeur : elle est adossée au beffroi.
@@ -1243,15 +1267,16 @@ export function buildTown() {
   const north = [[-17, 6, 7, 2, 0], [-11, 6.5, 7, 3, 1], [16, 6, 7, 2, 4], [10.5, 5, 3.5, 3, 5]];
   // i === 1 : l'estaminet. Pas d'auvent de boutique — il masquait la porte — mais des vitres
   // chaudes, une lanterne et une enseigne à potence, pour qu'on voie de loin que ça s'ouvre.
-  north.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz - RUE - d / 2 - 0.4, 0, w, d, fl, tints[t], { shutter: [0x3a6a4a, 0x8a2a2a, 0x2a4a7a][i % 3], shop: false, oriel: i === 3, balcony: i === 1 ? 'left' : false, chaud: i === 1, lanterne: i === 1, doorColor: i === 1 ? 0x6e2b28 : undefined }));
+  const mursN = ['brique', 'rouge', 'enduit', 'flamande'], mursS = ['enduit', 'brique', 'flamande', 'pierre'];
+  north.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz - RUE - d / 2 - 0.4, 0, w, d, fl, tints[t], { mur: mursN[i], shutter: [0x3a6a4a, 0x8a2a2a, 0x2a4a7a][i % 3], shop: false, oriel: i === 3, balcony: i === 1 ? 'left' : false, chaud: i === 1, lanterne: i === 1, doorColor: i === 1 ? 0x6e2b28 : undefined }));
   const south = [[-17, 6, 7, 2, 2], [-11, 6, 7, 2, 3], [11, 6.5, 7, 3, 0], [17, 5.5, 7, 2, 1]];
-  south.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz + RUE + d / 2 + 0.4, Math.PI, w, d, fl, tints[t], { shutter: [0x8a2a2a, 0x3a6a4a, 0x2a4a7a][i % 3], shop: false, oriel: i === 2, balcony: i === 0 }));
+  south.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz + RUE + d / 2 + 0.4, Math.PI, w, d, fl, tints[t], { mur: mursS[i], shutter: [0x8a2a2a, 0x3a6a4a, 0x2a4a7a][i % 3], shop: false, oriel: i === 2, balcony: i === 0 }));
   // maisons le long de la rue nord-sud
-  placeHouse(tx - 9.6, tz - 14, Math.PI / 2, 6, 7, 2, tints[4], { shutter: 0x3a6a4a }); placeHouse(tx + 14.6, tz - 14.8, -Math.PI / 2, 6, 7, 2, tints[2], { shutter: 0x8a2a2a });   // reculée à l'est : elle occupait le tiers du fût du beffroi
-  placeHouse(tx - 9.6, tz + 14, Math.PI / 2, 6, 7, 3, tints[3], { shutter: 0x2a4a7a, balcony: true }); placeHouse(tx + 9.6, tz + 14, -Math.PI / 2, 6, 7, 2, tints[5], { shutter: 0x2a2a30, shop: false });   // le forgeron : volets de fer, auvent de forge (cf. forge())
+  placeHouse(tx - 9.6, tz - 14, Math.PI / 2, 6, 7, 2, tints[4], { mur: 'rouge', shutter: 0x3a6a4a }); placeHouse(tx + 14.6, tz - 14.8, -Math.PI / 2, 6, 7, 2, tints[2], { mur: 'enduit', shutter: 0x8a2a2a });   // reculée à l'est : elle occupait le tiers du fût du beffroi
+  placeHouse(tx - 9.6, tz + 14, Math.PI / 2, 6, 7, 3, tints[3], { mur: 'flamande', shutter: 0x2a4a7a, balcony: true }); placeHouse(tx + 9.6, tz + 14, -Math.PI / 2, 6, 7, 2, tints[5], { shutter: 0x2a2a30, shop: false });   // le forgeron : volets de fer, auvent de forge (cf. forge())
   // beffroi (coin nord-est de la place)
   { const bx = tx + 8, bz = tz - 12, BH = 26;
-    const bf = new THREE.Group(); bf.position.set(bx, 0, bz); const stoneB = pbr(T.stone, { roughness: 0.85, color: 0xd8d0c0 }), dark = mat(0x10141c);
+    const bf = new THREE.Group(); bf.position.set(bx, 0, bz); const stoneB = PIERRE_TAILLE(), dark = mat(0x10141c);
     // fût aux arêtes arrondies, soubassement mouluré, bandeaux à chaque étage, pilastres d'angle sur les deux derniers niveaux
     // LE FÛT EST CREUX. C'était un bloc plein de 39 m (26 unités × 1,5) : on ne montait pas au
     // beffroi du guetteur. Il est maintenant fait de quatre murs de brique — le mur ouest
@@ -1304,9 +1329,10 @@ export function buildTown() {
       const dalle = new THREE.Mesh(gs, stoneB); dalle.position.y = BH; dalle.castShadow = dalle.receiveShadow = true; bf.add(dalle); }
     for (let i = 0; i < 8; i++) { const a = i * TAU / 8; const pl = pilaster(4.2, 0.24, stoneB); pl.position.set(Math.sin(a) * 2.35, BH + 0.5, Math.cos(a) * 2.35); bf.add(pl);
       const ar = mesh(new THREE.TorusGeometry(0.85, 0.12, 6, 14, Math.PI), stoneB, Math.sin(a + Math.PI / 8) * 2.2, BH + 3.9, Math.cos(a + Math.PI / 8) * 2.2); ar.rotation.y = a + Math.PI / 8; bf.add(ar); }
-    const bell = mesh(new THREE.CylinderGeometry(0.6, 0.9, 1.3, 12), mat(0xb8862a, { metalness: 0.9, roughness: 0.35 }), 0, BH + 2.4, 0); bf.add(bell);
+    const bell = mesh(new THREE.CylinderGeometry(0.6, 0.9, 1.3, 12), BRONZE(), 0, BH + 2.4, 0); bf.add(bell);
     corniceAround(bf, 0, BH + 4.5, 0, 2.5, 2.5, stoneB, 0.4, 0.35, 'cyma');
-    const domeM = mat(0x3b4a5c, { roughness: 0.55, metalness: 0.25 });
+    // dôme et lanternon couverts de plomb : la tôle photographiée, teinte gris-bleu
+    const domeM = phMat('metal_plate_02', 3 * S, 3 * S, { color: 0x8a9aae, roughness: 0.6 });
     const prof = []; for (let k = 0; k <= 14; k++) { const t = k / 14; prof.push(new THREE.Vector2(2.9 * Math.sin(t * Math.PI * 0.92) * (1 - t * 0.12) + 0.05, t * 4.6)); }
     bf.add(mesh(new THREE.LatheGeometry(prof, 20), domeM, 0, BH + 4.9, 0));
     bf.add(mesh(new THREE.CylinderGeometry(0.7, 0.8, 1.6, 8), stoneB, 0, BH + 10.2, 0)); for (let i = 0; i < 8; i++) { const a = i * TAU / 8; bf.add(mesh(boxG(0.25, 1.0, 0.1), dark, Math.sin(a) * 0.72, BH + 10.2, Math.cos(a) * 0.72).rotateY(a)); }
@@ -1330,9 +1356,9 @@ export function buildTown() {
       for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
         const [cx, cz] = W2(bx + sx * 2.05, bz + sz * 2.05); E.addCap(cx, cz, cx, cz, 0.8, TOWN.y + BH * S);
       }
-      const noyau = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0, yTop - y0, 12), stoneMat);
+      const noyau = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0, yTop - y0, 12), phMat('old_stone_wall_02', 3, yTop - y0, { color: 0xd0c6b4 }));
       noyau.position.set(hx, (y0 + yTop) / 2, hz); noyau.castShadow = true; E.scene.add(noyau);
-      const marches = new THREE.InstancedMesh(new THREE.BoxGeometry(R1 - R0 + 0.1, 0.22, 1.2), pbrRepeat(T.stone, 1, 0.5, { color: 0xb0a89c }), TOURS * PAS + 1);
+      const marches = new THREE.InstancedMesh(new THREE.BoxGeometry(R1 - R0 + 0.1, 0.22, 1.2), phMat('old_stone_wall_02', 2.4, 1.2, { color: 0xd0c6b4 }), TOURS * PAS + 1);
       const Mx = new THREE.Matrix4(), Qt = new THREE.Quaternion(), Pv = new THREE.Vector3(), Sv = new THREE.Vector3(1, 1, 1), Eu = new THREE.Euler();
       for (let k = 0; k <= TOURS * PAS; k++) {
         const a = a0 + k / PAS * TAU, hh = y0 + k / PAS * hTour;
@@ -1361,8 +1387,8 @@ export function buildTown() {
     }
     // ---- le coffret du guetteur, sur la coursive ouest ----
     { const cf = new THREE.Group(); cf.position.set(bx - 2.45, BH + 0.5, bz - 1.2); cf.rotation.y = Math.PI / 2;
-      cf.add(mesh(rboxG(0.55, 0.3, 0.36, 0.03, 2), pbrRepeat(T.plank, 1, 1, { color: 0x7a4e2c }), 0, 0.15, 0));
-      cf.add(mesh(rboxG(0.57, 0.08, 0.38, 0.03, 2), pbrRepeat(T.plank, 1, 1, { color: 0x6a4226 }), 0, 0.33, 0));
+      cf.add(mesh(rboxG(0.55, 0.3, 0.36, 0.03, 2), CHENE(0.55, 0.3, { color: 0x9a6e4c }), 0, 0.15, 0));
+      cf.add(mesh(rboxG(0.57, 0.08, 0.38, 0.03, 2), CHENE(0.57, 0.38, { color: 0x8a5e3e }), 0, 0.33, 0));
       for (const sx of [-1, 1]) cf.add(mesh(boxG(0.04, 0.34, 0.39), IRON(), sx * 0.2, 0.17, 0));
       cf.add(mesh(boxG(0.08, 0.1, 0.02), GOLD(), 0, 0.24, 0.19));
       scene.add(cf);
@@ -1379,8 +1405,11 @@ export function buildTown() {
   // bleu opaque et les jets des cônes plantés en l'air. Ici : bassin mouluré, vasque haute qui
   // déborde en nappe, quatre mascarons de pierre qui crachent en arc dans le bassin, eau animée.
   { const fx = tx, fz = tz;
-    const fstone = phMat('rocks_ground_08', 3 * S, 1.4 * S, { color: 0xd4cbb6 });
-    const fmoul = pbr(T.stone, { roughness: 0.78, color: 0xded5c0 });
+    // la cuve est maçonnée : le moellon photographié (c'était une texture de terre)
+    const fstone = phMat('old_stone_wall_02', 3 * S, 1.4 * S, { color: 0xe8e0d0 });
+    // les moulures et les mascarons en pierre blanche de taille, photographiée (la pierre
+    // peinte du moteur lisait comme du plâtre)
+    const fmoul = phMat('marble_rock_02', 1.4 * S, 1.4 * S, { roughness: 0.7, color: 0xf0e8d8 });
     const V2 = (x, y) => new THREE.Vector2(x, y);
     // ---- emmarchement et bassin : profil tourné, lèvre en doucine ----
     scene.add(mesh(new THREE.CylinderGeometry(3.75, 3.85, 0.18, 32), fmoul, fx, 0.09, fz));
@@ -1424,7 +1453,7 @@ export function buildTown() {
       V2(0.36, 0.62), V2(0.42, 0.92), V2(0.32, 1.18), V2(0.13, 1.3), V2(0.15, 1.42), V2(0, 1.52)], 14), fstone, fx, 3.0, fz));
     scene.add(mesh(sphG(0.13, 10), GOLD(), fx, 4.6, fz));
     // ---- quatre mascarons : tête sculptée, gueule de bronze, jet en arc jusqu'au bassin ----
-    const bronze = mat(0x8a6a34, { metalness: 0.85, roughness: 0.4 });
+    const bronze = phMat('metal_plate_02', 0.3, 0.3, { color: 0xd8a860, roughness: 0.4 });
     const eauJet = new THREE.MeshStandardMaterial({ color: 0xcfe8f6, transparent: true, opacity: 0.55, roughness: 0.05 });
     for (let k = 0; k < 4; k++) {
       const a = k * TAU / 4 + Math.PI / 4, cs = Math.cos(a), sn = Math.sin(a);
@@ -1446,7 +1475,7 @@ export function buildTown() {
     }
     // seau de bois accroché à la margelle
     { const a = 2.2, bx = fx + Math.cos(a) * 3.3, bz = fz + Math.sin(a) * 3.3;
-      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.42, 12), pbrRepeat(T.plank, 1, 1, { color: 0x8a6440 }), bx, 1.55, bz));
+      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.42, 12), BOIS(1.7, 0.42, { color: 0x9a7a52 }), bx, 1.55, bz));
       scene.add(mesh(new THREE.TorusGeometry(0.28, 0.03, 6, 14), FERN(), bx, 1.7, bz).rotateX(Math.PI / 2));
       scene.add(mesh(new THREE.TorusGeometry(0.26, 0.022, 6, 14, Math.PI), FERN(), bx, 1.82, bz)); }
     addCap(fx, fz, fx, fz, 3.35, 3.6); }
@@ -1455,14 +1484,29 @@ export function buildTown() {
   // les props de la banque en complément. L'ancien bloc — quatre tables identiques
   // posées aux quatre coins, plus un repli procédural séparé — a été déposé ici.
   // lanternes de rue
+  // Le réverbère était un fût et une boîte jaune lumineuse : une lanterne de fer à quatre
+  // montants, vitres chaudes, chapeau et bague, sur un fût à base moulurée.
   for (const [x, z] of [[-12, -3.4], [-4, -3.4], [4, 3.4], [12, 3.4], [-3.4, -12], [3.4, 12]]) {
-    const lx = tx + x, lz = tz + z; scene.add(mesh(new THREE.CylinderGeometry(0.08, 0.12, 3.6, 8), IRON(), lx, 1.8, lz)); scene.add(mesh(boxG(0.5, 0.6, 0.5), mat(0xffe0a0, { emissive: 0xffc860, emissiveIntensity: 0.6, transparent: true, opacity: 0.8 }), lx, 3.7, lz)); scene.add(mesh(new THREE.ConeGeometry(0.45, 0.35, 4), IRON(), lx, 4.15, lz)); addCap(lx, lz, lx, lz, 0.2, 3.5);
+    const lx = tx + x, lz = tz + z, g = new THREE.Group(); g.position.set(lx, 0, lz); scene.add(g);
+    g.add(mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.4, 10), PIERV(0.6, 0.4, { color: 0xbdb29c }), 0, 0.2, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.07, 0.1, 3.3, 8), FERN(), 0, 2.0, 0));
+    g.add(mesh(new THREE.TorusGeometry(0.1, 0.03, 5, 10), FERN(), 0, 1.0, 0).rotateX(Math.PI / 2));
+    g.add(mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.12, 8), FERN(), 0, 3.66, 0));
+    for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) g.add(mesh(boxG(0.04, 0.62, 0.04), FERN(), sx * 0.2, 4.03, sz * 0.2));
+    for (let k = 0; k < 4; k++) { const v = mesh(new THREE.PlaneGeometry(0.36, 0.56), VITRE_CHAUDE(), 0, 4.03, 0); v.rotation.y = k * Math.PI / 2; v.translateZ(0.2); g.add(v); }
+    g.add(mesh(new THREE.ConeGeometry(0.34, 0.3, 4), FERN(), 0, 4.49, 0).rotateY(Math.PI / 4));
+    g.add(mesh(sphG(0.06, 8), FERN(), 0, 4.68, 0));
+    addCap(lx, lz, lx, lz, 0.2, 3.5);
   }
   // bancs, tonneaux devant l'estaminet, charrette
-  for (const [x, z] of [[-3, -6.5], [3, 6.5]]) { const bx = tx + x, bz = tz + z; scene.add(mesh(boxG(2, 0.12, 0.5), pbrRepeat(T.plank, 1, 1), bx, 0.55, bz)); for (const sx of [-1, 1]) scene.add(mesh(boxG(0.12, 0.5, 0.45), mat(0x4a3320), bx + sx * 0.85, 0.28, bz)); addCap(bx - 0.9, bz, bx + 0.9, bz, 0.35, 1); }
+  for (const [x, z] of [[-3, -6.5], [3, 6.5]]) { const bx = tx + x, bz = tz + z; scene.add(mesh(boxG(2, 0.12, 0.5), CHENE(2, 0.5, { color: 0x9a7a58 }), bx, 0.55, bz)); for (const sx of [-1, 1]) scene.add(mesh(boxG(0.12, 0.5, 0.45), PIERV(0.45, 0.5, { color: 0xb8ad97 }), bx + sx * 0.85, 0.28, bz)); addCap(bx - 0.9, bz, bx + 0.9, bz, 0.35, 1); }
   { const cx = tx - 12, cz = tz - 3.6; const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = Math.PI / 2;
-    g.add(mesh(boxG(2.6, 0.6, 1.4), pbrRepeat(T.plank, 2, 1), 0, 0.9, 0)); for (const sx of [-1, 1]) { const wh = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.15, 12), mat(0x4a3320), sx * 0.3, 0.6, 0.8); wh.rotation.x = Math.PI / 2; g.add(wh); const wh2 = wh.clone(); wh2.position.z = -0.8; g.add(wh2); }
-    for (let k = 0; k < 6; k++) g.add(mesh(sphG(0.22, 8), mat(0xe8c060), -0.8 + (k % 3) * 0.8, 1.35, -0.3 + Math.floor(k / 3) * 0.6)); g.add(mesh(boxG(0.12, 0.12, 2.2), mat(0x4a3320), 0, 0.7, 2.2)); scene.add(g);
+    // caisse de planches, deux vraies roues cerclées de fer, brancards de chêne et un
+    // chargement de sacs de grain (c'étaient six boules jaunes sur une boîte)
+    g.add(mesh(boxG(2.6, 0.6, 1.4), BOIS(2.6, 0.6, { color: 0x9a7a52 }), 0, 0.9, 0));
+    for (const sz of [-1, 1]) { const r = roueCharrette(0.6); r.position.set(0, 0.62, sz * 0.8); g.add(r); }
+    for (let k = 0; k < 5; k++) { const sc = sac(0.26, 0.5, [0xcbb98c, 0xbfae84, 0xd6c79e][k % 3]); sc.position.set(-0.9 + (k % 3) * 0.8, 1.2, -0.3 + Math.floor(k / 3) * 0.6); sc.rotation.z = Math.PI / 2; sc.rotation.y = rand(-0.3, 0.3); g.add(sc); }
+    for (const sx of [-1, 1]) g.add(mesh(boxG(0.1, 0.1, 2.2), CHENE(0.2, 2.2, { color: 0x6a5238 }), sx * 0.45, 0.7, 2.2)); scene.add(g);
     // capsule le long du brancard au lieu d'un disque de 1,4 : la charrette bouchait la rue
     addCap(cx, cz - 1.2, cx, cz + 1.2, 0.7, 2); }
   // ---------- chapelle Saint-Roch et son cimetière, au bout de la rue nord ----------
@@ -1482,7 +1526,7 @@ export function buildTown() {
       // sur un prisme extrudé, u monte la pente : on tourne la tuile pour que les rangs suivent le faîtage
       if (tourne) for (const t of [m.map, m.normalMap, m.roughnessMap]) if (t) t.rotation = Math.PI / 2;
       return m; };
-    const wallC = pierreC(1, 1), stoneC = pbr(T.stone, { roughness: 0.85, color: 0xe0d8c8 }), slate = mat(0x3b4a5c, { roughness: 0.7 }), vitrail = mat(0x6a8ab8, { roughness: 0.2, emissive: 0x304060, emissiveIntensity: 0.3 });
+    const wallC = pierreC(1, 1), stoneC = PIERRE_TAILLE(), slate = phMat('metal_plate_02', 2 * S, 2 * S, { color: 0x7a8494, roughness: 0.65 }), vitrail = mat(0x6a8ab8, { roughness: 0.2, emissive: 0x304060, emissiveIntensity: 0.3 });
     // nef aux arêtes adoucies, soubassement, corniche ; contreforts à glacis entre les fenêtres en arc ; abside semi-circulaire au nord
     const nave = new THREE.Mesh(rboxG(NW, NH, ND, 0.15, 3), pierreC((NW + ND) / 2, NH)); nave.position.y = NH / 2; nave.castShadow = nave.receiveShadow = true; ch.add(nave);
     ch.add(mesh(rboxG(NW + 0.4, 0.5, ND + 0.4, 0.06, 2), stoneC, 0, 0.25, 0)); corniceAround(ch, 0, NH - 0.4, 0, HN, HD, stoneC, 0.4, 0.3, 'cyma');
@@ -1501,7 +1545,7 @@ export function buildTown() {
     // toit à faîtière arrondie et flèche ; façade avec rosace, portail à voussures et pilastres
     const tri = new THREE.Shape(); tri.moveTo(-HN - 0.4, 0); tri.lineTo(HN + 0.4, 0); tri.lineTo(0, 4.2); tri.closePath();
     const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: ND + 0.6, bevelEnabled: false }), ardoiseC(1, 1, true)); roof.position.set(0, NH - 0.4, -HD - 0.3); roof.castShadow = true; ch.add(roof);
-    ch.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, ND + 0.8, 8), mat(0x2f3d4c), 0, NH + 3.85, 0).rotateX(Math.PI / 2));
+    ch.add(mesh(new THREE.CylinderGeometry(0.18, 0.18, ND + 0.8, 8), slate, 0, NH + 3.85, 0).rotateX(Math.PI / 2));
     ch.add(mesh(new THREE.CylinderGeometry(0.45, 0.65, 0.6, 8), stoneC, 0, NH + 3.9, 4)); ch.add(mesh(new THREE.ConeGeometry(0.5, 2.4, 8), slate, 0, NH + 5.4, 4)); ch.add(mesh(sphG(0.14, 8), GOLD(), 0, NH + 6.7, 4));
     { const gt = new THREE.Shape(); gt.moveTo(-HN - 0.1, 0); gt.lineTo(HN + 0.1, 0); gt.lineTo(0, 3.9); gt.closePath(); const gable = new THREE.Mesh(new THREE.ExtrudeGeometry(gt, { depth: 0.35, bevelEnabled: false }), wallC); gable.position.set(0, NH - 0.4, HD + 0.15); gable.castShadow = true; ch.add(gable);
       for (const sx of [-1, 1]) ch.add(mesh(new THREE.CylinderGeometry(0.11, 0.11, 6.3, 6), stoneC, sx * 2.4, NH + 1.5, HD + 0.5).rotateZ(sx * Math.atan2(HN + 0.1, 3.9))); }
@@ -1526,7 +1570,7 @@ export function buildTown() {
     for (const [dx, dz, ry] of [[0, 1.47, 0], [0, -1.47, Math.PI], [1.47, 0, Math.PI / 2], [-1.47, 0, -Math.PI / 2]]) { const ab = archWindow(0.9, 2.0, mat(0x10141c), stoneC, { bars: false }); ab.position.set(dx, 9.6, dz); ab.rotation.y = ry; tw.add(ab); for (let k = 0; k < 4; k++) { const sl = mesh(boxG(0.8, 0.08, 0.32), stoneC, 0, 0.32 + k * 0.42, 0.1); sl.rotation.x = -0.5; ab.add(sl); } }
     tw.add(mesh(new THREE.CylinderGeometry(1.85, 1.85, 0.4, 8), stoneC, 0, 13.2, 0)); tw.add(mesh(new THREE.ConeGeometry(1.75, 4.4, 8), ardoiseC(11, 4.7), 0, 15.6, 0));
     tw.add(mesh(boxG(0.15, 1.5, 0.15), GOLD(), 0, 18.6, 0)); tw.add(mesh(boxG(0.85, 0.15, 0.15), GOLD(), 0, 18.9, 0));
-    tw.add(mesh(new THREE.CylinderGeometry(0.42, 0.58, 0.85, 10), mat(0xb8862a, { metalness: 0.9, roughness: 0.35 }), 0, 10.2, 0));
+    tw.add(mesh(new THREE.CylinderGeometry(0.42, 0.58, 0.85, 10), BRONZE(), 0, 10.2, 0));
     scene.add(ch);
     addBox(cx - HN, cx + HN, cz - HD, cz + HD, NH + 4.5); addBox(cx + 1.45, cx + 4.35, cz + HD - 0.85, cz + HD + 2.05, 20); addCap(cx, cz - HD, cx, cz - HD, AR, NH + 1);
     // entrée : on pousse le portail pour passer dans la nef
@@ -1536,11 +1580,11 @@ export function buildTown() {
     { const [lx, lz] = W2(cx, cz); E.addLieu({ id: 'chapelle', nom: 'la chapelle Saint-Roch', x: lx, z: lz, r: 26 }); }
     // cimetière : muret, tombes, if — décalé vers l'ouest, la nef ayant gagné 2 unités de large
     const gx = cx - 13, gz = cz;
-    for (const [ax, az, bx2, bz2] of [[gx - 5, gz - 5, gx + 4, gz - 5], [gx - 5, gz + 5, gx + 4, gz + 5], [gx - 5, gz - 5, gx - 5, gz + 5]]) { wallBox(ax, az, bx2, bz2, 0.9, 0.4, stoneMat, 0, T.stone); addCap(ax, az, bx2, bz2, 0.25, 0.9); }
+    for (const [ax, az, bx2, bz2] of [[gx - 5, gz - 5, gx + 4, gz - 5], [gx - 5, gz + 5, gx + 4, gz + 5], [gx - 5, gz - 5, gx - 5, gz + 5]]) { wallBox(ax, az, bx2, bz2, 0.9, 0.4, stoneMat, 0, 'old_stone_wall_02'); addCap(ax, az, bx2, bz2, 0.25, 0.9); }
     for (let k = 0; k < 8; k++) { const px = gx - 3.5 + (k % 4) * 2.2, pz = gz - 2.5 + Math.floor(k / 4) * 4;
-      const st = mesh(boxG(0.9, 1.3, 0.25), pbrRepeat(T.stone, 0.5, 0.7, { color: [0xb0a898, 0x9a9490, 0xa8a0a8][k % 3] }), px, 0.65, pz); st.rotation.y = rand(-0.12, 0.12); st.rotation.z = rand(-0.06, 0.06); scene.add(st);
-      scene.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 12, 1, false, 0, Math.PI), pbrRepeat(T.stone, 0.5, 0.5, { color: 0xa8a098 }), px, 1.3, pz).rotateX(Math.PI / 2).rotateY(0));
-      scene.add(mesh(boxG(1.1, 0.2, 2.0), stoneMat, px, 0.1, pz + 1.0)); if (k % 3 === 0) scene.add(mesh(boxG(0.1, 0.5, 0.08), IRON(), px, 1.55, pz - 0.1)); if (k % 3 === 0) scene.add(mesh(boxG(0.3, 0.08, 0.08), IRON(), px, 1.65, pz - 0.1));
+      const st = mesh(boxG(0.9, 1.3, 0.25), phLocal('old_stone_wall_02', 0.9, 1.3, { color: [0xd8d0c0, 0xc4bcb4, 0xd0c8cc][k % 3] }), px, 0.65, pz); st.rotation.y = rand(-0.12, 0.12); st.rotation.z = rand(-0.06, 0.06); scene.add(st);
+      scene.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 12, 1, false, 0, Math.PI), phLocal('old_stone_wall_02', 0.9, 0.5, { color: 0xd0c8bc }), px, 1.3, pz).rotateX(Math.PI / 2).rotateY(0));
+      scene.add(mesh(boxG(1.1, 0.2, 2.0), phLocal('old_stone_wall_02', 1.1, 2.0, { color: 0xc0b8a8 }), px, 0.1, pz + 1.0)); if (k % 3 === 0) scene.add(mesh(boxG(0.1, 0.5, 0.08), IRON(), px, 1.55, pz - 0.1)); if (k % 3 === 0) scene.add(mesh(boxG(0.3, 0.08, 0.08), IRON(), px, 1.65, pz - 0.1));
       addCap(px, pz, px, pz, 0.5, 1.4); }
     // l'if : c'était un cône vert uni, un jouet au milieu des tombes photographiées. Il prend
     // l'arbre de la forêt (foret.js, le sapin : tronc d'écorce Poly Haven, rameaux en cartes),
@@ -1619,16 +1663,16 @@ export function buildTown() {
     // la charrette : un plateau, deux roues, des ballots et un coffre de colifichets
     const cg = new THREE.Group(); { const [wx, wz] = W2(CX + 2.3, CZ + 0.4); cg.position.set(wx, levelH(wx, wz), wz); }
     cg.rotation.y = col.rotation.y + Math.PI / 2; cg.scale.setScalar(TOWN.s * 0.8); E.scene.add(cg);
-    const bois = pbrRepeat(T.plank, 1, 1, { color: 0x7a5a3a });
+    const bois = BOIS(1.9, 1.1, { color: 0x9a7a52 });
     cg.add(mesh(boxG(1.9, 0.12, 1.1), bois, 0, 0.62, 0));
     for (const sz of [-1, 1]) cg.add(mesh(boxG(1.9, 0.3, 0.06), bois, 0, 0.8, sz * 0.52));
-    for (const sz of [-1, 1]) { const r = mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 14), mat(0x4a3320), 0.25, 0.44, sz * 0.62); cg.add(r);
+    for (const sz of [-1, 1]) { const r = mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 14), CHENE(0.3, 2.6, { color: 0x5a4430 }), 0.25, 0.44, sz * 0.62); cg.add(r);
       cg.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 6), IRON(), 0.25, 0.44, sz * 0.62).rotateX(Math.PI / 2)); }
-    for (const sx of [-1, 1]) cg.add(mesh(boxG(1.2, 0.07, 0.07), mat(0x4a3320), -1.35, 0.62, sx * 0.35));
-    cg.add(mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.75, 10), mat(0xc9bda0, { roughness: 1 }), -0.35, 0.95, 0).rotateX(Math.PI / 2));
-    cg.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.6, 10), mat(0x8a3a2a, { roughness: 1 }), 0.35, 0.92, 0.15).rotateX(Math.PI / 2));
-    cg.add(mesh(boxG(0.45, 0.3, 0.35), pbrRepeat(T.plank, 1, 1, { color: 0x5a3a22 }), 0.55, 0.83, -0.25));
-    for (let k = 0; k < 3; k++) cg.add(mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.24, 8), mat([0x9ad44a, 0xff5070, 0x7aa0e0][k], { roughness: 0.3 }), -0.1 + k * 0.17, 0.8, -0.3));
+    for (const sx of [-1, 1]) cg.add(mesh(boxG(1.2, 0.07, 0.07), CHENE(1.2, 0.1, { color: 0x5a4430 }), -1.35, 0.62, sx * 0.35));
+    cg.add(mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.75, 10), ETOFFE(1.8, 0.75, { color: 0xe8dcc0 }), -0.35, 0.95, 0).rotateX(Math.PI / 2));
+    cg.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.6, 10), UNI(0x8a3a2a, { roughness: 1 }), 0.35, 0.92, 0.15).rotateX(Math.PI / 2));
+    cg.add(mesh(boxG(0.45, 0.3, 0.35), CHENE(0.45, 0.3, { color: 0x7a5a3a }), 0.55, 0.83, -0.25));
+    for (let k = 0; k < 3; k++) cg.add(mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.24, 8), mat([0x6a8a3a, 0x9a3a4a, 0x4a6a9a][k], { roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.85 }), -0.1 + k * 0.17, 0.8, -0.3));
     addCap(CX + 1.6, CZ + 0.4, CX + 3.0, CZ + 0.4, 0.8, 1.2);
     const [px, pz] = W2(CX - 0.8, CZ - 0.8);
     E.addInteract({ pos: new THREE.Vector3(px, TOWN.y, pz), r: 2.6, prompt: () => 'parler au colporteur',
@@ -1647,14 +1691,15 @@ export function buildTown() {
   // terrasse : deux guéridons, des tabourets, un tonneau-table
   for (const [x, z] of [[EST_X - 2.9, EST_Z + 1.35], [EST_X + 2.9, EST_Z + 1.35]]) {
     const bx = tx + x, bz = tz + z;
-    scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 14), pbrRepeat(T.plank, 1, 1), bx, 1.0, bz));
-    scene.add(mesh(new THREE.CylinderGeometry(0.1, 0.28, 1.0, 8), mat(0x4a3320), bx, 0.5, bz));
-    scene.add(mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.08, 12), mat(0x4a3320), bx, 0.06, bz));
-    scene.add(mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.36, 10), mat(0xe8c060, { roughness: 0.25 }), bx + 0.22, 1.23, bz));
+    scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 14), CHENE(1.5, 1.5, { color: 0x9a7a58 }), bx, 1.0, bz));
+    scene.add(mesh(new THREE.CylinderGeometry(0.1, 0.28, 1.0, 8), FERN(), bx, 0.5, bz));
+    scene.add(mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.08, 12), FERN(), bx, 0.06, bz));
+    // une chope de grès, pas un cylindre doré
+    { const c = cruche(0.34, 0x9a8a72, true); c.position.set(bx + 0.22, 1.05, bz); scene.add(c); }
     for (const a of [0.7, 2.9, 4.6]) {                       // tabourets
       const sx2 = bx + Math.cos(a) * 1.5, sz2 = bz + Math.sin(a) * 1.5;
-      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.1, 10), pbrRepeat(T.plank, 1, 1), sx2, 0.66, sz2));
-      for (let k = 0; k < 3; k++) scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.62, 5), mat(0x4a3320), sx2 + Math.cos(k * 2.1) * 0.17, 0.31, sz2 + Math.sin(k * 2.1) * 0.17));
+      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.1, 10), CHENE(0.6, 0.6, { color: 0x9a7a58 }), sx2, 0.66, sz2));
+      for (let k = 0; k < 3; k++) scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.62, 5), CHENE(0.1, 0.62, { color: 0x6a5238 }), sx2 + Math.cos(k * 2.1) * 0.17, 0.31, sz2 + Math.sin(k * 2.1) * 0.17));
       addCap(sx2, sz2, sx2, sz2, 0.3, 0.8);
     }
     addCap(bx, bz, bx, bz, 0.78, 1.15);
@@ -1668,7 +1713,7 @@ export function buildTown() {
     addCap(tx + EST_X + sx * 5.6, tz + EST_Z + 1.4, tx + EST_X + sx * 5.6, tz + EST_Z + 2.8, 0.2, 2.0);
   }
   { const bx = tx + EST_X - 4.6, bz = tz + EST_Z + 1.1;      // tonneau-table et son ardoise
-    scene.add(mesh(new THREE.CylinderGeometry(0.52, 0.46, 1.1, 14), pbrRepeat(T.plank, 1, 1, { color: 0x8a6440 }), bx, 0.55, bz));
+    scene.add(mesh(new THREE.CylinderGeometry(0.52, 0.46, 1.1, 14), CHENE(3.2, 1.1, { color: 0x8a6440 }), bx, 0.55, bz));
     for (const yy of [0.2, 0.9]) scene.add(mesh(new THREE.TorusGeometry(0.52, 0.05, 6, 16), FERN(), bx, yy, bz).rotateX(Math.PI / 2));
     addCap(bx, bz, bx, bz, 0.55, 1.2); }
   // ---------- props MegaKit : charrette, caisses, barrière, vigne vierge ----------

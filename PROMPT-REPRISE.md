@@ -664,6 +664,38 @@ Mesures : rue atteinte depuis la place (1 km²) 96,5 % (les restes : des îles d
 citadelle, le bout du monde rue de l'Arc, l'arrière des étals) ; arpenteur 1 603 m² suspects
 (1 586 avant, bruit) ; chargement, somme des étapes 12,0 à 13,2 s.
 
+### L. Le design du bourg et des rues (26 septembre, suite)
+
+Eugène : « fais tout » (marché et place, sol du quartier, bestiaire, façades), puis « le
+design des routes : des trottoirs, des rues homogènes ».
+- **Plus d'aplats dans le bourg** : `UNI` (village.js, 53 usages) multiplie le grain d'un
+  enduit photographié (`enduit_gris`, teinte ×1,8) ; `TERRE` (terre cuite, grès) sur
+  `terre_battue` ; `PIERRE_TAILLE` (chaux craquelée éclaircie ; le marbre veiné lisait comme
+  du marbre) ; `ECORCE`, `BRONZE`. Toiles (`TOILE`) et fer forgé (`FERN`) de menuiserie.js
+  sur photo. **`IRON`, `STEEL`, `GOLD`** (engine.js, 86 usages dans tout le jeu) sur la tôle
+  photographiée `metal_plate_02`, teintée ×2,6 — toujours un matériau neuf par appel (l'éclair
+  rouge d'un coup modifie le matériau de la créature). `marble_rock_02` ajouté à la table PH.
+- **Place et marché** : lanternes de fer à vitres chaudes, bancs de chêne sur dés de pierre,
+  charrette à vraies roues chargée de sacs, terrasse de l'estaminet (chope de grès), fontaine
+  maçonnée et moulures en pierre blanche, beffroi (pierre, dôme de plomb, cloche de bronze),
+  chapelle (bordures, faîtage, tombes en moellon).
+- **Façades** : parement par maison (`opts.mur` de `makeFlemishHouse` : brique, rouge,
+  flamande, enduit badigeonné crème/ocre, pierre), pignons assortis.
+- **Bestiaire** : le fantôme n'est plus un bonhomme de neige (linceul évasé en lambeaux,
+  habit à épaules, crâne d'os, orbites sombres, tricorne de feutre, mousquet de bois et fer) ;
+  dents de la moule, bernacles, coffre, arc, gaufre, torche en matières photo.
+- **Sol du quartier** (`solVille`, carte.js) : deux nappes sur la terre — la dalle du trottoir
+  du bord des voies jusqu'aux façades, des jardins herbus au cœur des îlots (loin des voies, ou
+  jardin/herbe relevés).
+- **Routes** (`voiriesLille`) : toute voie de ville est pavée (les petites étaient en terre,
+  la rue changeait de sol à chaque carrefour) ; les voies de campagne restent en terre. De
+  chaque côté d'une rue de ville : **bordure** de pierre (0,26 m) et **trottoir** de dalles
+  (1,6 m, `MAT_DALLE`, `bandesGeo`), au ras de la chaussée et juste sous elle — aux
+  carrefours la chaussée transversale passe par-dessus. Pas de trottoir sur l'eau, un pont,
+  ni loin du bâti.
+Mesures : chargement 12,6 à 13,1 s (somme des étapes, trois passages) ; arpenteur 1 603 m² ;
+murs 0,75 m² sur la rue, 97,3 % de rue atteinte.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

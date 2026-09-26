@@ -17,9 +17,16 @@ import { THREE, T, lerp, mat, pbr, pbrRepeat, phMat, mesh, boxG, sphG, makeCanva
 // Le groupe est rendu dans le plan XY, ouverture vers +z : on le pose sur la façade,
 // origine au ras du mur et au niveau du sol.
 const MATC = new Map();
+// Une toile teinte : le grain fin d'un enduit photographié (enduit_gris, luminance ≈ 0,52)
+// sous la couleur, compensée d'autant — la toile unie faisait bâche de plastique.
+function TOILE(col) {
+  return phMat('enduit_gris', 0.9, 0.9, { color: new THREE.Color(col).multiplyScalar(1.8), roughness: 1, side: THREE.DoubleSide });
+}
 const cached = (k, f) => { if (!MATC.has(k)) MATC.set(k, f()); return MATC.get(k); };
 export const LAITON = () => cached('laiton', () => mat(0xb9913f, { metalness: 0.85, roughness: 0.33 }));
-export const FERN = () => cached('ferNoir', () => mat(0x2a2a30, { metalness: 0.75, roughness: 0.45 }));
+// Le fer forgé prend la tôle photographiée (rayures, calamine) : l'aplat gris-noir lisait
+// comme du plastique sur les potences, les cercles de tonneau et les ferrures.
+export const FERN = () => cached('ferNoir', () => phMat('metal_plate_02', 0.5, 0.5, { color: 0x6a6a72, roughness: 0.55 }));
 export const VITRE = () => cached('vitre', () => mat(0x9fc0dc, { roughness: 0.12, metalness: 0.15, transparent: true, opacity: 0.55 }));
 export const VITRE_CHAUDE = () => cached('vitreChaude', () => mat(0xffd79a, { roughness: 0.2, emissive: 0xff9d3a, emissiveIntensity: 0.75 }));
 export const DOOR_COLORS = [0x2f4632, 0x6e2b28, 0x27405e, 0x3f3a46, 0x5a3a22, 0x1f4a4a];
@@ -222,8 +229,8 @@ export function makeVolet(w, h, col, sg = 1, persienne = true) {
 // toile rayée tendue, avec flèche : une bande par lé, la hauteur suit une parabole
 export function makeToile(w, prof, col, lés = 8, creux = 0.22) {
   const g = new THREE.Group();
-  const clair = cached('toileClaire', () => mat(0xf3ece0, { roughness: 1, side: THREE.DoubleSide }));
-  const teint = cached('toile' + col, () => mat(col, { roughness: 1, side: THREE.DoubleSide }));
+  const clair = cached('toileClaire', () => TOILE(0xf3ece0));
+  const teint = cached('toile' + col, () => TOILE(col));
   for (let k = 0; k < lés; k++) {
     const t = (k + 0.5) / lés - 0.5;
     const y = -creux * (1 - 4 * t * t);                                      // ventre de la toile
@@ -243,8 +250,8 @@ export function makeToile(w, prof, col, lés = 8, creux = 0.22) {
 export function makeParavent(w, h, col) {
   const g = new THREE.Group();
   const bois = cached('paravBois', () => pbrRepeat(T.plank, 1, 1, { color: 0x8a6a48 }));
-  const clair = cached('toileClaire', () => mat(0xf3ece0, { roughness: 1, side: THREE.DoubleSide }));
-  const teint = cached('toile' + col, () => mat(col, { roughness: 1, side: THREE.DoubleSide }));
+  const clair = cached('toileClaire', () => TOILE(0xf3ece0));
+  const teint = cached('toile' + col, () => TOILE(col));
   for (const [dx, ang] of [[-w / 2, 0.25], [w / 2, -0.25]]) {
     const b = new THREE.Group(); b.position.x = dx; b.rotation.y = ang; g.add(b);
     for (let k = 0; k < 6; k++) b.add(mesh(boxG(w / 6 + 0.01, h - 0.3, 0.04), k % 2 ? clair : teint, (k + 0.5) * w / 6 - w / 2, h / 2, 0));
