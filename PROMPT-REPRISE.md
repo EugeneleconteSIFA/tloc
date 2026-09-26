@@ -542,7 +542,12 @@ voir le § 4.E (étapes lentes du chargement, KTX2).
 **Ordre proposé** : 4 (une heure, ça se sent tout de suite) → 5 (l'arc, utile au multi) →
 2 (les objets qui font le multi) → 6 (chargement) → 1 (le prologue : écrire l'histoire
 avec Eugène avant de coder) → 3 (la carte).
-**Fait au 27 septembre** : 4, 1, 5, et 2 sauf le cheval. Reste : le cheval (2), 6, 3, 7.
+**Fait au 27 septembre** : 4, 1, 5, 2 (armure, écu, cheval — cf. NOTE-MULTI.md). Retours
+d'Eugène le 27 : armure 4 cœurs (forge 5, 6), une armure brisée ne revient plus, flèche à
+un demi-cœur, jauge d'armure en cœurs — faits ; armes redessinées (épée, rondache aux armes
+de Lille, écu, cuirasse) et la masse de Phinaert enfin dans sa main (`prise()`, geants.js :
+la main du géant est gonflée ×15 × 9 × 13, un décalage fixe l'envoyait à 75 cm). Reste :
+la frappe en selle, 6, 3, 7.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

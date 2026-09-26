@@ -277,13 +277,37 @@ lumineux et un point sur la minicarte (`PARTAGE.marques`, hud.js) tant qu'ils at
   `mouse.garde` → `player.garde`) : Camille ralentit (×0,4), fait face au regard, ne frappe
   plus, et pare tout coup venu de face (±60°, ±83° cerclé de fer). Clip `Sword_Block`, et
   un second écu tenu devant la poitrine pendant la garde (pnj.js, `ecuGarde`).
-- **L'armure** encaisse avant les cœurs (`absorber`, dans `encaisser`) : 2, 3 ou 4 cœurs
-  (cuir clouté, mailles, plates). Brisée, elle part (`objet-casse`) et revient aux casernes
-  après `OBJET_RETOUR` (45 s). Sa jauge s'affiche au bout des cœurs.
+- **L'armure** encaisse avant les cœurs (`absorber`, dans `encaisser`) : 4, 5 ou 6 cœurs
+  (cuir clouté, mailles, plates — Eugène, 27 septembre). Brisée, elle ne revient qu'à la
+  manche suivante (`brise`, remis à zéro par `raz_objets`). Sa jauge : des cœurs d'acier au
+  bout des cœurs rouges.
 - **La forge du bourg** (Entrée devant « À l'enclume ») : mailles 40 écus, plates 70,
   réparation 12, écu cerclé 50. Les niveaux restent côté client ; les autres les voient par
   l'état (`ar`, `bc`, `gd` dans le message `etat`) et `PNJ.animeCamille` habille l'avatar.
 - **Les bots** ne ramassent rien ; ils subissent la parade et l'armure comme tout le monde.
 - Banc : `banc-equip.mjs` (scratchpad) — ramassage, parade de face, armure qui se casse et
   revient, achats à la forge, gros plans de la garde.
+- **Le dessin** (27 septembre, pnj.js, « Les armes et les armures de Camille ») : épée à
+  gouttière et garde courbe ; rondache peinte aux armes de Lille (lys d'argent sur gueules) ;
+  écu aux trois lys d'or de la garnison ; cuirasse galbée (LatheGeometry) en trois matières
+  peintes sur canevas. Les présentoirs réutilisent les mêmes pièces (`PNJ.faireEcu`,
+  `PNJ.faireCuirasse`). La flèche fait un demi-cœur (`DEGATS_FLECHE = 1`).
+
+### Le cheval (27 septembre)
+
+Un cheval par partie, dans une écurie (auvent, râtelier, auge) posée sur un rectangle libre
+à 14–26 m du moulin d'Émile (`placeEcurie`). Entrée pour monter, Entrée pour descendre : il
+reste là où on l'a laissé, avec la vie qui lui reste (`objet-poser`, le serveur garde `p`,
+`y`, `pv`, `yaw`). En selle : vitesse ×1,7, ni roulade ni saut (`G.monte`, engine.js) ; le
+cheval encaisse avant l'armure et les cœurs (`blesserCheval`, 5 cœurs fauves après les
+autres) ; arrêté plus d'une seconde, il broute et regagne un demi-cœur toutes les 2,5 s.
+Mort : un cheval frais revient à l'écurie après `OBJET_RETOUR` (45 s). Manche neuve : il
+rentre à l'écurie, reposé. Les autres voient le cavalier en selle (`ch` dans `etat`).
+- Modèle : `assets_back/02_personnages/animaux/cheval.glb` (Quaternius, CC0 ; `glb.py`),
+  chargé à la demande en instance seulement ; échelle calculée sur le maillage déformé
+  (tête à 2,35 m) ; il regarde vers −z (`DOS_CHEVAL`).
+- Camille en selle : la pose assise (`Sitting_Idle_Loop`), remontée de `SELLE` (0,62 m) par
+  le pivot, cuisses écartées et jambes le long des flancs par `enfourcher()` (pnj.js,
+  réglages `MONTE`, choisis au banc entre une quinzaine d'essais). Pas encore : une vraie
+  frappe en selle (le coup rejoue le clip debout), et les bots ne montent pas.
 

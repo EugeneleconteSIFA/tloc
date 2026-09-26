@@ -2215,14 +2215,15 @@ export function updatePlayer(dt) {
   p.onGround = p.pos.y <= ground + 0.05;
 
   // roulade
-  if (wantRoll && p.rollT < 0 && p.rollCd <= 0 && p.attackT < 0 && p.onGround) {
+  // à cheval (G.monte, tloc-multi.js) : ni roulade ni saut, le cheval ne sait pas faire
+  if (wantRoll && !G.monte && p.rollT < 0 && p.rollCd <= 0 && p.attackT < 0 && p.onGround) {
     p.rollT = 0; p.rollCd = 0.75;
     p.rollDir.copy(moving ? move : new THREE.Vector3(Math.sin(p.yaw), 0, Math.cos(p.yaw)));
     p.yaw = Math.atan2(p.rollDir.x, p.rollDir.z);
     SFX.roll();
   }
   // saut (X)
-  if (!locked && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) { p.vy = JUMP_V; p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
+  if (!locked && !G.monte && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) { p.vy = JUMP_V; p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
   // arc (C)
   p.bowCd = Math.max(0, p.bowCd - dt);
   // LE CARQUOIS. Les flèches étaient infinies ; elles se comptent (state.fleches, jusqu'à
@@ -2344,6 +2345,7 @@ export function updatePlayer(dt) {
       walking, running: walking && speed > 6.4, drawing: drawingR, bowOut: bowOutR,
       pose: p.pose && p.pose.kind, epeeSortie: state.sword, arcTrouve: state.bow,
       garde: p.garde, armure: G.armure || 0, bouclier: G.bouclier || 0,     // l'équipement du multi
+      monte: !!G.monte, selle: G.selle || 0,
     });
   }
   // ATTENTION : surtout pas de `return` ici. Le ramassage des objets et TOUTES

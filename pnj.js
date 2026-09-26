@@ -1037,12 +1037,28 @@ export function buildCamille(makeBow) {
  * Traduit l'état du joueur en clip. Renvoie false si Camille n'est pas riggée,
  * pour que engine.js reprenne son animation en primitives.
  */
+// La pose assise est celle d'une chaise : genoux joints devant soi. Sur un cheval, les
+// cuisses s'écartent de part et d'autre de la selle et les jambes retombent le long des
+// flancs. On corrige les os APRÈS le mixer, à chaque image (il les réécrit).
+export const MONTE = { ecart: 0.3, tombe: 0.9, genou: 0.6, axeEcart: 'z', axeTombe: 'x' };
+function enfourcher(os) {
+  for (const [c, s] of [['l', 1], ['r', -1]]) {
+    const cuisse = os['thigh_' + c], mollet = os['calf_' + c];
+    if (cuisse) { cuisse.rotation[MONTE.axeEcart] += s * MONTE.ecart; cuisse.rotation[MONTE.axeTombe] += MONTE.tombe; }
+    if (mollet) mollet.rotation[MONTE.axeTombe] -= MONTE.tombe * MONTE.genou;
+  }
+}
+
 export function animeCamille(m, p, dt, ctx) {
   const ud = m.userData, a = ud.ctrl;
   if (!a) return false;
   const { walking, running, drawing, bowOut, pose } = ctx;
 
+  // à cheval : la pose assise, remontée à la hauteur de la selle par le pivot (la racine,
+  // elle, suit le joueur — ou glisse vers la position annoncée, pour un avatar distant)
+  if (ud.pivot) ud.pivot.position.y = ctx.monte ? (ctx.selle || 0) / (m.scale.y || 1) : 0;
   if (pose) a.jouer({ lie: CLIP.couche, kneel: CLIP.genou, sit: CLIP.assis, cheer: CLIP.joie }[pose] || CLIP.repos, 0.3);
+  else if (ctx.monte && p.attackT < 0) a.jouer(CLIP.assis, 0.25);
   else if (p.rollT >= 0 && CLIP.roulade) a.jouer(CLIP.roulade, 0.06, false);
   else if (p.attackT >= 0 && CLIP.coups.length) {
     // les coups alternent : un enchaînement, pas un moulinet identique
@@ -1070,6 +1086,7 @@ export function animeCamille(m, p, dt, ctx) {
   if (ud.arc) ud.arc.visible = !!(drawing || bowOut);
   if (ud.arcDos) ud.arcDos.visible = ctx.arcTrouve && !(drawing || bowOut);
   a.update(dt);
+  if (ctx.monte) enfourcher(ud.os);
   return true;
 }
 

@@ -420,6 +420,7 @@ function connecter() {
       }
       if (m.mx) a.maxHp = m.mx;
       a.ctx.armure = m.ar | 0; a.ctx.bouclier = m.bc | 0; a.ctx.garde = !!m.gd;
+      a.ctx.monte = !!m.ch; a.ctx.selle = SELLE;
       a.niveau = m.n || 'citadel';
       a.vu = performance.now();
     } else if (m.t === 'rdv') {
@@ -885,14 +886,29 @@ function proposerObjets() {
   if (objetsProposes || !lieux.length || !state.running) return;
   const lieu = (f) => lieux.find(f);
   const caserne = lieu((l) => l.id.startsWith('caserne')), place = lieu((l) => l.id === 'place');
+  const moulin = lieu((l) => l.id === 'moulin');
   const liste = [];
-  for (const [type, l] of [['armure', caserne], ['bouclier', place]]) {
-    if (!l) continue;
-    const p = praticable(l.x, l.z);
+  for (const [type, l] of [['armure', caserne], ['bouclier', place], ['cheval', moulin]]) {
+    if (!l || objets.some((o) => o.type === type)) continue;
+    const p = type === 'cheval' ? placeEcurie(l) : praticable(l.x, l.z);
     if (p) liste.push({ type, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +getH(p.x, p.z).toFixed(2) });
   }
   objetsProposes = true;
   if (liste.length) envoyer({ t: 'objets-lieux', objets: liste });
+}
+
+// L'écurie ne tient pas dans un point libre : il lui faut un rectangle de 6 × 5 m hors
+// des murs et de l'eau. On en cherche un sur des cercles de 14 à 26 m autour du moulin
+// (au centre du lieu, elle mordait dans la tour du moulin).
+function placeEcurie(l) {
+  const libre = (x, z) => sdEau(x, z) > 2 && !(world.bounds && world.bounds(x, z)) && !blocked(x, z, 0.6, false, (world.levelH ? world.levelH(x, z) : 0));
+  for (let r = 14; r <= 26; r += 3) for (let k = 0; k < 16; k++) {
+    const a = k / 16 * TAU, x = l.x + Math.cos(a) * r, z = l.z + Math.sin(a) * r;
+    let ok = true;
+    for (let dx = -3; dx <= 3 && ok; dx += 1.5) for (let dz = -2.5; dz <= 2.5 && ok; dz += 1.25) ok = libre(x + dx, z + dz);
+    if (ok) return { x, z };
+  }
+  return praticable(l.x, l.z);
 }
 
 function presentoir(type) {
@@ -917,15 +933,18 @@ function majObjets(m) {
   // ce que je portais et que le serveur ne me donne plus (manche neuve, reprise) : rendu
   if (armure && !objets.some((o) => o.type === 'armure' && o.porteur === moiId)) { armure = 0; armurePts = 0; }
   if (ecu && !objets.some((o) => o.type === 'bouclier' && o.porteur === moiId)) ecu = 0;
+  majCheval();
   for (const o of objets) {
+    if (o.type === 'cheval') continue;              // le cheval a son écurie, pas de présentoir
     let pr = presentoirs.get(o.type);
     if (!pr) { pr = presentoir(o.type); pr.position.set(o.p[0], o.y, o.p[1]); scene.add(pr); presentoirs.set(o.type, pr); }
     pr.visible = o.porteur == null && !o.retour && !o.brise;
   }
   PARTAGE.marques = objets.filter((o) => o.porteur == null && !o.retour && !o.brise)
-    .map((o) => ({ x: o.p[0], z: o.p[1], fond: o.type === 'armure' ? '#c9ccd2' : '#d0463a', bord: '#1a1a1a' }));
+    .map((o) => ({ x: o.p[0], z: o.p[1], fond: { armure: '#c9ccd2', bouclier: '#d0463a', cheval: '#b07a3e' }[o.type], bord: '#1a1a1a' }));
   const qui = m.par === moiId ? null : (m.perso || 'Quelqu’un');
-  const nom = m.o === 'armure' ? 'l’armure' : 'l’écu';
+  const nom = { armure: 'l’armure', bouclier: 'l’écu', cheval: 'le cheval' }[m.o];
+  if (m.o === 'cheval') { annonceCheval(m, qui); peindreArmure(); return; }
   if (m.evt === 'pris') {
     if (m.par === moiId) {
       if (m.o === 'armure') { armure = 1; armurePts = ARMURE_PTS[1]; showMessage(`Tu endosses l’armure de cuir clouté : elle encaisse ${ARMURE_PTS[1] / 2} cœurs avant les tiens. La forge du bourg la renforce.`, 6); }
@@ -939,7 +958,8 @@ function majObjets(m) {
 }
 
 function tickObjets(now) {
-  if (!objets.length) proposerObjets();
+  if (!objets.length || !objets.some((o) => o.type === 'cheval')) proposerObjets();
+  tickCheval(now);
   G.armure = armure; G.bouclier = ecu;          // le moteur : la garde et l'aide des touches
   for (const [type, pr] of presentoirs) {
     if (!pr.visible) continue;
@@ -981,7 +1001,7 @@ function absorber(degats) {
 
 // La jauge d'armure : des cœurs d'acier au bout des cœurs rouges, du même dessin (Eugène
 // voulait y lire des cœurs, pas des plaques). Un cœur d'acier = deux demi-cœurs encaissés.
-let jaugeArmure = null;
+let jaugeArmure = null, jaugeCheval = null;
 function coeur(g, x, y, s, couleur) {        // le cœur d'engine.js (drawHearts), trait pour trait
   g.fillStyle = couleur; g.beginPath();
   g.moveTo(x + s / 2, y + s * 0.95);
@@ -999,6 +1019,7 @@ function peindreArmure() {
   }
   jaugeArmure.style.left = `${18 + (player.maxHp / 2) * 34 + 4}px`;
   jaugeArmure.style.display = armure ? '' : 'none';
+  peindreJaugeCheval();
   if (!armure) return;
   const g = jaugeArmure.getContext('2d'), n = ARMURE_PTS[armure] / 2;
   g.clearRect(0, 0, 240, 40);
@@ -1010,6 +1031,167 @@ function peindreArmure() {
     coeur(g, x, y, 26, '#2c3038');
     if (plein) coeur(g, x, y, 26, acier);
     else if (demi) { g.save(); g.beginPath(); g.rect(x, y - 2, 13, 34); g.clip(); coeur(g, x, y, 26, acier); g.restore(); }
+  }
+}
+
+// ---------------------------------------------------------------------
+//  Le cheval
+// ---------------------------------------------------------------------
+// Un seul cheval par partie, à l'écurie près du moulin d'Émile. On le monte (Entrée), il
+// galope 1,7 fois plus vite ; on en descend (Entrée) et il reste où on l'a laissé, pour
+// qui le prendra. Il a sa propre vie, prise avant l'armure et les cœurs du cavalier, et
+// elle remonte quand il broute (à l'arrêt). Mort, un cheval frais revient à l'écurie
+// (le serveur, après 45 s). Le modèle (Quaternius, CC0 ; animaux/glb.py) ne se charge
+// qu'en instance, à l'arrivée du premier cheval : le solo ne le paie pas.
+// SELLE : de combien la pose assise (bassin à hauteur de chaise) monte pour tomber sur le dos
+// du cheval ; DOS_CHEVAL : le modèle regarde vers −z, le joueur vers +z
+const CHEVAL_PV = 10, CHEVAL_VITESSE = 1.7, SELLE = 0.62, DOS_CHEVAL = Math.PI;
+let modeleCheval = null, chargeCheval = null, cheval = null, monte = false, chevalPv = CHEVAL_PV;
+let vitessePied = 0, arretT = 0, brouteT = 0, ecurie = null;
+
+function chargerCheval() {
+  return chargeCheval ||= Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js')])
+    .then(([L, S]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/cheval.glb').then((g) => {
+      // la hauteur vraie : celle du maillage DÉFORMÉ par les os (la boîte brute donne 4,8 m)
+      g.scene.updateMatrixWorld(true);
+      const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+      modeleCheval = { g, S, echelle: 2.35 / (b.max.y - b.min.y) };
+    }));
+}
+function faireCheval() {
+  const c = modeleCheval.S.clone(modeleCheval.g.scene);
+  c.scale.setScalar(modeleCheval.echelle);
+  c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  const mix = new THREE.AnimationMixer(c), actions = {};
+  for (const clip of modeleCheval.g.animations) actions[clip.name] = mix.clipAction(clip);
+  const g = new THREE.Group(); g.add(c); g.userData.dynamic = true; scene.add(g);
+  const ch = { g, mix, actions, courant: null,
+    jouer(n, fondu = 0.25, boucle = true) {
+      const a = actions[n]; if (!a || a === this.courant) return;
+      a.reset(); a.setLoop(boucle ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !boucle;
+      if (this.courant) a.crossFadeFrom(this.courant, fondu, false); else a.fadeIn(fondu);
+      a.play(); this.courant = a;
+    } };
+  ch.jouer('Idle');
+  return ch;
+}
+// L'écurie : un auvent de planches sur quatre poteaux, un râtelier de foin, une auge.
+function batirEcurie(o) {
+  const g = new THREE.Group(), bois = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.9 });
+  const toit = new THREE.MeshStandardMaterial({ color: 0x5a3b22, roughness: 0.95 }), foin = new THREE.MeshStandardMaterial({ color: 0xd6b25a, roughness: 1 });
+  for (const [x, z] of [[-2.2, -1.6], [2.2, -1.6], [-2.2, 1.6], [2.2, 1.6]]) { const pt = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.9, 0.18), bois); pt.position.set(x, 1.45, z); g.add(pt); }
+  const t = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.12, 4.2), toit); t.position.set(0, 3.0, 0.15); t.rotation.x = -0.12; g.add(t);
+  const fond = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.2, 0.12), bois); fond.position.set(0, 1.1, -1.65); g.add(fond);
+  const ratelier = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.45), foin); ratelier.position.set(0, 1.35, -1.35); g.add(ratelier);
+  const auge = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.55), bois); auge.position.set(1.2, 0.3, -1.2); g.add(auge);
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  g.position.set(o.maison.p[0], o.maison.y, o.maison.p[1]);     // ouverte vers +z : le cheval y attend tête dehors
+  g.userData.dynamic = true; scene.add(g);
+  return g;
+}
+
+function objetCheval() { return objets.find((o) => o.type === 'cheval'); }
+function majCheval() {
+  const o = objetCheval();
+  if (!o) return;
+  chargerCheval().then(() => {
+    if (!cheval) cheval = faireCheval();
+    if (!ecurie && o.maison) ecurie = batirEcurie(o);
+    const moiId = moi && moi.id, etaitMonte = monte;
+    monte = o.porteur === moiId && moiId != null;
+    if (monte && !etaitMonte) { chevalPv = o.pv || CHEVAL_PV; vitessePied = vitessePied || player.speed; player.speed = vitessePied * CHEVAL_VITESSE; }
+    if (!monte && etaitMonte) player.speed = vitessePied || player.speed;
+    G.monte = monte; G.selle = SELLE;
+    if (o.porteur == null && !o.retour) { cheval.g.position.set(o.p[0], o.y, o.p[1]); cheval.g.rotation.y = (o.yaw || 0) + DOS_CHEVAL; }
+    peindreArmure();
+  });
+}
+function annonceCheval(m, qui) {
+  const moiId = moi && moi.id;
+  if (m.evt === 'pris') showMessage(m.par === moiId ? 'En selle ! Il galope bien plus vite que toi ; arrêté, il broute et reprend des forces. Entrée pour descendre.' : `${qui} monte le cheval de l’écurie.`, m.par === moiId ? 6 : 3);
+  else if (m.evt === 'casse') showMessage(m.par === moiId ? 'Ton cheval s’effondre ! Un cheval frais attendra à l’écurie.' : `Le cheval de ${qui} s’effondre.`, 4);
+  else if (m.evt === 'retour') showMessage('Un cheval frais attend à l’écurie, près du moulin.', 4);
+}
+function monter() { if (!monte) envoyer({ t: 'objet-prendre', o: 'cheval' }); }
+function descendre() {
+  if (!monte) return;
+  const p = player, dx = Math.cos(p.yaw), dz = -Math.sin(p.yaw);     // on met pied à terre sur la gauche
+  envoyer({ t: 'objet-poser', o: 'cheval', p: [+p.pos.x.toFixed(2), +p.pos.z.toFixed(2)], y: +p.pos.y.toFixed(2), pv: chevalPv, yaw: +p.yaw.toFixed(2) });
+  p.pos.x += dx * 1.4; p.pos.z += dz * 1.4;
+}
+// le cheval prend les coups avant son cavalier
+function blesserCheval(degats) {
+  if (!monte || chevalPv <= 0) return degats;
+  const pris = Math.min(chevalPv, degats);
+  chevalPv -= pris;
+  if (cheval) { try { cheval.jouer('Idle_HitReact1', 0.08, false); } catch (e) {} }
+  if (chevalPv <= 0) {
+    envoyer({ t: 'objet-casse', o: 'cheval' });
+    if (cheval) { cheval.jouer('Death', 0.1, false); cheval.mortT = performance.now(); }
+    player.speed = vitessePied || player.speed; monte = false; G.monte = false;
+  }
+  peindreArmure();
+  return degats - pris;
+}
+let posePied = null;
+function tickCheval(now) {
+  if (!cheval) return;
+  // le vrai temps écoulé : compté en images, le broutage s'étirait quand l'image ralentit
+  const o = objetCheval(), dt = Math.min(0.1, (now - (cheval.t || now)) / 1000);
+  cheval.mix.update(dt); cheval.t = now;
+  if (cheval.mortT && now - cheval.mortT < 1800) return;           // on le laisse tomber avant de le cacher
+  cheval.mortT = 0;
+  cheval.g.visible = !!o && !o.retour && G.level && G.level.name === 'citadel';
+  if (!o || o.retour) return;
+  let qui = null, vitesse = 0;
+  if (monte) {
+    qui = { x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw };
+    const avant = posePied || qui; vitesse = Math.hypot(qui.x - avant.x, qui.z - avant.z) * 60; posePied = qui;
+  } else if (o.porteur != null) {
+    const a = autres.get(o.porteur);
+    if (a) { qui = { x: a.mesh.position.x, y: a.mesh.position.y, z: a.mesh.position.z, yaw: a.yaw }; vitesse = a.marche * 12; }
+  }
+  if (qui) { cheval.g.position.set(qui.x, qui.y, qui.z); cheval.g.rotation.y = qui.yaw + DOS_CHEVAL; }
+  // les allures : galop, pas, et à l'arrêt il broute — et reprend des forces
+  if (vitesse > 9) cheval.jouer('Gallop', 0.2);
+  else if (vitesse > 0.8) cheval.jouer('Walk', 0.25);
+  else if (qui || o.porteur == null) {
+    arretT = monte ? arretT + dt : 0;
+    if (monte && arretT > 1.2) {
+      cheval.jouer('Eating', 0.4);
+      if (chevalPv < CHEVAL_PV && (brouteT += dt) > 2.5) { brouteT = 0; chevalPv++; peindreArmure(); }
+    } else if (!monte && o.porteur == null) cheval.jouer(Math.floor(now / 9000) % 2 ? 'Eating' : 'Idle', 0.6);
+    else cheval.jouer('Idle', 0.3);
+  }
+  if (vitesse > 0.8) arretT = 0;
+}
+function poserInteractionsCheval() {
+  if (!actif || poserInteractionsCheval.fait) return;
+  poserInteractionsCheval.fait = true;
+  const pos = new THREE.Vector3();
+  addInteract({ pos, r: 3.2, prompt: () => 'monter à cheval', fn: monter,
+    enabled: () => { const o = objetCheval(); if (!cheval || !o || o.porteur != null || o.retour || monte || elimine) return false; pos.copy(cheval.g.position); return true; } });
+  addInteract({ pos: player.pos, r: 1.5, prompt: () => 'descendre de cheval', fn: descendre, enabled: () => monte });
+}
+
+// la vie du cheval, sous les cœurs : de petits cœurs fauves, tant qu'on est en selle
+function peindreJaugeCheval() {
+  if (!jaugeCheval) {
+    jaugeCheval = document.createElement('canvas'); jaugeCheval.width = 260; jaugeCheval.height = 26;
+    jaugeCheval.style.cssText = 'position:absolute; top:22px; pointer-events:none;';
+    (document.getElementById('hud') || document.body).appendChild(jaugeCheval);
+  }
+  // sur la ligne des cœurs, après ceux de l'armure : dessous, il y a les compteurs du HUD
+  jaugeCheval.style.left = `${18 + (player.maxHp / 2) * 34 + 8 + (armure ? (ARMURE_PTS[armure] / 2) * 34 + 6 : 0)}px`;
+  jaugeCheval.style.display = monte ? '' : 'none';
+  if (!monte) return;
+  const g = jaugeCheval.getContext('2d'); g.clearRect(0, 0, 260, 26);
+  g.font = 'bold 11px sans-serif'; g.fillStyle = '#f3e3c3'; g.textBaseline = 'middle'; g.fillText('CHEVAL', 6, 13);
+  for (let i = 0; i < CHEVAL_PV / 2; i++) {
+    const x = 62 + i * 22, plein = chevalPv >= (i + 1) * 2, demi = !plein && chevalPv >= i * 2 + 1;
+    coeur(g, x - 1, 2, 20, '#1d130a'); coeur(g, x, 3, 18, '#3b2a1a');
+    if (plein) coeur(g, x, 3, 18, '#c98a45');
+    else if (demi) { g.save(); g.beginPath(); g.rect(x, 1, 9, 24); g.clip(); coeur(g, x, 3, 18, '#c98a45'); g.restore(); }
   }
 }
 
@@ -1044,6 +1226,7 @@ function encaisser(degats, fx, fz, de, pseudo, kind) {
   if (elimine || !state.running || state.paused || state.over || p.invuln > 0 || p.rollT >= 0 || p.sleeping > 0) return;
   const dx = p.pos.x - fx, dz = p.pos.z - fz, d = Math.hypot(dx, dz) || 1;
   if (parer(fx, fz)) { p.kb.set(dx / d * 3, 0, dz / d * 3); return; }
+  degats = blesserCheval(degats);
   degats = absorber(degats);
   p.invuln = INVULN;
   if (degats <= 0) { p.kb.set(dx / d * 4, 0, dz / d * 4); return; }
@@ -1660,7 +1843,7 @@ function boucle(now) {
   if (now - dernierLook > 1000) { dernierLook = now; envoyerLook(); }
   tickFete(now);
   tickBourses(now);
-  tickObjets(now); poserForge();
+  tickObjets(now); poserForge(); poserInteractionsCheval();
   tickBannieres(now);
   tickBots(dt, now);
   if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); if (resultats && manche) majBoutonsResultats(manche); }
@@ -1671,7 +1854,7 @@ function boucle(now) {
       t: 'etat', p: [+player.pos.x.toFixed(2), +player.pos.y.toFixed(2), +player.pos.z.toFixed(2)],
       y: +player.yaw.toFixed(2), a: player.attackT >= 0 ? 1 : (player.rollT >= 0 ? 2 : 0),
       hp: player.hp, mx: player.maxHp, n: G.level.name,
-      ar: armure || undefined, bc: ecu || undefined, gd: player.garde ? 1 : undefined,
+      ar: armure || undefined, bc: ecu || undefined, gd: player.garde ? 1 : undefined, ch: monte ? 1 : undefined,
     });
     coupsEpee(); coupsFleche();
   }
@@ -1717,4 +1900,4 @@ requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
 window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine }),
-  equipement: () => ({ armure, armurePts, ecu, objets }) };
+  equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };
