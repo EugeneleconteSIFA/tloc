@@ -3,7 +3,7 @@ import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 3 : l'intérieur de la maison de Camille
 import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, addPlatform, addRamp, makeChest, makeTorch, SFX, state, player, enemies,
-  addInteract, showMessage, showMenu, hideMenu, saveGame, resumeGame, goToLevel, fadeTo, bootLevel, minimapDots, makeSky, cutscene,
+  addInteract, showMessage, showMenu, hideMenu, saveGame, resumeGame, goToLevel, fadeTo, bootLevel, naviguer, minimapDots, makeSky, cutscene,
   burst, lerp } from './engine.js?v=27';
 import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
@@ -202,7 +202,7 @@ function bedMenu() {
   showMenu('LE LIT DE CAMILLE', 'La maison est calme', 'Le feu crépite, le chat ronronne, et la citadelle attend dehors.', [
     { label: 'Dormir (récupérer tous les cœurs et sauvegarder)', fn: () => { hideMenu(); state.paused = false; sleepScene(); } },
     { label: 'Sauvegarder', fn: () => { saveGame(); resumeGame(); } },
-    { label: 'Sauvegarder et quitter', fn: () => { saveGame(true); sessionStorage.removeItem('tloc_auto'); location.href = 'index.html'; } },
+    { label: 'Sauvegarder et quitter', fn: () => { saveGame(true); sessionStorage.removeItem('tloc_auto'); naviguer('index.html'); } },
     { label: 'Se relever', fn: resumeGame },
   ]);
 }

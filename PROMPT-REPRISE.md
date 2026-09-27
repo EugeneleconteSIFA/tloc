@@ -731,6 +731,29 @@ bien.
   18,6 s sur quatre passages, la machine chargée (la préparation du rendu, inchangée, variait
   de 3,3 à 6,5 s). Murs 0,25 m² sur la rue, 97,4 % de rue atteinte ; arpenteur 1 596 m².
 
+### N. Les intérieurs sans recharger la ville (27 septembre)
+
+Eugène : « les chargements du jeu une fois le jeu déjà chargé ». Chaque intérieur est une
+page ; entrer dans l'estaminet puis en ressortir RECONSTRUISAIT toute la ville (15 à 20 s à
+chaque porte). Désormais (`goToLevel`, engine.js) :
+- depuis la ville, l'intérieur s'ouvre dans un cadre plein écran (`ouvrirInterieur`) ; la
+  ville s'endort (`G.sommeil` : la boucle ne fait plus rien ; `SFX.veille` suspend le son) ;
+- en ressortant, l'intérieur appelle `TLOC.rentrerEnVille()` de la page hôte : le cadre est
+  retiré, la ville relit la sauvegarde que l'intérieur vient d'écrire (état, cœurs, écus,
+  position à la porte), rejoue `onLoad` des quêtes (grille, prince, chat…) et se réveille ;
+  monstres et objets de la ville n'ont pas bougé ;
+- `naviguer(url)` : « Sauvegarder et quitter », « Nouvelle partie », la reprise après une
+  mort et « Retour à l'accueil » partent de la page principale, jamais du seul cadre ;
+- au passage : la cave ressortait sur l'ancienne poterne relevée (dans le fossé) ; c'est la
+  ville qui pose Camille devant la grille de la poterne bâtie (`onLoad`, quetes.js).
+Mesuré au banc (aller-retour réel, état vérifié au retour, zéro erreur) : retour en ville
+0,5 à 1,6 s (fondu compris) au lieu de 15 à 20 s ; entrée 3,7 à 7 s selon l'intérieur (sa
+propre construction, comme avant). Maison, estaminet, chapelle, mage, cave.
+**Reste** : un rechargement complet de la page (F5, retour de l'accueil) refait tous les
+calculs (~13 s en somme des étapes : préparation du rendu 3,4, quartier 2, sols 1,8, fusion
+1,4, végétation 1). Piste : garder en IndexedDB, par version, les géométries calculées du
+quartier et des sols (déterministes), et KTX2 pour l'envoi des textures (§ 4.E).
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

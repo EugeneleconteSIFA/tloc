@@ -1063,6 +1063,8 @@ export const SFX = (() => {
   function toggleMute() { muted = !muted; if (music) music.master.gain.setTargetAtTime(muted ? 0 : 0.055, ac().currentTime, 0.2); return muted; }
   return {
     unlock: () => { try { ac(); } catch (e) {} },
+    // la ville s'endort pendant qu'on est dans un intérieur (cf. ouvrirInterieur) : sa musique aussi
+    veille: (dort) => { try { if (ctx) (dort ? ctx.suspend() : ctx.resume()); } catch (e) {} },
     music: startMusic, toggleMute,
     chirp: () => { const f = 1800 + Math.random() * 1500; tone(f, f * (0.7 + Math.random() * 0.6), 0.07, 'sine', 0.05); setTimeout(() => tone(f * 1.1, f * 0.9, 0.06, 'sine', 0.04), 90); },
     step: () => noise(0.05, 0.05, 900),
@@ -2085,15 +2087,70 @@ export function loadGame() {
 export function newGame() {
   // pendant le prologue rejoué, « Nouvelle partie » le recommence : la partie du personnage n'y est pour rien
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); location.href = 'index.html'; }
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
 export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html' };
-export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); location.href = PAGES[d && d.level] || 'index.html'; }
+export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
+
+// ---------------------------------------------------------------------
+//  LES INTÉRIEURS PAR-DESSUS LA VILLE
+// ---------------------------------------------------------------------
+// Chaque intérieur est une page à part. Entrer dans l'estaminet puis en ressortir, c'était
+// quitter la page de la ville et la RECONSTRUIRE entière — quartier, sols, fusion, rendu :
+// quinze à vingt secondes à chaque porte franchie (Eugène, 27 septembre : « les chargements
+// une fois le jeu déjà chargé »). La ville reste donc en mémoire : elle s'endort (plus de
+// rendu, plus de son, plus de pas de jeu), l'intérieur s'ouvre dans un cadre plein écran
+// au-dessus d'elle, et quand Camille en ressort, le cadre rend la main à la ville, qui relit
+// la sauvegarde que l'intérieur vient d'écrire (état, cœurs, position à la porte) et se
+// réveille. Monstres et objets de la ville n'ont pas bougé : ils étaient restés là.
+const CADRE_ID = 'tloc-interieur';
+// la page de la ville qui héberge ce cadre, ou null
+function villeHote() {
+  try { const w = window.parent; return w !== window && w.TLOC && w.TLOC.rentrerEnVille ? w : null; } catch (e) { return null; }
+}
+// quitter pour de bon (accueil, nouvelle partie, reprise après une mort) : c'est la page
+// principale qui part, jamais le seul cadre — sinon une ville s'ouvrirait dans le cadre
+export function naviguer(url) { try { (villeHote() || window).location.href = url; } catch (e) { location.href = url; } }
+function ouvrirInterieur(level) {
+  G.sommeil = true; releaseMouse(); SFX.veille(true);
+  const f = document.createElement('iframe');
+  f.id = CADRE_ID; f.src = PAGES[level]; f.setAttribute('allow', 'fullscreen; autoplay');
+  f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483000;background:#000';
+  f.addEventListener('load', () => { try { f.focus(); f.contentWindow.focus(); } catch (e) {} });
+  document.body.appendChild(f);
+}
+function rentrerEnVille() {
+  // appelé depuis le cadre : on attend d'être sorti de sa pile d'appels avant de le retirer
+  setTimeout(() => {
+    const f = document.getElementById(CADRE_ID); if (f) f.remove();
+    const d = readSave();
+    if (d) {
+      if (d.pos) player.pos.set(...d.pos);
+      player.yaw = d.yaw; G.camYaw = d.camYaw ?? d.yaw; player.hp = d.hp; player.maxHp = d.maxHp || player.maxHp;
+      state.time = d.time; state.kills = d.kills; Object.assign(state, d.flags);
+    }
+    player.vy = 0; player.kb.set(0, 0, 0); unstick();
+    for (const k in keys) keys[k] = false; pressed.clear();
+    sessionStorage.removeItem('tloc_auto');
+    const L = G.level, arrived = sessionStorage.getItem('tloc_arrive');
+    if (L.onLoad) L.onLoad(null);                   // ce que l'intérieur a changé (prince libéré, grille…), l'arrivée
+    sessionStorage.removeItem('tloc_arrive');
+    G.sommeil = false; SFX.veille(false); state.paused = false; G.fadeTarget = 0;
+    const e = arrived && L.entry ? L.entry() : null;
+    if (e) cutscene([{ cam: e.cam, at: e.at, cam2: e.cam2 || e.cam, at2: e.at2 || e.at, dur: e.dur || 4, title: e.title, sub: e.sub, text: e.text }], () => { const m = L.arriveMessage && L.arriveMessage(); if (m) showMessage(m, 4); });
+    try { window.focus(); } catch (er) {}
+  }, 0);
+}
 // changement de niveau : fondu, sauvegarde en visant l'autre page, puis navigation
 export function goToLevel(level, pos, yaw, label) {
   state.paused = true;
   fadeTo(1, () => {
     saveGame(true, { level, pos, yaw });
     sessionStorage.setItem('tloc_auto', 'resume'); sessionStorage.setItem('tloc_arrive', G.level.name);
+    // on ressort d'un intérieur ouvert au-dessus de la ville : on lui rend la main
+    const hote = villeHote();
+    if (hote && level === 'citadel') { hote.TLOC.rentrerEnVille(); return; }
+    // on quitte la ville pour un intérieur : il s'ouvre au-dessus d'elle, elle s'endort
+    if (G.level.name === 'citadel' && level !== 'citadel' && PAGES[level] && !G.sansSauvegarde) { ouvrirInterieur(level); return; }
     const ld = document.getElementById('loading');
     if (ld) { ld.classList.remove('hidden'); razCharge(); peindreCharge(label || 'Chargement…', 0); }
     setTimeout(() => { location.href = PAGES[level] || 'index.html'; }, 500);
@@ -2105,7 +2162,7 @@ export function pauseGame() {
   showMenu('PAUSE', 'La citadelle attend', '', [
     { label: 'Reprendre', fn: resumeGame },
     { label: 'Sauvegarder', fn: () => { saveGame(); resumeGame(); } },
-    { label: 'Sauvegarder et quitter', fn: () => { saveGame(true); sessionStorage.removeItem('tloc_auto'); location.href = 'index.html'; } },
+    { label: 'Sauvegarder et quitter', fn: () => { saveGame(true); sessionStorage.removeItem('tloc_auto'); naviguer('index.html'); } },
     { label: 'Nouvelle partie', fn: newGame },
   ]);
 }
@@ -2912,6 +2969,7 @@ function loop(now) {
   const debutJS = performance.now();
   renderer.info.reset();
   requestAnimationFrame(loop);
+  if (G.sommeil) { last = now; return; }             // un intérieur est ouvert par-dessus : la ville dort
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (sky && sky.material.uniforms && sky.material.uniforms.time) sky.material.uniforms.time.value = now * 0.001;
   const L = G.level;
@@ -3547,4 +3605,4 @@ export function startGame(resume) {
 window.TLOC = { G, keys, state, player, enemies, pickups, arrows, hitEnemy, saveGame, loadGame, getH, blocked, tryMove, world, showMessage, interactables, THREE, scene, camera, cut, cutscene, cutAdvance, setQuest, QUESTS,
   // poignées de mise au point : lancer une partie, peupler, inspecter le bestiaire
   menu, newGame, resumeGame, spawnEnemy, KINDS, MAKERS, animeCreature, setMaker, setAnimHook,
-  lieux, estDecouvert, decouvrir, helixSous };
+  lieux, estDecouvert, decouvrir, helixSous, rentrerEnVille };

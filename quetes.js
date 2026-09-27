@@ -5,13 +5,14 @@
 import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
-  showMenu, showMessage, spawnEnemy, spawnGaufre, state,
+  showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
 } from './engine.js?v=27';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,
 } from './carte.js';
 import { PARTAGE } from './etat.js';
+import { POTERNE_JEU } from './citadelle.js';
 import { geant } from './banque.js';
 import * as PNJ from './pnj.js';
 import * as BOURSE from './bourse.js';
@@ -109,6 +110,14 @@ export function bossReveal() {
 }
 
 export function onLoad(snap) {
+  // Au sortir des galeries, la cave vise l'ancienne poterne relevée (117,9 ; 139,5) : depuis
+  // que la poterne est ramenée dans la place (POTERNE_JEU, citadelle.js), ce point tombe
+  // dans le fossé, et Camille était repêchée ailleurs. Seule la ville connaît la poterne
+  // bâtie : c'est elle qui pose Camille devant sa grille, tournée vers la place.
+  if (sessionStorage.getItem('tloc_arrive') === 'cave' && POTERNE_JEU) {
+    const x = POTERNE_JEU.x - 3.6, z = POTERNE_JEU.z;
+    player.pos.set(x, getH(x, z), z); player.yaw = -Math.PI / 2; G.camYaw = player.yaw;
+  }
   // une sauvegarde prise pendant le prologue (une récolte, un lieu découvert) : l'histoire
   // n'a pas commencé, on la reprend au début plutôt que de lâcher Camille sans rien
   if (!state.introSeen) setTimeout(debut, 0);
@@ -384,7 +393,7 @@ function finPrologue() {
   if (em && a) { em.position.set(a[0], a[1], a[2]); em.rotation.y = a[3]; }
   PRO.etape = null; PARTAGE.repere = null; state.prologueFait = true;
   if (G.sansSauvegarde) showMenu('FIN DU PROLOGUE', 'Le gâteau de Lydéric', 'Eugène est enlevé. La suite de l’histoire se joue avec ton personnage.', [
-    { label: 'Retour à l’accueil', fn: () => { location.href = 'accueil.html'; } },
+    { label: 'Retour à l’accueil', fn: () => { naviguer('accueil.html'); } },
   ]);
 }
 // ---------- situation finale ----------
