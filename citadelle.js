@@ -317,15 +317,18 @@ export async function buildCitadel() {
   // pont de bois sur les fossés
   await etape('porte et pont');
   const bridgeLen = PONT_LONG;   // mesuré sur l'axe par carte.js, pas déduit de MOAT_OUT
-  const bridge = new THREE.Mesh(new THREE.BoxGeometry(8, 0.6, bridgeLen), pbrRepeat(T.bark, 2, 8, { color: 0xb08a5a }));
+  // tablier de planches et garde-corps de chêne photographiés (c'était l'écorce peinte du moteur,
+  // et des poteaux en aplat : le premier pas hors de la citadelle se faisait sur un décor de jouet)
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(8, 0.6, bridgeLen), phMat('wood_planks', 8, bridgeLen, { color: 0xd8b890 }));
+  const chenePont = phMat('wood_cabinet_worn_long', 0.4, 1.4, { color: 0xa88060 });
   bridge.position.set(0, 0, APO + WALL_T / 2 + bridgeLen / 2 - 1); bridge.receiveShadow = true; bridge.castShadow = true; scene.add(bridge);
   for (const sx of [-1, 1]) {
-    for (let k = 0; k <= 6; k++) { const post = mesh(boxG(0.3, 1.3, 0.3), mat(0x5a3d22), sx * 3.8, 0.85, APO + 2.5 + k * (bridgeLen - 2) / 6); scene.add(post); }
-    const rail = mesh(boxG(0.18, 0.18, bridgeLen), mat(0x5a3d22), sx * 3.8, 1.4, bridge.position.z); scene.add(rail);
+    for (let k = 0; k <= 6; k++) { const post = mesh(boxG(0.3, 1.3, 0.3), chenePont, sx * 3.8, 0.85, APO + 2.5 + k * (bridgeLen - 2) / 6); scene.add(post); }
+    const rail = mesh(boxG(0.18, 0.18, bridgeLen), phMat('wood_cabinet_worn_long', 0.2, bridgeLen, { color: 0xa88060 }), sx * 3.8, 1.4, bridge.position.z); scene.add(rail);
     addCap(sx * 3.8, APO + 2, sx * 3.8, PONT_Z1, 0.3);
   }
   // piliers du pont dans l'eau
-  for (let k = 1; k < 4; k++) for (const sx of [-1, 1]) { const p = mesh(new THREE.CylinderGeometry(0.4, 0.5, 3, 8), mat(0x4a3520), sx * 3, -1.2, APO + 6 + k * 6); scene.add(p); }
+  for (let k = 1; k < 4; k++) for (const sx of [-1, 1]) { const p = mesh(new THREE.CylinderGeometry(0.4, 0.5, 3, 8), phMat('wood_cabinet_worn_long', 2.8, 3, { color: 0x806048 }), sx * 3, -1.2, APO + 6 + k * 6); scene.add(p); }
   choisirRampes();                    // où monter sur chaque bastion : avant de bâtir
   await etape('casernes');            buildCasernes();      // les 38 emprises relevées
   await etape("place d'Armes");       buildPlaceDArmes();   // pavage, puits, corps de garde

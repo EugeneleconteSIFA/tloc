@@ -28,7 +28,7 @@ import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
   bastionAt, essenceAt, libreNature, margeBatie, margePlate, nearHouse, nearTown, sdEau, sdPent, sdPoly,
-  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN,
+  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN, voieCombattants,
 } from './carte.js';
 
 export const perf = { leaves: [], grass: null, flowers: [], reeds: null, roots: null, lights: [] };
@@ -615,7 +615,8 @@ export function tickNature(dt) {
 // bord d'une voie relevée : c'est là qu'on passe.
 function surLeChemin(x, z) {
   for (const [dx, dz] of [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]]) if (surPont(x + dx, z + dz) !== null) return true;
-  for (const [lst, demi] of [[LILLE.routes, (o) => LARGEUR_ROUTE[Math.min(3, o.r)] / 2], [LILLE.chemins, () => LARGEUR_CHEMIN / 2]])
+  // (la voie des combattants n'est pas un relevé : elle compte aussi)
+  for (const [lst, demi] of [[LILLE.routes, (o) => LARGEUR_ROUTE[Math.min(3, o.r)] / 2], [LILLE.chemins, () => LARGEUR_CHEMIN / 2], [[{ pts: voieCombattants() }], () => 2.1]])
     for (const o of lst) for (let i = 0; i < o.pts.length - 1; i++) {
       const a = o.pts[i], b = o.pts[i + 1];
       if (Math.min(a[0], b[0]) > x + 20 || Math.max(a[0], b[0]) < x - 20 || Math.min(a[1], b[1]) > z + 20 || Math.max(a[1], b[1]) < z - 20) continue;

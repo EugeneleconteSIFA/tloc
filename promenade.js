@@ -14,8 +14,32 @@ import {
   THREE, T, TAU, addCap, mat, mesh, pbrRepeat, phMat, rand,
 } from './engine.js?v=27';
 import {
-  PONTS, cobbles, rubanGeo, sdEau, sdPent, solPlaine, surDehors, surPont, voieCombattants,
+  LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, PONTS, cobbles, roadPts, rubanGeo, sdEau, sdPent, solPlaine, surDehors, surPont, voieCombattants,
 } from './carte.js';
+import { distSeg } from './engine.js?v=27';
+
+// Toutes les voies qu'on emprunte à pied — relevées, la route du pont royal, la voie des
+// combattants elle-même —, rangées par cases de 20 m, et la distance au BORD de la plus
+// proche. Un tronc, un banc ne se posent jamais à moins de `marge` d'un bord : les arbres
+// d'alignement tombaient sur les allées qui croisent la voie, et même au milieu d'elle
+// dans ses virages serrés (un arbre du côté intérieur du virage retombe sur la bande).
+let VOIES_G = null;
+function bordVoie(x, z) {
+  if (!VOIES_G) {
+    VOIES_G = new Map();
+    const range = (a, b, demi) => {
+      for (let gx = Math.floor((Math.min(a[0], b[0]) - 12) / 20); gx <= Math.floor((Math.max(a[0], b[0]) + 12) / 20); gx++)
+        for (let gz = Math.floor((Math.min(a[1], b[1]) - 12) / 20); gz <= Math.floor((Math.max(a[1], b[1]) + 12) / 20); gz++) {
+          const k = gx * 100003 + gz; let l = VOIES_G.get(k); if (!l) VOIES_G.set(k, l = []); l.push([a[0], a[1], b[0], b[1], demi]); } };
+    for (const o of LILLE.routes) for (let i = 0; i < o.pts.length - 1; i++) range(o.pts[i], o.pts[i + 1], LARGEUR_ROUTE[Math.min(3, o.r)] / 2);
+    for (const o of LILLE.chemins) for (let i = 0; i < o.pts.length - 1; i++) range(o.pts[i], o.pts[i + 1], LARGEUR_CHEMIN / 2);
+    const R = roadPts(); for (let i = 0; i < R.length - 1; i++) range(R[i], R[i + 1], 3);
+    const V = voieCombattants(); for (let i = 0; i < V.length - 1; i++) range(V[i], V[i + 1], 2.1);
+  }
+  let d = 99;
+  for (const [ax, az, bx, bz, demi] of VOIES_G.get(Math.floor(x / 20) * 100003 + Math.floor(z / 20)) || []) d = Math.min(d, distSeg(x, z, ax, az, bx, bz) - demi);
+  return d;
+}
 
 // ---------------------------------------------------------------------
 //  La voie
@@ -45,8 +69,9 @@ export function voieDesCombattants() {
       }),
     })), 0.34, 0.176);
     if (orn) {
-      const m = new THREE.Mesh(orn, phMat('brown_mud_03', 1, 1, {
-        color: 0x6b5a44, roughness: 1, polygonOffset: true, polygonOffsetFactor: -5,
+      // tassées, un peu plus sombres que la bande — pas deux traits noirs de goudron
+      const m = new THREE.Mesh(orn, phMat('terre_battue', 1, 1, {
+        color: 0x6e5c46, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -5,
       }));
       m.renderOrder = 3; g.add(m);
     }
@@ -68,8 +93,8 @@ export function voieDesCombattants() {
     Sv = new THREE.Vector3(), Eu = new THREE.Euler();
   const troncs = [];
   // banc : deux planches sur quatre piètements de fonte, tourné vers le fossé
-  const bois = pbrRepeat(T.plank, 1, 1, { color: 0x8a6a46 });
-  const fonte = mat(0x4a3826, { roughness: 0.9 });   // piètement de chêne, pas de fonte
+  const bois = phMat('wood_cabinet_worn_long', 1.8, 0.42, { color: 0xc09070 });
+  const fonte = phMat('wood_cabinet_worn_long', 0.4, 0.46, { color: 0x806048, roughness: 0.9 });   // piètement de chêne, pas de fonte
   const bancs = [];
   let s = 0, prochainArbre = 0, prochainBanc = 40;
   for (let i = 0; i < V.length - 1; i++) {
@@ -89,7 +114,7 @@ export function voieDesCombattants() {
           const d = cote === dehors ? rand(5.2, 7.5) : rand(5.2, 6.4);
           const x = cx + nx * cote * d, z = cz + nz * cote * d;
           if (sdEau(x, z) < 5 || surDehors(x, z, 2) || surPont(x, z) !== null) continue;
-          if (sdPent(x, z) < 6) continue;
+          if (sdPent(x, z) < 6 || bordVoie(x, z) < 1.8) continue;
           const h = rand(esp.sp.h[0], esp.sp.h[1]);
           Pv.set(x, solPlaine(x, z) - 0.15, z);
           Q.setFromEuler(Eu.set(rand(-0.05, 0.05), rand(0, TAU), rand(-0.05, 0.05), 'YXZ'));
@@ -101,7 +126,7 @@ export function voieDesCombattants() {
       if (s >= prochainBanc) {
         prochainBanc = s + rand(75, 130);
         const d = 3.4, x = cx - nx * dehors * d, z = cz - nz * dehors * d;
-        if (sdEau(x, z) < 4 || surPont(x, z) !== null || surDehors(x, z, 1)) continue;
+        if (sdEau(x, z) < 4 || surPont(x, z) !== null || surDehors(x, z, 1) || bordVoie(x, z) < 0.6) continue;
         bancs.push([x, z, Math.atan2(-nx * dehors, -nz * dehors)]);
       }
     }
@@ -160,8 +185,8 @@ export function entreeDuParc() {
   const pierre = phMat('old_stone_wall_02', 1, 1, { color: 0xbdb4a2, roughness: 0.9 });
   // Une grille de fonte au barreaudage régulier, c'est du mobilier urbain de 1880. Ici
   // c'est une claire-voie de chêne entre deux piles de pierre, avec ses ferrures.
-  const fer = pbrRepeat(T.plank, 1, 1, { color: 0x6b4a2e, roughness: 0.95 });
-  const ferrure = mat(0x2f2a26, { roughness: 0.6, metalness: 0.35 });
+  const fer = phMat('wood_cabinet_worn_long', 0.2, 1.9, { color: 0xa87850, roughness: 0.95 });
+  const ferrure = phMat('metal_plate_02', 0.3, 0.3, { color: 0x8a8490, roughness: 0.6 });
   // y s'AJOUTE à la hauteur propre de la pièce : en l'écrasant, la pile de 2,50 m (centre à
   // 1,25) se retrouvait centrée sur le sol, à moitié enterrée, et son chapeau et sa lanterne
   // flottaient 1,25 m au-dessus d'elle ; les barreaux de la claire-voie de même.
@@ -169,7 +194,9 @@ export function entreeDuParc() {
 
   // tablier pavé qui s'évase devant la grille
   { const pav = new THREE.Mesh(new THREE.PlaneGeometry(HW * 2 + 9, 22),
-      pbrRepeat(cobbles(), 1 / 0.96, 1 / 0.96, { roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -3 }));
+      // la répétition se compte sur la taille du plan (UV 0..1) : « 1 / 0,96 » étalait UN
+      // motif de pavés sur vingt mètres — des pavés ronds d'un mètre et demi
+      pbrRepeat(cobbles(), (HW * 2 + 9) / 0.96, 22 / 0.96, { roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -3 }));
     pav.rotation.x = -Math.PI / 2; pav.rotation.z = -Math.atan2(uz, ux);
     pav.position.set(cx, y0 + 0.16, cz); pav.receiveShadow = true; pav.renderOrder = 2; g.add(pav); }
 

@@ -18,8 +18,8 @@ import {
   THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat, phPeint,
 } from './engine.js?v=27';
 import {
-  ENCEINTE, ENCEINTE_H, GLACIS, IGN, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
-  solPlaine, surVoie, townLocal,
+  ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
+  solPlaine, surVoie, townLocal, voieCombattants,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -517,27 +517,33 @@ function barrePont(p) {
   }
   return false;
 }
-// Les axes des cours et des sentiers relevés (voies de classe 0 et 1, chemins), un point par
-// mètre, rangés par cases de 20 m : de quoi savoir vite si une emprise en est traversée.
+// Les axes de TOUTES les voies relevées et des sentiers, un point par mètre, rangés par cases
+// de 20 m, chacun avec le dégagement qu'il réclame (la demi-chaussée dessinée ; 1,2 m pour une
+// cour ou un sentier). Les cours d'abord ; puis, à la revue des liaisons (27 septembre), les
+// rues aussi : des façades du relevé débordaient jusqu'à l'axe de la rue de l'Arc ou de la rue
+// Saint-Jean, et barraient une chaussée qu'on voyait libre.
 let COURS = null;
 function traverseCour(p) {
   if (!COURS) {
     COURS = new Map();
-    const ranger = (m, x, z, v) => { const g = Math.floor(x / 20) * 100003 + Math.floor(z / 20); let l = m.get(g); if (!l) m.set(g, l = []); l.push(x, z, v); };
-    const cours = LILLE.routes.filter((r) => r.r <= 1).concat(LILLE.chemins);
+    const ranger = (m, x, z, v, dg = 0) => { const g = Math.floor(x / 20) * 100003 + Math.floor(z / 20); let l = m.get(g); if (!l) m.set(g, l = []); l.push(x, z, v, dg); };
+    // la voie des combattants aussi : elle traversait deux maisons au pied du glacis
+    const cours = LILLE.routes.concat(LILLE.chemins, [{ pts: voieCombattants(), r: 3, voieC: true }]);
+    const degage = (o) => (o.voieC ? 2.4 : o.r >= 2 && LILLE.routes.includes(o) ? LARGEUR_ROUTE[Math.min(3, o.r)] / 2 - 0.2 : COUR_DEMI);
     // toutes les voies, pour savoir où une cour inachevée retrouve la rue
     const VOIE = new Map(), toutes = LILLE.routes.concat(LILLE.chemins);
     toutes.forEach((o, v) => { for (let i = 0; i < o.pts.length - 1; i++) {
       const a = o.pts[i], b = o.pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
       for (let k = 0; k <= n; k++) ranger(VOIE, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, v); } });
     const pres = (x, z, sauf) => { const l = VOIE.get(Math.floor(x / 20) * 100003 + Math.floor(z / 20)); if (!l) return false;
-      for (let i = 0; i < l.length; i += 3) if (l[i + 2] !== sauf && Math.abs(l[i] - x) < 1.5 && Math.abs(l[i + 1] - z) < 1.5) return true; return false; };
+      for (let i = 0; i < l.length; i += 4) if (l[i + 2] !== sauf && Math.abs(l[i] - x) < 1.5 && Math.abs(l[i + 1] - z) < 1.5) return true; return false; };
     for (const o of cours) {
-      const v = toutes.indexOf(o);
+      const v = toutes.indexOf(o), dg = degage(o);
       for (let i = 0; i < o.pts.length - 1; i++) {
         const a = o.pts[i], b = o.pts[i + 1], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]));
-        for (let k = 0; k <= n; k++) ranger(COURS, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, v);
+        for (let k = 0; k <= n; k++) ranger(COURS, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, v, dg);
       }
+      if (o.voieC || (o.r >= 2 && LILLE.routes.includes(o))) continue;     // une rue ne se prolonge pas
       // Une cour que le relevé arrête à quelques mètres d'une rue, une maison entre les deux :
       // c'est le porche qui manque au tracé. On prolonge le bout dans l'axe, douze mètres au
       // plus, et seulement s'il retrouve une autre voie.
@@ -545,7 +551,7 @@ function traverseCour(p) {
         const L = Math.hypot(q[0] - r[0], q[1] - r[1]) || 1, ux = (q[0] - r[0]) / L, uz = (q[1] - r[1]) / L;
         if (pres(q[0], q[1], v)) continue;                                  // il débouche déjà
         let d = 1; while (d <= 12 && !pres(q[0] + ux * d, q[1] + uz * d, v)) d++;
-        if (d <= 12) for (let k = 1; k <= d; k++) ranger(COURS, q[0] + ux * k, q[1] + uz * k, v);
+        if (d <= 12) for (let k = 1; k <= d; k++) ranger(COURS, q[0] + ux * k, q[1] + uz * k, v, dg);
       }
     }
   }
@@ -553,8 +559,18 @@ function traverseCour(p) {
   for (const q of p) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1]; }
   for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gz = Math.floor(z0 / 20); gz <= Math.floor(z1 / 20); gz++) {
     const l = COURS.get(gx * 100003 + gz); if (!l) continue;
-    for (let i = 0; i < l.length; i += 3) if (dansPoly(l[i], l[i + 1], p)) return true;
+    for (let i = 0; i < l.length; i += 4) {
+      const x = l[i], z = l[i + 1];
+      if (x < x0 || x > x1 || z < z0 || z > z1) continue;       // hors de la boîte : pas la peine de tester le polygone
+      if (dansPoly(x, z, p)) return true;
+    }
   }
+  return false;
+}
+// vrai à moins de deux mètres de l'axe d'une cour, d'un passage ou d'un sentier
+function dansCour(x, z) {
+  const l = COURS && COURS.get(Math.floor(x / 20) * 100003 + Math.floor(z / 20)); if (!l) return false;
+  for (let i = 0; i < l.length; i += 4) if (l[i + 3] <= COUR_DEMI && Math.hypot(l[i] - x, l[i + 1] - z) < 2) return true;
   return false;
 }
 // Un lot rectangulaire recule chaque mur qui passe à moins de COUR_DEMI de l'axe d'une cour.
@@ -568,9 +584,9 @@ function degagerCour(PA) {
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const v of q) { x0 = Math.min(x0, v[0]); x1 = Math.max(x1, v[0]); z0 = Math.min(z0, v[1]); z1 = Math.max(z1, v[1]); }
   const pts = [];
-  for (let gx = Math.floor((x0 - 2) / 20); gx <= Math.floor((x1 + 2) / 20); gx++) for (let gz = Math.floor((z0 - 2) / 20); gz <= Math.floor((z1 + 2) / 20); gz++) {
+  for (let gx = Math.floor((x0 - 4) / 20); gx <= Math.floor((x1 + 4) / 20); gx++) for (let gz = Math.floor((z0 - 4) / 20); gz <= Math.floor((z1 + 4) / 20); gz++) {
     const l = COURS.get(gx * 100003 + gz); if (!l) continue;
-    for (let i = 0; i < l.length; i += 3) if (l[i] > x0 - 2 && l[i] < x1 + 2 && l[i + 1] > z0 - 2 && l[i + 1] < z1 + 2) pts.push(l[i], l[i + 1]);
+    for (let i = 0; i < l.length; i += 4) if (l[i] > x0 - 4 && l[i] < x1 + 4 && l[i + 1] > z0 - 4 && l[i + 1] < z1 + 4) pts.push(l[i], l[i + 1], l[i + 3]);
   }
   if (!pts.length) return false;
   const sens = aireSignee(q) < 0 ? -1 : 1;
@@ -579,9 +595,9 @@ function degagerCour(PA) {
     const a = q[i], c = q[(i + 1) % 4], L = Math.hypot(c[0] - a[0], c[1] - a[1]); if (L < 0.05) continue;
     const tx = (c[0] - a[0]) / L, tz = (c[1] - a[1]) / L, nx = tz * sens, nz = -tx * sens;   // normale sortante
     let besoin = 0;
-    for (let k = 0; k < pts.length; k += 2) {
-      const ex = pts[k] - a[0], ez = pts[k + 1] - a[1], le = ex * tx + ez * tz, d = ex * nx + ez * nz;
-      if (le > -0.3 && le < L + 0.3 && d > -0.01 && d < COUR_DEMI) besoin = Math.max(besoin, COUR_DEMI - d);
+    for (let k = 0; k < pts.length; k += 3) {
+      const ex = pts[k] - a[0], ez = pts[k + 1] - a[1], le = ex * tx + ez * tz, d = ex * nx + ez * nz, dg = pts[k + 2];
+      if (le > -0.3 && le < L + 0.3 && d > -0.01 && d < dg) besoin = Math.max(besoin, dg - d);
     }
     if (besoin <= 0.02) continue;
     const b2 = q[(i + 2) % 4], prof = Math.hypot(b2[0] - c[0], b2[1] - c[1]);
@@ -910,7 +926,8 @@ export function batirQuartier() {
             quad(sD, [ox - tx * w / 2, y0, oz - tz * w / 2], [ox + tx * w / 2, y0, oz + tz * w / 2],
               [ox + tx * w / 2, y0 + hh, oz + tz * w / 2], [ox - tx * w / 2, y0 + hh, oz - tz * w / 2],
               [u0, 0], [u1, 0], [u1, 1], [u0, 1], BLANC, [nx, 0, nz]);
-            if (hache(gr + ci * 3) < 0.55) {                   // de la marchandise devant
+            // de la marchandise devant — sauf dans une cour ou un passage : un tonneau y bouche tout
+            if (hache(gr + ci * 3) < 0.55 && !dansCour(a[0] + tx * (sc + 0.4) + nx * 0.8, a[1] + tz * (sc + 0.4) + nz * 0.8)) {
               const px = a[0] + tx * (sc + 0.4) + nx * 0.8, pz = a[1] + tz * (sc + 0.4) + nz * 0.8;
               (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz), z: pz, yaw: hache(gr + ci) * 6.28 });
             }

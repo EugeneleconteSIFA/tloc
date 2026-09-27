@@ -9,7 +9,7 @@ import {
   pbrRepeat, phMat, rand, rboxG, scene, sphG, state, stoneMat, tex, wallBox, world,
 } from './engine.js?v=27';
 import {
-  CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
+  CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, VOIE_C, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
   nearTown, patinerMat, roadPts, sdPent, solPlaine, HOUSE_SMOKE_TOP,
 } from './carte.js';
 import { makeDoor, makeVolet } from './menuiserie.js';
@@ -306,6 +306,27 @@ function releverObstacles(x0, x1, z0, z1) {
   OBST = { g, CEL, cle };
 }
 // distance libre autour de (x, z) : marge jusqu'au premier obstacle déjà posé
+// Distance au BORD de la voie relevée (ou de la voie des combattants) la plus proche. Elle
+// écarte des chemins les BÂTISSES (libreBati) et les MURETS : une maison du hameau et deux
+// enclos de brique barraient une allée et la voie des combattants (revue des liaisons, 27
+// septembre). Pas le reste : versée dans degagement(), elle ne laissait plus de place au
+// lavoir ni à la pâture, qui se posent au bord d'un chemin sans le barrer.
+let VOIES_C = null;
+function bordVoieC(x, z) {
+  if (!VOIES_C) {
+    VOIES_C = new Map();
+    const range = (a, b, demi) => {
+      for (let gx = Math.floor((Math.min(a[0], b[0]) - 16) / 20); gx <= Math.floor((Math.max(a[0], b[0]) + 16) / 20); gx++)
+        for (let gz = Math.floor((Math.min(a[1], b[1]) - 16) / 20); gz <= Math.floor((Math.max(a[1], b[1]) + 16) / 20); gz++) {
+          const k = gx * 100003 + gz; let l = VOIES_C.get(k); if (!l) VOIES_C.set(k, l = []); l.push([a[0], a[1], b[0], b[1], demi]); } };
+    for (const o of LILLE.routes) for (let i = 0; i < o.pts.length - 1; i++) range(o.pts[i], o.pts[i + 1], LARGEUR_ROUTE[Math.min(3, o.r)] / 2);
+    for (const o of LILLE.chemins) for (let i = 0; i < o.pts.length - 1; i++) range(o.pts[i], o.pts[i + 1], LARGEUR_CHEMIN / 2);
+    const V = VOIE_C || []; for (let i = 0; i < V.length - 1; i++) range(V[i], V[i + 1], 2.1);
+  }
+  let d = 99;
+  for (const [ax, az, bx, bz, demi] of VOIES_C.get(Math.floor(x / 20) * 100003 + Math.floor(z / 20)) || []) d = Math.min(d, distSeg(x, z, ax, az, bx, bz) - demi);
+  return d;
+}
 function degagement(x, z, rMax = 14) {
   if (!OBST) return rMax;
   const { g, CEL, cle } = OBST, p = Math.ceil(rMax / CEL);
@@ -641,6 +662,7 @@ function muret(pts, h = 0.95, opts = {}) {
       const d0 = marge + j * MURET_PAS, cx = ax + ux * (d0 + MURET_PAS / 2), cz = az + uz * (d0 + MURET_PAS / 2);
       if (degagement(cx, cz, 2.4) < 0.9) continue;
       if (opts.trou && opts.trou(cx, cz)) continue;
+      if (bordVoieC(cx, cz) < 0.8) continue;                 // un chemin passe : le muret s'ouvre
       const y = solPlaine(cx, cz);
       gres.push(boxG(0.52, 0.22, MURET_PAS + 0.03).rotateY(ry).translate(cx, y + 0.11, cz));
       briques.push(boxG(0.42, h, MURET_PAS + 0.01).rotateY(ry).translate(cx, y + 0.22 + h / 2, cz));
@@ -662,21 +684,22 @@ function muret(pts, h = 0.95, opts = {}) {
 function ryFace(p, cote) { return p.ry - cote * Math.PI / 2; }
 
 // dégagement minimal sous une emprise rectangulaire (w le long de la façade, d en profondeur)
-function libreBati(p, ry, w, d) {
+function libreBati(p, ry, w, d, voies = true) {
   const cs = Math.cos(ry), sn = Math.sin(ry);
   let min = 99;
   for (let i = 0; i <= 4; i++) for (let j = 0; j <= 3; j++) {
     const lx = -w / 2 + w * i / 4, lz = -d / 2 + d * j / 3;
-    min = Math.min(min, degagement(p.x + lx * cs + lz * sn, p.z - lx * sn + lz * cs, 7));
+    const x = p.x + lx * cs + lz * sn, z = p.z - lx * sn + lz * cs;
+    min = Math.min(min, degagement(x, z, 7), voies ? bordVoieC(x, z) - 0.8 : 99);
   }
   return min;
 }
 // meilleure emprise libre le long de la route, entre s0 et s1, aux décalages proposés
-function placeBati(s0, s1, offs, w, d, marge = 0.7) {
+function placeBati(s0, s1, offs, w, d, marge = 0.7, voies = true) {
   let best = null;
   for (let s = s0; s <= s1; s += 1.5) for (const off of offs) {
     const cote = Math.sign(off) || 1, p = rte(s, off), ry = ryFace(p, cote);
-    const q = libreBati(p, ry, w, d) - marge;
+    const q = libreBati(p, ry, w, d, voies) - marge;
     if (q <= 0) continue;
     const note = q - Math.abs(off) * 0.08;
     if (!best || note > best.note) best = { ...p, s, off, cote, ry, marge: q, note };
@@ -1146,8 +1169,10 @@ export function buildRoute() {
     trou(cote, s - 7.5, s + 7.5); }
 
   // --- la mare, le lavoir et le bac
-  { let pl = placeBati(at(0.22), at(0.36), [-13, -11.5, -10, 10, 11.5, 13], 13, 15, 0.4), mare = true;
-    if (!pl) { pl = placeBati(at(0.20), at(0.38), [-8.6, -7.6, 7.6, 8.6], 8, 8.5, 0.3); mare = false; }
+  // lavoir et pâture sans l'exigence des voies (libreBati) : il n'y a pas d'autre place le
+  // long de la route ; le chemin longe le lavoir, et les murets de la pâture s'ouvrent à son passage
+  { let pl = placeBati(at(0.22), at(0.36), [-13, -11.5, -10, 10, 11.5, 13], 13, 15, 0.4, false), mare = true;
+    if (!pl) { pl = placeBati(at(0.20), at(0.38), [-8.6, -7.6, 7.6, 8.6], 8, 8.5, 0.3, false); mare = false; }
     if (pl) { lavoirEtMare(pl, mare); const w = mare ? 11 : 7.5; trou(pl.cote, pl.s - w, pl.s + w);
       // zoneName() est dans carte.js et ne peut pas deviner où la poche libre s'est trouvée :
       // on lui laisse l'emplacement réel (le rayon couvre la mare, le bassin et la descente)
@@ -1155,7 +1180,7 @@ export function buildRoute() {
     else console.warn('campagne : pas de place pour le lavoir entre les arbres'); }
 
   // --- la pâture close
-  { const pl = placeBati(at(0.40), at(0.56), [-13.5, -12, 12, 13.5], 17, 14, 0.4);
+  { const pl = placeBati(at(0.40), at(0.56), [-13.5, -12, 12, 13.5], 17, 14, 0.4, false);
     if (pl) { pature(pl, 8.0, 6.5); trou(pl.cote, pl.s - 10.5, pl.s + 10.5); }
     else console.warn('campagne : pas de place pour la pâture entre les arbres'); }
 
@@ -1203,6 +1228,8 @@ export function buildRoute() {
         if (Math.max(a[0], b[0]) < bx0 - m || Math.min(a[0], b[0]) > bx1 + m || Math.max(a[1], b[1]) < bz0 - m || Math.min(a[1], b[1]) > bz1 + m) continue;
         voies.push([a[0], a[1], b[0], b[1], demi(o) + 0.8]);
       }
+    // la voie des combattants n'est pas un relevé : elle croise la route au sortir du pont
+    { const V = VOIE_C || []; for (let i = 0; i < V.length - 1; i++) voies.push([V[i][0], V[i][1], V[i + 1][0], V[i + 1][1], 2.1 + 0.8]); }
     const surUneVoie = (x, z) => voies.some(([ax, az, cx, cz, d]) => distSeg(x, z, ax, az, cx, cz) < d);
     for (const c of [-1, 1]) {
       let debut = null;

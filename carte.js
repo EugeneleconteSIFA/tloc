@@ -1382,6 +1382,10 @@ export function rubanGeo(lignes, largeur, y, pasMax = 5) {
         const t = k / pas, cx = a[0] + dx * t, cz = a[1] + dz * t, ds = L / pas * (k === 0 ? 0 : 1);
         s += ds;
         if (sdEnceinte(cx, cz) > 6) { base = -1; precValide = false; continue; }
+        // La place et ses fossés appartiennent à citadelle.js : les voies relevées qui y
+        // entrent sont les allées du parc d'aujourd'hui, et leurs rubans traversaient
+        // remparts, casernes et bastions (revue des liaisons, 27 septembre).
+        if (sdPent(cx, cz) < MOAT_OUT) { base = -1; precValide = false; continue; }
         // ...et on coupe aussi le ruban là où il passerait SUR l'eau sans tablier : une
         // chaussée s'arrête à la berge, le pont prend le relais.
         // Le tablier se prend DANS L'AXE : le chemin de halage qui passe sous le Pont du
@@ -2234,7 +2238,7 @@ function bandesGeo(lignes, distances, y, pasMax = 4) {
         for (let k = (i === 0 ? 0 : 1); k <= pas; k++) {
           const t = k / pas, cx = a[0] + dx * t, cz = a[1] + dz * t; s += L / pas * (k === 0 ? 0 : 1);
           const mx = cx + nx * (d0 + d1) / 2, mz = cz + nz * (d0 + d1) / 2;
-          if (sdEnceinte(mx, mz) > 6 || sdEau(mx, mz) < 1 || surPont(mx, mz) !== null || onBridge(mx, mz) || distBati(mx, mz) > 16) { base = -1; continue; }
+          if (sdEnceinte(mx, mz) > 6 || sdPent(mx, mz) < MOAT_OUT || sdEau(mx, mz) < 1 || surPont(mx, mz) !== null || onBridge(mx, mz) || distBati(mx, mz) > 16) { base = -1; continue; }
           const n0 = pos.length / 3;
           pos.push(cx + nx * d0, solPlaine(cx + nx * d0, cz + nz * d0) + y, cz + nz * d0, cx + nx * d1, solPlaine(cx + nx * d1, cz + nz * d1) + y, cz + nz * d1);
           uv.push(d0 * cote, s, d1 * cote, s);

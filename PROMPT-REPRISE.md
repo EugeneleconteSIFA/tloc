@@ -696,6 +696,40 @@ design des routes : des trottoirs, des rues homogènes ».
 Mesures : chargement 12,6 à 13,1 s (somme des étapes, trois passages) ; arpenteur 1 603 m² ;
 murs 0,75 m² sur la rue, 97,3 % de rue atteinte.
 
+### M. Revue des liaisons citadelle – forêt – parc – bourg (27 septembre) — **faite**
+
+Demande d'Eugène : que les routes entre la citadelle, la forêt, le parc et le bourg soient
+bien.
+- **Praticabilité mesurée** (plus court chemin à pied aux règles de Camille, depuis la sortie
+  de la Porte Royale) : bourg, pont de la Citadelle, voie des combattants (quatre points),
+  maison de Camille, moulin, mage — tout est joignable ; détours 1,0 à 1,7 (fossé, Deûle).
+- **Obstacles sur l'axe des chemins** (revue : capsules à moins de 0,3 m de l'axe des voies
+  relevées, de la voie des combattants et de la route du pont, avec leur ligne d'origine) :
+  - arbres d'alignement de la voie des combattants sur les allées qui la croisent, sur la
+    route du pont et dans ses propres virages (`bordVoie`, promenade.js : 480 → 374 arbres) ;
+    bancs idem ; ornières moins noires ; bancs et claire-voie de l'entrée du parc en bois
+    photographié ; **pavés de l'entrée du parc** à la bonne échelle (un seul motif étalé sur
+    20 m : des pavés ronds d'un mètre et demi) ;
+  - haies de la route du pont : un trou aussi au croisement de la voie des combattants ;
+  - murets et bâtisses (hameau) écartés des chemins (`bordVoieC` dans `libreBati` et la pose
+    des murets, campagne.js) ; le lavoir et la pâture en sont exemptés (`placeBati(…, false)`)
+    — sans quoi ils ne trouvent plus de place ; les murets de la pâture s'ouvrent au passage ;
+  - saules : ni sur un tablier ni près d'une voie, voie des combattants comprise (nature.js) ;
+  - quartier : le dégagement des cours s'étend à TOUTES les rues (demi-chaussée dessinée) et
+    à la voie des combattants — elle traversait deux maisons ; tonneaux et caisses ne se
+    posent plus dans les cours (`dansCour`) ;
+  - citadelle : les voies relevées (le parc d'aujourd'hui) ne se dessinent plus dans l'emprise
+    de la place et des fossés (`rubanGeo`, `bandesGeo`) ; le pont de la Porte Royale en
+    planches et chêne photographiés.
+- **Restent** (vérifiés, sans gêne) : la polyligne brute de `roadPts()` passe près des haies,
+  mais la route DESSINÉE est une courbe lissée (`rte`) qui les longe ; des façades de contour
+  irrégulier (non rectangulaires : on ne sait pas les reculer) au bord de deux petites voies
+  (cour Notre-Dame ; 294, 671) ; le bout du monde rue de l'Arc (`foret.js:530`).
+- Chargement : A/B entrelacé de l'étape « quartier », ancien contre nouveau : minimum 2 630
+  contre 2 385 ms (le filtre par boîte avant le test de polygone). Somme des étapes 12,5 à
+  18,6 s sur quatre passages, la machine chargée (la préparation du rendu, inchangée, variait
+  de 3,3 à 6,5 s). Murs 0,25 m² sur la rue, 97,4 % de rue atteinte ; arpenteur 1 596 m².
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et
