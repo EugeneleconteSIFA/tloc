@@ -1,6 +1,6 @@
 {
  "m2": 1375000,
- "suspects": 1596,
+ "suspects": 1592,
  "zones": [
   {
    "type": "ENFONCÉ",
@@ -58,7 +58,7 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 47,
+   "m2": 48,
    "ecartMax": 1.51,
    "x": -190.5,
    "z": 565.5,
@@ -202,21 +202,21 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 20,
-   "ecartMax": 0.54,
-   "x": 452.5,
-   "z": -27.5,
-   "y": -0.79,
-   "lieu": "La voie des combattants"
-  },
-  {
-   "type": "ENFONCÉ",
    "m2": 19,
    "ecartMax": 0.44,
    "x": 60.5,
    "z": -289.5,
    "y": -0.64,
    "lieu": "Fossés"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 18,
+   "ecartMax": 0.46,
+   "x": 434.5,
+   "z": -30.5,
+   "y": -0.76,
+   "lieu": "Bois de la Deûle"
   },
   {
    "type": "ENFONCÉ",
@@ -266,11 +266,11 @@
   {
    "type": "ENFONCÉ",
    "m2": 16,
-   "ecartMax": 0.46,
-   "x": 435.5,
-   "z": -30.5,
-   "y": -0.94,
-   "lieu": "Bois de la Deûle"
+   "ecartMax": 0.54,
+   "x": 452.5,
+   "z": -27.5,
+   "y": -0.79,
+   "lieu": "La voie des combattants"
   },
   {
    "type": "INVISIBLE",
@@ -418,15 +418,6 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 9,
-   "ecartMax": 1.58,
-   "x": 225.5,
-   "z": 684.5,
-   "y": -0.99,
-   "lieu": "La Chapelle"
-  },
-  {
-   "type": "ENFONCÉ",
    "m2": 8,
    "ecartMax": 1.56,
    "x": 82.5,
@@ -505,6 +496,15 @@
    "z": 656.5,
    "y": -1.15,
    "lieu": "La place du bourg"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 5,
+   "ecartMax": 1.26,
+   "x": 225.5,
+   "z": 684.5,
+   "y": -0.99,
+   "lieu": "La Chapelle"
   },
   {
    "type": "ENFONCÉ",

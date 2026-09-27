@@ -573,12 +573,17 @@ function dansCour(x, z) {
   for (let i = 0; i < l.length; i += 4) if (l[i + 3] <= COUR_DEMI && Math.hypot(l[i] - x, l[i + 1] - z) < 2) return true;
   return false;
 }
-// Un lot rectangulaire recule chaque mur qui passe à moins de COUR_DEMI de l'axe d'une cour.
-// Renvoie vrai s'il a reculé, faux sinon, null s'il y perdrait près de la moitié de sa
-// profondeur (on ne l'élève pas : la cour s'élargit d'autant).
+// Un lot recule chaque mur qui passe à moins du dégagement de l'axe d'une voie (COUR_DEMI
+// pour une cour ou un sentier, la demi-chaussée pour une rue). Renvoie vrai s'il a reculé,
+// faux sinon, null s'il y perdrait près de la moitié de sa largeur (on ne l'élève pas : la
+// cour s'élargit d'autant). Rectangles ET contours relevés irréguliers : ceux-ci restaient
+// en place et resserraient la cour Notre-Dame et une ruelle près du bourg. Chaque sommet
+// va à l'intersection des deux murs voisins déplacés (ajouter les deux décalages, c'était
+// pousser deux fois un sommet entre deux murs presque alignés).
 const COUR_DEMI = 1.2;
 function degagerCour(PA) {
-  if (PA.poly.length !== 4 || !COURS) return false;
+  const n = PA.poly.length;
+  if (n < 3 || !COURS) return false;
   // des copies : le contour d'un lot entier EST celui du relevé (IGN.bati), partagé
   const q = PA.poly.map((v) => v.slice()), r = { ...PA.r };
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -590,25 +595,42 @@ function degagerCour(PA) {
   }
   if (!pts.length) return false;
   const sens = aireSignee(q) < 0 ? -1 : 1;
+  // la place qu'on peut prendre : pour un rectangle, la profondeur ; sinon la plus petite
+  // largeur de la boîte orientée du lot
+  const largeur = n === 4 ? null : Math.min(r.L, r.W);
+  const bes = new Float64Array(n), N = [];
   let bouge = false;
-  for (let i = 0; i < 4; i++) {
-    const a = q[i], c = q[(i + 1) % 4], L = Math.hypot(c[0] - a[0], c[1] - a[1]); if (L < 0.05) continue;
+  for (let i = 0; i < n; i++) {
+    const a = q[i], c = q[(i + 1) % n], L = Math.hypot(c[0] - a[0], c[1] - a[1]);
+    if (L < 0.05) { N.push([0, 0]); continue; }
     const tx = (c[0] - a[0]) / L, tz = (c[1] - a[1]) / L, nx = tz * sens, nz = -tx * sens;   // normale sortante
+    N.push([nx, nz]);
     let besoin = 0;
     for (let k = 0; k < pts.length; k += 3) {
       const ex = pts[k] - a[0], ez = pts[k + 1] - a[1], le = ex * tx + ez * tz, d = ex * nx + ez * nz, dg = pts[k + 2];
       if (le > -0.3 && le < L + 0.3 && d > -0.01 && d < dg) besoin = Math.max(besoin, dg - d);
     }
     if (besoin <= 0.02) continue;
-    const b2 = q[(i + 2) % 4], prof = Math.hypot(b2[0] - c[0], b2[1] - c[1]);
-    if (besoin > prof * 0.45) return null;
-    a[0] -= nx * besoin; a[1] -= nz * besoin; c[0] -= nx * besoin; c[1] -= nz * besoin;
-    if (Math.abs(nx * r.ux + nz * r.uz) > 0.7) r.L -= besoin; else r.W -= besoin;
-    r.cx -= nx * besoin / 2; r.cz -= nz * besoin / 2; r.A = r.L * r.W; PA.aire = r.A;
-    bouge = true;
+    const place = largeur ?? Math.hypot(q[(i + 2) % n][0] - c[0], q[(i + 2) % n][1] - c[1]);
+    if (besoin > place * 0.45) return null;
+    bes[i] = besoin; bouge = true;
+    if (Math.abs(nx * r.ux + nz * r.uz) > 0.7) r.L -= besoin; else if (Math.abs(nx * r.ux + nz * r.uz) < 0.3) r.W -= besoin;
+    r.cx -= nx * besoin / 2; r.cz -= nz * besoin / 2;
   }
-  if (bouge) { PA.poly = q; PA.r = r; }
-  return bouge;
+  if (!bouge) return false;
+  const neuf = q.map((v, i) => {
+    const e1 = (i - 1 + n) % n, e2 = i, b1 = bes[e1], b2 = bes[e2];
+    if (!b1 && !b2) return v;
+    const [n1x, n1z] = N[e1], [n2x, n2z] = N[e2];
+    // intersection des droites  (P − v)·n1 = −b1  et  (P − v)·n2 = −b2
+    const det = n1x * n2z - n1z * n2x;
+    if (Math.abs(det) < 0.2) { const b = Math.max(b1, b2), mx = n1x + n2x, mz = n1z + n2z, m = Math.hypot(mx, mz) || 1; return [v[0] - mx / m * b, v[1] - mz / m * b]; }
+    const dx = (-b1 * n2z + b2 * n1z) / det, dz = (-b2 * n1x + b1 * n2x) / det;
+    return [v[0] + dx, v[1] + dz];
+  });
+  if (aireSignee(neuf) * sens < aireSignee(q) * sens * 0.4) return null;   // le contour s'est retourné ou effondré
+  r.A = r.L * r.W; PA.aire = r.A; PA.poly = neuf; PA.r = r;
+  return true;
 }
 const RMUR = 0.3;                // rayon des capsules de façade (cf. « collisions » dans batirQuartier)
 export function batirQuartier() {

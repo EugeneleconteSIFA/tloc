@@ -706,7 +706,7 @@ bien.
 - **Obstacles sur l'axe des chemins** (revue : capsules à moins de 0,3 m de l'axe des voies
   relevées, de la voie des combattants et de la route du pont, avec leur ligne d'origine) :
   - arbres d'alignement de la voie des combattants sur les allées qui la croisent, sur la
-    route du pont et dans ses propres virages (`bordVoie`, promenade.js : 480 → 374 arbres) ;
+    route du pont et dans ses propres virages (`bordVoie`, promenade.js : 480 → 365 arbres) ;
     bancs idem ; ornières moins noires ; bancs et claire-voie de l'entrée du parc en bois
     photographié ; **pavés de l'entrée du parc** à la bonne échelle (un seul motif étalé sur
     20 m : des pavés ronds d'un mètre et demi) ;
@@ -721,10 +721,11 @@ bien.
   - citadelle : les voies relevées (le parc d'aujourd'hui) ne se dessinent plus dans l'emprise
     de la place et des fossés (`rubanGeo`, `bandesGeo`) ; le pont de la Porte Royale en
     planches et chêne photographiés.
-- **Restent** (vérifiés, sans gêne) : la polyligne brute de `roadPts()` passe près des haies,
-  mais la route DESSINÉE est une courbe lissée (`rte`) qui les longe ; des façades de contour
-  irrégulier (non rectangulaires : on ne sait pas les reculer) au bord de deux petites voies
-  (cour Notre-Dame ; 294, 671) ; le bout du monde rue de l'Arc (`foret.js:530`).
+- Puis : les contours irréguliers reculent aussi (`degagerCour`, chaque sommet à
+  l'intersection des deux murs voisins déplacés) — cour Notre-Dame et une ruelle près du
+  bourg dégagées ; et la haie s'interrompt là où la voie des combattants longe la route à
+  moins de 3,5 m (elle y était coincée entre les deux). Reste le bout du monde rue de l'Arc
+  (`foret.js:530`), voulu.
 - Chargement : A/B entrelacé de l'étape « quartier », ancien contre nouveau : minimum 2 630
   contre 2 385 ms (le filtre par boîte avant le test de polygone). Somme des étapes 12,5 à
   18,6 s sur quatre passages, la machine chargée (la préparation du rendu, inchangée, variait

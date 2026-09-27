@@ -1228,8 +1228,11 @@ export function buildRoute() {
         if (Math.max(a[0], b[0]) < bx0 - m || Math.min(a[0], b[0]) > bx1 + m || Math.max(a[1], b[1]) < bz0 - m || Math.min(a[1], b[1]) > bz1 + m) continue;
         voies.push([a[0], a[1], b[0], b[1], demi(o) + 0.8]);
       }
-    // la voie des combattants n'est pas un relevé : elle croise la route au sortir du pont
-    { const V = VOIE_C || []; for (let i = 0; i < V.length - 1; i++) voies.push([V[i][0], V[i][1], V[i + 1][0], V[i + 1][1], 2.1 + 0.8]); }
+    // la voie des combattants n'est pas un relevé : elle croise la route au sortir du pont, puis
+    // la LONGE sur une quarantaine de mètres — la haie s'y retrouvait coincée entre les deux, un
+    // couloir de verdure d'un mètre. Là où elle passe à moins de 3,5 m du bord de la voie, la
+    // haie s'interrompt : route et promenade ne font plus qu'un seul espace ouvert.
+    { const V = VOIE_C || []; for (let i = 0; i < V.length - 1; i++) voies.push([V[i][0], V[i][1], V[i + 1][0], V[i + 1][1], 2.1 + 3.5]); }
     const surUneVoie = (x, z) => voies.some(([ax, az, cx, cz, d]) => distSeg(x, z, ax, az, cx, cz) < d);
     for (const c of [-1, 1]) {
       let debut = null;

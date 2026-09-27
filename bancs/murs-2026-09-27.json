@@ -3,10 +3,10 @@
  "z0": 496,
  "N": 680,
  "PAS": 0.5,
- "rueTot": 62484,
- "rueLibre": 61022,
- "rueAtteinte": 60829,
- "murs": 21812,
+ "rueTot": 62520,
+ "rueLibre": 61062,
+ "rueAtteinte": 60974,
+ "murs": 21852,
  "mursRue": 1,
  "marches": 44,
  "zMurs": [
@@ -72,19 +72,6 @@
   }
  ],
  "zPerdues": [
-  {
-   "type": "COUPÉE",
-   "n": 105,
-   "x": 163.3,
-   "z": 828.8,
-   "local": [
-    57.2,
-    -99.9
-   ],
-   "y": -0.41,
-   "lieu": "Cour Notre-Dame",
-   "m2": 26.25
-  },
   {
    "type": "COUPÉE",
    "n": 38,
