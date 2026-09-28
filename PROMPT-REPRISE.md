@@ -795,6 +795,28 @@ quartier et des sols (déterministes), et KTX2 pour l'envoi des textures (§ 4.E
   chargement. Entrées du bourg, 8 ponts, murs 97,3 %, arpenteur 872 m² : rien ne régresse.
 Mesures : murs 97,3 % de rue atteinte, marches sur la rue 44 → 3 ; chargement 13,3–13,7 s.
 
+### P. Sauter par-dessus ce qui est bas (28 septembre)
+
+« Je dois pouvoir sauter au-dessus de tout ce qui est censé se sauter. » Le saut monte à
+1,53 m (JUMP_V 8,2, GRAV 22) : de quoi franchir 1,35 m en pratique.
+- **Banc `bancs/sauts.mjs`** : rend la profondeur au-dessus de chaque capsule et compare au
+  haut de la collision. Signale ce qu'on voit à ≤ 1,1 m mais qui bloque au-delà de 1,4 m.
+  59 cas au départ, 28 restants, tous voulus (garde-corps de l'anneau du donjon, parapet des
+  galeries, poterne : `citadelle.js:425, 1391, 1459`).
+- **Capsules trop hautes corrigées** : rochers (haut = sommet réel, nature.js), tonneaux et
+  caisses du quartier (`o.y + 0,95`), décors du bourg (haut tiré de la boîte du modèle,
+  matrices mises à jour avant), bancs 0,65 m, chasse-roues 0,8 m (village.js).
+- **Le dessus d'un obstacle bas est un sol** (fin de `getH`, engine.js) : sinon Camille
+  passait au-dessus d'un gros rocher sans pouvoir s'y poser et retombait contre lui. Ne vaut
+  que pour une capsule PONCTUELLE (ax = bx), d'au moins 25 cm de rayon, sans `.bottom`, à
+  ≤ 1,6 m du terrain. Un segment (muret, parapet de bastion) en est exclu : la première
+  version sans ce filtre faisait marcher sur les parapets des bastions (arpenteur 872 →
+  3 595 m², marches sur la rue 3 → 327). `surObstacle(x, z)` le dit aux bancs, qui ne
+  prennent plus ce dessus pour un sol mal dessiné.
+Mesures : simulation de course et saut sur 89 obstacles isolés, 89 franchis (71 avant) ;
+arpenteur 872 m², marches sur la rue 3, entrées 6/6, ponts 8/8 ; chargement 15,4–15,8 s
+(somme des étapes). Vu en rendu : Camille debout sur un tonneau du quartier.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

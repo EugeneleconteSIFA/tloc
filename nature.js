@@ -808,10 +808,12 @@ export function buildVegetation() {
     QT.setFromEuler(EU.set(rand(0, 0.3), rand(0, TAU), rand(0, 0.3)));
     S.set(s, s * rand(0.6, 0.9), s);
     rocks.setMatrixAt(rk++, M.compose(P, QT, S));
-    if (s > 0.9) blocs.push([x, z, s * 0.8]);
+    if (s > 0.9) blocs.push([x, z, s * 0.8, P.y + S.y]);
   }
   rocks.count = rk;
-  for (const [x, z, r] of blocs) addCap(x, z, x, z, r);
+  // la capsule s'arrête au sommet du rocher : sans haut, un caillou de 30 cm qui dépasse
+  // de l'herbe arrêtait Camille comme un mur, et on ne sautait pas par-dessus (banc sauts)
+  for (const [x, z, r, sommet] of blocs) addCap(x, z, x, z, r, sommet);
   scene.add(rocks);
 
   buildNuages();

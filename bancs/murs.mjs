@@ -114,7 +114,7 @@ const res = await page.evaluate(async (DEMI) => {
     for (const [di, dj] of [[1, 0], [0, 1]]) { const i2 = i + di, j2 = j + dj; if (i2 >= N || j2 >= N) continue;
       const k2 = j2 * N + i2; if (OCC[k2]) continue;
       const d = Math.abs(H[k2] - H[k]);
-      if (d >= 0.5 && d < 6 && (rue[k] || rue[k2])) marches.push({ x: x0 + (i + 0.5 + di / 2) * PAS, z: z0 + (j + 0.5 + dj / 2) * PAS, d: +d.toFixed(2), bas: +Math.min(H[k], H[k2]).toFixed(2) }); }
+      if (d >= 0.5 && d < 6 && (rue[k] || rue[k2]) && !E.surObstacle(x0 + (i + 0.5) * PAS, z0 + (j + 0.5) * PAS) && !E.surObstacle(x0 + (i2 + 0.5) * PAS, z0 + (j2 + 0.5) * PAS)) marches.push({ x: x0 + (i + 0.5 + di / 2) * PAS, z: z0 + (j + 0.5 + dj / 2) * PAS, d: +d.toFixed(2), bas: +Math.min(H[k], H[k2]).toFixed(2) }); }
   }
   // 5. l'inondation, aux règles de Camille : rayon 0,5, on monte de moins de 0,5 m
   const LIBRE = new Uint8Array(N * N);

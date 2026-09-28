@@ -1095,7 +1095,9 @@ export function batirQuartier() {
   { const gl = geoLanterne(), gt = geoTonneau(), gc = new THREE.BoxGeometry(0.6, 0.5, 0.6).translate(0, 0.25, 0);
     for (const o of [instancier(gl.fer, M.ferRue, lanternes, false), instancier(gl.verre, M.verreRue, lanternes, false),
       instancier(gt.bois, M.boisRue, tonneaux), instancier(gt.fer, M.ferRue, tonneaux, false), instancier(gc, M.boisRue, caisses)]) if (o) grp.add(o);
-    for (const o of [...tonneaux, ...caisses]) addCap(o.x, o.z, o.x, o.z, 0.38, 0.95);        // on ne les traverse pas
+    // on ne les traverse pas, mais on saute par-dessus : le haut se compte depuis LEUR sol
+    // (il valait 0,95 en cote absolue — un mur de deux mètres là où le relief descend)
+    for (const o of [...tonneaux, ...caisses]) addCap(o.x, o.z, o.x, o.z, 0.38, o.y + 0.95);
     console.log('la rue : %d boutiques, %d lanternes, %d tonneaux, %d caisses', boutiques, lanternes.length, tonneaux.length, caisses.length); }
   console.log('porches : %d lots traversés par une cour relevée, laissés ouverts ; %d lots reculés au bord d’une cour', porches, degages);
   console.log('quartier relevé : %d bâtiments élevés (%d écartés, dont %d sur l’îlot du bourg), %d toits à deux pans, %d à croupe, %d terrasses, %d baies, %d pignons à redents, %d cheminées, %d lucarnes, %d capsules de façade',

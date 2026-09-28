@@ -73,6 +73,7 @@ const res = await page.evaluate(async ([x0, z0, x1, z1]) => {
     // le puits d'un colimaçon (donjon, beffroi) : getH y rend la plus haute marche, et d'en
     // haut on voit le fond du puits — l'écart est celui de l'escalier, voulu
     if (world.platforms.some((p) => p.helix && Math.hypot(x - p.x, z - p.z) <= p.r1 + 0.5)) continue;
+    if (E.surObstacle(x, z)) continue;                 // le dessus d'un tonneau, d'un rocher : on y saute, ce n'est pas un sol
     const hd = dessine(i, j);
     if (hm - hd > 0.5) pts.push([x, z, 'INVISIBLE', +(hm - hd).toFixed(2), +hm.toFixed(2)]);
     else if (hd - hm > 0.35 && hd - hm < 1.6) pts.push([x, z, 'ENFONCÉ', +(hd - hm).toFixed(2), +hm.toFixed(2)]);

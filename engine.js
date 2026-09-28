@@ -965,6 +965,14 @@ export function addPlatform(x0, x1, z0, z1, h) { const p = { x0, x1, z0, z1, h }
 export function addHelix(x, z, r0, r1, base, hTurn, turns, a0 = 0, cw = false) { const p = { helix: true, x, z, r0, r1, base, hTurn, turns, a0, cw }; world.platforms.push(p); return p; }
 export function addRamp(x, z, dx, dz, len, w, h0, h1) { const p = { ramp: true, x, z, dx, dz, len, w, h0, h1 }; world.platforms.push(p); return p; }
 // hauteur du sol sous (x,z), en tenant compte de la hauteur actuelle y (plateformes superposées)
+// vrai si (x, z) est sur le dessus d'un obstacle bas (cf. la fin de getH) : les bancs d'essai
+// (crawl.mjs, murs.mjs) ne doivent pas y voir un sol mal dessiné
+export function surObstacle(x, z) {
+  if (!world.levelH) return false;
+  const t0 = world.levelH(x, z);
+  for (const c of capsulesNear(x, z, 0)) if (c.ax === c.bx && c.az === c.bz && c.r >= 0.25 && c.bottom === undefined && c.top - t0 <= 1.6 && Math.hypot(x - c.ax, z - c.az) < c.r + 0.5) return true;
+  return false;
+}
 export function getH(x, z, y = Infinity) {
   let h = world.levelH ? world.levelH(x, z) : 0;
   for (const b of world.boxes) if (x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.top <= y + 0.6 && b.top > h) h = b.top;
@@ -991,6 +999,24 @@ export function getH(x, z, y = Infinity) {
       const lx = x - p.x, lz = z - p.z, s = lx * p.dx + lz * p.dz, t = -lx * p.dz + lz * p.dx;
       if (s >= 0 && s <= p.len && Math.abs(t) <= p.w / 2) { const ph = p.h0 + (p.h1 - p.h0) * s / p.len; if (ph <= y + 0.6 && ph > h) h = ph; }
     } else if (x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1 && p.h <= y + 0.6 && p.h > h) h = p.h;
+  }
+  // LE DESSUS DES OBSTACLES BAS SE MARCHE. Un tonneau, une caisse, un rocher, un banc ont une
+  // capsule dont on franchit le haut d'un saut — mais le dessus n'était pas un sol : sur un
+  // obstacle large (un rocher de deux mètres), Camille passait au-dessus sans pouvoir s'y poser
+  // et retombait contre lui. Toute capsule PONCTUELLE d'au moins 25 cm de rayon, sans plancher
+  // (.bottom : les garde-corps), dont le haut est à moins de 1,6 m du terrain, devient un sol
+  // qu'on atteint d'un saut. Murs, façades, murets et parapets n'en sont pas.
+  if (world.levelH) {
+    const t0 = world.levelH(x, z);
+    for (const c of capsulesNear(x, z, 0)) {
+      // (ponctuelles seulement : un segment, c'est un muret, un parapet de bastion — y monter
+      // menait droit au fossé)
+      if (c.ax !== c.bx || c.az !== c.bz || c.r < 0.25 || c.bottom !== undefined || !(c.top <= y + 0.6) || c.top <= h || c.top - t0 > 1.6) continue;
+      // jusqu'au bord de la zone où la capsule BLOQUE (son rayon plus celui de Camille) : sans
+      // cette marge, elle retombait dans la couronne de 50 cm où l'on n'est ni porté ni libre,
+      // et restait coincée contre le flanc d'un gros rocher
+      if (distSeg(x, z, c.ax, c.az, c.bx, c.bz) < c.r + 0.5) h = c.top;
+    }
   }
   return h;
 }

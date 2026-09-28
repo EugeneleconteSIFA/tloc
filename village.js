@@ -488,7 +488,7 @@ function chasseRoue(ctx, x, z) {
   g.add(mesh(new THREE.CylinderGeometry(0.17, 0.23, 0.72, 8), PIERV(0.5, 0.72, { color: 0xbdb29c }), 0, 0.36, 0));
   const cap = mesh(sphG(0.18, 9), PIERV(0.5, 0.5, { color: 0xc6bba4 }), 0, 0.72, 0);
   cap.scale.set(1, 0.6, 1); g.add(cap);
-  ctx.addCap(x, z, x, z, 0.25, 0.95);
+  ctx.addCap(x, z, x, z, 0.25, 0.8);                  // au sommet de la borne (0,72 + la calotte)
 }
 // Décrottoir de seuil : deux montants et une lame. On s'y racle les bottes avant
 // d'entrer, et à l'époque on en a besoin.
@@ -1199,7 +1199,10 @@ export function buildTown() {
     if (!PROPS_OK) return null;
     const o = A.spawn(id, { x, y, z, rotY, scale: 1 / S });
     scene.add(o);
-    if (r) addCap(x, z, x, z, r / S);
+    // le haut de la collision est celui du modèle : sans haut, une caisse ou un tonneau de la
+    // banque d'assets ne se sautaient pas (banc sauts)
+    if (r) { scene.updateWorldMatrix(true, false); o.updateWorldMatrix(false, true);   // repères à jour : le bourg vient d'être posé
+      const hb = new THREE.Box3().setFromObject(o); addCap(x, z, x, z, r / S, hb.isEmpty() ? Infinity : (hb.max.y - TOWN.y) / S); }
     return o;
   };
 
@@ -1499,7 +1502,7 @@ export function buildTown() {
     addCap(lx, lz, lx, lz, 0.2, 3.5);
   }
   // bancs, tonneaux devant l'estaminet, charrette
-  for (const [x, z] of [[-3, -6.5], [3, 6.5]]) { const bx = tx + x, bz = tz + z; scene.add(mesh(boxG(2, 0.12, 0.5), CHENE(2, 0.5, { color: 0x9a7a58 }), bx, 0.55, bz)); for (const sx of [-1, 1]) scene.add(mesh(boxG(0.12, 0.5, 0.45), PIERV(0.45, 0.5, { color: 0xb8ad97 }), bx + sx * 0.85, 0.28, bz)); addCap(bx - 0.9, bz, bx + 0.9, bz, 0.35, 1); }
+  for (const [x, z] of [[-3, -6.5], [3, 6.5]]) { const bx = tx + x, bz = tz + z; scene.add(mesh(boxG(2, 0.12, 0.5), CHENE(2, 0.5, { color: 0x9a7a58 }), bx, 0.55, bz)); for (const sx of [-1, 1]) scene.add(mesh(boxG(0.12, 0.5, 0.45), PIERV(0.45, 0.5, { color: 0xb8ad97 }), bx + sx * 0.85, 0.28, bz)); addCap(bx - 0.9, bz, bx + 0.9, bz, 0.35, 0.65); }   // au ras de l'assise : on saute par-dessus
   { const cx = tx - 12, cz = tz - 3.6; const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = Math.PI / 2;
     // caisse de planches, deux vraies roues cerclées de fer, brancards de chêne et un
     // chargement de sacs de grain (c'étaient six boules jaunes sur une boîte)
