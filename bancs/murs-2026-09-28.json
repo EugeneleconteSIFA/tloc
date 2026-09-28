@@ -1,0 +1,141 @@
+{
+ "x0": 32,
+ "z0": 496,
+ "N": 680,
+ "PAS": 0.5,
+ "rueTot": 62534,
+ "rueLibre": 61032,
+ "rueAtteinte": 60849,
+ "murs": 21925,
+ "mursRue": 1,
+ "marches": 3,
+ "zMurs": [
+  {
+   "type": "MUR",
+   "n": 1,
+   "x": 217.8,
+   "z": 657.3,
+   "local": [
+    -11.8,
+    -1.8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 0.25,
+   "qui": [
+    [
+     "village.js:1179 < village.js:1511 < citadelle.js:342",
+     1
+    ]
+   ]
+  }
+ ],
+ "zMarches": [
+  {
+   "type": "MARCHE",
+   "n": 2,
+   "x": 38.8,
+   "z": 661,
+   "local": [
+    102.7,
+    31.7
+   ],
+   "y": -1.09,
+   "lieu": "Pont du Ramponneau",
+   "dMax": 0.57
+  },
+  {
+   "type": "MARCHE",
+   "n": 1,
+   "x": 340.8,
+   "z": 515,
+   "local": [
+    -118.6,
+    64
+   ],
+   "y": -1.52,
+   "lieu": "Bois de Boulogne",
+   "dMax": 0.53
+  }
+ ],
+ "zPerdues": [
+  {
+   "type": "COUPÉE",
+   "n": 95,
+   "x": 368.8,
+   "z": 541.8,
+   "local": [
+    -131,
+    41.4
+   ],
+   "y": -1.85,
+   "lieu": "Façade de l'Esplanade",
+   "m2": 23.75
+  },
+  {
+   "type": "COUPÉE",
+   "n": 38,
+   "x": 185.8,
+   "z": 650.8,
+   "local": [
+    7.2,
+    8.7
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 9.5
+  },
+  {
+   "type": "COUPÉE",
+   "n": 19,
+   "x": 205.8,
+   "z": 642.8,
+   "local": [
+    -7.1,
+    9.8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 4.75
+  },
+  {
+   "type": "COUPÉE",
+   "n": 17,
+   "x": 212.8,
+   "z": 667.3,
+   "local": [
+    -6.7,
+    -7.2
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 4.25
+  },
+  {
+   "type": "COUPÉE",
+   "n": 10,
+   "x": 165.8,
+   "z": 658.3,
+   "local": [
+    21.4,
+    8
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 2.5
+  },
+  {
+   "type": "COUPÉE",
+   "n": 4,
+   "x": 32.3,
+   "z": 835.3,
+   "local": [
+    141.8,
+    -77.8
+   ],
+   "y": 1.32,
+   "lieu": "Résidence du Beau Bouquet",
+   "m2": 1
+  }
+ ]
+}

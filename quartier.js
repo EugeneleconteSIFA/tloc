@@ -951,7 +951,9 @@ export function batirQuartier() {
             // de la marchandise devant — sauf dans une cour ou un passage : un tonneau y bouche tout
             if (hache(gr + ci * 3) < 0.55 && !dansCour(a[0] + tx * (sc + 0.4) + nx * 0.8, a[1] + tz * (sc + 0.4) + nz * 0.8)) {
               const px = a[0] + tx * (sc + 0.4) + nx * 0.8, pz = a[1] + tz * (sc + 0.4) + nz * 0.8;
-              (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz), z: pz, yaw: hache(gr + ci) * 6.28 });
+              // +10 cm : la dalle du trottoir est dessinée 8 à 15 cm au-dessus du relief (solVille,
+              // voiriesLille) ; posés sur le relief nu, tonneaux et caisses s'y enfonçaient
+              (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz) + 0.1, z: pz, yaw: hache(gr + ci) * 6.28 });
             }
           }
           // l'enseigne en potence, à côté de la porte

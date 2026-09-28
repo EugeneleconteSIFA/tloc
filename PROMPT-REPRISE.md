@@ -754,6 +754,44 @@ calculs (~13 s en somme des étapes : préparation du rendu 3,4, quartier 2, sol
 1,4, végétation 1). Piste : garder en IndexedDB, par version, les géométries calculées du
 quartier et des sols (déterministes), et KTX2 pour l'envoi des textures (§ 4.E).
 
+### O. Points 3, 4 et 5 du § 4.H (28 septembre)
+
+- **Point 4, le triangle sombre de la berme** (135, 165) : introuvable aujourd'hui, ni aux
+  rayons verticaux ni sur huit vues à hauteur d'œil. Ce qu'on y voyait de dessous était
+  vraisemblablement le toit marchable des galeries (point 5). Clos.
+- **Point 5, les zones du banc arpenteur** (1 593 → 923 m² suspects, plus aucune INVISIBLE en tête) :
+  - galeries (6 zones à 6,89 m) et murets de la place d'Armes (3 zones à 0,98 m) : leur dessus
+    marchable est un segment à bouts RONDS, qui débordait d'une demi-largeur au-delà de ce qui
+    est dessiné (4 m au bout de chaque palier de galerie). `seg.carre` (engine.js, getH) : bouts
+    carrés, sans marge — posé sur ces deux-là seulement (la coursive du beffroi compte sur ses
+    bouts ronds pour couvrir ses angles) ;
+  - donjon (17,5 m) : le puits du colimaçon — getH y rend la plus haute marche. Voulu :
+    `crawl.mjs` écarte désormais les puits d'hélice ;
+  - façade de l'Esplanade : la maison de Camille avait une boîte pleine par-dessus ses quatre
+    murs, dont le dessus était un sol invisible au-dessus des bords du toit — retirée ;
+  - pont du Petit Paradis : les **parapets des ponts relevés n'avaient pas de collision** (on
+    entrait dans la pierre jusqu'à la taille) — une capsule par tronçon, qui ne vaut qu'à
+    hauteur du tablier (`.bottom`) ; et **plus de ruban de voirie sur un tablier maçonné**
+    (le pont a son pavage : une voie de campagne y posait sa terre brune, d'autres une
+    chaussée plus large que le tablier) ; une voie est « de ville » dès qu'un de ses points
+    est à moins de 12 m du bâti. Les 8 ponts relevés se traversent dans les deux sens.
+- **Point 3, nouveau banc `node bancs/objets.mjs`** : chaque décor, un par un, AVANT la fusion
+  (crochet `window.__avantFusion` dans bootLevel), comparé au sol sous lui (flotte de 15 cm à
+  1,2 m ; enterré de 30 cm à 2 m et plus d'un quart de sa hauteur). Filtres appris : un
+  bâtiment (5 à 60 m) n'est pas testé pièce par pièce ; une pièce élancée (lisse, barreau),
+  une pièce posée sur une autre (appui) ou contenue dans une plus grosse (cercle de tonneau)
+  en fait partie ; rien sous un tablier ; rien d'enterré au-delà de 3 m de haut (fondations).
+  Résultat : 10 cas, tous des pièces encastrées (poteaux des puits, de la maison) — les
+  décors posés à la main reposent bien. Les instances (tonneaux, caisses, lanternes des rues)
+  ne sont pas testées : raisonné sur le code, tonneaux et caisses du quartier s'enfonçaient
+  de 8 à 15 cm dans la dalle des trottoirs — remontés de 10 cm.
+- **Trouvé en route, pas corrigé (à décider)** : les chaussées sont dessinées 13 à 19 cm
+  AU-DESSUS du sol marchable (le décalage qui évite que le relief perce le ruban) — Camille a
+  les pieds dans les pavés sur toutes les routes, depuis toujours ; les trottoirs de même.
+  Piste : relever le sol marchable sur les voies (une grille fine des épaisseurs de chaussée,
+  lue par levelH), plutôt que d'abaisser les rubans.
+Mesures : murs 97,3 % de rue atteinte, marches sur la rue 44 → 3 ; chargement 13,3–13,7 s.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

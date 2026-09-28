@@ -1362,7 +1362,7 @@ export function buildGalleries() {
         // Il couvrait tout le palier, rampe comprise : arrivé en haut, on continuait à
         // marcher à 6,90 m au-dessus de la tranchée de la rampe, sur rien (banc arpenteur).
         { const m0 = pt(ga, 0), m1 = pt(gb, 0);
-          world.platforms.push({ seg: true, ax: m0[0], az: m0[1], bx: m1[0], bz: m1[1], w: G.DEPTH, h: G.ROOF }); }
+          world.platforms.push({ seg: true, carre: true, ax: m0[0], az: m0[1], bx: m1[0], bz: m1[1], w: G.DEPTH, h: G.ROOF }); }
         // CENTRÉS SUR L'AXE DE LA GALERIE (décalage 0), pas sur sa face : berceau, dallage
         // et terre-plein étaient posés à G.DEPTH / 2, une demi-galerie trop en avant. La
         // moitié arrière, contre la courtine, restait sans voûte ni sol — les trous noirs vus
@@ -1506,7 +1506,7 @@ export function buildJumpStuff() {
       addCap(q1[0], q1[1], q2[0], q2[1], 0.35, 1.0);
       // dessus praticable : on ajoute une boîte fine
       const minx = Math.min(q1[0], q2[0]) - 0.35, maxx = Math.max(q1[0], q2[0]) + 0.35, minz = Math.min(q1[1], q2[1]) - 0.35, maxz = Math.max(q1[1], q2[1]) + 0.35;
-      world.platforms.push({ seg: true, ax: q1[0], az: q1[1], bx: q2[0], bz: q2[1], w: 0.7, h: 1.0, x0: minx, x1: maxx, z0: minz, z1: maxz });
+      world.platforms.push({ seg: true, carre: true, ax: q1[0], az: q1[1], bx: q2[0], bz: q2[1], w: 0.7, h: 1.0, x0: minx, x1: maxx, z0: minz, z1: maxz });
     }
   }
 }

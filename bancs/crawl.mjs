@@ -70,6 +70,9 @@ const res = await page.evaluate(async ([x0, z0, x1, z1]) => {
     if (world.levelBlocked && world.levelBlocked(x, z, 0.4, false, hm)) continue;   // l'eau, le hors-carte
     if (E.blocked(x, z, 0.45, false, hm + 0.05)) continue;                          // on ne peut pas s'y tenir
     if (C.sdEau(x, z) < 3) continue;                   // la berge et le gué : on marche SOUS l'eau dessinée, c'est voulu
+    // le puits d'un colimaçon (donjon, beffroi) : getH y rend la plus haute marche, et d'en
+    // haut on voit le fond du puits — l'écart est celui de l'escalier, voulu
+    if (world.platforms.some((p) => p.helix && Math.hypot(x - p.x, z - p.z) <= p.r1 + 0.5)) continue;
     const hd = dessine(i, j);
     if (hm - hd > 0.5) pts.push([x, z, 'INVISIBLE', +(hm - hd).toFixed(2), +hm.toFixed(2)]);
     else if (hd - hm > 0.35 && hd - hm < 1.6) pts.push([x, z, 'ENFONCÉ', +(hd - hm).toFixed(2), +hm.toFixed(2)]);

@@ -71,7 +71,8 @@ function batirMaison(Y0) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) hg.add(mesh(new THREE.CylinderGeometry(0.32, 0.4, wallH - 0.35, 10), st, x + sx * (w / 2), 0.45 + (wallH - 0.35) / 2, z + sz * (d / 2))); }
   const walls = [[x - w / 2, z - d / 2, x + w / 2, z - d / 2], [x - w / 2, z + d / 2, x + w / 2, z + d / 2], [x - w / 2, z - d / 2, x - w / 2, z + d / 2], [x + w / 2, z - d / 2, x + w / 2, z + d / 2]];
   for (const sg of walls) { wallBox(sg[0], sg[1], sg[2], sg[3], wallH, 0.4, wallMat); addCap(sg[0], sg[1], sg[2], sg[3], 0.25, wallH + 3); }
-  addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2, wallH + 2.6);
+  // (plus de boîte pleine par-dessus les quatre murs : ils suffisent à fermer la maison, et
+  // son dessus servait de sol invisible au-dessus des bords du toit — banc arpenteur)
   for (const sg of walls) { const n = 3; for (let k = 0; k <= n; k++) { const t = k / n; scene.add(mesh(boxG(0.18, wallH, 0.5), mat(0x4a3320), sg[0] + (sg[2] - sg[0]) * t, wallH / 2, sg[1] + (sg[3] - sg[1]) * t)); } }
   for (const sg of walls) { const m = mesh(boxG(Math.hypot(sg[2] - sg[0], sg[3] - sg[1]) + 0.3, 0.2, 0.5), mat(0x4a3320), (sg[0] + sg[2]) / 2, wallH, (sg[1] + sg[3]) / 2); m.rotation.y = -Math.atan2(sg[3] - sg[1], sg[2] - sg[0]); scene.add(m); }
   // porte (côté est) avec auvent, fenêtres à carreaux, jardinières

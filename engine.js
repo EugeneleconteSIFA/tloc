@@ -969,7 +969,16 @@ export function getH(x, z, y = Infinity) {
   let h = world.levelH ? world.levelH(x, z) : 0;
   for (const b of world.boxes) if (x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.top <= y + 0.6 && b.top > h) h = b.top;
   for (const p of world.platforms) {
-    if (p.seg) { if (distSeg(x, z, p.ax, p.az, p.bx, p.bz) < p.w / 2 + 0.25 && p.h <= y + 0.6 && p.h > h) h = p.h; }
+    if (p.seg) {
+      // p.carre : bouts carrés. Un segment à bouts ronds débordait d'une demi-largeur au-delà
+      // de ses extrémités — au bout de chaque palier de galerie, 4 m de toit marchable sans
+      // rien de dessiné, à 6,89 m au-dessus de la place (banc arpenteur).
+      let dans;
+      if (p.carre) { const dx = p.bx - p.ax, dz = p.bz - p.az, L2 = dx * dx + dz * dz || 1, t = ((x - p.ax) * dx + (z - p.az) * dz) / L2;
+        dans = t >= 0 && t <= 1 && Math.abs((x - p.ax) * dz - (z - p.az) * dx) / Math.sqrt(L2) < p.w / 2; }   // ni bouts ronds, ni marge : le dessus tel qu'il est dessiné
+      else dans = distSeg(x, z, p.ax, p.az, p.bx, p.bz) < p.w / 2 + 0.25;
+      if (dans && p.h <= y + 0.6 && p.h > h) h = p.h;
+    }
     else if (p.helix) {
       // escalier en colimaçon : hauteur = base + (angle/2π + tour) * hauteur par tour, entre r0 et r1 du centre
       const dx = x - p.x, dz = z - p.z, r = Math.hypot(dx, dz);
@@ -3560,6 +3569,9 @@ export async function bootLevel(level, titleMenuFn) {
   await etape('collisions');
   console.log('collisions indexées :', indexCapsules());
   await etape('fusion des décors');
+  // les bancs d'essai qui ont besoin des décors un par un (bancs/objets.mjs) passent ici :
+  // après la fusion, un tonneau n'est plus qu'une poignée de triangles dans un grand maillage
+  if (window.__avantFusion) { try { await window.__avantFusion(); } catch (e) { console.warn('banc avant fusion :', e); } }
   try { const t0 = performance.now(), r = unifierMateriaux(); r.ms = Math.round(performance.now() - t0); console.log('matériaux unifiés :', r); } catch (e) { console.warn('unification impossible', e); }
   try { const r = mergeStatics(); console.log('statiques fusionnés :', r); } catch (e) { console.warn('fusion impossible', e); }
   console.log('lots :', regrouperLots());

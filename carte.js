@@ -1392,20 +1392,30 @@ export function rubanGeo(lignes, largeur, y, pasMax = 5) {
         // Ramponneau montait sur la chaussée du pont, et y dessinait une bande de terre
         // battue entre deux rampes raides.
         const ux = dx / L, uz = dz / L;
-        if (sdEau(cx, cz) < -2.5 && surPont(cx, cz, ux, uz) === null && !onBridge(cx, cz)) {
+        // Au-dessus de l'eau, aucun chemin ne passe SOUS le pont : le tablier vaut quel que soit
+        // l'angle de la voie. Le filtre d'axe (25°) laissait un trou dans le ruban au milieu du
+        // pont du Petit Paradis, là où la voie relevée s'écarte de l'axe — le tablier nu, brun.
+        const surLEau = sdEau(cx, cz) < -2.5;
+        const hp = surPont(cx, cz, ux, uz) ?? (surLEau ? surPont(cx, cz) : null);
+        if (surLEau && hp === null && !onBridge(cx, cz)) {
           base = -1; precValide = false; continue;
         }
+        // Sur un tablier relevé, le pont a SON pavage (pontsLille) : un ruban de voirie par-
+        // dessus n'ajoutait rien, et le masquait — la terre brune d'une voie de campagne au
+        // milieu du pont du Petit Paradis, une chaussée plus large que le tablier ailleurs.
+        if (hp !== null && DERNIER_PONT && !DERNIER_PONT.ponton) { base = -1; precValide = false; continue; }
         // une chaussée qui franchit un pont se pose sur le TABLIER, pas sur le fond
-        const hp = surPont(cx, cz, ux, uz);
         // chaque BORD prend le sol sous lui : une section plate, à la cote de l'axe, flottait
         // d'un côté dès que la voie longeait une pente (berges des fossés, clairière du mage)
         // — jusqu'à 0,9 m au-dessus de l'herbe (banc arpenteur). Sur un pont, le tablier est
         // plat : les deux bords restent à sa cote.
-        const hA = hp !== null ? hp + 0.03 + y : solPlaine(cx + nx * demi, cz + nz * demi) + y;
-        const hB = hp !== null ? hp + 0.03 + y : solPlaine(cx - nx * demi, cz - nz * demi) + y;
+        // (sur un ponton, la chaussée prend la largeur du ponton : ses bords flottaient)
+        const dm = hp !== null && DERNIER_PONT ? Math.min(demi, DERNIER_PONT.demi) : demi;
+        const hA = hp !== null ? hp + 0.03 + y : solPlaine(cx + nx * dm, cz + nz * dm) + y;
+        const hB = hp !== null ? hp + 0.03 + y : solPlaine(cx - nx * dm, cz - nz * dm) + y;
         const n0 = pos.length / 3;
-        pos.push(cx + nx * demi, hA, cz + nz * demi, cx - nx * demi, hB, cz - nz * demi);
-        uv.push(demi, s, -demi, s);
+        pos.push(cx + nx * dm, hA, cz + nz * dm, cx - nx * dm, hB, cz - nz * dm);
+        uv.push(dm, s, -dm, s);
         // ORDRE DE PARCOURS. Les deux triangles étaient enroulés à l'envers : la normale
         // calculée par computeVertexNormals() pointait vers le BAS, si bien que toutes les
         // chaussées, tous les chemins et tous les tabliers de pont relevés étaient en
@@ -1826,6 +1836,8 @@ export function surTablier(x, z, y) {
 
 // (ux, uz), facultatif : la direction de qui pose le pied. Un chemin qui passe SOUS le pont
 // le croise à angle franc ; seul ce qui suit l'axe du pont (moins de 25°) est sur le tablier.
+// le dernier pont trouvé par surPont (sa demi-largeur sert à rubanGeo)
+let DERNIER_PONT = null;
 export function surPont(x, z, ux, uz) {
   for (let i = 0; i < PONTS.length; i++) {
     const P = PONTS[i];
@@ -1839,6 +1851,7 @@ export function surPont(x, z, ux, uz) {
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       const qx = x - (g.a[0] + dx * t), qz = z - (g.a[1] + dz * t);
       if (qx * qx + qz * qz > P.demi * P.demi) continue;
+      DERNIER_PONT = P;
       return hauteurPont(P, g.s0 + (g.s1 - g.s0) * t);
     }
   }
@@ -2070,6 +2083,12 @@ export function pontsLille() {
       const seg = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
       const s0 = i * 3, s1 = s0 + seg;
       const EPP = 0.34, HP = 0.92, CH = 0.16, SAIL = 0.1;
+      // LA COLLISION DU PARAPET. Il n'en avait pas : sa face intérieure est DANS la largeur
+      // du tablier (P.demi − 0,34), et Camille entrait dans la pierre jusqu'à la taille (banc
+      // arpenteur, Petit Paradis). Une capsule dans l'épaisseur du parapet, qui ne vaut qu'à
+      // hauteur du tablier (.bottom) : on passe toujours dessous, sur le chemin de halage.
+      { const c = addCap(A[0] - nx * EPP / 2, A[1] - nz * EPP / 2, B[0] - nx * EPP / 2, B[1] - nz * EPP / 2, EPP / 2, Math.max(A[2], B[2]) + HP + CH);
+        c.bottom = Math.min(A[2], B[2]) - 0.6; }
       const ruban = (T, ax, ay, az2, bx, by, bz, cx2, cy, cz2, dx2, dy, dz2, u0, u1, v0, v1) => {
         const n0 = T.pos.length / 3;
         T.pos.push(ax, ay, az2, bx, by, bz, cx2, cy, cz2, dx2, dy, dz2);
@@ -2200,7 +2219,9 @@ export function voiriesLille() {
   // DES RUES HOMOGÈNES. Les petites voies étaient en terre et les grandes en pavé, si bien
   // qu'en ville une rue changeait de sol à chaque carrefour. En ville, toute voie est pavée ;
   // seules les voies de campagne (loin de tout bâti) restent en terre.
-  const enVille = (o) => { const m = o.pts[o.pts.length >> 1]; return distBati(m[0], m[1]) < 18 || distBati(o.pts[0][0], o.pts[0][1]) < 12; };
+  // (n'importe lequel de ses points près du bâti : un pont de deux points a son milieu sur
+  // l'eau, loin de tout, et passait en terre brune par-dessus son propre tablier pavé)
+  const enVille = (o) => { const m = o.pts[o.pts.length >> 1]; return distBati(m[0], m[1]) < 18 || o.pts.some((q) => distBati(q[0], q[1]) < 12); };
   const urbaines = LILLE.routes.filter(enVille), champs = LILLE.routes.filter((o) => !enVille(o));
   ajoute(rubanGeo(champs, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.16),
     phMat('brown_mud_03', 2, 2, { color: 0x8d7d64, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
