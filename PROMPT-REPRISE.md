@@ -785,11 +785,14 @@ quartier et des sols (déterministes), et KTX2 pour l'envoi des textures (§ 4.E
   décors posés à la main reposent bien. Les instances (tonneaux, caisses, lanternes des rues)
   ne sont pas testées : raisonné sur le code, tonneaux et caisses du quartier s'enfonçaient
   de 8 à 15 cm dans la dalle des trottoirs — remontés de 10 cm.
-- **Trouvé en route, pas corrigé (à décider)** : les chaussées sont dessinées 13 à 19 cm
-  AU-DESSUS du sol marchable (le décalage qui évite que le relief perce le ruban) — Camille a
-  les pieds dans les pavés sur toutes les routes, depuis toujours ; les trottoirs de même.
-  Piste : relever le sol marchable sur les voies (une grille fine des épaisseurs de chaussée,
-  lue par levelH), plutôt que d'abaisser les rubans.
+- **Les pieds dans les pavés** (feu vert d'Eugène) : les chaussées étaient dessinées 13 à 19 cm
+  AU-DESSUS du sol marchable (le décalage qui évite que le relief perce le ruban). Chaque ruban
+  (voiries, trottoirs, bordures, chemins, voie des combattants, route de campagne) grave
+  maintenant sa surépaisseur réelle, triangle par triangle, dans une grille d'un mètre
+  (`graverVoie`, `epaisseurVoie`, carte.js ; 6,5 Mo) que `levelH` ajoute au relief. Mesuré :
+  sol marchable = dessin au centimètre sur l'axe des rues (0 à 7 cm au bord d'une cellule).
+  Seules les surépaisseurs comptent (un fossé en creux ne creuse pas le sol). ≈ +50 ms au
+  chargement. Entrées du bourg, 8 ponts, murs 97,3 %, arpenteur 872 m² : rien ne régresse.
 Mesures : murs 97,3 % de rue atteinte, marches sur la rue 44 → 3 ; chargement 13,3–13,7 s.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir

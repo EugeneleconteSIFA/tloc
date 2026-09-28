@@ -3,13 +3,32 @@
  "z0": 496,
  "N": 680,
  "PAS": 0.5,
- "rueTot": 62534,
- "rueLibre": 61032,
- "rueAtteinte": 60849,
- "murs": 21925,
- "mursRue": 1,
+ "rueTot": 62585,
+ "rueLibre": 61082,
+ "rueAtteinte": 60899,
+ "murs": 21882,
+ "mursRue": 3,
  "marches": 3,
  "zMurs": [
+  {
+   "type": "MUR",
+   "n": 2,
+   "x": 206.3,
+   "z": 644.8,
+   "local": [
+    -7,
+    8.4
+   ],
+   "y": -0.99,
+   "lieu": "La place du bourg",
+   "m2": 0.5,
+   "qui": [
+    [
+     "village.js:1179 < village.js:1202 < village.js:1078",
+     2
+    ]
+   ]
+  },
   {
    "type": "MUR",
    "n": 1,
@@ -68,7 +87,7 @@
     -131,
     41.4
    ],
-   "y": -1.85,
+   "y": -1.72,
    "lieu": "Façade de l'Esplanade",
    "m2": 23.75
   },
@@ -133,7 +152,7 @@
     141.8,
     -77.8
    ],
-   "y": 1.32,
+   "y": 1.49,
    "lieu": "Résidence du Beau Bouquet",
    "m2": 1
   }

@@ -2211,7 +2211,7 @@ export function solVille(pas = 6) {
 // sentiers, terre battue pour la desserte, pavé pour les artères.
 export function voiriesLille() {
   const g = new THREE.Group(); g.name = 'voiries-de-lille';
-  const ajoute = (ge, mat) => { if (!ge) return; const m = new THREE.Mesh(ge, mat); m.receiveShadow = true; m.renderOrder = 1; g.add(m); };
+  const ajoute = (ge, mat) => { if (!ge) return; graverVoie(ge); const m = new THREE.Mesh(ge, mat); m.receiveShadow = true; m.renderOrder = 1; g.add(m); };
   // Un chemin de halage est de la terre battue, pas de la craie : en clair il dessinait
   // un liseré blanc tout autour du fossé et de la Deûle, visible jusqu'en vue aérienne.
   ajoute(rubanGeo(LILLE.chemins, LARGEUR_CHEMIN, 0.14),
@@ -2597,6 +2597,37 @@ export function nearRoad(x, z) { const P = roadPts(); for (let i = 0; i < P.leng
 
 export function inHouse(x, z) { return Math.abs(x - HOUSE.x) < HOUSE.w / 2 && Math.abs(z - HOUSE.z) < HOUSE.d / 2; }
 
+// L'ÉPAISSEUR DE CE QUI EST DESSINÉ SUR LE RELIEF. Chaussées, trottoirs, chemins, route de
+// campagne et voie des combattants sont des rubans posés 5 à 19 cm AU-DESSUS du relief (pour
+// que le terrain ne les perce pas entre deux sommets) ; le sol marchable, lui, restait au
+// relief : Camille avait les pieds dans les pavés sur toutes les routes. Chaque ruban grave
+// donc, triangle par triangle, de combien il dépasse le relief dans une grille d'un mètre, et
+// levelH y ajoute cette épaisseur. Seules les surépaisseurs comptent (un fossé dessiné en
+// creux ne creuse pas le sol marchable : le relief peut le recouvrir).
+const EP_N = Math.ceil(2 * PLAINE_R), EPAIS = new Uint8Array(EP_N * EP_N);   // en centimètres
+export function graverVoie(ge) {
+  if (!ge) return;
+  const P = ge.attributes.position, I = ge.index ? ge.index.array : null, n = I ? I.length : P.count;
+  for (let t = 0; t < n; t += 3) {
+    const a = I ? I[t] : t, b = I ? I[t + 1] : t + 1, c = I ? I[t + 2] : t + 2;
+    const ax = P.getX(a), ay = P.getY(a), az = P.getZ(a), bx = P.getX(b), by = P.getY(b), bz = P.getZ(b), cx = P.getX(c), cy = P.getY(c), cz = P.getZ(c);
+    const det = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz); if (Math.abs(det) < 1e-6) continue;
+    const i0 = Math.max(0, Math.floor(Math.min(ax, bx, cx) + PLAINE_R)), i1 = Math.min(EP_N - 1, Math.floor(Math.max(ax, bx, cx) + PLAINE_R));
+    const j0 = Math.max(0, Math.floor(Math.min(az, bz, cz) + PLAINE_R)), j1 = Math.min(EP_N - 1, Math.floor(Math.max(az, bz, cz) + PLAINE_R));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const x = i - PLAINE_R + 0.5, z = j - PLAINE_R + 0.5;
+      const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / det, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / det, l3 = 1 - l1 - l2;
+      if (l1 < -1e-4 || l2 < -1e-4 || l3 < -1e-4) continue;
+      const d = Math.round((l1 * ay + l2 * by + l3 * cy - solPlaine(x, z)) * 100);
+      if (d > 2 && d < 60 && d > EPAIS[j * EP_N + i]) EPAIS[j * EP_N + i] = d;
+    }
+  }
+}
+export function epaisseurVoie(x, z) {
+  const i = Math.floor(x + PLAINE_R), j = Math.floor(z + PLAINE_R);
+  return i < 0 || j < 0 || i >= EP_N || j >= EP_N ? 0 : EPAIS[j * EP_N + i] / 100;
+}
+
 export function levelH(x, z) {
   if (bastionAt(x, z)) return BAST_H;
   // terrasse du donjon : anneau plein autour du puits (le trou de collision était carré, on tombait entre l'escalier et le bord),
@@ -2623,7 +2654,7 @@ export function levelH(x, z) {
   //  par preparerPonts — sans quoi on ne peut pas passer dessous)
   { const o = dehorsAt(x, z); if (o) return o.h; }
   if (BOURG_CALE && inTown(x, z)) return solBourg(x, z);   // dallage du bourg (cf. calerBourg)
-  return solPlaine(x, z);
+  return solPlaine(x, z) + epaisseurVoie(x, z);
 }
 
 export function levelBlocked(x, z, r, flying, y) {

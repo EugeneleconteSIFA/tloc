@@ -1,6 +1,6 @@
 {
  "m2": 1375000,
- "suspects": 923,
+ "suspects": 872,
  "zones": [
   {
    "type": "ENFONCÉ",
@@ -13,11 +13,11 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 136,
-   "ecartMax": 1.28,
-   "x": -432.5,
-   "z": 245.5,
-   "y": 0.25,
+   "m2": 114,
+   "ecartMax": 1.16,
+   "x": -431.5,
+   "z": 246.5,
+   "y": 0.3,
    "lieu": "Clairière du vieux mage"
   },
   {
@@ -85,30 +85,12 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 19,
-   "ecartMax": 0.54,
-   "x": 452.5,
-   "z": -27.5,
-   "y": -0.79,
-   "lieu": "La voie des combattants"
-  },
-  {
-   "type": "ENFONCÉ",
-   "m2": 18,
+   "m2": 16,
    "ecartMax": 0.46,
    "x": 434.5,
    "z": -30.5,
    "y": -0.76,
    "lieu": "Bois de la Deûle"
-  },
-  {
-   "type": "ENFONCÉ",
-   "m2": 16,
-   "ecartMax": 0.41,
-   "x": -162.5,
-   "z": 536.5,
-   "y": 1.15,
-   "lieu": "Avenue du 43e Régiment d'Infanterie"
   },
   {
    "type": "ENFONCÉ",
@@ -154,6 +136,15 @@
    "z": 37.5,
    "y": -1.17,
    "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 11,
+   "ecartMax": 0.54,
+   "x": 450.5,
+   "z": -22.5,
+   "y": -0.82,
+   "lieu": "La voie des combattants"
   },
   {
    "type": "ENFONCÉ",
@@ -238,15 +229,6 @@
   },
   {
    "type": "ENFONCÉ",
-   "m2": 5,
-   "ecartMax": 1.42,
-   "x": 225.5,
-   "z": 684.5,
-   "y": -0.99,
-   "lieu": "La Chapelle"
-  },
-  {
-   "type": "ENFONCÉ",
    "m2": 4,
    "ecartMax": 0.44,
    "x": 495.5,
@@ -289,6 +271,24 @@
    "z": 182.5,
    "y": -0.93,
    "lieu": "Remparts"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 0.4,
+   "x": -163.5,
+   "z": 534.5,
+   "y": 1.13,
+   "lieu": "Avenue du 43e Régiment d'Infanterie"
+  },
+  {
+   "type": "ENFONCÉ",
+   "m2": 4,
+   "ecartMax": 1.54,
+   "x": 224.5,
+   "z": 685.5,
+   "y": -0.99,
+   "lieu": "La Chapelle"
   }
  ]
 }

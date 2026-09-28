@@ -14,7 +14,7 @@ import {
   THREE, T, TAU, addCap, mat, mesh, pbrRepeat, phMat, rand,
 } from './engine.js?v=27';
 import {
-  LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, PONTS, cobbles, roadPts, rubanGeo, sdEau, sdPent, solPlaine, surDehors, surPont, voieCombattants,
+  LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, PONTS, cobbles, graverVoie, roadPts, rubanGeo, sdEau, sdPent, solPlaine, surDehors, surPont, voieCombattants,
 } from './carte.js';
 import { distSeg } from './engine.js?v=27';
 
@@ -54,6 +54,7 @@ export function voieDesCombattants() {
   // peinte au milieu — un marquage routier des années 1960 — n'ont rien à faire dans
   // une ville du XVIIe. Deux ornières de charroi tiennent lieu de marquage.
   const bande = rubanGeo(lignes, 4.2, 0.17);
+  graverVoie(bande);                    // on marche SUR la bande, pas dedans (cf. levelH)
   if (bande) {
     const m = new THREE.Mesh(bande, phMat('terre_battue', 1, 1, {
       color: 0x8e7b5e, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3,

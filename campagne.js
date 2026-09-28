@@ -9,7 +9,7 @@ import {
   pbrRepeat, phMat, rand, rboxG, scene, sphG, state, stoneMat, tex, wallBox, world,
 } from './engine.js?v=27';
 import {
-  CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, VOIE_C, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
+  CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, graverVoie, LARGEUR_ROUTE, LILLE, VOIE_C, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
   nearTown, patinerMat, roadPts, sdPent, solPlaine, HOUSE_SMOKE_TOP,
 } from './carte.js';
 import { makeDoor, makeVolet } from './menuiserie.js';
@@ -407,6 +407,7 @@ function ruban(s0, s1, lanes, m, pas = 3.2) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.setIndex(idx); g.computeVertexNormals();
+  if (m !== matsCampagne().eau) graverVoie(g);          // chaussée, accotements, talus : on marche dessus (cf. levelH)
   const me = new THREE.Mesh(g, m); me.receiveShadow = true; scene.add(me);
   return me;
 }
