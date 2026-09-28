@@ -829,9 +829,19 @@ arrivent au camp seulement ; chargement 14,9 s (somme des étapes).
   l'humain charge et choisit son camp ; en chrono ou en drapeaux, il arrive en cours de
   manche. Attendre que tous les humains soient en jeu avant le compte à rebours ?
 - **Idée restante** : l'écran de fin de manche à 10 points en balade par équipes.
+- **Retours d'Eugène (même jour)**, faits : drapeaux tirés au sort parmi 20 emplacements
+  répartis dans l'enceinte (plus le donjon, grille fermée) ; bots vivants dès l'arrivée ;
+  drapeaux et joueurs sur la minicarte, la carte M (donnée d'office en instance) et la carte
+  du choix d'arrivée ; armoire en ~2 s au lieu de 5,8 (cf. § 5, shaders).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
+- **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js
+  compile une variante par matériau selon : le NOMBRE de lumières de la scène (ajouter une
+  `PointLight` en cours de jeu recompile tout — passer par `sourceLumiere`, le réservoir
+  d'engine.js), et la cible de rendu (écran ou image du post-traitement : couper `G.postFX`
+  recompile tout ; `compileAsync` doit viser `composer.renderTarget1`). Pour le voir :
+  compter `renderer.info.programs` avant et après le geste.
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et
   `loadGame()` fait un `Object.assign` en retour. Une donnée neuve rangée dans `state`
   (`state.ecus`, `state.look`, `state.carteBeffroi`) est donc sauvegardée sans une ligne

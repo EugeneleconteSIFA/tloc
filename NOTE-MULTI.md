@@ -331,11 +331,15 @@ et à l'école, et ne s'écrivait jamais.
 Une quatrième règle, en équipes seulement (l'accueil ne la montre qu'en équipes ; le
 serveur force le mode) : **Drapeaux**, sur la durée du chrono.
 - **Combien** : arrondi supérieur(joueurs, bots compris ÷ 2) − 1, au moins un, au plus cinq
-  (Eugène ; `nb_drapeaux`, fixé au début de chaque manche). Les points forts, dans l'ordre
-  où ils entrent en jeu : place d'Armes, donjon, poterne, casernes (`PLAN_DRAPEAUX`).
-- **Où** : le premier client les propose (`drapeaux-lieux`), une fois sa grille des chemins
-  prête : un centre dont le cercle de 8 m est libre (`terrainDrapeau`) ET relié à la place
-  d'Armes — au premier essai, la poterne tombait dans une cour fermée.
+  (Eugène ; `nb_drapeaux`, fixé au début de chaque manche).
+- **Où — tirés au sort** (Eugène : « aléatoirement entre une vingtaine de positions ») : le
+  premier client, une fois sa grille des chemins prête, propose 20 emplacements
+  (`drapeaux-lieux`) : des cases de l'intérieur de l'enceinte (à 12 m des courtines), au
+  cercle de 8 m entièrement libre, reliées à la place d'Armes, retenues de proche en proche
+  par la plus grande distance aux précédentes. Chacun reçoit un nom (le lieu le plus proche,
+  sinon la zone, « côté nord-est » s'il se répète). À chaque manche, le serveur en tire
+  `n` au hasard, écartés d'au moins 110 m — l'écart se relâche s'il n'en trouve pas assez
+  (`tirer_drapeaux`). Jamais le donjon : son enclos a une grille fermée (Phinaert).
 - **Prendre** : le serveur compte les vivants de chaque camp dans chaque cercle, quatre
   fois par seconde (`veiller_drapeaux`). Un camp seul : la jauge monte (8 s seul, jusqu'à
   deux fois plus vite à trois) ; deux camps : contesté, rien ne bouge. Un drapeau adverse
@@ -355,6 +359,14 @@ serveur force le mode) : **Drapeaux**, sur la durée du chrono.
   distances par drapeau ; ils décrochent sur l'ancien contournement si la grille se trompe.
   Ils ne naissent plus dans les parterres clos de grilles de la place (ils n'en sortaient
   pas : un joueur saute la grille, pas un bot).
+- **Les bots dès l'arrivée** : ils vivent dès que la citadelle est bâtie, sans attendre que
+  l'humain ait choisi apparence, camp et point d'arrivée (la manche, elle, a déjà commencé),
+  et la pause du pilote ne les fige plus. Sans ralliement ni point choisi, ils partent de
+  la place d'Armes.
+- **Sur les cartes** : en instance, la carte du beffroi (M) est donnée d'office. Minicarte,
+  carte M et carte du choix d'arrivée montrent les drapeaux en petits drapeaux à la couleur
+  de leur camp, et, en équipes, chaque joueur (bots compris) en point à la couleur du sien
+  (`PARTAGE.marques`, `forme: 'drapeau' | 'joueur'`, dessinés par `glyphe` de hud.js).
 
 ### Équipement égal en équipes (28 septembre)
 
@@ -369,7 +381,23 @@ il s'affiche marqué « [camp] ». Les bots n'ont que ce canal : ils y disent le
 (« Je m'occupe du donjon. », « Ils sont 3 sur la poterne, venez m'aider ! », « J'ai leur
 bannière ! Couvrez-moi… », « Je suis à bout, je décroche un instant ! ») — une phrase par
 bot toutes les dix secondes au plus, une par camp toutes les trois, et rien à un camp sans
-humain pour la lire. Le chat se place sous la liste des joueurs (à huit, elle le couvrait).
+humain pour la lire. Le chat est en bas à gauche, au-dessus du bouton « Accueil » : à
+droite, sous la liste des joueurs, il finissait sur l'aide des touches à dix joueurs.
+
+### L'armoire qui mettait six secondes (28 septembre)
+
+Mesuré (profileur, `armoire.mjs` du scratchpad) : 5,8 s entre « Entrée » et l'armoire en
+instance, dont 3,4 s d'un bloc — la compilation de shaders. Trois causes, trois corrections :
+- l'armoire coupait tout le post-traitement pour une Camille nette : la scène se dessinait
+  alors droit à l'écran, et three.js recompile chaque matériau pour cette sortie. Elle
+  n'éteint plus que le flou (`bokeh`, look.js) ;
+- la précompilation du chargement (`prechaufferRendu`, engine.js) visait l'écran, pas
+  l'image du post-traitement où le jeu dessine : rien ne servait, tout se recompilait au
+  lancement — en solo aussi (0 programme recompilé au départ maintenant) ;
+- les lueurs des présentoirs et des bourses étaient de vraies lumières ajoutées après le
+  démarrage : chacune change le nombre de lumières, donc la variante de TOUS les
+  matériaux. Elles passent par le réservoir du moteur (`sourceLumiere`, engine.js).
+Résultat : 71 programmes recompilés au lancement → 2 ; l'armoire en 1,7 à 2,3 s.
 
 Banc : `banc-drapeaux.mjs` (scratchpad) — compte d'essai, instance à 7 bots vétérans sur un
 serveur à part (port 8120, `TLOC_DB` à part), suivi des drapeaux et des bots toutes les 5 s,

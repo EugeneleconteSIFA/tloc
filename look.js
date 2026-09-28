@@ -11,7 +11,7 @@
 //     leur NOM (_Body, _Legs, Hair…), et la coiffure se regreffe depuis la banque.
 
 import {
-  G, SFX, THREE, camera, makeHead, phMat, player, saveGame, showMessage, state,
+  G, SFX, THREE, bokeh, camera, makeHead, phMat, player, saveGame, showMessage, state,
 } from './engine.js?v=27';
 
 // =====================================================================
@@ -441,8 +441,11 @@ export function ouvrirArmoire(apres = null) {
   // le panneau mange le tiers droit de l'écran : on décale la caméra pour que Camille
   // tombe à gauche, entière, et pas derrière les boutons
   const lat = new THREE.Vector3(dir.z, 0, -dir.x);
-  avant = { freeCam: G.freeCam, rot: player.mesh ? player.mesh.rotation.y : 0, postFX: G.postFX };
-  G.postFX = false;                                      // sans le flou de profondeur, elle est nette
+  // Sans le flou de profondeur, elle est nette. On n'éteint que le flou : couper tout le
+  // post-traitement faisait dessiner la scène droit à l'écran, et three.js recompilait alors
+  // CHAQUE matériau pour cette sortie — 3,4 s d'écran figé à l'ouverture de l'armoire.
+  avant = { freeCam: G.freeCam, rot: player.mesh ? player.mesh.rotation.y : 0, bokeh: bokeh.enabled };
+  bokeh.enabled = false;
   Object.assign(vue, { p: p.clone(), dir, lat, ech, d: 4.6, h: 1.75, base: Math.atan2(dir.x, dir.z) });
   cadrer();
 
@@ -597,7 +600,7 @@ export function fermerArmoire() {
   window.removeEventListener('keydown', echap, true);
   panneau.remove(); panneau = null;
   if (player.mesh && avant) player.mesh.rotation.y = avant.rot;
-  if (avant) G.postFX = avant.postFX;
+  if (avant) bokeh.enabled = avant.bokeh;
   G.freeCam = avant ? avant.freeCam : null;
   avant = null;
   state.paused = false;

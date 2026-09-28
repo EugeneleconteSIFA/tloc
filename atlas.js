@@ -13,6 +13,7 @@
 
 import * as HUD from './hud.js';
 import { ENCEINTE } from './carte.js';
+import { PARTAGE } from './etat.js';
 import {
   SFX, THREE, cut, estDecouvert, hideMenu, lieux, menu, player, resumeGame, saveGame,
   showMenu, showMessage, state,
@@ -228,6 +229,13 @@ function peindre() {
     ctx.strokeStyle = '#ff7b6b'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(qx - 7, qy - 7); ctx.lineTo(qx + 7, qy + 7);
     ctx.moveTo(qx + 7, qy - 7); ctx.lineTo(qx - 7, qy + 7); ctx.stroke();
+  }
+
+  // les repères du multi (tloc-multi.js) : objets à prendre, joueurs en équipes, drapeaux
+  for (const m of PARTAGE.marques || []) {
+    const x = ax(m.x), y = az(m.z);
+    if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
+    ctx.save(); ctx.translate(x, y); HUD.glyphe(ctx, m, m.forme === 'drapeau' ? 1.6 : 1.2); ctx.restore();
   }
 
   // Camille, et son regard

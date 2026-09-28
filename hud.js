@@ -34,6 +34,24 @@ LOOK.veiller();
 // Le fond est peint UNE FOIS dans un canvas hors écran (plusieurs centaines de polygones,
 // impensable à chaque image) ; chaque image ne fait qu'y découper une fenêtre.
 
+// Un repère du multi, tracé à l'origine (la minicarte et la grande carte le partagent) :
+// un petit drapeau pour la prise des drapeaux — hampe et flamme à la couleur du camp qui le
+// tient —, un point plus petit pour un joueur, un point pour le reste.
+export function glyphe(g, m, s = 1) {
+  g.fillStyle = m.fond; g.strokeStyle = m.bord || '#1a1a1a'; g.lineWidth = 1.3;
+  if (m.forme === 'drapeau') {
+    g.lineCap = 'round';
+    g.lineWidth = 3.2; g.strokeStyle = 'rgba(255,255,255,.7)';
+    g.beginPath(); g.moveTo(-3 * s, 6 * s); g.lineTo(-3 * s, -7 * s); g.stroke();
+    g.lineWidth = 1.6; g.strokeStyle = '#2a1d10';
+    g.beginPath(); g.moveTo(-3 * s, 6 * s); g.lineTo(-3 * s, -7 * s); g.stroke();
+    g.lineWidth = 1.2; g.strokeStyle = m.bord || '#1a1a1a';
+    g.beginPath(); g.moveTo(-3 * s, -7 * s); g.lineTo(7 * s, -3.5 * s); g.lineTo(-3 * s, 0); g.closePath(); g.fill(); g.stroke();
+  } else {
+    g.beginPath(); g.arc(0, 0, (m.forme === 'joueur' ? 2.8 : 4) * s, 0, TAU); g.fill(); g.stroke();
+  }
+}
+
 export const CARTE_PX = 0.7;          // px par mètre sur le canvas hors écran
 const PORTEE = 240;            // rayon de terrain montré autour de Camille, en mètres
 
@@ -114,12 +132,13 @@ export function minimap(g, W) {
   // dit alors la DIRECTION. La maison de Camille en violet ; et, quand l'histoire en donne
   // un (PARTAGE.repere : le moulin du prologue), le but du moment en or, qui pulse.
   const ech = W / (demi * 2);                      // px d'écran par px de carte
-  const point = (x, z, fond, bord, r) => {
+  const point = (x, z, fond, bord, r, forme) => {
     let mx = (c.MARGE + (x + c.R) * CARTE_PX - sx) * ech - W / 2;
     let mz = (c.MARGE + (z + c.R) * CARTE_PX - sz) * ech - W / 2;
     const d = Math.hypot(mx, mz), lim = W / 2 - 7, loin = d > lim;
     if (loin) { mx = mx / d * lim; mz = mz / d * lim; }
     g.save(); g.translate(W / 2 + mx, W / 2 + mz);
+    if (forme) { glyphe(g, { fond, bord, forme }, loin ? 0.8 : 1); g.restore(); return; }
     g.fillStyle = fond; g.strokeStyle = bord; g.lineWidth = 1.4;
     g.beginPath(); g.arc(0, 0, loin ? r * 0.77 : r, 0, TAU); g.fill(); g.stroke();
     if (!loin) {                                   // un liseré clair : il se détache du bâti
@@ -130,7 +149,7 @@ export function minimap(g, W) {
   };
   point(HOUSE.x, HOUSE.z, COUL.maison, '#25123a', 4.4);
   // les objets du multi à prendre (tloc-multi.js : l'armure aux casernes, l'écu sur la place)
-  for (const m of PARTAGE.marques || []) point(m.x, m.z, m.fond, m.bord, 4);
+  for (const m of PARTAGE.marques || []) point(m.x, m.z, m.fond, m.bord, 4, m.forme);
   if (PARTAGE.repere) point(PARTAGE.repere.x, PARTAGE.repere.z, '#ffd24a', '#5a3a00', 5 + Math.sin(performance.now() / 180) * 1.2);
   // Camille : toujours au centre, la pointe dans la direction du regard
   g.translate(W / 2, W / 2); g.rotate(-E.player.yaw);

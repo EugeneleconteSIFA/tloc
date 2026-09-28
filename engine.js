@@ -3415,7 +3415,18 @@ export function tuilerInstances() {
 export const POOL_K = 6;
 const POOL = { sources: [], lampes: [], tri: [] };
 const _vPool = new THREE.Vector3();
-const allume = (o) => { for (let a = o.parent; a; a = a.parent) if (!a.visible) return false; return true; };
+// allumée : tous ses parents visibles, jusqu'à la scène (une bourse ramassée est retirée de
+// la scène avec sa lueur : elle ne doit plus éclairer là où elle était)
+const allume = (o) => { for (let a = o.parent; a; a = a.parent) { if (!a.visible) return false; if (a === scene) return true; } return false; };
+// Une lumière posée après le démarrage du niveau (le multi : présentoirs d'objets, bourses
+// tombées) passe par le réservoir. Ajoutée telle quelle, elle changeait le nombre de
+// lumières de la scène, et three.js recompilait alors TOUS les matériaux : 51 programmes,
+// plus d'une seconde figée à l'arrivée en instance, et de nouveau à chaque bourse tombée.
+export function sourceLumiere(l) {
+  if (!POOL.lampes.length) return;                // pas de réservoir (peu de lumières) : rien à faire
+  l.visible = false;
+  POOL.sources.push(l); POOL.tri.push({ s: l, d: 0 });
+}
 export function poolLumieres() {
   for (const l of POOL.lampes) scene.remove(l);
   POOL.sources = []; POOL.lampes = [];
@@ -3429,6 +3440,12 @@ export function poolLumieres() {
 }
 export function majPool() {
   if (!POOL.lampes.length) return;
+  // une source dont le groupe a quitté la scène (bourse ramassée) n'éclaire plus (cf. allume) ;
+  // de temps en temps, on la sort du tri pour de bon
+  if ((POOL.n = (POOL.n || 0) + 1) % 120 === 0) {
+    const dansScene = (o) => { let a = o; while (a.parent) a = a.parent; return a === scene; };
+    POOL.tri = POOL.tri.filter((t) => dansScene(t.s)); POOL.sources = POOL.tri.map((t) => t.s);
+  }
   const c = camera.position;
   for (const t of POOL.tri) { t.s.getWorldPosition(_vPool); t.d = allume(t.s) ? _vPool.distanceToSquared(c) : Infinity; }
   POOL.tri.sort((a, b) => a.d - b.d);
@@ -3575,7 +3592,14 @@ async function prechaufferRendu() {
     }
   }
   peindreCharge('préparation du rendu — lumières et matières', base + part);
+  // Pour la sortie où l'on dessinera vraiment : avec le post-traitement, dans l'image du
+  // composer, pas à l'écran. three.js ne compile pas le même programme pour les deux (le
+  // rendu direct y ajoute le tone mapping et la conversion sRGB) : compilés pour l'écran, les
+  // shaders ne servaient pas, et tout se recompilait au lancement — 2 à 3 s figées juste
+  // après « Nouvelle partie », jusqu'à l'armoire en instance (mesuré au profileur).
+  renderer.setRenderTarget(G.postFX ? composer.renderTarget1 : null);
   try { await renderer.compileAsync(scene, camera); } catch (e) { /* la première image compilera */ }
+  finally { renderer.setRenderTarget(null); }
   console.log('rendu préparé : %d textures, %d ms', liste.length, Math.round(performance.now() - t0));
 }
 

@@ -19,12 +19,12 @@ import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import * as ATLAS from './atlas.js';
 import * as PNJ from './pnj.js';
-import { TOWN, sdEau, townWorld } from './carte.js';
+import { TOWN, bastions, sdEau, sdPent, townWorld } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
-  hideMenu, menu, player, saveGame, scene, showMenu, showMessage, state, tryMove, world,
+  hideMenu, menu, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
 } from './engine.js?v=27';
 
 const ENVOIS_PAR_S = 15;
@@ -90,6 +90,9 @@ if (actif) {
     metLyderic: true,         // ... donc plus besoin d'aller la chercher
     q_cat: 3, q_crows: 3, q_ghosts: 3,   // les villageois n'ont rien à demander
     bourse: true, bourseChest: true,     // même équipement pour tout le monde : les duels restent justes
+    // la carte du beffroi (M) : en solo, on la gagne au sommet du beffroi ; en instance, on
+    // l'a d'office — c'est là qu'on voit les drapeaux et les siens (Eugène)
+    carteBeffroi: true,
   });
 
   // l'aide des touches (engine.js) : pas de journal en instance, mais le chat
@@ -286,7 +289,6 @@ function peindrePanneau() {
           : (a.frags ? ` <span style="opacity:.7">${a.frags}</span>` : ''))));
   }
   panneau.innerHTML = lignes.join('<br>');
-  peindreChat();
 }
 
 // ---------------------------------------------------------------------
@@ -602,8 +604,10 @@ const journal = [];
 let boite = null;
 const zoneChat = document.createElement('div');
 if (actif) {
-  zoneChat.style.cssText = `position:absolute; right:16px; top:330px; width:320px; font-size:13px; line-height:1.45;
-    text-align:right; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.85); pointer-events:none;`;
+  // en bas à gauche, au-dessus du bouton « Accueil » : à droite, sous la liste des joueurs,
+  // il finissait sur l'aide des touches dès qu'on était une dizaine
+  zoneChat.style.cssText = `position:absolute; left:16px; bottom:64px; width:min(420px, 40vw); font-size:13px; line-height:1.45;
+    text-align:left; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.85); pointer-events:none;`;
   (document.getElementById('hud') || document.body).appendChild(zoneChat);
 }
 
@@ -616,8 +620,6 @@ function noterChat(nom, texte, deMoi, equipe = false) {
 
 function peindreChat() {
   const t = performance.now();
-  // sous la liste des joueurs, qui s'allonge avec eux : à huit, elle recouvrait le chat
-  if (panneau.isConnected) zoneChat.style.top = Math.max(330, panneau.offsetTop + panneau.offsetHeight + 10) + 'px';
   zoneChat.replaceChildren(...journal.filter((l) => t - l.t < 20000).map((l) => {
     const d = document.createElement('div');
     const b = document.createElement('b');
@@ -846,7 +848,7 @@ function poserBourse(b) {
   const col = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 0.14, 10), cuir); col.position.y = 0.52; g.add(col);
   const lien = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 6, 12), new THREE.MeshStandardMaterial({ color: 0xd9b24a, metalness: 0.8, roughness: 0.3 }));
   lien.rotation.x = Math.PI / 2; lien.position.y = 0.47; g.add(lien);
-  const lueur = new THREE.PointLight(0xffd070, 2, 4); lueur.position.y = 0.7; g.add(lueur);
+  const lueur = new THREE.PointLight(0xffd070, 2, 4); lueur.position.y = 0.7; g.add(lueur); sourceLumiere(lueur);   // par le réservoir du moteur : sinon, tout se recompile
   const y = b.y != null ? b.y : getH(b.p[0], b.p[1]);
   g.position.set(b.p[0], y, b.p[1]); g.scale.setScalar((G.echelle || 1) * 1.4);
   g.userData.dynamic = true;
@@ -895,35 +897,93 @@ if (actif) {
 // cercle : la jauge monte — l'étendard grimpe au mât — plus vite à plusieurs ; les deux
 // camps : contesté, rien ne bouge. Un drapeau adverse se rabat d'abord (l'étendard descend),
 // puis se lève à ses couleurs. À la fin du chrono, le camp qui en tient le plus gagne.
-// Leur nombre suit la partie (le serveur le fixe au début de chaque manche) : le centre
-// d'abord, puis les points forts de plus en plus loin.
-const PLAN_DRAPEAUX = ['place', 'donjon', 'poterne', 'caserne2', 'caserne1'];
+// Leur nombre suit la partie (le serveur le fixe au début de chaque manche) : la place
+// d'Armes d'abord, puis, un à un, le point fort le plus éloigné de ceux déjà retenus — à deux
+// ou trois drapeaux, ils étaient tous à moins de cent mètres (Eugène : « plus dispersés »).
+// Les points forts : la place, les casernes, la poterne, et la gorge des cinq bastions (au
+// pied de leur rampe, côté place). Pas le donjon : son enclos a une grille fermée.
+function candidatsDrapeaux() {
+  const place = lieux.find((l) => l.id === 'place');
+  if (!place) return [];
+  const c = [{ id: 'place', nom: place.nom, x: place.x, z: place.z }];
+  for (const l of lieux) if (l.id.startsWith('caserne') || l.id === 'poterne') c.push({ id: l.id, nom: l.nom, x: l.x, z: l.z });
+  bastions.forEach((b, i) => {
+    const gx = (b.S1[0] + b.S2[0]) / 2, gz = (b.S1[1] + b.S2[1]) / 2, d = Math.hypot(place.x - gx, place.z - gz) || 1;
+    c.push({ id: 'bastion' + i, nom: 'le b' + (b.name || 'astion').slice(1), x: gx + (place.x - gx) / d * 22, z: gz + (place.z - gz) / d * 22 });
+  });
+  return c;
+}
 const RAYON_DRAPEAU = 8;                       // = DRAPEAU_RAYON (app.py)
 const COULEUR_NEUTRE = 0xe6dcc0;
 let drapeaux = [], tenue = { garnison: 0, bourg: 0 }, drapeauxProposes = false, lieuxDrapeauxServeur = 0;
 const mats = new Map();                         // id -> { g, drap, anneau, jauge, fait }
 let marquesObjets = [];
 // la minicarte : les objets qui attendent, et les drapeaux à leurs couleurs
+// En équipes, les joueurs aussi — bots compris — à la couleur de leur camp (Eugène : on
+// doit les voir sur la carte). Les drapeaux en petits drapeaux, hampe et flamme.
 function majMarques() {
   const coul = (d) => (d.camp ? CAMPS[d.camp].couleur : '#e6dcc0');
-  PARTAGE.marques = [...marquesObjets, ...drapeaux.map((d) => ({ x: d.p[0], z: d.p[1], fond: coul(d), bord: d.conteste ? '#ffffff' : '#1a1a1a' }))];
+  const gens = !enEquipes() ? [] : [...autres.values()].filter((a) => CAMPS[a.camp] && a.mesh.visible && a.niveau === (G.level && G.level.name))
+    .map((a) => ({ x: a.mesh.position.x, z: a.mesh.position.z, fond: CAMPS[a.camp].couleur, bord: '#10141e', forme: 'joueur' }));
+  PARTAGE.marques = [...marquesObjets, ...gens,
+    ...drapeaux.map((d) => ({ x: d.p[0], z: d.p[1], fond: coul(d), bord: d.conteste ? '#ffffff' : '#1a1a1a', forme: 'drapeau' }))];
 }
-// On attend la grille des chemins (cf. preparerNav) : un drapeau doit être atteignable depuis
-// la place d'Armes — au premier essai, celui de la poterne tombait dans une cour fermée, et
-// personne ne pouvait le prendre.
+// Une vingtaine d'emplacements possibles (Eugène) : le serveur en tire au sort, à chaque
+// manche, autant qu'il faut de drapeaux, écartés les uns des autres (cf. armer_drapeaux) —
+// ainsi chaque recoin de la place finit par servir, et un mauvais emplacement se voit vite.
+// On attend la grille des chemins (cf. preparerNav) : un emplacement doit être dégagé (le
+// cercle entier libre) et atteignable depuis la place d'Armes — au premier essai, la poterne
+// tombait dans une cour fermée, et le donjon est derrière une grille close. On échantillonne
+// l'intérieur de l'enceinte (à 12 m au moins des courtines), puis on garde les plus écartés.
+const NB_EMPLACEMENTS = 20;
+function nomEmplacement(x, z, pris, place) {
+  const l = lieux.filter((q) => q.id !== 'donjon' && Math.hypot(q.x - x, q.z - z) < 40).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
+  let nom = l ? l.nom : '';
+  if (!nom) {
+    const zn = (world.zoneName ? world.zoneName(x, z) : '') || 'Place d\u2019Armes', m = zn.charAt(0).toLowerCase() + zn.slice(1);
+    nom = /^(remparts|fossés|casernes|galeries|jardins)/.test(m) ? 'les ' + m : /^(place|porte|poterne|caserne|chapelle|cour|courtine|esplanade|galerie)/.test(m) ? 'la ' + m
+      : /^[aeiouhéè]/.test(m) ? 'l\u2019' + m : 'le ' + m;
+  }
+  if (pris.has(nom)) {                              // deux fois « la place d'Armes » : on dit le côté
+    const a = Math.atan2(-(z - place.z), x - place.x), cotes = ['est', 'nord-est', 'nord', 'nord-ouest', 'ouest', 'sud-ouest', 'sud', 'sud-est'];
+    const base = nom; nom = `${base}, côté ${cotes[((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8]}`;
+    for (let k = 2; pris.has(nom); k++) nom = `${base} (${k})`;
+  }
+  pris.add(nom);
+  return nom;
+}
 function proposerDrapeaux() {
   if (regle !== 'drapeaux' || drapeauxProposes || lieuxDrapeauxServeur || !lieux.length || !state.running || !G.level) return;
   if (!nav || nav.fait < nav.nz) return;
-  const liste = [];
-  let relie = null;                                // les cases reliées au premier drapeau (la place)
-  for (const id of PLAN_DRAPEAUX) {
-    const l = lieux.find((x) => x.id === id);
-    const p = l && (terrainDrapeau(l, relie) || (relie ? null : praticable(l.x, l.z)));
-    if (!p) continue;
-    if (!relie) relie = champ({ id: 'relie', p: [p.x, p.z] });
-    liste.push({ id, nom: l.nom, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +(world.levelH ? world.levelH(p.x, p.z) : getH(p.x, p.z)).toFixed(2), n: G.level.name });
+  const place = lieux.find((l) => l.id === 'place');
+  if (!place) return;
+  const p0 = terrainDrapeau(place) || praticable(place.x, place.z);
+  if (!p0) return;
+  const relie = champ({ id: 'relie', p: [p0.x, p0.z] }), { nx, nz, libre } = nav;
+  // un cercle dégagé, lu dans la grille : deux couronnes de cases libres
+  const anneaux = [];
+  for (const r of [3.5, RAYON_DRAPEAU - 1]) for (let k = 0; k < 16; k++) anneaux.push([Math.round(Math.cos(k / 16 * TAU) * r / NAV_PAS), Math.round(Math.sin(k / 16 * TAU) * r / NAV_PAS)]);
+  const cands = [];
+  for (let j = 0; j < nz; j += 2) for (let i = 0; i < nx; i += 2) {
+    const k = j * nx + i;
+    if (relie[k] < 0) continue;
+    const x = nav.x0 + (i + 0.5) * NAV_PAS, z = nav.z0 + (j + 0.5) * NAV_PAS;
+    if (sdPent(x, z) > -12) continue;
+    if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
+  // les plus écartés : la place, puis toujours le point le plus loin de ceux déjà retenus
+  const choisis = [[p0.x, p0.z]], dmin = cands.map(([x, z]) => Math.hypot(x - p0.x, z - p0.z));
+  while (choisis.length < NB_EMPLACEMENTS && cands.length) {
+    let k = 0; for (let i = 1; i < cands.length; i++) if (dmin[i] > dmin[k]) k = i;
+    if (dmin[k] < 2.5 * RAYON_DRAPEAU) break;       // plus de place sans que deux cercles se touchent
+    const [x, z] = cands[k]; choisis.push([x, z]);
+    for (let i = 0; i < cands.length; i++) dmin[i] = Math.min(dmin[i], Math.hypot(cands[i][0] - x, cands[i][1] - z));
+  }
+  const noms = new Set();
+  const liste = choisis.map(([x, z], k) => ({ id: 'd' + k, nom: nomEmplacement(x, z, noms, place), p: [+x.toFixed(2), +z.toFixed(2)],
+    y: +(world.levelH ? world.levelH(x, z) : getH(x, z)).toFixed(2), n: G.level.name }));
   drapeauxProposes = true;
+  console.log('drapeaux : %d emplacements —', liste.length, liste.map((d) => `${d.nom} (${Math.round(d.p[0])}, ${Math.round(d.p[1])})`).join(' · '));
   if (liste.length) envoyer({ t: 'drapeaux-lieux', drapeaux: liste });
 }
 // Un drapeau veut du champ : son cercle doit être libre (au donjon, le point praticable le
@@ -1117,7 +1177,7 @@ function presentoir(type) {
   if (type === 'armure') { const c = PNJ.faireCuirasse(1); c.scale.setScalar(1.45); c.position.y = 1.3; g.add(c); }
   else if (type === 'arc') { const a = makeBow(); a.scale.setScalar(0.9); a.position.set(0, 1.25, 0.1); g.add(a); }
   else { const e = PNJ.faireEcu(); e.scale.setScalar(1.9); e.position.set(0, 1.12, 0.08); e.rotation.x = -0.12; g.add(e); }
-  const lueur = new THREE.PointLight(0xffd070, 3, 7); lueur.position.y = 1.9; g.add(lueur);
+  const lueur = new THREE.PointLight(0xffd070, 3, 7); lueur.position.y = 1.9; g.add(lueur); sourceLumiere(lueur);
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   g.scale.setScalar((G.echelle || 1) / 0.6);     // à l'échelle de Camille (1,80 m dehors)
   g.userData.dynamic = true;
@@ -1625,7 +1685,13 @@ function baseDe(b) {
   const a = autres.get(b.id);
   if (enEquipes() && rdv && rdv.x === undefined && a && rdv[a.camp]) return rdv[a.camp];
   if (!enEquipes() && rdv && rdv.x !== undefined) return rdv;
-  return apparition ? { x: apparition.x, z: apparition.z } : null;
+  if (apparition) return { x: apparition.x, z: apparition.z };
+  return pointDeDepart();
+}
+// sans ralliement ni point d'arrivée choisi : la place d'Armes (ou là où l'on est)
+function pointDeDepart() {
+  const pl = lieux.find((l) => l.id === 'place');
+  return pl ? { x: pl.x, z: pl.z } : (G.level ? { x: player.pos.x, z: player.pos.z } : null);
 }
 function placerBot(b) {
   const base = baseDe(b);
@@ -1702,7 +1768,7 @@ const caseNav = (x, z) => {
 function preparerNav() {
   if (!lieux.length || !G.level) return;
   if (!nav) {
-    const pts = PLAN_DRAPEAUX.map((id) => lieux.find((l) => l.id === id)).filter(Boolean);
+    const pts = candidatsDrapeaux();
     if (!pts.length) return;
     const xs = pts.map((l) => l.x), zs = pts.map((l) => l.z);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
@@ -2059,7 +2125,7 @@ function envoyerEtatBot(b) {
 // le pose, loin de l'autre camp — sans quoi il n'y aurait pas de bannière à prendre.
 let rdvBotsT = 0;
 function ralliementDesBots(now) {
-  if (!enEquipes() || now - rdvBotsT < 2000 || !apparition) return;
+  if (!enEquipes() || now - rdvBotsT < 2000) return;
   rdvBotsT = now;
   for (const c of ['garnison', 'bourg']) {
     if (rdv && rdv.x === undefined && rdv[c]) continue;
@@ -2068,7 +2134,8 @@ function ralliementDesBots(now) {
     const humains = [...autres.values()].some((o) => !o.bot && o.camp === c) || state.camp === c;
     if (humains && now - (b.depuis || (b.depuis = now)) < 25000) continue;     // on laisse aux humains le temps de choisir
     const autre = rdv && rdv.x === undefined && rdv[autreCamp(c)];
-    const depart = autre || { x: apparition.x, z: apparition.z };
+    const depart = autre || (apparition ? { x: apparition.x, z: apparition.z } : pointDeDepart());
+    if (!depart) continue;
     const an0 = Math.random() * TAU;
     for (let k = 0; k < 8; k++) {
       const an = an0 + k * TAU / 8, p = praticable(depart.x + Math.cos(an) * 70, depart.z + Math.sin(an) * 70);
@@ -2084,7 +2151,11 @@ function ralliementDesBots(now) {
 function tickBots(dt, now) {
   if (!bots.size || !ws || ws.readyState !== 1) return;
   // les bots ne vivent que là où le pilote a le terrain : dans son niveau, jeu lancé
-  const actifs = state.running && !state.paused && apparition && G.level;
+  // Les bots vivent dès que la citadelle est bâtie : la manche part pendant que l'humain
+  // choisit son apparence, son camp et son point d'arrivée — ils l'attendaient pour naître,
+  // et l'humain entrait dans une partie vide (Eugène). La pause du pilote ne les fige pas
+  // non plus : les autres joueurs, eux, jouent.
+  const actifs = G.level && lieux.length && document.getElementById('loading')?.classList.contains('hidden');
   if (actifs) ralliementDesBots(now);
 
   tickFlechesBots(dt);
@@ -2313,6 +2384,7 @@ function boucle(now) {
   tickObjets(now); poserForge(); poserInteractionsCheval();
   tickBannieres(now);
   tickDrapeaux(now);
+  if (now - (majMarques.t || 0) > 400) { majMarques.t = now; majMarques(); }
   if (enEquipes() && state.running && !equipeDonnee && state.apparition) { equipeDonnee = true; equiperEquipe(true); }
   tickBots(dt, now);
   if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); if (resultats && manche) majBoutonsResultats(manche); }
@@ -2369,5 +2441,5 @@ requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
 window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue }),
-  nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav,
+  nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav, candidatsDrapeaux, terrainDrapeau,
   equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };

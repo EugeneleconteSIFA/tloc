@@ -24,6 +24,7 @@ import json
 import math
 import os
 import re
+import random
 import secrets
 import sqlite3
 import time
@@ -60,12 +61,29 @@ BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mise
 # qu'aucun camp ne puisse tout garder sans jamais bouger. Au moins un.
 DRAPEAU_RAYON = 8.0             # mètres : le cercle où l'on prend (ou défend) le drapeau
 DRAPEAU_PRISE = float(os.environ.get("TLOC_DRAPEAU_PRISE", 8))   # secondes pour un preneur seul
-DRAPEAUX_MAX = 5                # les points forts proposés par le client (cf. PLAN_DRAPEAUX)
+DRAPEAUX_MAX = 5                # au plus cinq drapeaux en jeu…
+EMPLACEMENTS_MAX = 24           # … tirés au sort parmi la vingtaine d'emplacements proposés par le client
 DRAPEAU_PAS = 0.25              # le serveur regarde les cercles quatre fois par seconde
 
 
 def nb_drapeaux(joueurs: int) -> int:
     return max(1, min(DRAPEAUX_MAX, math.ceil(joueurs / 2) - 1))
+
+
+def tirer_drapeaux(lieux: dict, n: int) -> list:
+    """`n` emplacements au hasard, aussi écartés que possible : on exige d'abord 110 m entre
+    deux drapeaux, puis on relâche l'écart tant qu'on n'en trouve pas assez."""
+    ids = list(lieux)
+    random.shuffle(ids)
+    d = lambda a, b: math.hypot(lieux[a]["p"][0] - lieux[b]["p"][0], lieux[a]["p"][1] - lieux[b]["p"][1])
+    for ecart in (110, 90, 70, 50, 30, 0):
+        pris: list = []
+        for k in ids:
+            if all(d(k, q) >= ecart for q in pris):
+                pris.append(k)
+                if len(pris) == n:
+                    return pris
+    return ids[:n]
 # L'équipement du multi : une armure et un écu, posés à des lieux fixes de la carte (le
 # premier client les propose, le serveur les garde), au premier qui les atteint. L'écu se
 # garde ; l'armure se fend sous les coups (le client de celui qui la porte compte, comme
@@ -1277,8 +1295,8 @@ class Salon:
     def armer_drapeaux(self):
         """Une manche neuve : les drapeaux en jeu (leur nombre suit les joueurs), tous neutres."""
         n = nb_drapeaux(len(self.joueurs))
-        self.drapeaux = {k: {**l, "camp": None, "jauge": 0.0, "vers": None, "conteste": False}
-                         for k, l in list(self.lieux_drapeaux.items())[:n]}
+        self.drapeaux = {k: {**self.lieux_drapeaux[k], "camp": None, "jauge": 0.0, "vers": None, "conteste": False}
+                         for k in tirer_drapeaux(self.lieux_drapeaux, n)}
         self.tenue = {c: 0.0 for c in CAMPS}
 
     def presents(self, d: dict) -> dict[str, list["Connecte"]]:
@@ -1753,7 +1771,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             # comme les objets : le premier client qui connaît la carte propose les points forts
             if moi.est_bot or salon.lieux_drapeaux:
                 return
-            for d in (m.get("drapeaux") or [])[:DRAPEAUX_MAX]:
+            for d in (m.get("drapeaux") or [])[:EMPLACEMENTS_MAX]:
                 try:
                     did, x, z, y = str(d["id"]), float(d["p"][0]), float(d["p"][1]), float(d.get("y", 0))
                 except (KeyError, TypeError, ValueError, IndexError):
