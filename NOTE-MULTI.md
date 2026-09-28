@@ -326,3 +326,52 @@ Sur la carte du beffroi, « LE VILLAGE » s'écrit maintenant en nom de quartier
 comme simple point, il perdait toujours la place au beffroi, à l'estaminet, à la chapelle
 et à l'école, et ne s'écrivait jamais.
 
+### La prise des drapeaux (28 septembre)
+
+Une quatrième règle, en équipes seulement (l'accueil ne la montre qu'en équipes ; le
+serveur force le mode) : **Drapeaux**, sur la durée du chrono.
+- **Combien** : arrondi supérieur(joueurs, bots compris ÷ 2) − 1, au moins un, au plus cinq
+  (Eugène ; `nb_drapeaux`, fixé au début de chaque manche). Les points forts, dans l'ordre
+  où ils entrent en jeu : place d'Armes, donjon, poterne, casernes (`PLAN_DRAPEAUX`).
+- **Où** : le premier client les propose (`drapeaux-lieux`), une fois sa grille des chemins
+  prête : un centre dont le cercle de 8 m est libre (`terrainDrapeau`) ET relié à la place
+  d'Armes — au premier essai, la poterne tombait dans une cour fermée.
+- **Prendre** : le serveur compte les vivants de chaque camp dans chaque cercle, quatre
+  fois par seconde (`veiller_drapeaux`). Un camp seul : la jauge monte (8 s seul, jusqu'à
+  deux fois plus vite à trois) ; deux camps : contesté, rien ne bouge. Un drapeau adverse
+  se rabat (neutre) avant de se lever à ses couleurs. `TLOC_DRAPEAU_PRISE` au banc.
+- **Gagner** : à la fin du chrono, le plus de drapeaux ; à égalité, le plus long temps de
+  tenue cumulé. Classement sur les drapeaux pris ; badge **Conquérant** (le plus, deux au
+  moins). Les bannières sont rangées pendant cette règle.
+- **Le dessin** : mât de chêne sur un socle de pierre, étendard qui grimpe avec la jauge,
+  cercle qui épouse le terrain et un arc de jauge à l'intérieur, qui clignote contesté ;
+  points à leurs couleurs sur la minicarte ; bandeau (chrono, ⚑ par drapeau, ce que je
+  suis en train de prendre) ; écran de fin avec le décompte.
+- **Les bots** vont au drapeau le plus proche qui n'est pas à eux, un sur trois garde ceux
+  qu'on entame, et un drapeau déjà visé par un allié est moins tentant (sinon, mêlée au
+  centre). En route, ils ne se battent que contre qui barre le chemin ou tient le cercle.
+  Leurs chemins : une grille de praticabilité de 1,5 m sur les points forts (≈ 70 000
+  cases, 400 ms en tout, remplie 3 ms par image — jamais d'écran figé), puis un champ de
+  distances par drapeau ; ils décrochent sur l'ancien contournement si la grille se trompe.
+  Ils ne naissent plus dans les parterres clos de grilles de la place (ils n'en sortaient
+  pas : un joueur saute la grille, pas un bot).
+
+### Équipement égal en équipes (28 septembre)
+
+En équipes, chacun a l'arc et un carquois plein à l'arrivée, au début de chaque manche et à
+chaque relève (`equiperEquipe`) ; les râteliers d'arc s'effacent, et tous les bots tirent.
+
+### Parler à son camp (28 septembre)
+
+En équipes, la boîte du chat (T) s'ouvre sur son camp — bordure à ses couleurs — et **Tab**
+bascule vers tout le monde. Le serveur ne remet un message `e: 1` qu'aux humains du camp ;
+il s'affiche marqué « [camp] ». Les bots n'ont que ce canal : ils y disent leurs intentions
+(« Je m'occupe du donjon. », « Ils sont 3 sur la poterne, venez m'aider ! », « J'ai leur
+bannière ! Couvrez-moi… », « Je suis à bout, je décroche un instant ! ») — une phrase par
+bot toutes les dix secondes au plus, une par camp toutes les trois, et rien à un camp sans
+humain pour la lire. Le chat se place sous la liste des joueurs (à huit, elle le couvrait).
+
+Banc : `banc-drapeaux.mjs` (scratchpad) — compte d'essai, instance à 7 bots vétérans sur un
+serveur à part (port 8120, `TLOC_DB` à part), suivi des drapeaux et des bots toutes les 5 s,
+message de camp tapé, captures (bandeau, cercles vus d'en haut, résultats).
+

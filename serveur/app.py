@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -51,6 +52,20 @@ DON_MAX = 999
 BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
+# La prise des drapeaux (règle `drapeaux`, en équipes) : des drapeaux aux points forts de la
+# citadelle, pris en restant dans leur cercle. À la fin du chrono, le camp qui en tient le
+# plus gagne ; à égalité, celui qui les a tenus le plus longtemps (drapeaux × secondes).
+# Leur nombre suit la partie (Eugène, 28 septembre) : arrondi supérieur de la moitié des
+# joueurs, bots compris, moins un — un de moins que les places à tenir d'un camp, pour
+# qu'aucun camp ne puisse tout garder sans jamais bouger. Au moins un.
+DRAPEAU_RAYON = 8.0             # mètres : le cercle où l'on prend (ou défend) le drapeau
+DRAPEAU_PRISE = float(os.environ.get("TLOC_DRAPEAU_PRISE", 8))   # secondes pour un preneur seul
+DRAPEAUX_MAX = 5                # les points forts proposés par le client (cf. PLAN_DRAPEAUX)
+DRAPEAU_PAS = 0.25              # le serveur regarde les cercles quatre fois par seconde
+
+
+def nb_drapeaux(joueurs: int) -> int:
+    return max(1, min(DRAPEAUX_MAX, math.ceil(joueurs / 2) - 1))
 # L'équipement du multi : une armure et un écu, posés à des lieux fixes de la carte (le
 # premier client les propose, le serveur les garde), au premier qui les atteint. L'écu se
 # garde ; l'armure se fend sous les coups (le client de celui qui la porte compte, comme
@@ -87,7 +102,9 @@ NOMS_BOTS = ("Baudouin", "Mahaut", "Firmin", "Aldegonde", "Gaspard", "Philippine
 #   temps  — chrono : une durée choisie, classement sur « mis à terre − tombé », façon Smash.
 # Le match à mort se joue en 1 à 5 vies, le chrono de 1 à 15 minutes : choisis à la création.
 # L'arbitre est le serveur : c'est lui qui voit passer les coups et les morts.
-REGLES = ("balade", "survie", "temps")
+#   drapeaux — prise des drapeaux, en équipes seulement : chrono, puis le camp qui tient le
+#              plus de drapeaux gagne (cf. DRAPEAU_RAYON).
+REGLES = ("balade", "survie", "temps", "drapeaux")
 MANCHE_COMPTE = int(os.environ.get("TLOC_MANCHE_COMPTE", 10))     # compte à rebours avant une manche
 MANCHE_DUREE_BANC = os.environ.get("TLOC_MANCHE_DUREE")            # le banc raccourcit le chrono
 MANCHE_PAUSE = int(os.environ.get("TLOC_MANCHE_PAUSE", 30))       # les résultats, avant la suivante
@@ -106,6 +123,7 @@ BADGES = {
     "bourrin":       ("Bourrin", "Fonce dans le tas : le plus de cœurs arrachés de la manche."),
     "increvable":    ("Increvable", "Une manche au chrono sans jamais tomber."),
     "tete_brulee":   ("Tête brûlée", "Le plus souvent à terre… et toujours revenu."),
+    "conquerant":    ("Conquérant", "Le plus de drapeaux pris dans la manche (deux au moins)."),
 }
 
 
@@ -824,7 +842,7 @@ class NouvelleInstance(BaseModel):
     enjeu: bool = False
     bots: int = Field(default=0, ge=0, le=TOTAL_MAX - 1)
     niveau: str = Field(default="soldat", pattern="^(recrue|soldat|veteran)$")
-    regle: str = Field(default="balade", pattern="^(balade|survie|temps)$")
+    regle: str = Field(default="balade", pattern="^(balade|survie|temps|drapeaux)$")
     vies: int = Field(default=1, ge=1, le=5)
     duree: int = Field(default=180, ge=60, le=900)
 
@@ -843,6 +861,8 @@ def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
 @app.post("/api/instances")
 def creer_instance(n: NouvelleInstance, j: sqlite3.Row = Depends(porteur)):
     purger_instances()
+    if n.regle == "drapeaux":                 # deux camps, sinon il n'y a rien à prendre à personne
+        n.mode = "equipes"
     code = nouveau_code()
     t = time.time()
     with db() as cx:
@@ -982,6 +1002,12 @@ class Salon:
         self.duree = 180
         # la manche en cours (survie, temps) : { etat: compte|cours|fin, fin, stats, elimines, ... }
         self.manche: dict | None = None
+        # la prise des drapeaux : les points forts proposés par le premier client (id -> lieu),
+        # et, pendant une manche, l'état de ceux en jeu : à qui (camp), où en est la prise
+        # (jauge 0 → 1, vers un camp), et le temps de tenue cumulé par camp
+        self.lieux_drapeaux: dict[str, dict] = {}
+        self.drapeaux: dict[str, dict] = {}
+        self.tenue = {c: 0.0 for c in CAMPS}
 
     # ------------------------------------------------------------------
     #  Les manches : match à mort (survie) et chrono (temps)
@@ -991,7 +1017,7 @@ class Salon:
     # proclame le vainqueur, décerne les badges, puis relance une manche.
     @staticmethod
     def nouvelles_stats() -> dict:
-        return {"k": 0, "m": 0, "coups": 0, "degats": 0.0, "faibles": 0, "serie": 0, "serie_max": 0, "venge": 0}
+        return {"k": 0, "m": 0, "coups": 0, "degats": 0.0, "faibles": 0, "serie": 0, "serie_max": 0, "venge": 0, "cap": 0}
 
     def vue_manche(self) -> dict:
         m = self.manche
@@ -1002,6 +1028,9 @@ class Salon:
              "elimines": sorted(m["elimines"]), "vies_max": self.vies, "duree": self.duree,
              "vies": {str(i): max(0, self.vies - s["m"]) for i, s in m["stats"].items()} if self.regle == "survie" else {},
              "scores": {str(i): [s["k"], s["m"]] for i, s in m["stats"].items()}}
+        if self.regle == "drapeaux":
+            v["drapeaux"] = self.vue_drapeaux()
+            v["tenue"] = {c: round(t) for c, t in self.tenue.items()}
         if m["etat"] == "fin":
             v.update(m["resultat"])
             # « Rejouer » : qui est prêt, sur combien d'humains présents
@@ -1074,12 +1103,16 @@ class Salon:
         m = self.manche
         m.update(etat="cours", stats={i: self.nouvelles_stats() for i in self.joueurs}, elimines=set(),
                  ordre=[], premier=None, tueurs={}, noms={}, camps={},
-                 fin=time.time() + self.duree if self.regle == "temps" else None)
+                 fin=time.time() + self.duree if self.regle in ("temps", "drapeaux") else None)
         for j in self.joueurs.values():
             self.noter_nom(j)
+        if self.regle == "drapeaux":
+            self.armer_drapeaux()
         await self.annoncer_manche()
         await self.raz_objets()
-        if self.regle == "temps":
+        if self.regle == "drapeaux":
+            asyncio.create_task(self.veiller_drapeaux(m["jeton"]))
+        if self.regle in ("temps", "drapeaux"):
             jeton = m["jeton"]
 
             async def chrono():
@@ -1152,6 +1185,14 @@ class Salon:
                 gagnants = [i for i in st if camp_gagnant and m["camps"].get(i) == camp_gagnant]
             else:
                 gagnants = vivants[:1]
+        elif self.regle == "drapeaux":
+            # le camp qui tient le plus de drapeaux ; à égalité, celui qui les a tenus le plus longtemps
+            classement = sorted(st, key=lambda i: (st[i]["cap"], score(i), st[i]["k"]), reverse=True)
+            tiens = {c: sum(1 for d in self.drapeaux.values() if d["camp"] == c) for c in CAMPS}
+            cle = lambda c: (tiens[c], round(self.tenue[c]))
+            if cle(CAMPS[0]) != cle(CAMPS[1]):
+                camp_gagnant = max(CAMPS, key=cle)
+            gagnants = [i for i in st if camp_gagnant and m["camps"].get(i) == camp_gagnant]
         else:
             classement = sorted(st, key=lambda i: (score(i), st[i]["k"]), reverse=True)
             if self.equipes:
@@ -1183,6 +1224,12 @@ class Salon:
             for i, s_ in st.items():
                 if s_["degats"] == deg:
                     badges[i].append("bourrin")
+        if self.regle == "drapeaux":
+            cm = max((s_["cap"] for s_ in st.values()), default=0)
+            if cm >= 2:
+                for i, s_ in st.items():
+                    if s_["cap"] == cm:
+                        badges[i].append("conquerant")
         if self.regle == "temps":
             mm = max((s_["m"] for s_ in st.values()), default=0)
             if mm >= 3:
@@ -1200,7 +1247,7 @@ class Salon:
                                       ON CONFLICT(joueur, badge) DO UPDATE SET n = n + 1""", (i, b))
         m["resultat"] = {
             "classement": [{"id": i, "perso": m["noms"].get(i, "?"), "camp": m["camps"].get(i),
-                            "k": st[i]["k"], "m": st[i]["m"], "badges": badges[i]} for i in classement],
+                            "k": st[i]["k"], "m": st[i]["m"], "cap": st[i]["cap"], "badges": badges[i]} for i in classement],
             "gagnants": gagnants, "camp_gagnant": camp_gagnant,
             "noms_badges": {b: nom for b, (nom, _) in BADGES.items()},
         }
@@ -1213,6 +1260,89 @@ class Salon:
                 self.manche = None
                 await self.preparer()
         asyncio.create_task(ensuite())
+
+    # ------------------------------------------------------------------
+    #  La prise des drapeaux
+    # ------------------------------------------------------------------
+    # Le serveur connaît les positions (message `etat`) : c'est lui qui compte, dans chaque
+    # cercle, les vivants de chaque camp. Un camp seul fait monter la jauge (plus vite à
+    # plusieurs, jusqu'au double à trois) ; deux camps dans le cercle, elle se fige (contesté).
+    # Un drapeau adverse se prend en deux temps : on le rabat (jauge qui redescend à zéro,
+    # il redevient neutre), puis on le lève à ses couleurs.
+    def vue_drapeaux(self) -> list:
+        return [{"id": k, "nom": d["nom"], "p": d["p"], "y": d["y"], "camp": d["camp"],
+                 "jauge": round(d["jauge"], 2), "vers": d["vers"], "conteste": d["conteste"]}
+                for k, d in self.drapeaux.items()]
+
+    def armer_drapeaux(self):
+        """Une manche neuve : les drapeaux en jeu (leur nombre suit les joueurs), tous neutres."""
+        n = nb_drapeaux(len(self.joueurs))
+        self.drapeaux = {k: {**l, "camp": None, "jauge": 0.0, "vers": None, "conteste": False}
+                         for k, l in list(self.lieux_drapeaux.items())[:n]}
+        self.tenue = {c: 0.0 for c in CAMPS}
+
+    def presents(self, d: dict) -> dict[str, list["Connecte"]]:
+        ici = {c: [] for c in CAMPS}
+        for j in self.joueurs.values():
+            p, hp = j.etat.get("p"), j.etat.get("hp")
+            if j.camp not in CAMPS or not p or not isinstance(hp, (int, float)) or hp <= 0:
+                continue
+            if d.get("n") and j.etat.get("n") != d["n"]:       # dans un intérieur, ailleurs
+                continue
+            if ((p[0] - d["p"][0]) ** 2 + (p[2] - d["p"][1]) ** 2) ** 0.5 <= DRAPEAU_RAYON:
+                ici[j.camp].append(j)
+        return ici
+
+    async def veiller_drapeaux(self, jeton):
+        dernier = 0.0
+        while self.manche and self.manche["jeton"] is jeton and self.manche["etat"] == "cours":
+            await asyncio.sleep(DRAPEAU_PAS)
+            if not self.drapeaux and self.lieux_drapeaux:       # les lieux sont arrivés après le début
+                self.armer_drapeaux()
+            evts, bouge = [], False
+            for k, d in self.drapeaux.items():
+                if d["camp"]:
+                    self.tenue[d["camp"]] += DRAPEAU_PAS
+                ici = self.presents(d)
+                camps_la = [c for c in CAMPS if ici[c]]
+                conteste = len(camps_la) == 2
+                if conteste != d["conteste"]:
+                    d["conteste"] = conteste
+                    bouge = True
+                if len(camps_la) != 1:
+                    continue
+                c = camps_la[0]
+                pas = DRAPEAU_PAS / DRAPEAU_PRISE * min(2.0, 1 + 0.5 * (len(ici[c]) - 1))
+                if d["camp"] == c:                               # chez soi : on remet la jauge à plein
+                    if d["jauge"] < 1:
+                        d.update(jauge=min(1.0, d["jauge"] + pas), vers=c)
+                        bouge = True
+                    continue
+                if d["camp"] or (d["vers"] and d["vers"] != c):  # adverse (ou entamé par l'autre) : on rabat
+                    d["jauge"] = max(0.0, d["jauge"] - pas)
+                    if d["jauge"] <= 0:
+                        if d["camp"]:
+                            evts.append({"evt": "neutre", "id": k, "camp": d["camp"], "par": c})
+                        d.update(camp=None, vers=c)
+                else:                                            # neutre : on le lève
+                    d.update(vers=c, jauge=min(1.0, d["jauge"] + pas))
+                    if d["jauge"] >= 1:
+                        d["camp"] = c
+                        noms = [j.perso for j in ici[c]]
+                        for j in ici[c]:
+                            s = self.stats(j.id)
+                            if s:
+                                s["cap"] += 1
+                        evts.append({"evt": "pris", "id": k, "camp": c, "noms": noms})
+                bouge = True
+            maintenant = time.time()
+            for e in evts:
+                await self.diffuser({"t": "drapeaux", "drapeaux": self.vue_drapeaux(),
+                                     "tenue": {c: round(t) for c, t in self.tenue.items()}, **e})
+            if bouge and not evts and maintenant - dernier > 0.45:   # la jauge : deux fois par seconde
+                dernier = maintenant
+                await self.diffuser({"t": "drapeaux", "drapeaux": self.vue_drapeaux(),
+                                     "tenue": {c: round(t) for c, t in self.tenue.items()}})
 
     def vue_objets(self) -> list:
         maintenant = time.time()
@@ -1408,6 +1538,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         "joueurs": [c.vue() for c in salon.joueurs.values() if c.id != moi.id],
         "pilote": [b.vue() for b in salon.bots() if b.pilote == moi.id],
         "regle": salon.regle,
+        "drapeaux": salon.vue_drapeaux(), "lieux_drapeaux": len(salon.lieux_drapeaux),
     }, separators=(",", ":")))
     # l'apparence n'est pas encore connue : elle suit, dans un message « look » du client
     await salon.diffuser({"t": "arrivee", "id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso}, sauf=moi.id)
@@ -1428,8 +1559,8 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         if t == "rejouer":
             await salon.rejouer(moi)
             return
-        if moi.est_bot and t in ("fete", "recolte", "don", "chat", "ramasser"):
-            return                      # la fête, l'argent et le chat restent aux humains
+        if moi.est_bot and t in ("fete", "recolte", "don", "ramasser"):
+            return                      # la fête et l'argent restent aux humains
 
         if t == "etat":
             # ar / bc : niveaux d'armure et d'écu portés, gd : écu levé — pour que les autres le voient
@@ -1539,7 +1670,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             await salon.diffuser({"t": "chat", "id": 0, "pseudo": "", "perso": "✦",
                                   "m": f"{moi.perso} donne {n} écus à {cible.perso}."})
 
-        elif t in ("saisir", "rapporter") and equipes and moi.camp in CAMPS:
+        elif t in ("saisir", "rapporter") and equipes and moi.camp in CAMPS and salon.regle != "drapeaux":
             # la bannière : le serveur vérifie les distances à partir de la position que
             # le client lui a annoncée, et c'est lui qui change l'état
             p = moi.etat.get("p")
@@ -1617,6 +1748,23 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                     if typ == "cheval":
                         salon.objets[oid].update(maison={"p": [x, z], "y": y}, pv=CHEVAL_PV)
             await salon.annoncer_objets()
+
+        elif t == "drapeaux-lieux":
+            # comme les objets : le premier client qui connaît la carte propose les points forts
+            if moi.est_bot or salon.lieux_drapeaux:
+                return
+            for d in (m.get("drapeaux") or [])[:DRAPEAUX_MAX]:
+                try:
+                    did, x, z, y = str(d["id"]), float(d["p"][0]), float(d["p"][1]), float(d.get("y", 0))
+                except (KeyError, TypeError, ValueError, IndexError):
+                    continue
+                if re.fullmatch(r"[a-z0-9]{1,16}", did) and abs(x) < 5000 and abs(z) < 5000:
+                    salon.lieux_drapeaux[did] = {"nom": str(d.get("nom") or did)[:40], "p": [x, z], "y": y,
+                                                 "n": str(d.get("n") or "")[:40]}
+            if salon.manche and salon.manche["etat"] == "cours" and not salon.drapeaux:
+                salon.armer_drapeaux()
+            await salon.diffuser({"t": "drapeaux", "drapeaux": salon.vue_drapeaux(),
+                                  "tenue": {c: round(t) for c, t in salon.tenue.items()}})
 
         elif t == "objet-prendre":
             o = salon.objets.get(str(m.get("o")))
@@ -1716,10 +1864,20 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 await salon.diffuser({"t": "bourse", "id": bid, "p": [p[0], p[2]], "y": p[1], "n": perdu})
 
         elif t == "chat":
+            # `e` : un message à son camp seulement (en équipes). Les bots n'ont que celui-là :
+            # ils y disent leurs intentions — « je vais prendre la poterne » — à leurs alliés.
             texte = str(m.get("m", ""))[:200].strip()
-            if texte:
-                await salon.diffuser({"t": "chat", "id": moi.id, "pseudo": moi.pseudo,
-                                      "perso": moi.perso, "m": texte})
+            equipe = bool(m.get("e")) and equipes and moi.camp in CAMPS
+            if not texte or (moi.est_bot and not equipe):
+                return
+            msg = {"t": "chat", "id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso, "m": texte}
+            if equipe:
+                msg.update(e=1, camp=moi.camp)
+                for c in list(salon.joueurs.values()):
+                    if c.camp == moi.camp and not c.est_bot:
+                        await salon.envoyer(c.id, msg)
+            else:
+                await salon.diffuser(msg)
 
 
     try:

@@ -817,6 +817,19 @@ Mesures : simulation de course et saut sur 89 obstacles isolés, 89 franchis (71
 arpenteur 872 m², marches sur la rue 3, entrées 6/6, ponts 8/8 ; chargement 15,4–15,8 s
 (somme des étapes). Vu en rendu : Camille debout sur un tonneau du quartier.
 
+### Q. Multi en équipes : drapeaux, arc pour tous, chat de camp (28 septembre) — **fait**
+
+Eugène a remplacé le « trésor commun » par une **prise des drapeaux** (nombre =
+arrondi supérieur(joueurs ÷ 2) − 1), puis demandé un **chat de camp** où les bots disent
+leurs intentions. Tout est décrit dans NOTE-MULTI.md (« La prise des drapeaux », « Équipement
+égal », « Parler à son camp »). Mesuré au banc (7 bots vétérans) : les trois drapeaux
+changent de mains, la garnison l'emporte 3 à 0 avec badge Conquérant, les phrases des bots
+arrivent au camp seulement ; chargement 14,9 s (somme des étapes).
+- **À voir** : une manche démarre dès qu'on est deux, bots compris — donc pendant que
+  l'humain charge et choisit son camp ; en chrono ou en drapeaux, il arrive en cours de
+  manche. Attendre que tous les humains soient en jeu avant le compte à rebours ?
+- **Idée restante** : l'écran de fin de manche à 10 points en balade par équipes.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **`saveGame()` sérialise TOUTE clé de `state`** qui n'est pas une clé d'exécution, et

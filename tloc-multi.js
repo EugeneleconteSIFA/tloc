@@ -260,7 +260,10 @@ function peindrePanneau() {
     const G_ = CAMPS.garnison, B_ = CAMPS.bourg;
     lignes.push(`<b style="color:${G_.couleur}">Garnison ${points.garnison}</b> — <b style="color:${B_.couleur}">${points.bourg} Bourg</b>`
       + (state.camp ? ` <span style="opacity:.7">(tu es ${state.camp === 'garnison' ? 'de la garnison' : 'du bourg'})</span>` : ''));
-    if (bannieres) {
+    if (regle === 'drapeaux' && drapeaux.length) {
+      const n = (c) => drapeaux.filter((d) => d.camp === c).length;
+      lignes.push(`<span style="opacity:.85;font-size:12px">drapeaux : <span style="color:${CAMPS.garnison.couleur}">${n('garnison')}</span> · <span style="color:${CAMPS.bourg.couleur}">${n('bourg')}</span> sur ${drapeaux.length}</span>`);
+    } else if (bannieres) {
       const etat = (c) => { const b = bannieres[c]; if (!b) return '—';
         if (b.etat === 'base') return 'chez elle'; if (b.etat === 'tombee') return 'à terre';
         return 'portée par ' + ech(moi && b.porteur === moi.id ? 'toi' : ((autres.get(b.porteur) || {}).perso || '…')); };
@@ -283,6 +286,7 @@ function peindrePanneau() {
           : (a.frags ? ` <span style="opacity:.7">${a.frags}</span>` : ''))));
   }
   panneau.innerHTML = lignes.join('<br>');
+  peindreChat();
 }
 
 // ---------------------------------------------------------------------
@@ -392,6 +396,8 @@ function connecter() {
       for (const b of m.bourses || []) poserBourse(b);
       majObjets({ objets: m.objets || [] });
       if (m.bannieres) bannieres = m.bannieres;
+      lieuxDrapeauxServeur = m.lieux_drapeaux || 0;
+      if (m.drapeaux) evenementDrapeaux({ drapeaux: m.drapeaux });
       if (m.fete) ouvrirFete(m.fete);
       envoyerLook(true);
       showMessage(`Instance « ${m.nom} » — code ${m.code}. ${m.joueurs.length ? m.joueurs.map(j => j.perso || j.pseudo).join(', ') + ' déjà là.' : 'Tu es seul pour l’instant.'} T pour écrire aux autres.`, 5);
@@ -443,6 +449,7 @@ function connecter() {
     } else if (m.t === 'fete-score') { majFete(m);
     } else if (m.t === 'fete-fin') { finirFete(m);
     } else if (m.t === 'banniere') { evenementBanniere(m);
+    } else if (m.t === 'drapeaux') { lieuxDrapeauxServeur = 1; evenementDrapeaux(m);
     } else if (m.t === 'bourse') { poserBourse(m);
     } else if (m.t === 'bourse-prise') { prendreBourse(m);
     } else if (m.t === 'objets') { majObjets(m);
@@ -461,7 +468,7 @@ function connecter() {
       }
       peindrePanneau();
     } else if (m.t === 'chat') {
-      noterChat(m.perso || m.pseudo, m.m, moi && m.id === moi.id);
+      noterChat(m.perso || m.pseudo, m.m, moi && m.id === moi.id, !!m.e);
     }
   };
   ws.onclose = (ev) => {
@@ -600,34 +607,49 @@ if (actif) {
   (document.getElementById('hud') || document.body).appendChild(zoneChat);
 }
 
-function noterChat(nom, texte, deMoi) {
-  journal.push({ nom, texte, deMoi, t: performance.now() });
-  if (journal.length > 5) journal.shift();
+function noterChat(nom, texte, deMoi, equipe = false) {
+  journal.push({ nom, texte, deMoi, equipe, t: performance.now() });
+  if (journal.length > 6) journal.shift();
   peindreChat();
   if (!deMoi) try { SFX.pickup(); } catch (e) {}
 }
 
 function peindreChat() {
   const t = performance.now();
+  // sous la liste des joueurs, qui s'allonge avec eux : à huit, elle recouvrait le chat
+  if (panneau.isConnected) zoneChat.style.top = Math.max(330, panneau.offsetTop + panneau.offsetHeight + 10) + 'px';
   zoneChat.replaceChildren(...journal.filter((l) => t - l.t < 20000).map((l) => {
     const d = document.createElement('div');
     const b = document.createElement('b');
-    b.style.color = l.deMoi ? '#ffe7a3' : '#c9e6ff';
+    b.style.color = l.deMoi ? '#ffe7a3' : (l.equipe && CAMPS[state.camp] ? CAMPS[state.camp].couleur : '#c9e6ff');
     b.textContent = l.nom + ' : ';
+    // un message à son camp : marqué, pour ne pas croire que l'adversaire l'a lu
+    if (l.equipe) { const e_ = document.createElement('span'); e_.style.cssText = 'opacity:.75;font-size:11px'; e_.textContent = '[camp] '; d.append(e_); }
     d.append(b, document.createTextNode(l.texte));
     return d;
   }));
 }
 
+// En équipes, la boîte s'ouvre sur son camp — c'est à lui qu'on parle le plus souvent ; Tab
+// bascule vers tout le monde (et retour).
+let chatEquipe = false;
+function peindreBoite() {
+  if (!boite) return;
+  const c = CAMPS[state.camp];
+  boite.placeholder = chatEquipe && c ? `Message à ${c.nom.toLowerCase()} — Tab : à tous · Entrée pour envoyer, Échap pour annuler`
+    : `Message à tous${enEquipes() ? ' — Tab : à ton camp ·' : ' —'} Entrée pour envoyer, Échap pour annuler`;
+  boite.style.borderColor = chatEquipe && c ? c.couleur : 'rgba(255,231,163,.45)';
+}
 function ouvrirChat() {
   if (boite) return;
   boite = document.createElement('input');
   boite.maxLength = 200;
-  boite.placeholder = 'Message à tous — Entrée pour envoyer, Échap pour annuler';
+  chatEquipe = enEquipes() && !!CAMPS[state.camp];
   boite.style.cssText = `position:fixed; left:50%; bottom:64px; transform:translateX(-50%); width:min(560px, 86vw);
     z-index:2001; font:inherit; font-size:15px; padding:9px 14px; border-radius:9px; color:#fff;
     background:rgba(10,14,30,.88); border:1px solid rgba(255,231,163,.45); outline:none;`;
   document.body.appendChild(boite);
+  peindreBoite();
   boite.focus();
 }
 function fermerChat(envoi) {
@@ -635,7 +657,7 @@ function fermerChat(envoi) {
   const texte = boite.value.trim();
   boite.remove(); boite = null;
   if (!envoi || !texte) return;
-  if (texte.startsWith('/')) commande(texte); else envoyer({ t: 'chat', m: texte });
+  if (texte.startsWith('/')) commande(texte); else envoyer({ t: 'chat', m: texte, e: chatEquipe ? 1 : undefined });
 }
 
 // Les commandes du chat : ce qui n'a pas besoin d'un bouton à soi.
@@ -760,6 +782,7 @@ function hampe(c) {
 }
 let demandeBanniere = 0;
 function tickBannieres(now) {
+  if (regle === 'drapeaux') { for (const h of Object.values(hampes)) h.visible = false; return; }   // les drapeaux remplacent les bannières
   if (!enEquipes() || !bannieres || !rdv || rdv.x !== undefined) return;
   const ech_ = G.echelle || 1;
   for (const c of ['garnison', 'bourg']) {
@@ -852,6 +875,7 @@ if (actif) {
       // écouteurs du jeu sont court-circuités
       e.stopImmediatePropagation();
       if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); fermerChat(true); }
+      else if (e.code === 'Tab' && enEquipes() && CAMPS[state.camp]) { e.preventDefault(); chatEquipe = !chatEquipe; peindreBoite(); }
       else if (e.code === 'Escape') { e.preventDefault(); fermerChat(false); }
       return;
     }
@@ -861,6 +885,165 @@ if (actif) {
     ouvrirChat();
   }, true);
   setInterval(peindreChat, 2000);   // l'effacement des vieux messages
+}
+
+// ---------------------------------------------------------------------
+//  La prise des drapeaux (règle « drapeaux », en équipes)
+// ---------------------------------------------------------------------
+// Des drapeaux aux points forts de la citadelle ; on en prend un en restant dans son cercle
+// (le serveur compte qui s'y tient, cf. DRAPEAU_RAYON dans app.py). Seul camp dans le
+// cercle : la jauge monte — l'étendard grimpe au mât — plus vite à plusieurs ; les deux
+// camps : contesté, rien ne bouge. Un drapeau adverse se rabat d'abord (l'étendard descend),
+// puis se lève à ses couleurs. À la fin du chrono, le camp qui en tient le plus gagne.
+// Leur nombre suit la partie (le serveur le fixe au début de chaque manche) : le centre
+// d'abord, puis les points forts de plus en plus loin.
+const PLAN_DRAPEAUX = ['place', 'donjon', 'poterne', 'caserne2', 'caserne1'];
+const RAYON_DRAPEAU = 8;                       // = DRAPEAU_RAYON (app.py)
+const COULEUR_NEUTRE = 0xe6dcc0;
+let drapeaux = [], tenue = { garnison: 0, bourg: 0 }, drapeauxProposes = false, lieuxDrapeauxServeur = 0;
+const mats = new Map();                         // id -> { g, drap, anneau, jauge, fait }
+let marquesObjets = [];
+// la minicarte : les objets qui attendent, et les drapeaux à leurs couleurs
+function majMarques() {
+  const coul = (d) => (d.camp ? CAMPS[d.camp].couleur : '#e6dcc0');
+  PARTAGE.marques = [...marquesObjets, ...drapeaux.map((d) => ({ x: d.p[0], z: d.p[1], fond: coul(d), bord: d.conteste ? '#ffffff' : '#1a1a1a' }))];
+}
+// On attend la grille des chemins (cf. preparerNav) : un drapeau doit être atteignable depuis
+// la place d'Armes — au premier essai, celui de la poterne tombait dans une cour fermée, et
+// personne ne pouvait le prendre.
+function proposerDrapeaux() {
+  if (regle !== 'drapeaux' || drapeauxProposes || lieuxDrapeauxServeur || !lieux.length || !state.running || !G.level) return;
+  if (!nav || nav.fait < nav.nz) return;
+  const liste = [];
+  let relie = null;                                // les cases reliées au premier drapeau (la place)
+  for (const id of PLAN_DRAPEAUX) {
+    const l = lieux.find((x) => x.id === id);
+    const p = l && (terrainDrapeau(l, relie) || (relie ? null : praticable(l.x, l.z)));
+    if (!p) continue;
+    if (!relie) relie = champ({ id: 'relie', p: [p.x, p.z] });
+    liste.push({ id, nom: l.nom, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +(world.levelH ? world.levelH(p.x, p.z) : getH(p.x, p.z)).toFixed(2), n: G.level.name });
+  }
+  drapeauxProposes = true;
+  if (liste.length) envoyer({ t: 'drapeaux-lieux', drapeaux: liste });
+}
+// Un drapeau veut du champ : son cercle doit être libre (au donjon, le point praticable le
+// plus proche collait à la tour, et le cercle passait à travers ses murs). On cherche autour
+// du lieu un centre dont le cercle, sondé sur deux couronnes, ne touche ni mur ni eau.
+function terrainDrapeau(l, relie = null) {
+  const libre = (x, z) => !(world.bounds && world.bounds(x, z)) && sdEau(x, z) > 2 && !blocked(x, z, 0.9, false, world.levelH ? world.levelH(x, z) : 0);
+  for (let r = 0; r <= 40; r += 2) {
+    const n = r ? Math.ceil(r * 1.5) : 1;
+    for (let k = 0; k < n; k++) {
+      const a = k / n * TAU, x = l.x + Math.cos(a) * r, z = l.z + Math.sin(a) * r;
+      let ok = libre(x, z) && (!relie || relie[caseNav(x, z)] >= 0);
+      for (const rr of [3.5, RAYON_DRAPEAU - 1]) for (let j = 0; j < 12 && ok; j++) ok = libre(x + Math.cos(j / 12 * TAU) * rr, z + Math.sin(j / 12 * TAU) * rr);
+      if (ok) return { x, z };
+    }
+  }
+  return null;
+}
+// Le cercle épouse le terrain : un anneau plat de huit mètres, posé à une hauteur, se
+// plantait dans la moindre pente (et flottait au-dessus des creux).
+function anneauGeo(cx, cz, r0, r1, frac = 1) {
+  const n = Math.max(2, Math.ceil(72 * frac)), pos = [], idx = [];
+  const h = (x, z) => (world.levelH ? world.levelH(x, z) : getH(x, z)) + 0.07;
+  for (let k = 0; k <= n; k++) {
+    const a = -Math.PI / 2 + k / n * frac * TAU, c = Math.cos(a), s_ = Math.sin(a);
+    for (const r of [r0, r1]) { const x = cx + c * r, z = cz + s_ * r; pos.push(x, h(x, z), z); }
+    if (k) { const i = 2 * k; idx.push(i - 2, i - 1, i, i - 1, i + 1, i); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  return g;
+}
+function mat(d) {
+  let m = mats.get(d.id);
+  if (m) return m;
+  const g = new THREE.Group();
+  const bois = phMat('wood_cabinet_worn_long', 1, 4, { color: 0x6b4a2a });
+  const hampe_ = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 5.2, 10), bois); hampe_.position.y = 2.6; hampe_.castShadow = true; g.add(hampe_);
+  const pied = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.35, 12), phMat('old_stone_wall_02', 0.6, 0.3, { color: 0xd8d0c0 })); pied.position.y = 0.17; g.add(pied);
+  const pomme = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), new THREE.MeshStandardMaterial({ color: 0xd9b24a, metalness: 0.8, roughness: 0.3 }));
+  pomme.position.y = 5.28; g.add(pomme);
+  const drapGeo = new THREE.PlaneGeometry(1.8, 1.15, 10, 1); drapGeo.translate(0.9, 0, 0);
+  const drap = new THREE.Mesh(drapGeo, new THREE.MeshStandardMaterial({ color: COULEUR_NEUTRE, roughness: 0.9, side: THREE.DoubleSide }));
+  g.add(drap);
+  g.position.set(d.p[0], d.y, d.p[1]); g.userData.dynamic = true;
+  scene.add(g);
+  const matAnneau = new THREE.MeshBasicMaterial({ color: COULEUR_NEUTRE, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+  const anneau = new THREE.Mesh(anneauGeo(d.p[0], d.p[1], RAYON_DRAPEAU - 0.3, RAYON_DRAPEAU), matAnneau);
+  const jauge = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: COULEUR_NEUTRE, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+  for (const o of [anneau, jauge]) { o.renderOrder = 2; o.userData.dynamic = true; scene.add(o); }
+  m = { g, drap, anneau, jauge, frac: -1 };
+  mats.set(d.id, m);
+  return m;
+}
+function peindreDrapeaux() {
+  const enJeu = new Set(drapeaux.map((d) => d.id));
+  for (const [id, m] of mats) if (!enJeu.has(id)) { for (const o of [m.g, m.anneau, m.jauge]) scene.remove(o); mats.delete(id); }
+  for (const d of drapeaux) {
+    const m = mat(d), coul = (c) => (c ? COULEUR_DRAP[c] : COULEUR_NEUTRE);
+    m.drap.material.color.setHex(coul(d.camp || (d.jauge > 0 ? d.vers : null)));
+    m.anneau.material.color.setHex(coul(d.camp));
+    m.jauge.material.color.setHex(coul(d.vers));
+    // la jauge : un arc intérieur qui fait le tour à mesure qu'on prend (ou qu'on rabat)
+    const frac = Math.round(d.jauge * 72) / 72;
+    if (frac !== m.frac) {
+      m.frac = frac; m.jauge.geometry.dispose();
+      m.jauge.geometry = frac > 0 ? anneauGeo(d.p[0], d.p[1], RAYON_DRAPEAU - 1.1, RAYON_DRAPEAU - 0.5, frac) : new THREE.BufferGeometry();
+    }
+  }
+  majMarques();
+}
+function tickDrapeaux(now) {
+  if (regle !== 'drapeaux') return;
+  if (state.running && !state.paused) preparerNav();
+  proposerDrapeaux();
+  const t = now / 1000;
+  for (const d of drapeaux) {
+    const m = mats.get(d.id);
+    if (!m) continue;
+    // l'étendard monte au mât avec la jauge : en haut, il est à son camp
+    const cible = 1.3 + (d.camp ? 1 : d.jauge) * 3.3;
+    m.drap.position.y += (cible - m.drap.position.y) * 0.1;
+    const pa = m.drap.geometry.attributes.position;
+    for (let i = 0; i < pa.count; i++) { const x = pa.getX(i); pa.setZ(i, Math.sin(t * 3 + x * 2.5 + d.p[0]) * 0.09 * x); }
+    pa.needsUpdate = true;
+    m.anneau.material.opacity = d.conteste ? 0.35 + 0.35 * Math.abs(Math.sin(t * 5)) : 0.55;
+  }
+}
+// ce que je vois de la prise, dans le bandeau : où j'en suis si je suis dans un cercle
+function ligneDrapeau() {
+  const moiIci = drapeaux.find((d) => Math.hypot(player.pos.x - d.p[0], player.pos.z - d.p[1]) <= RAYON_DRAPEAU);
+  if (!moiIci || !state.camp) return '';
+  const nom = ech(moiIci.nom.replace(/^(la |le |les |l[’'])/i, ''));
+  if (moiIci.conteste) return `<br><span style="color:#ffb08a">${nom} : contesté — chasse-les du cercle !</span>`;
+  if (moiIci.camp === state.camp && moiIci.jauge >= 1) return `<br><span style="opacity:.85">${nom} : à ton camp, tiens-le.</span>`;
+  const pct = Math.round(moiIci.jauge * 100);
+  if (moiIci.camp && moiIci.camp !== state.camp) return `<br>${nom} : tu le rabats — <b>${pct} %</b>`;
+  return `<br>${nom} : prise en cours — <b>${moiIci.vers === state.camp || !moiIci.vers ? pct : 0} %</b>`;
+}
+function evenementDrapeaux(m) {
+  if (m.drapeaux) drapeaux = m.drapeaux;
+  if (m.tenue) tenue = m.tenue;
+  const d = m.id && drapeaux.find((x) => x.id === m.id);
+  if (d && m.evt === 'pris') {
+    const noms = (m.noms || []).join(', ');
+    showMessage(`${CAMPS[m.camp].nom} ${m.camp === 'garnison' ? 'prend' : 'prennent'} ${d.nom}${noms ? ' (' + noms + ')' : ''} !`, 4);
+    try { if (m.camp === state.camp) SFX.win(); } catch (e) {}
+  } else if (d && m.evt === 'neutre') showMessage(`Le drapeau de ${d.nom} est rabattu : ${m.camp === state.camp ? 'reprends-le !' : 'il n’est plus à personne.'}`, 3.5);
+  peindreDrapeaux(); peindrePanneau();
+}
+
+// En équipes, tout le monde part à égalité (Eugène) : l'arc et un carquois plein pour
+// chacun, à l'arrivée, au début de chaque manche et à chaque relève. Les râteliers d'arc de
+// la poterne et de la chapelle n'ont donc plus rien à donner : ils s'effacent.
+let equipeDonnee = false;
+function equiperEquipe(dire) {
+  if (!enEquipes()) return;
+  state.bow = true; arcPris = false;
+  state.fleches = BOURSE.carquois();
+  if (dire) showMessage(`En équipes, chacun a son arc et ${state.fleches} flèches : C pour le sortir, clic gauche pour tirer.`, 5);
 }
 
 // ---------------------------------------------------------------------
@@ -953,10 +1136,11 @@ function majObjets(m) {
     if (o.type === 'cheval') continue;              // le cheval a son écurie, pas de présentoir
     let pr = presentoirs.get(o.id);
     if (!pr) { pr = presentoir(o.type); pr.position.set(o.p[0], o.y, o.p[1]); scene.add(pr); presentoirs.set(o.id, pr); }
-    pr.visible = o.porteur == null && !o.retour && !o.brise;
+    pr.visible = o.porteur == null && !o.retour && !o.brise && !(o.type === 'arc' && enEquipes());
   }
-  PARTAGE.marques = objets.filter((o) => o.porteur == null && !o.retour && !o.brise)
+  marquesObjets = objets.filter((o) => o.porteur == null && !o.retour && !o.brise && !(o.type === 'arc' && enEquipes()))
     .map((o) => ({ x: o.p[0], z: o.p[1], fond: COULEUR_TYPE[o.type], bord: '#1a1a1a' }));
+  majMarques();
   const qui = m.par === moiId ? null : (m.perso || 'Quelqu’un');
   if (m.o === 'cheval') { annonceCheval(m, qui); peindreArmure(); return; }
   if (m.evt === 'pris') {
@@ -967,7 +1151,7 @@ function majObjets(m) {
       try { SFX.pickup(); } catch (e) {}
     } else showMessage(`${qui} prend ${NOM_TYPE[m.o]} ${LIEU_OBJET[m.id] || ''}.`, 3);
   } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats.`, 4);
-  else if (m.evt === 'raz' && objets.length) showMessage('Nouvelle manche : armures aux casernes, écu sur la place d’Armes, arcs à la poterne et à la chapelle, chevaux à leurs écuries.', 6);
+  else if (m.evt === 'raz' && objets.length) showMessage(`Nouvelle manche : armures aux casernes, écu sur la place d’Armes, ${enEquipes() ? '' : 'arcs à la poterne et à la chapelle, '}chevaux à leurs écuries.`, 6);
   peindreArmure();
 }
 
@@ -1329,6 +1513,7 @@ function mourir(de, pseudo) {
     p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
   }
   p.vy = 0; p.kb.set(0, 0, 0); p.hp = p.maxHp; p.invuln = 3; p.attackT = -1; p.rollT = -1;
+  equiperEquipe(false);
   // match à mort : une seule vie par manche — on regarde la fin, à l'abri, sans frapper
   const reste = viesDe(moi && moi.id);
   if (regle === 'survie' && manche && manche.etat === 'cours' && reste !== null && reste > 1) {
@@ -1445,8 +1630,12 @@ function baseDe(b) {
 function placerBot(b) {
   const base = baseDe(b);
   if (!base) return false;
-  const an = Math.random() * TAU, r = 5 + Math.random() * 12;
-  const p = praticable(base.x + Math.cos(an) * r, base.z + Math.sin(an) * r);
+  let p = null;
+  for (let k = 0; k < 12 && !p; k++) {
+    const an = Math.random() * TAU, r = 5 + Math.random() * (12 + k * 3);
+    p = praticable(base.x + Math.cos(an) * r, base.z + Math.sin(an) * r);
+    if (p && !relieAuJeu(p.x, p.z)) p = null;
+  }
   if (!p) return false;
   const y = getH(p.x, p.z, (world.levelH ? world.levelH(p.x, p.z) : 0) + 0.5);
   b.pos = new THREE.Vector3(p.x, y, p.z);
@@ -1496,15 +1685,171 @@ function butAuHasard(b) {
   return { x: base.x, z: base.z };
 }
 
+// Les chemins des bots. Entre un bot et son drapeau, il y a les murs de la citadelle : le
+// détour de quelques mètres de la poursuite ne suffit pas (au banc, la moitié du camp restait
+// collée à une courtine). Une grille de praticabilité (1,5 m, les règles de `praticable`)
+// couvre les drapeaux et leurs abords ; elle se remplit quelques lignes par image — jamais
+// d'écran figé — puis chaque drapeau reçoit un champ de distances (parcours en largeur
+// depuis son cercle) : un bot n'a plus qu'à descendre la pente.
+const NAV_PAS = 1.5, NAV_MARGE = 90, NAV_COTE_MAX = 520;
+let nav = null;
+const caseNav = (x, z) => {
+  const i = Math.floor((x - nav.x0) / NAV_PAS), j = Math.floor((z - nav.z0) / NAV_PAS);
+  return i < 0 || j < 0 || i >= nav.nx || j >= nav.nz ? -1 : j * nav.nx + i;
+};
+// la grille couvre les points forts possibles (pas seulement ceux en jeu) : elle sert aussi à
+// choisir où planter les drapeaux
+function preparerNav() {
+  if (!lieux.length || !G.level) return;
+  if (!nav) {
+    const pts = PLAN_DRAPEAUX.map((id) => lieux.find((l) => l.id === id)).filter(Boolean);
+    if (!pts.length) return;
+    const xs = pts.map((l) => l.x), zs = pts.map((l) => l.z);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+    const lx = Math.min(NAV_COTE_MAX, Math.max(...xs) - Math.min(...xs) + 2 * NAV_MARGE), lz = Math.min(NAV_COTE_MAX, Math.max(...zs) - Math.min(...zs) + 2 * NAV_MARGE);
+    const nx = Math.ceil(lx / NAV_PAS), nz = Math.ceil(lz / NAV_PAS);
+    nav = { x0: cx - lx / 2, z0: cz - lz / 2, nx, nz, libre: new Uint8Array(nx * nz), fait: 0, champs: new Map() };
+  }
+  if (nav.fait >= nav.nz) return;
+  const t0 = performance.now();
+  while (nav.fait < nav.nz && performance.now() - t0 < 3) {
+    const j = nav.fait++, z = nav.z0 + (j + 0.5) * NAV_PAS;
+    for (let i = 0; i < nav.nx; i++) {
+      const x = nav.x0 + (i + 0.5) * NAV_PAS;
+      nav.libre[j * nav.nx + i] = !(world.bounds && world.bounds(x, z)) && sdEau(x, z) > 1.5
+        && !blocked(x, z, 0.6, false, world.levelH ? world.levelH(x, z) : 0) ? 1 : 0;
+    }
+  }
+}
+function champ(d) {
+  if (!nav || nav.fait < nav.nz) return null;
+  let c = nav.champs.get(d.id);
+  if (c) return c;
+  const { nx, nz, libre } = nav, dist = new Int32Array(nx * nz).fill(-1), file = new Int32Array(nx * nz);
+  let tete = 0, queue = 0;
+  const r = Math.ceil((RAYON_DRAPEAU - 1) / NAV_PAS), ci = Math.floor((d.p[0] - nav.x0) / NAV_PAS), cj = Math.floor((d.p[1] - nav.z0) / NAV_PAS);
+  for (let j = cj - r; j <= cj + r; j++) for (let i = ci - r; i <= ci + r; i++) {
+    if (i < 0 || j < 0 || i >= nx || j >= nz || (i - ci) ** 2 + (j - cj) ** 2 > r * r) continue;
+    const k = j * nx + i; if (!libre[k]) continue;
+    dist[k] = 0; file[queue++] = k;
+  }
+  while (tete < queue) {
+    const k = file[tete++], i = k % nx, j = (k - i) / nx;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+      const q = b * nx + a; if (!libre[q] || dist[q] >= 0) continue;
+      dist[q] = dist[k] + 1; file[queue++] = q;
+    }
+  }
+  nav.champs.set(d.id, dist);
+  return dist;
+}
+// Un bot ne saute pas : posé dans un parterre clos de grilles (la place d'Armes en a
+// plusieurs), il n'en sortait plus de la manche. En prise des drapeaux, un bot ne naît, ne
+// se relève et ne pose son ralliement que sur une case reliée aux drapeaux.
+function relieAuJeu(x, z) {
+  if (regle !== 'drapeaux' || !drapeaux.length || !nav || nav.fait < nav.nz) return true;
+  const k = caseNav(x, z), ch = champ(drapeaux[0]);
+  return k < 0 || ch[k] >= 0;                     // hors de la grille : on ne sait pas, on laisse faire
+}
+// le prochain point sur le chemin du bot vers le drapeau : quatre cases plus bas sur la pente
+function pasVers(b, d) {
+  const dist = champ(d);
+  if (!dist) return null;
+  const { nx, nz } = nav;
+  let i = Math.floor((b.pos.x - nav.x0) / NAV_PAS), j = Math.floor((b.pos.z - nav.z0) / NAV_PAS);
+  if (i < 0 || j < 0 || i >= nx || j >= nz) return null;
+  if (dist[j * nx + i] < 0) {                      // posé sur une case pleine (contre un mur) : la voisine libre
+    let best = -1;
+    for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+      const a = i + di, c = j + dj; if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
+      const v = dist[c * nx + a]; if (v >= 0 && (best < 0 || v < dist[best])) best = c * nx + a;
+    }
+    if (best < 0) return null;
+    i = best % nx; j = (best - i) / nx;
+  }
+  for (let pas = 0; pas < 4; pas++) {
+    const k = j * nx + i; if (dist[k] === 0) break;
+    let mi = i, mj = j;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, c = j + dj; if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
+      const v = dist[c * nx + a]; if (v >= 0 && v < dist[mj * nx + mi]) { mi = a; mj = c; }
+    }
+    if (mi === i && mj === j) break;
+    i = mi; j = mj;
+  }
+  return { x: nav.x0 + (i + 0.5) * NAV_PAS, z: nav.z0 + (j + 0.5) * NAV_PAS };
+}
+
+// Les bots disent à leur camp ce qu'ils font (Eugène) : où ils vont, ce qu'ils défendent,
+// quand ils sont débordés. Pas plus d'une phrase par bot toutes les dix secondes, ni plus
+// d'une par camp toutes les trois : au-delà, le chat n'est plus lisible. Rien n'est dit à un
+// camp sans humain — personne pour le lire.
+const dernierMotCamp = {};
+function annoncer(b, cle, texte, delai = 10000) {
+  const camp = (autres.get(b.id) || {}).camp, now = performance.now();
+  if (!camp || !enEquipes() || b.dernierCle === cle) return;
+  if (now - (b.dernierMot || -1e9) < delai || now - (dernierMotCamp[camp] || -1e9) < 3000) return;
+  if (state.camp !== camp && ![...autres.values()].some((o) => !o.bot && o.camp === camp)) return;
+  b.dernierMot = now; b.dernierCle = cle; dernierMotCamp[camp] = now;
+  parler(b, { t: 'chat', m: typeof texte === 'function' ? texte() : texte, e: 1 });   // le salon le rend aux humains du camp, pilote compris
+}
+const PHRASES = {
+  prendre: ['Je fonce prendre {d} !', 'Je m’occupe {de}.', '{D} est libre, j’y vais.'],
+  reprendre: ['Je vais leur reprendre {d}.', 'J’attaque {d}, suivez-moi !', 'On leur arrache {d} ?'],
+  defendre: ['Ils touchent à {d}, j’y retourne !', 'Je défends {d}.', 'Je garde {d}, on ne le lâche pas.'],
+  aide: ['Ils sont {n} sur {d}, venez m’aider !', 'Besoin de renfort {à}, ils sont {n} !'],
+  tenir: ['{D} est à nous, je reste pour le tenir.'],
+};
+const phrase = (genre, d, n = 0) => {
+  const l = PHRASES[genre], t = l[Math.floor(Math.random() * l.length)];
+  // « de le donjon » : les articles se contractent (du, des, au, aux)
+  const [art, ...reste] = d.nom.split(' '), suite = reste.join(' ');
+  const de = art === 'le' ? 'du ' + suite : art === 'les' ? 'des ' + suite : 'de ' + d.nom;
+  const a = art === 'le' ? 'au ' + suite : art === 'les' ? 'aux ' + suite : 'à ' + d.nom;
+  return t.replace('{D}', d.nom.charAt(0).toUpperCase() + d.nom.slice(1)).replace('{d}', d.nom).replace('{de}', de).replace('{à}', a).replace('{n}', n);
+};
+
+// Le drapeau qu'un bot va prendre : le plus proche qui n'est pas à son camp. Un sur trois
+// garde plutôt ceux des siens qu'on entame ; quand tout est à son camp, il va tenir le plus
+// menacé. Chacun vise un point à lui dans le cercle : sans ça, ils s'empilaient sur le mât.
+function objectifDrapeau(b, camp) {
+  if (regle !== 'drapeaux' || !manche || manche.etat !== 'cours' || !camp || !drapeaux.length) return null;
+  const dist = (d) => Math.hypot(d.p[0] - b.pos.x, d.p[1] - b.pos.z);
+  const menace = (d) => d.camp === camp && (d.conteste || d.jauge < 1);
+  let d = drapeaux.find((x) => dist(x) < RAYON_DRAPEAU * 0.8 && (x.camp !== camp || menace(x)));   // on y est : on y reste
+  if (!d) {
+    const garde = b.id % 3 === 0;
+    // les alliés qui visent déjà un drapeau le rendent moins tentant : sans ça, tout le camp
+    // courait au plus proche et la partie se réduisait à une mêlée au centre
+    const deja = (x) => [...bots.values()].filter((o) => o !== b && o.visee === x.id && (autres.get(o.id) || {}).camp === camp).length;
+    const cout = (x) => dist(x) + 45 * deja(x) + (x.camp !== camp ? (garde ? 120 : 0) : (menace(x) ? (garde ? -80 : 60) : 600));
+    d = drapeaux.reduce((a, x) => (cout(x) < cout(a) ? x : a));
+  }
+  // redemandé à chaque pensée : si le camp vient de parler, la phrase attend son tour
+  annoncer(b, 'va-' + d.id, () => phrase(d.camp === camp ? (menace(d) ? 'defendre' : 'tenir') : d.camp ? 'reprendre' : 'prendre', d));
+  b.visee = d.id;
+  // dans le cercle, en nombre inférieur : on appelle les siens
+  if (dist(d) < RAYON_DRAPEAU) {
+    const ici = (x, z) => Math.hypot(x - d.p[0], z - d.p[1]) < RAYON_DRAPEAU + 2;
+    const adv = ennemisDe(b).filter((e) => ici(e.x, e.z)).length;
+    const nous = 1 + [...bots.values()].filter((o) => o !== b && o.pos && (autres.get(o.id) || {}).camp === camp && ici(o.pos.x, o.pos.z)).length
+      + (state.camp === camp && ici(player.pos.x, player.pos.z) ? 1 : 0);
+    if (adv > nous) annoncer(b, 'aide-' + d.id, () => phrase('aide', d, adv), 8000);
+  }
+  if (!b.decal) { const an = Math.random() * TAU, r = 1.5 + Math.random() * 3.5; b.decal = [Math.cos(an) * r, Math.sin(an) * r]; }
+  return { x: d.p[0] + b.decal[0], z: d.p[1] + b.decal[1], dire: null, drapeau: d };
+}
+
 // ce que le bot veut faire de la bannière (en équipes) : un point où aller, et une demande
 function objectifBanniere(b, camp) {
   if (!enEquipes() || !bannieres || !rdv || rdv.x !== undefined || !camp) return null;
   const adv = autreCamp(camp), bA = bannieres[adv], bM = bannieres[camp];
   if (!bA || !bM || !rdv[camp] || !rdv[adv]) return null;
-  if (bA.porteur === b.id) return { x: rdv[camp].x, z: rdv[camp].z, dire: bM.etat === 'base' ? { t: 'rapporter' } : null };
-  if (bM.etat === 'tombee' && bM.p) return { x: bM.p[0], z: bM.p[1], dire: { t: 'saisir', camp } };
+  if (bA.porteur === b.id) { annoncer(b, 'porte', 'J’ai leur bannière ! Couvrez-moi jusqu’au ralliement.', 0); return { x: rdv[camp].x, z: rdv[camp].z, dire: bM.etat === 'base' ? { t: 'rapporter' } : null }; }
+  if (bM.etat === 'tombee' && bM.p) { annoncer(b, 'rendre', 'Notre bannière est à terre, je vais la relever !'); return { x: bM.p[0], z: bM.p[1], dire: { t: 'saisir', camp } }; }
   if (!b.porteur) return null;
-  if (bA.etat === 'base') return { x: rdv[adv].x, z: rdv[adv].z, dire: { t: 'saisir', camp: adv } };
+  if (bA.etat === 'base') { annoncer(b, 'chercher', 'Je pars chercher leur bannière.'); return { x: rdv[adv].x, z: rdv[adv].z, dire: { t: 'saisir', camp: adv } }; }
   if (bA.etat === 'tombee' && bA.p) return { x: bA.p[0], z: bA.p[1], dire: { t: 'saisir', camp: adv } };
   return null;
 }
@@ -1556,18 +1901,51 @@ function penserBot(b, dt, now) {
   }
   const cible = b.cible && ennemis.find((e) => e.id === b.cible);
   // à bout de cœurs, les plus malins décrochent un moment
-  if (cible && P.fuite && b.hp <= b.mx * P.fuite && b.fuiteT < -6) b.fuiteT = 2.5;
+  if (cible && P.fuite && b.hp <= b.mx * P.fuite && b.fuiteT < -6) { b.fuiteT = 2.5; annoncer(b, 'repli', 'Je suis à bout, je décroche un instant !', 20000); }
   if (cible && b.fuiteT > 0) {
     avancer(b, b.pos.x - cible.x, b.pos.z - cible.z, P.vitesse, dt);
     return;
   }
 
   // la bannière d'abord pour le porteur ; les autres ne la ramassent que s'ils passent dessus
-  const obj = objectifBanniere(b, camp);
-  const porte = obj && bannieres && bannieres[autreCamp(camp)] && bannieres[autreCamp(camp)].porteur === b.id;
-  if (obj && (porte || !cible || Math.hypot(cible.x - b.pos.x, cible.z - b.pos.z) > 6)) {
+  const obj = regle === 'drapeaux' ? objectifDrapeau(b, camp) : objectifBanniere(b, camp);
+  const porte = obj && regle !== 'drapeaux' && bannieres && bannieres[autreCamp(camp)] && bannieres[autreCamp(camp)].porteur === b.id;
+  // en route vers un drapeau, on ne se bat que contre qui barre le chemin (4 m) ou tient le
+  // cercle qu'on veut : les autres, on les laisse — le drapeau d'abord
+  const seBat = cible && (obj && obj.drapeau
+    ? Math.hypot(cible.x - b.pos.x, cible.z - b.pos.z) < 4 || Math.hypot(cible.x - obj.drapeau.p[0], cible.z - obj.drapeau.p[1]) < RAYON_DRAPEAU + 2
+    : Math.hypot(cible.x - b.pos.x, cible.z - b.pos.z) <= 6);
+  if (obj && (porte || !seBat)) {
     const d = Math.hypot(obj.x - b.pos.x, obj.z - b.pos.z);
-    if (d > 2.2) avancer(b, obj.x - b.pos.x, obj.z - b.pos.z, P.vitesse, dt);
+    // loin du cercle, le chemin de la grille ; dedans, droit sur sa place
+    const via = obj.drapeau && Math.hypot(obj.drapeau.p[0] - b.pos.x, obj.drapeau.p[1] - b.pos.z) > RAYON_DRAPEAU - 1 ? pasVers(b, obj.drapeau) : null;
+    // la grille voit les murs au sol, pas tout : si le bot n'avance plus sur son chemin
+    // (une terrasse, un recoin que la grille croit ouvert), il décroche et contourne à l'ancienne
+    if (via && !(b.sansGrille > now)) {
+      b.detour = null; avancer(b, via.x - b.pos.x, via.z - b.pos.z, P.vitesse, dt);
+      const dd = Math.hypot(obj.drapeau.p[0] - b.pos.x, obj.drapeau.p[1] - b.pos.z);
+      if (dd > (b.dVia ?? Infinity) - P.vitesse * dt * 0.3) b.bloqueVia = (b.bloqueVia || 0) + dt; else b.bloqueVia = 0;
+      b.dVia = dd;
+      if (b.bloqueVia > 1.5) { b.bloqueVia = 0; b.sansGrille = now + 3000; b.bloqueObj = 2; }
+      b.dObj = d; return;
+    }
+    // sans grille (pas encore prête, ou hors de ses bords) : un mur entre lui et le but, il
+    // contourne par le côté, comme à la poursuite
+    if (b.detour && now < b.detour.fin && Math.hypot(b.detour.x - b.pos.x, b.detour.z - b.pos.z) > 1.5) {
+      avancer(b, b.detour.x - b.pos.x, b.detour.z - b.pos.z, P.vitesse, dt);
+      return;
+    }
+    if (d > 2.2) {
+      avancer(b, obj.x - b.pos.x, obj.z - b.pos.z, P.vitesse, dt);
+      if (d > (b.dObj ?? Infinity) - P.vitesse * dt * 0.3) b.bloqueObj = (b.bloqueObj || 0) + dt; else b.bloqueObj = 0;
+      if (b.bloqueObj > 1.1) {
+        b.bloqueObj = 0;
+        const cap = Math.atan2(obj.x - b.pos.x, obj.z - b.pos.z) + (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 + (Math.random() - 0.5) * 0.8);
+        const q = praticable(b.pos.x + Math.sin(cap) * 9, b.pos.z + Math.cos(cap) * 9);
+        if (q) b.detour = { x: q.x, z: q.z, fin: now + 2500 };
+      }
+    }
+    b.dObj = d;
     if (d < 3 && obj.dire && now - b.demande > 700) { b.demande = now; parler(b, obj.dire); }
     return;
   }
@@ -1575,7 +1953,7 @@ function penserBot(b, dt, now) {
   if (cible) {
     b.calme = 0;
     const dx = cible.x - b.pos.x, dz = cible.z - b.pos.z, d = Math.hypot(dx, dz);
-    if (P.arc && d > 9 && d < 30 && b.arcCd <= 0 && vueDegagee(b.pos, cible)) {
+    if ((P.arc || enEquipes()) && d > 9 && d < 30 && b.arcCd <= 0 && vueDegagee(b.pos, cible)) {
       b.arcCd = 2.5 + Math.random() * 2;
       b.yaw = Math.atan2(dx, dz);
       tirerFleche(b, cible);
@@ -1694,7 +2072,7 @@ function ralliementDesBots(now) {
     const an0 = Math.random() * TAU;
     for (let k = 0; k < 8; k++) {
       const an = an0 + k * TAU / 8, p = praticable(depart.x + Math.cos(an) * 70, depart.z + Math.sin(an) * 70);
-      if (p) {
+      if (p && relieAuJeu(p.x, p.z)) {
         rdv = { ...(rdv && rdv.x === undefined ? rdv : {}), [c]: { x: p.x, z: p.z, nom: p.nom } };
         parler(b, { t: 'rdv', x: p.x, z: p.z, nom: p.nom });
         break;
@@ -1708,6 +2086,7 @@ function tickBots(dt, now) {
   // les bots ne vivent que là où le pilote a le terrain : dans son niveau, jeu lancé
   const actifs = state.running && !state.paused && apparition && G.level;
   if (actifs) ralliementDesBots(now);
+
   tickFlechesBots(dt);
   for (const b of bots.values()) {
     const a = autres.get(b.id);
@@ -1732,7 +2111,7 @@ function tickBots(dt, now) {
 // Le serveur arbitre (compte à rebours, scores, fin, badges) ; ici on l'affiche, et on
 // applique ce qu'il décide : la remise à zéro au début d'une manche, l'élimination.
 let regle = 'balade', manche = null, elimine = false, recuManche = 0;
-const NOM_REGLE = { survie: 'Match à mort', temps: 'Chrono' };
+const NOM_REGLE = { survie: 'Match à mort', temps: 'Chrono', drapeaux: 'Prise des drapeaux' };
 const estElimine = (id) => !!(regle === 'survie' && manche && manche.etat === 'cours' && manche.elimines && manche.elimines.includes(id));
 // les vies qui restent (match à mort) ; null hors manche
 const viesDe = (id) => (regle === 'survie' && manche && manche.vies && manche.vies[id] != null ? manche.vies[id] : null);
@@ -1745,6 +2124,7 @@ let bandeauManche = null, resultats = null;
 function majManche(m) {
   const avant = manche ? manche.etat : null;
   manche = m; recuManche = performance.now();
+  if (m.drapeaux) evenementDrapeaux({ drapeaux: m.drapeaux, tenue: m.tenue });
   if (m.etat === 'cours' && avant !== 'cours') debutManche();
   elimine = estElimine(moi && moi.id);
   if (m.etat === 'fin' && avant !== 'fin') afficherResultats(m);
@@ -1763,10 +2143,12 @@ function debutManche() {
     p.pos.set(apparition.x + Math.cos(a) * r, apparition.y, apparition.z + Math.sin(a) * r);
     p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
   }
-  for (const b of bots.values()) { b.mortT = 0; if (b.pos || apparition) placerBot(b); }
-  const v = manche.vies_max || 1, min = Math.round((manche.duree || 180) / 60);
+  for (const b of bots.values()) { b.mortT = 0; b.decal = null; if (b.pos || apparition) placerBot(b); }
+  equiperEquipe(false);
+  const v = manche.vies_max || 1, min = Math.round((manche.duree || 180) / 60), nd = (manche.drapeaux || []).length;
   showMessage(regle === 'survie' ? `Match à mort : ${v > 1 ? v + ' vies' : 'une seule vie'}. Le dernier debout gagne !`
-    : `Chrono : ${min} minute${min > 1 ? 's' : ''}. Chaque mise à terre compte, chaque chute se paie !`, 4);
+    : regle === 'drapeaux' ? `Prise des drapeaux : ${min} minute${min > 1 ? 's' : ''}, ${nd || 'des'} drapeau${nd > 1 || !nd ? 'x' : ''} sur la carte. Tiens-toi dans leur cercle pour les prendre ; le camp qui en tient le plus à la fin gagne !`
+    : `Chrono : ${min} minute${min > 1 ? 's' : ''}. Chaque mise à terre compte, chaque chute se paie !`, 6);
   try { SFX.win(); } catch (e) {}
 }
 
@@ -1785,7 +2167,11 @@ function peindreManche() {
   let ligne = '';
   if (manche.etat === 'attente') ligne = 'En attente d’un adversaire…';
   else if (manche.etat === 'compte') ligne = `Début dans <b style="font-size:20px">${reste}</b> s`;
-  else if (manche.etat === 'cours' && regle === 'temps') {
+  else if (manche.etat === 'cours' && regle === 'drapeaux') {
+    const n = (c) => drapeaux.filter((d) => d.camp === c).length;
+    const puces = drapeaux.map((d) => `<span style="color:${d.camp ? CAMPS[d.camp].couleur : '#e6dcc0'};${d.conteste ? 'text-shadow:0 0 6px #fff' : ''}">⚑</span>`).join(' ');
+    ligne = `<b style="font-size:20px">${mmss(reste || 0)}</b> &nbsp; <b style="color:${CAMPS.garnison.couleur}">${n('garnison')}</b> ${puces} <b style="color:${CAMPS.bourg.couleur}">${n('bourg')}</b>${ligneDrapeau()}`;
+  } else if (manche.etat === 'cours' && regle === 'temps') {
     const moiSc = scoreManche(moi && moi.id);
     ligne = `<b style="font-size:20px">${mmss(reste || 0)}</b>${moiSc !== null ? ` &nbsp; toi : <b style="color:#ffe7a3">${moiSc > 0 ? '+' : ''}${moiSc}</b>` : ''}`;
   } else if (manche.etat === 'cours') {
@@ -1845,7 +2231,7 @@ function afficherResultats(m) {
     titre = regle === 'survie' ? `${g ? nomDe_(g) : '?'} reste le dernier debout !` : `${g ? nomDe_(g) : '?'} gagne la manche !`;
   } else titre = m.gagnants && m.gagnants.length ? 'Égalité en tête !' : 'Personne ne l’emporte';
   const lignes = (m.classement || []).slice(0, 12).map((e, k) => {
-    const sc = regle === 'temps' ? `${e.k - e.m > 0 ? '+' : ''}${e.k - e.m}<small>${e.k} / ${e.m}</small>` : `${e.k}<small>à terre</small>`;
+    const sc = regle === 'drapeaux' ? `${e.cap || 0}<small>drapeau${(e.cap || 0) > 1 ? 'x' : ''} · ${e.k} / ${e.m}</small>` : regle === 'temps' ? `${e.k - e.m > 0 ? '+' : ''}${e.k - e.m}<small>${e.k} / ${e.m}</small>` : `${e.k}<small>à terre</small>`;
     const couleur = enEquipes() && CAMPS[e.camp] ? `color:${CAMPS[e.camp].couleur}` : '';
     const cls = [moi && e.id === moi.id ? 'moi' : '', (m.gagnants || []).includes(e.id) ? 'gagne' : ''].join(' ');
     return `<li class="${cls}"><span class="rang">${k + 1}</span><span class="nom" style="${couleur}">${nomDe_(e)}</span><span class="score">${sc}</span>
@@ -1858,6 +2244,11 @@ function afficherResultats(m) {
   resultats.innerHTML = `<div class="frise"></div>
     <p class="regle">${ech(NOM_REGLE[regle] || '')} · fin de la manche</p>
     <h2>${titre}</h2>
+    ${regle === 'drapeaux' && m.drapeaux ? (() => {
+      const n = (c) => m.drapeaux.filter((d) => d.camp === c).length, t = m.tenue || {};
+      return `<p class="miens" style="margin-top:-6px"><b style="color:${CAMPS.garnison.couleur}">${n('garnison')}</b> drapeau${n('garnison') > 1 ? 'x' : ''} à <b style="color:${CAMPS.bourg.couleur}">${n('bourg')}</b>`
+        + (n('garnison') === n('bourg') ? ` <span style="opacity:.75">— départagés par le temps de tenue : ${t.garnison || 0} s contre ${t.bourg || 0} s</span>` : '') + '</p>';
+    })() : ''}
     <ol>${lignes}</ol>
     <p class="miens">${miens.length
       ? `Tes badges : ${miens.map((b) => `<b style="color:#FFE3A1">${ech(noms[b] || b)}</b>`).join(', ')} — ils rejoignent ton compte.`
@@ -1921,6 +2312,8 @@ function boucle(now) {
   tickBourses(now);
   tickObjets(now); poserForge(); poserInteractionsCheval();
   tickBannieres(now);
+  tickDrapeaux(now);
+  if (enEquipes() && state.running && !equipeDonnee && state.apparition) { equipeDonnee = true; equiperEquipe(true); }
   tickBots(dt, now);
   if (bandeauManche && now - (peindreManche.t || 0) > 500) { peindreManche.t = now; peindreManche(); if (resultats && manche) majBoutonsResultats(manche); }
 
@@ -1975,5 +2368,6 @@ if (actif) { connecter(); setInterval(() => envoyer({ t: 'ping' }), 25000); }
 requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
-window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine }),
+window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue }),
+  nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav,
   equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };

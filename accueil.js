@@ -396,7 +396,7 @@ function peindreInstances(liste) {
     <article class="instance" data-code="${ECH(i.code)}">
       <div class="tete">
         <h4>${ECH(i.nom)} ${encours && encours.code === i.code ? '<span class="pastille vif">rejointe</span>' : ''}
-          ${i.mode === 'equipes' ? '<span class="pastille">en équipes</span>' : ''}${i.regle === 'survie' ? ` <span class="pastille">match à mort · ${i.vies || 1} vie${(i.vies || 1) > 1 ? 's' : ''}</span>` : ''}${i.regle === 'temps' ? ` <span class="pastille">chrono · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.bots ? ` <span class="pastille">${i.bots} bot${i.bots > 1 ? 's' : ''} · ${NOM_NIVEAU[i.niveau] || i.niveau}</span>` : ''}</h4>
+          ${i.mode === 'equipes' ? '<span class="pastille">en équipes</span>' : ''}${i.regle === 'survie' ? ` <span class="pastille">match à mort · ${i.vies || 1} vie${(i.vies || 1) > 1 ? 's' : ''}</span>` : ''}${i.regle === 'temps' ? ` <span class="pastille">chrono · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.regle === 'drapeaux' ? ` <span class="pastille">drapeaux · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.bots ? ` <span class="pastille">${i.bots} bot${i.bots > 1 ? 's' : ''} · ${NOM_NIVEAU[i.niveau] || i.niveau}</span>` : ''}</h4>
         <span class="places" title="${dedans.length ? 'En jeu : ' + ECH(dedans.join(', ')) : 'Personne en ligne'}">
           <span class="sieges" aria-hidden="true">${sieges}</span>
           ${dedans.length}/${places}
@@ -525,7 +525,7 @@ let nbBots = 0;
 const modeChoisi = () => (document.querySelector('input[name="modeInstance"]:checked') || {}).value || 'libre';
 const niveauChoisi = () => (document.querySelector('input[name="niveauBots"]:checked') || {}).value || 'soldat';
 const regleChoisie = () => (document.querySelector('input[name="regleInstance"]:checked') || {}).value || 'balade';
-const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono' };
+const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono', drapeaux: 'prise des drapeaux' };
 let nbVies = 1;
 const dureeChoisie = () => +((document.querySelector('input[name="dureeManche"]:checked') || {}).value || 180);
 // chaque règle a son réglage à elle : les vies pour le match à mort, la durée pour le chrono
@@ -533,13 +533,18 @@ const TEXTE_REGLE = {
   balade: () => 'Sans fin ni score : on se promène et on se bat.',
   survie: () => `${nbVies > 1 ? nbVies + ' vies' : 'Une seule vie'} par manche : le dernier debout gagne.`,
   temps: () => `${dureeChoisie() / 60} minutes : mis à terre moins tombé, le meilleur gagne.`,
+  drapeaux: () => `${dureeChoisie() / 60} minutes : des drapeaux aux points forts de la citadelle (un de moins que la moitié des joueurs, bots compris), pris en tenant leur cercle. Le camp qui en tient le plus à la fin gagne.`,
 };
 function majBots() {
+  // la prise des drapeaux se joue à deux camps : elle n'apparaît qu'en équipes
+  const enEquipes = modeChoisi() === 'equipes';
+  $('regleDrapeaux').classList.toggle('cache', !enEquipes);
+  if (!enEquipes && regleChoisie() === 'drapeaux') document.querySelector('input[name="regleInstance"][value="balade"]').checked = true;
   nbVies = Math.max(1, Math.min(5, nbVies));
   $('nbVies').value = $('nbVies').textContent = String(nbVies);
   $('viesMoins').disabled = nbVies <= 1; $('viesPlus').disabled = nbVies >= 5;
   $('reglageVies').classList.toggle('cache', regleChoisie() !== 'survie');
-  $('reglageDuree').classList.toggle('cache', regleChoisie() !== 'temps');
+  $('reglageDuree').classList.toggle('cache', !['temps', 'drapeaux'].includes(regleChoisie()));
   $('indiceRegle').textContent = TEXTE_REGLE[regleChoisie()]();
   nbBots = Math.max(0, Math.min(TOTAL_MAX - 1, nbBots));
   $('nbBots').value = $('nbBots').textContent = String(nbBots);
