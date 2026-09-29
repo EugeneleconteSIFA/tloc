@@ -8,7 +8,7 @@
 // z = sud, Porte Royale au sud. Les élévations ne suivent PAS l'échelle du plan —
 // elles étaient déjà réalistes.
 import { THREE, clamp, lerp, rand, TAU, distSeg, pointInPoly, scene, T, mat, pbr, pbrRepeat, phMat, stoneMat,
-  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=27';
+  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=28';
 
 // Alias : plusieurs fonctions déclarent un « E » local (un THREE.Euler de travail)
 // qui masquerait le namespace du moteur. On passe donc par un nom qui ne peut pas
@@ -1461,7 +1461,12 @@ export function hauteurPont(P, t) {
   const r = P.rise !== undefined ? P.rise : PONT_CAMBRE;
   const a = P.rampe !== undefined ? P.rampe : 0.25;
   const f = Math.max(0, Math.min(1, t / a, (1 - t) / a));
-  return P.yA + (P.yB - P.yA) * t + r * f + 0.38;
+  // Les 38 cm du tablier au-dessus du sol des culées montent en pente sur les trois premiers
+  // mètres : posés d'un coup au bout, ils faisaient une marche de 45 à 52 cm (sol de l'abord
+  // un peu sous celui de la culée) — à la limite des 50 cm que Camille franchit sans sauter.
+  // On passait ou pas selon l'angle ; à cheval, qui ne saute pas, pas du tout (Eugène, 28 sept.).
+  const bord = Math.min(0.5, 3 / (P.L || 30));
+  return P.yA + (P.yB - P.yA) * t + r * f + 0.38 * Math.min(1, t / bord, (1 - t) / bord);
 }
 
 // Hauteur libre visée sous un pont : de quoi passer dessous à pied sur la berge. Un
@@ -2663,9 +2668,15 @@ export function levelBlocked(x, z, r, flying, y) {
   // UNE SEULE RÈGLE D'EAU. La bande MOAT_IN..MOAT_OUT était une approximation du fossé
   // par décalage du pentagone ; le fossé est maintenant relevé comme le reste de l'eau,
   // et le trait de rive est celui du terrain creusé, pas celui d'un polygone théorique.
-  if (!flying && y < 0.5 && sdEau(x, z) < -1.5 && eauVisible(x, z)
-      && !onBridge(x, z) && !bastionAt(x, z) && !dehorsAt(x, z) && !surTablier(x, z, y)) return true;
+  if (!flying && y < 0.5 && sdEau(x, z) < -1.5 && eauVisible(x, z) && !surOuvrage(x, z, y)) return true;
   return false;
+}
+// Ce qui porte au-dessus de l'eau : les ponts de la place, les bastions, les ouvrages
+// avancés, les tabliers du relevé. Une seule liste, pour le moteur (levelBlocked) et pour les
+// bots de tloc-multi.js, qui refusaient tout pas au-dessus de l'eau et restaient plantés à
+// l'entrée du pont de la Porte Royale (29 septembre).
+export function surOuvrage(x, z, y) {
+  return onBridge(x, z) || bastionAt(x, z) || dehorsAt(x, z) || surTablier(x, z, y);
 }
 
 export function zoneName(x, z) {

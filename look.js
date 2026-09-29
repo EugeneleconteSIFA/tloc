@@ -12,7 +12,7 @@
 
 import {
   G, SFX, THREE, bokeh, camera, makeHead, phMat, player, saveGame, showMessage, state,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 
 // =====================================================================
 //  Les palettes — indices rangés dans la sauvegarde, pas des couleurs
@@ -445,6 +445,9 @@ export function ouvrirArmoire(apres = null) {
   // post-traitement faisait dessiner la scène droit à l'écran, et three.js recompilait alors
   // CHAQUE matériau pour cette sortie — 3,4 s d'écran figé à l'ouverture de l'armoire.
   avant = { freeCam: G.freeCam, rot: player.mesh ? player.mesh.rotation.y : 0, bokeh: bokeh.enabled };
+  // l'armoire montre Camille, quoi qu'ait laissé le jeu (le clignotement d'invincibilité
+  // figé sur « éteint » la cachait, en équipes)
+  if (player.mesh) player.mesh.visible = true;
   bokeh.enabled = false;
   Object.assign(vue, { p: p.clone(), dir, lat, ech, d: 4.6, h: 1.75, base: Math.atan2(dir.x, dir.z) });
   cadrer();

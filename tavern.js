@@ -1,11 +1,11 @@
 // The Legend of Camille — niveau 4 : l'intérieur de l'estaminet du village
 import { THREE, rand, TAU, lerpAngle, scene, G, T, mat, pbr, pbrRepeat, phMat, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, addPlatform, makeTorch, makeLeg, makeArm, eyes, SKIN, SKIN_DARK, SFX, state, player,
-  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, spawnGaufre, dialogue, makeHead, makeTorso, makeCat } from './engine.js?v=27';
+  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, spawnGaufre, dialogue, makeHead, makeTorso, makeCat } from './engine.js?v=28';
 import { TOWN, townWorld } from './carte.js';
 import { makeDoor, makeVolet, LAITON, FERN, VITRE } from './menuiserie.js';
 import * as A from './assets.js';
-import * as PNJ_E from './engine.js?v=27';
+import * as PNJ_E from './engine.js?v=28';
 import * as PNJ from './pnj.js';
 
 // Mobilier du Fantasy Props MegaKit. Si la banque manque, l'estaminet garde son mobilier

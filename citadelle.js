@@ -2,7 +2,8 @@
 //
 // Secteur Citadelle : courtines, bastions, Porte Royale, casernes, galeries voûtées,
 // donjon, poterne. Le tracé vient de carte.js, jamais l'inverse.
-import * as E from './engine.js?v=27';
+import * as E from './engine.js?v=28';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   THREE, GOLD, IRON, Q, SFX, T, TAU, addBox, addCap, addHelix, addInteract, addLieu, addPlatform,
   addRamp, archWindow, boxG, brickMat, brickScaled, burst, corniceAround, dialogue, distSeg, dormer,
@@ -10,7 +11,7 @@ import {
   mergeParts, mesh, mouldingRun, pbr, pbrRepeat, phMat, pickups, pilaster, player, pointInPoly, rand,
   rboxG, saveGame, scene, setQuest, showMessage, sky, spawnGaufre, sphG, state, stoneMat, uvMeters,
   wallBox, world, etape,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,
@@ -288,16 +289,29 @@ export async function buildCitadel() {
         if (cle) scene.add(mesh(sphG(0.42, 10), pierre, 0, SPR + rr + 0.1, zf + 0.25));           // mascaron
       }
     }
-    // herse relevée, dans sa rainure — celle dont parle la cinématique
+    // herse relevée, dans sa rainure — celle dont parle la cinématique. Elle est MOBILE depuis
+    // le 29 septembre : en multijoueur, quand la partie se resserre sur la citadelle, elle
+    // retombe et ferme le pont (tloc-multi.js). `poser(f)` : 0 relevée, 1 baissée ; sa
+    // collision ne vaut que baissée.
     { const hz = APO - WALL_T / 2 + 0.9, iron = IRON();
       for (const sx of [-1, 1]) scene.add(mesh(boxG(0.55, SPR + R0, 0.4), pierre, sx * (R0 - 0.1), (SPR + R0) / 2, hz));
+      // un seul maillage : mobile, elle échappe à la fusion des décors, et ses 25 pièces
+      // auraient coûté 25 appels de dessin (et autant dans l'ombre)
+      const pieces = [];
       for (let k = 0; k < 11; k++) {
         const x = -R0 + 0.55 + k * (R0 * 2 - 1.1) / 10;
-        scene.add(mesh(new THREE.CylinderGeometry(0.14, 0.14, 6.0, 7), iron, x, 14.3, hz));
-        scene.add(mesh(new THREE.ConeGeometry(0.2, 0.55, 6), iron, x, 11.0, hz).rotateZ(Math.PI));
+        pieces.push(new THREE.CylinderGeometry(0.14, 0.14, 6.0, 7).translate(x, 14.3, hz));
+        pieces.push(new THREE.ConeGeometry(0.2, 0.55, 6).rotateZ(Math.PI).translate(x, 11.0, hz));
       }
-      for (const y of [11.9, 14.3, 16.9]) scene.add(mesh(boxG(R0 * 2 - 0.8, 0.3, 0.3), iron, 0, y, hz));
-    }
+      for (const y of [11.9, 14.3, 16.9]) pieces.push(boxG(R0 * 2 - 0.8, 0.3, 0.3).clone().translate(0, y, hz));
+      const herse = new THREE.Mesh(mergeGeometries(pieces.map((g) => (g.index ? g.toNonIndexed() : g))), iron);
+      herse.castShadow = true; herse.userData.dynamic = true;
+      scene.add(herse);
+      const cap = addCap(-R0, hz, R0, hz, 0);
+      herse.userData.f = 0;
+      // baissée, les pointes touchent le sol : 10,7 m de course
+      herse.userData.poser = (f) => { herse.userData.f = f; herse.position.y = -10.7 * f; cap.r = f > 0.85 ? 0.35 : 0; };
+      PARTAGE.herse = herse; }
     // attique, corniches et fronton triangulaire
     const AT0 = SPR + R0 + 0.9, AT1 = AT0 + 2.6;
     scene.add(mesh(boxG(GATE_HW * 2 + 5.8, 0.6, WALL_T + 1.3), pierre, 0, AT0 - 0.3, APO));
@@ -448,9 +462,15 @@ export function buildDonjon() {
   }
   scene.add(bars);
   for (const sx of [-1, 1]) { scene.add(mesh(boxG(0.6, 3.4, 0.6), stoneMat, cx + sx * 2.8, 1.7, gz)); scene.add(mesh(sphG(0.4, 8), stoneMat, cx + sx * 2.8, 3.6, gz)); }
-  PARTAGE.donjonGate = makeGrille(5, 2.8, 8); PARTAGE.donjonGate.position.set(cx, 0, gz); scene.add(PARTAGE.donjonGate);
-  PARTAGE.donjonGate.userData.cap = addCap(cx - 2.5, gz, cx + 2.5, gz, 0.2, 2.8);
-  PARTAGE.donjonGate.userData.open = false;
+  // Un PORTAIL sur gonds, pas une herse : levée de 3,3 m, la grille flottait en l'air au-dessus
+  // du passage, sans rien pour la tenir (Eugène, 29 septembre : « la porte est ouverte mais le
+  // visuel n'est pas cohérent »). Elle pivote sur le poteau ouest et s'ouvre vers l'enclos.
+  // `poser(f)` : 0 fermé, 1 ouvert — la quête l'anime, l'instance l'ouvre d'un coup.
+  { const pivot = new THREE.Group(), grille = makeGrille(5, 2.8, 8);
+    pivot.position.set(cx - 2.5, 0, gz); grille.position.set(2.5, 0, 0); pivot.add(grille); scene.add(pivot);
+    pivot.userData = { dynamic: true, open: false, f: 0, cap: addCap(cx - 2.5, gz, cx + 2.5, gz, 0.2, 2.8),
+      poser(f) { pivot.userData.f = f; pivot.rotation.y = f * 1.75; } };
+    PARTAGE.donjonGate = pivot; }
 }
 // =====================================================================
 //  Outils de plan : polygones relevés, décalage, nappes de toiture

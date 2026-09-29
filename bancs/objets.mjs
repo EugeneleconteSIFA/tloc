@@ -28,7 +28,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 await page.addInitScript(() => {
   window.__avantFusion = async () => {
-    const E = await import('./engine.js?v=27'), THREE = E.THREE, { scene, world } = E;
+    const E = await import('./engine.js?v=28'), THREE = E.THREE, { scene, world } = E;
     const B = new THREE.Box3(), S = new THREE.Vector3(), res = [];
     const nom = (o) => { const l = []; for (let p = o; p && p !== scene && l.length < 3; p = p.parent) l.push(p.name || (p.isMesh ? (p.material && (p.material.userData.ph || p.material.type)) : p.type)); return l.join(' < '); };
     const tester = (o) => {
@@ -106,7 +106,7 @@ const exemples = [...familles.values()].sort((a, b) => b.n - a.n).slice(0, 12).m
 console.log('— familles :'); for (const e of exemples) console.log(`  ${String(e.n).padStart(4)} × ${e.type} ${e.lieu} — ${e.quoi} (${e.x}, ${e.z})`);
 const photos = [];
 for (const [k, o] of exemples.entries()) {
-  await page.evaluate(async (o) => { const E = await import('./engine.js?v=27');
+  await page.evaluate(async (o) => { const E = await import('./engine.js?v=28');
     if (!window.__repere) { window.__repere = new E.THREE.Mesh(new E.THREE.SphereGeometry(0.12, 12, 8), new E.THREE.MeshBasicMaterial({ color: 0xff2020, depthTest: false })); window.__repere.renderOrder = 999; E.scene.add(window.__repere); }
     window.__repere.position.set(o.x, o.y, o.z);
     const d = Math.max(2.5, Math.max(...o.taille) * 1.8);

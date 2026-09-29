@@ -834,6 +834,127 @@ arrivent au camp seulement ; chargement 14,9 s (somme des étapes).
   drapeaux et joueurs sur la minicarte, la carte M (donnée d'office en instance) et la carte
   du choix d'arrivée ; armoire en ~2 s au lieu de 5,8 (cf. § 5, shaders).
 
+### R. La fluidité en jeu (28 septembre, soir) — **en cours, rien de publié**
+
+Eugène : « améliorer les performances par deux », pour lui (Mac, Iris Plus 655, Retina) et
+pour les testeurs. **Nouveau banc `node bancs/fluidite.mjs [1-4|auto] [étiquette]`** : six
+lieux, quatre caps, 1440 × 900 Retina, sans vsync ; `TLOC_ENGINE=f.js` pour un A/B contre
+`git show HEAD:engine.js`, `TLOC_ECHELLE` pour fixer la définition calculée.
+- **Diagnostic** : sur le Mac c'est la CARTE qui limite, pixel par pixel (éclairage PBR : un
+  matériau sans lumière irait 2,4 fois plus vite ; ombres, reflets du ciel, feuillages pèsent
+  chacun 15–20 %). En 1× c'est le processeur (préparation des appels, 93 % du fil principal).
+- **Défauts trouvés** (engine.js) : le compositeur gardait son ratio de pixels de création
+  (1,5) — baisser la résolution ne faisait RIEN avec le post-traitement ; les touches 1–4
+  n'avaient plus de gestionnaire ; la qualité auto-abaissée était gardée à vie
+  (`tloc_quality`, remplacée par `tloc_qualite`, écrite seulement par un choix au clavier) ;
+  l'automate mesurait sur le dt borné à 50 ms ; les instanciés partageaient un VAO (2 866
+  `vertexAttribPointer` par image → 0, `separerGeometries`) ; nature.js dessinait les plantes
+  « clairsemées » absentes (matrices nulles : triangles identiques à tous les niveaux →
+  `Couche.pas`, `refaire()` resserre).
+- **Fait** : ombre du soleil une image sur deux (`OMBRE_PAS`) ; image calculée plus petite
+  puis agrandie, FXAA à basse définition et netteté adaptative à la sortie (`sortie`,
+  `antiCrenelage`, `echelleRendu`) ; automate : l'échelle d'abord (plancher 0,7 pixel par
+  point), les effets ensuite ; post-traitement jamais éteint par la qualité (sa bascule
+  recompilait tout) ; au-delà de `OMBRE_NETTE` (35 m) ombre à 4 texels au lieu de 16, lampes
+  hors de portée sautées (ShaderChunk patché au démarrage, +11–12 % en A/B) ; **panneau de
+  performance du compte Createur** en bas à gauche (tloc-multi.js → `perfCreateur`), F3 pour
+  tous, `?perf` dans l'adresse.
+- **Mesuré** (machine chaude) : qualité 1, 9,9 → 16,1 img/s (18 à froid), image calculée
+  à 0,75 point, un peu plus douce (captures comparées au bourg et au moulin) ; mode auto
+  20,6 → 25,1 img/s, pire image 50–95 → 57–96 ms. **Pas encore ×2 en auto** : il reste un
+  plafond géométrique (~2,5 M de triangles près de Camille : bâti fusionné 1,2 M, herbe,
+  arbres) qu'aucun niveau ne réduit.
+- **Retour d'Eugène** : « c'est super mieux ». **Pont infranchissable à cheval** : tous les
+  ponts relevés commençaient par une marche de 45 à 52 cm (les 38 cm du tablier posés d'un
+  coup au bout) — `hauteurPont` (carte.js) les fait monter sur 3 m. Mesuré sur les 16 bouts,
+  cinq trajectoires chacun : marche ≤ 0,12 m, tout passe (sauf au ras des parapets de la
+  Passerelle Edmond Ory, 3,6 m de large : normal). Pas encore revu en rendu.
+- **Demandé par Eugène le 28 au soir, À FAIRE demain** : (1) la carte (M et le choix
+  d'arrivée, atlas.js) sur presque tout l'écran — elle n'en occupe qu'un tiers ; (2) les
+  drapeaux du mode équipes tirés sur TOUTE la carte, pas seulement dans l'enceinte
+  (tloc-multi.js, les 20 emplacements).
+- **Suite proposée** : niveaux de détail du bâti fusionné et des arbres par distance ;
+  chargement à remesurer machine froide (18,8 s en somme des étapes à chaud, « quartier »
+  non modifié +35 % : la chaleur) ; `bump.py` avant de publier.
+
+### S. Les demandes d'Eugène du 29 septembre (multi, carte, accueil) — **faites le 29, rien de publié**
+
+Notées telles quelles, par thème.
+
+**Mode drapeaux**
+- Écran des scores : le compte de drapeaux PAR ÉQUIPE, avec le détail de chaque équipe à côté.
+  **Fait** : deux colonnes (`afficherResultats`, `.en-camps`), compte en gros, tenue, joueurs
+  et badges du camp ; le camp gagnant cerclé d'or. Vu en capture sur une manche d'une minute.
+- La zone où les drapeaux peuvent apparaître grandit avec la durée de la partie :
+  2 à 3 min → la citadelle seule (le reste de la carte fermé : plus fluide) ; 5 min → plus
+  le parc de la citadelle ; 10 min → toute la carte. **Fait le 29** (et l'aire de jeu est
+  fermée au-delà, cf. « la partie qui se resserre » ci-dessous) : `proposerDrapeaux` (tloc-multi.js) choisit la
+  zone sur `manche.duree` (< 5 min citadelle, < 10 min parc, sinon tout) ; le parc = ce
+  qu'on atteint sans franchir un pont du relevé (`intraDeule`), à moins de `PARC_BOIS_R` du
+  tracé et hors du tissu bâti (`enQuartier`) — le relevé ne ferme pas la Deûle tout autour.
+  Vérifié au banc (instance locale, 7 bots vétérans) : 3 min → 20 emplacements dans la
+  citadelle, grille en 4 s ; 5 min → parc, bois, fossés, Esplanade ; 10 min → toute la
+  carte, et en vraie partie les bots font 300 m, prennent, repartent (drapeaux changés de
+  mains). **Restes** : la grille de toute la carte met 30 à 50 s à se remplir (6 ms par
+  image) — les drapeaux n'apparaissent qu'après ; un bot virtuel qui suit la grille atteint
+  13 emplacements sur 20 (les vrais ont un repli de contournement) ; un bot sur sept est
+  resté immobile au banc.
+- **Corrigé en route** (bots et grille) : la grille ne franchissait aucun pont (citadelle =
+  île) ; `avancer` refusait tout pas au-dessus de l'eau (règle d'eau partagée désormais :
+  `surOuvrage`, carte.js, pour le moteur ET les bots) ; progression jugée à vol d'oiseau
+  (les bots lâchaient la grille au premier détour) ; murs minces entre deux cases (bits de
+  passage `est`/`sud`) ; grille au ras du relief au lieu de la hauteur marchée, et au sol
+  SOUS les ponts relevés au lieu du tablier ; coins coupés dans `pasVers` ; report derrière
+  le mur frôlé ; noms d'emplacements (« le les rues de Lille »).
+- La carte (M et choix d'arrivée) couvre l'écran (`couvrir`, atlas.js) — fait le 29.
+
+**La carte qui rétrécit, dans les autres modes**
+- Chrono : à 5 min de la fin, on se resserre sur le parc de la citadelle (l'intra-Deûle) ; à
+  2 min 30, le pont de la citadelle se referme.
+- Match à mort : un resserrement au bout de 5 min de jeu, un autre au bout de 10 min.
+- Une animation et une annonce 50 secondes avant chaque changement de taille.
+- **Fait** (tloc-multi.js, « La partie qui se resserre ») : trois aires mesurées au tracé
+  (`sdPent`) — tout, parc (`PARC_BOIS_R`), citadelle (2 m) ; calendrier par règle
+  (`calendrierAire`), sur le chrono de la manche (le serveur envoie désormais `depuis`,
+  le temps écoulé, pour le match à mort qui n'a pas de chrono). 50 s avant : annonce, compte
+  à rebours au bandeau, rideau de lumière à la future limite (`rideau`) ; ensuite, hors de
+  l'aire, un demi-cœur toutes les 1,5 s (`encaisser`, bots par `recevoirPourBot`),
+  réapparition toujours dans l'aire (`pointDansAire`), bots qui rentrent (par le pont de la
+  Porte Royale pour la citadelle). La **herse de la Porte Royale** est mobile
+  (`PARTAGE.herse.poser`, citadelle.js : un seul maillage, collision seulement baissée).
+  Vérifié : chrono de 200 s, herse baissée à 50 s, les trois bots et moi dans la citadelle.
+  Les deux cartes (minicarte, M) tracent l'aire en vigueur en trait plein et la prochaine en
+  tirets (`PARTAGE.aires`, hud.js, atlas.js) — vu en capture.
+
+**Multijoueur, tous modes**
+- La grille du donjon ouverte ; Phinaert est un monstre comme les autres : l'onde de choc de
+  sa masse frappe tout le monde.
+- La porte du donjon est ouverte, mais son dessin ne l'est pas : à mettre d'accord.
+- Bug : en choisissant l'apparence (armoire) en multijoueur, le personnage ne s'affiche plus.
+- **Faits** : en instance, `ouvrirDonjon` (tloc-multi.js) ouvre l'enclos (`openGate` de la
+  quête) ; la mort de Phinaert n'y lance plus la cinématique ; `CROCHETS.onde` (engine.js)
+  fait encaisser les bots à son onde (vérifié 12 → 10). Le portail de l'enclos est un
+  PORTAIL sur gonds qui pivote (`donjonGate.userData.poser`, citadelle.js) au lieu d'une
+  grille levée de 3,3 m qui flottait en l'air — en solo aussi. La barre de Phinaert n'est
+  plus affichée qu'à moins de 60 m de lui. L'armoire : le clignotement d'invincibilité figé
+  sur « éteint » à l'écran titre cachait Camille (on arrive invincible en équipes) — il ne
+  clignote plus que si le temps passe, et l'armoire rallume Camille.
+
+**Accueil**
+- Des icônes à côté des règles : balade (marcheur ou chemin), match à mort (pierre tombale),
+  chrono (horloge).
+- Des titres de sous-sections dans l'encadré multijoueur.
+- Réagencer les trois encadrés : les deux premiers prennent trop de place ; toutes les infos
+  du multijoueur doivent se voir sans défiler sur un écran d'ordinateur ordinaire.
+- **Faits** (accueil.html, tloc-portail.css) : icônes chemin, pierre tombale, horloge,
+  drapeau ; sous-sections « Mode de jeu / Règle / Déroulé / Bots » en deux colonnes ; « Seul »
+  et « Rejoindre » compacts à gauche, « Ouvrir une partie » à droite ; le titre se tasse sous
+  820 px de haut. Pire cas (équipes, chrono, bots) vu sans défiler en 1440 × 800 et
+  1366 × 680, clair et sombre ; une colonne sur téléphone.
+
+Chargement après tout ça : 13,7 s en somme des étapes (froid), 15,0 s (relance) —
+`bancs/charge-2026-09-29-multi-aires.json`.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js

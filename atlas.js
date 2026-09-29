@@ -17,7 +17,7 @@ import { PARTAGE } from './etat.js';
 import {
   SFX, THREE, cut, estDecouvert, hideMenu, lieux, menu, player, resumeGame, saveGame,
   showMenu, showMessage, state,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 
 export const aLaCarte = () => !!state.carteBeffroi;
 
@@ -231,6 +231,12 @@ function peindre() {
     ctx.moveTo(qx + 7, qy - 7); ctx.lineTo(qx - 7, qy + 7); ctx.stroke();
   }
 
+  // l'aire de jeu du multi qui se resserre : la limite en vigueur, la prochaine en tirets
+  for (const a of PARTAGE.aires || []) {
+    ctx.save(); ctx.strokeStyle = a.couleur; ctx.lineWidth = 3; if (a.tirets) ctx.setLineDash([10, 7]);
+    ctx.beginPath(); a.pts.forEach(([x, z], k) => { if (k) ctx.lineTo(ax(x), az(z)); else ctx.moveTo(ax(x), az(z)); });
+    ctx.stroke(); ctx.restore();
+  }
   // les repères du multi (tloc-multi.js) : objets à prendre, joueurs en équipes, drapeaux
   for (const m of PARTAGE.marques || []) {
     const x = ax(m.x), y = az(m.z);
@@ -267,7 +273,7 @@ function ouvrir() {
   if (ecran) { fermer(); return; }
   state.paused = true;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
-  vue.suivre = true; vue.zoom = 0.55;
+  couvrir(player.pos.z);
 
   ecran = document.createElement('div');
   ecran.style.cssText = 'position:fixed; inset:0; z-index:8; background:#0b1020; cursor:grab;';
@@ -366,7 +372,7 @@ export function choisirPoint(valider, rdv = null) {
     const pre = rdv ? valider(rdv.x, rdv.z) : null;
     choix = { valider, fin, point: pre, refus: null, retenu: null, rdv: pre ? rdv : null };
     ouvrir();
-    cadrer();                      // la châtellenie entière, au centre, sous le bandeau
+    couvrir(pre ? rdv.z : 52);     // la place d'Armes (PLACE_C ≈ 4, 52), ou le rendez-vous, au milieu
     if (pre) {
       const el = ecran.querySelector('#choixTLOC'), ok = ecran.querySelector('#okTLOC');
       el.innerHTML = `<span style="color:#ffd24a">Le rendez-vous de l’hôte${rdv.nom ? ' : <b>' + ech(rdv.nom) + '</b>' : ''}.</span> Entrée pour y aller, ou clique ailleurs.`;
@@ -376,19 +382,22 @@ export function choisirPoint(valider, rdv = null) {
   });
 }
 
-// Toute la carte dans l'écran : centrée dans la place que laisse le bandeau du haut, avec
-// une marge. Pour choisir où l'on arrive, il faut voir l'ensemble d'un coup d'œil.
-function cadrer() {
-  const PX = HUD.CARTE_PX, W = window.innerWidth, H = window.innerHeight;
-  const HAUT = 120, MARGE = 40;                  // le bandeau, puis de l'air autour
+// La carte COUVRE l'écran. Faire tenir tout le relevé laissait deux tiers de fond noir : le
+// rectangle est penché de 15° et en portrait, l'écran en paysage (Eugène, 29 septembre :
+// « sur presque l'ensemble de l'écran »). On montre toute sa largeur est-ouest ; le nord et
+// le sud se découvrent en glissant, aux flèches ou à la molette (qui dézoome jusqu'au tout).
+// `zc` : la hauteur à mettre au milieu — Camille, ou le rendez-vous — bornée pour ne pas
+// ouvrir sur du vide au-delà du relevé.
+function couvrir(zc) {
+  const PX = HUD.CARTE_PX, W = window.innerWidth, H = window.innerHeight, MARGE = 12;
   const xs = ENCEINTE.map((q) => q[0]), zs = ENCEINTE.map((q) => q[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
   vue.suivre = false;
-  vue.zoom = Math.min(4, Math.max(0.16, Math.min((W - 2 * MARGE) / ((x1 - x0) * PX), (H - HAUT - 2 * MARGE) / ((z1 - z0) * PX))));
+  vue.zoom = Math.min(4, Math.max(0.16, (W - 2 * MARGE) / ((x1 - x0) * PX)));
   vue.cx = (x0 + x1) / 2;
-  // le centre de la zone libre est HAUT/2 plus bas que celui de l'écran
-  vue.cz = (z0 + z1) / 2 - (HAUT / 2) / (PX * vue.zoom);
-  peindre();
+  const demi = H / 2 / (PX * vue.zoom);
+  vue.cz = z1 - z0 <= 2 * demi ? (z0 + z1) / 2 : Math.min(z1 - demi, Math.max(z0 + demi, zc));
+  if (ctx) peindre();
 }
 
 function zoomer(f) { vue.zoom = Math.min(4, Math.max(0.16, vue.zoom * f)); peindre(); }

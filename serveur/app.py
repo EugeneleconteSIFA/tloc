@@ -1043,6 +1043,9 @@ class Salon:
             return {"etat": "attente", "regle": self.regle}
         v = {"etat": m["etat"], "regle": self.regle,
              "reste": max(0, round(m["fin"] - time.time())) if m.get("fin") else None,
+             # le temps de jeu écoulé : le match à mort n'a pas de chrono, et c'est sur lui que
+             # la partie se resserre (5 et 10 min) — le même pour tous, même arrivé en cours
+             "depuis": round(time.time() - m["debut"], 1) if m["etat"] == "cours" and m.get("debut") else None,
              "elimines": sorted(m["elimines"]), "vies_max": self.vies, "duree": self.duree,
              "vies": {str(i): max(0, self.vies - s["m"]) for i, s in m["stats"].items()} if self.regle == "survie" else {},
              "scores": {str(i): [s["k"], s["m"]] for i, s in m["stats"].items()}}
@@ -1120,7 +1123,7 @@ class Salon:
     async def commencer(self):
         m = self.manche
         m.update(etat="cours", stats={i: self.nouvelles_stats() for i in self.joueurs}, elimines=set(),
-                 ordre=[], premier=None, tueurs={}, noms={}, camps={},
+                 ordre=[], premier=None, tueurs={}, noms={}, camps={}, debut=time.time(),
                  fin=time.time() + self.duree if self.regle in ("temps", "drapeaux") else None)
         for j in self.joueurs.values():
             self.noter_nom(j)

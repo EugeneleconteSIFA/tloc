@@ -5,7 +5,7 @@
 // donne des dimensions et une teinte, elles rendent un groupe prêt à poser.
 // Bien commun : plusieurs secteurs s'en servent, personne ne doit y mettre de contenu
 // de niveau (cf. ORCHESTRATION.md).
-import { THREE, T, lerp, mat, pbr, pbrRepeat, phMat, mesh, boxG, sphG, makeCanvas, mergeParts } from './engine.js?v=27';
+import { THREE, T, lerp, mat, pbr, pbrRepeat, phMat, mesh, boxG, sphG, makeCanvas, mergeParts } from './engine.js?v=28';
 
 // =====================================================================
 //  Portes

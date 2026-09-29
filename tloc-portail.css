@@ -83,12 +83,30 @@ h1.logo { margin:0; font-family:var(--gothique); font-weight:700; font-size:clam
 .vitrine { padding:26px 16px 110px; }   /* le bas des façades reste visible sous les tuiles */
 h1.logo { font-size:clamp(40px,5vw,68px); }
 .sous { margin:4px 0 18px; font-size:clamp(16px,1.6vw,20px); }
-.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px; text-align:left; }
+/* Deux colonnes (Eugène, 29 septembre : « les deux premières prennent trop de place par
+   rapport à la partie multijoueur ») : « Seul » et « Rejoindre », peu remplis, s'empilent à
+   gauche ; « Ouvrir une partie » a toute la droite, et ses réglages tiennent en deux colonnes —
+   tout se voit sans défiler, même en équipes, au chrono, avec des bots. */
+.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.7fr); gap:18px; text-align:left; align-items:start; }
 .modes-multi { display:contents; }
+.mode-solo { grid-column:1; grid-row:1; }
+.mode-rejoindre { grid-column:1; grid-row:2; }
+.mode-creer, .mode-local { grid-column:2; grid-row:1 / span 2; align-self:stretch; }
+.mode-solo, .mode-rejoindre { gap:10px; padding:14px 16px; }
+.mode-solo .mode-tete h2, .mode-rejoindre .mode-tete h2 { font-size:22px; }
+.mode-rejoindre .cases input { height:46px; font-size:19px; }
+/* l'encadré multijoueur, en sous-sections titrées */
+.creer-grille { display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; }
+.sous-section { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.sous-titre { margin:0; font-family:var(--corps, inherit); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--sourd); }
+.sous-deroule:has(#reglageVies.cache):has(#reglageDuree.cache) { display:none; }
+.regle-icone { flex:none; margin-right:6px; }
+/* le titre « Bots » de la sous-section suffit : l'étiquette du compteur reste pour les lecteurs d'écran */
+.mode-creer .bots-ligne { justify-content:flex-start; }
+.mode-creer .bots-ligne .etiquette { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .mode { display:flex; flex-direction:column; gap:12px; padding:18px; border-radius:10px;
         background:var(--verre); border:1px solid var(--bord2); box-shadow:0 20px 50px rgba(0,0,0,.35);
         -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
-.mode-local { grid-column:span 2; }
 .mode-tete { display:flex; align-items:center; gap:14px; }
 .mode-icone { flex-shrink:0; width:40px; height:40px; border-radius:22px; display:flex; align-items:center; justify-content:center;
               background:var(--brique); color:var(--or-clair); }
@@ -131,12 +149,18 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
 .choix input:focus-visible + span { outline:2px solid var(--or); outline-offset:2px; }
 .vitrine > .msg { width:min(1240px,100%); margin:16px auto 0; text-align:left; }
 @media (max-width: 1080px) {
-  .modes { grid-template-columns:1fr 1fr; }
-  .mode-solo { grid-column:1 / -1; }
-  .mode-local { grid-column:1 / -1; }
+  .creer-grille { grid-template-columns:1fr; }
+}
+/* un portable de 768 px de haut (≈ 680 utiles) : le titre se tasse pour que tout le
+   multijoueur tienne sans défiler */
+@media (max-height: 820px) and (min-width: 701px) {
+  .vitrine { padding-top:14px; }
+  h1.logo { font-size:clamp(34px,4vw,52px); }
+  .sous { margin:2px 0 10px; font-size:16px; }
 }
 @media (max-width: 700px) {
   .modes { grid-template-columns:1fr; }
+  .mode-solo, .mode-rejoindre, .mode-creer, .mode-local { grid-column:auto; grid-row:auto; }
 }
 
 /* rang-de-Lille : brique, pierre, brique sombre, pierre — la frise sépare la vitrine du reste */

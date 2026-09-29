@@ -6,7 +6,7 @@ import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,
@@ -123,7 +123,7 @@ export function onLoad(snap) {
   if (!state.introSeen) setTimeout(debut, 0);
   if (state.bowChest && PARTAGE.bowChest) PARTAGE.bowChest.userData.lid.rotation.x = -1.9;
   if (state.keyChest && PARTAGE.keyChest) PARTAGE.keyChest.userData.lid.rotation.x = -1.9;
-  if (state.gateOpen) { openGate(); PARTAGE.donjonGate.position.y = 3.3; }
+  if (state.gateOpen) { openGate(); PARTAGE.donjonGate.userData.poser(1); }
   if (state.galleryOpen) { PARTAGE.poterneGrille.position.y = 2.8; PARTAGE.poterneGrille.userData.cap.r = 0; }
   const boss = enemies.find(e => e.k.boss); if (boss && !boss.dead && !state.gateOpen) boss.caged = true;
   if (killsLeft() === 0 && !state.gateOpen) openGate();
@@ -166,7 +166,7 @@ export function update(dt) {
     ch.userData.glow.intensity = lerp(ch.userData.glow.intensity, state[flag] ? 0.6 : 0, 1 - Math.exp(-2 * dt));
   }
   // grilles animées
-  PARTAGE.donjonGate.position.y = lerp(PARTAGE.donjonGate.position.y, PARTAGE.donjonGate.userData.open ? 3.3 : 0, 1 - Math.exp(-2 * dt));
+  { const g = PARTAGE.donjonGate.userData; g.poser(lerp(g.f, g.open ? 1 : 0, 1 - Math.exp(-2 * dt))); }
   if (state.galleryOpen) { PARTAGE.poterneGrille.position.y = lerp(PARTAGE.poterneGrille.position.y, 2.8, 1 - Math.exp(-2 * dt)); PARTAGE.poterneGrille.userData.cap.r = 0; }
   // caméra rapprochée dans le donjon
   const inKeep = Math.abs(p.pos.x - DONJON.x) < DONJON.half && Math.abs(p.pos.z - DONJON.z) < DONJON.half && p.pos.y < DONJON.h - 1;

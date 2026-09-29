@@ -23,7 +23,7 @@ import * as BOURSE from './bourse.js';
 import {
   THREE, Q, SFX, T, TAU, addCap, blocked, burst, capsulesNear, clamp, distSeg, fbm, getH, lerp, mat,
   mergeParts, phMat, player, rand, scene, spawnGaufre, state,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
@@ -216,10 +216,29 @@ class Couche {
     this.mesh = im;
     this.occup = new Array(this.N * this.N).fill('\u0000');
     this.file = []; this.gx = 1e9; this.gz = 1e9;
-    this.frac = 1; this.facteur = 1; this.vivantes = 0;
+    // semée d'emblée à la densité de la qualité maximale : le premier Q.apply ne change pas
+    // le découpage et n'a rien à re-semer (cf. refaire)
+    this.frac = Math.min(1, this.poidsQ); this.facteur = 1; this.vivantes = 0;
+    this.pas = Math.max(1, Math.round(this.parTuile * this.frac));   // places servies par tuile
     COUCHES.push(this);
   }
-  refaire() { this.gx = 1e9; this.occup.fill('\u0000'); }
+  // Clairsemer, c'est RESSERRER les places, pas en vider une partie : chaque tuile n'en garde
+  // que `pas` (sa part de la densité) et l'instancié n'en dessine que N² × pas. Avant, les
+  // places vides restaient dans le tampon avec une matrice nulle — invisibles, mais la carte
+  // en calculait quand même les sommets : en qualité basse, les trois quarts du travail de
+  // l'herbe partaient dans des plantes absentes (mesuré le 28 septembre : 2,86 M de
+  // triangles à tous les niveaux de qualité).
+  // Rend vrai si le découpage a changé : le tampon est alors effacé, et l'appelant re-sème
+  // tout de suite (sinon la prairie disparaîtrait puis repousserait sous les yeux).
+  refaire() {
+    this.gx = 1e9; this.occup.fill('\u0000');
+    const pas = Math.min(this.parTuile, Math.max(1, Math.round(this.parTuile * this.frac)));
+    if (pas === this.pas) return false;
+    this.pas = pas;
+    const im = this.mesh; im.count = this.N * this.N * pas;
+    im.instanceMatrix.array.fill(0); im.instanceMatrix.clearUpdateRanges(); im.instanceMatrix.needsUpdate = true;
+    return true;
+  }
   majFile(px, pz) {
     const g0x = Math.floor(px / this.tuile), g0z = Math.floor(pz / this.tuile);
     if (g0x === this.gx && g0z === this.gz) return;
@@ -244,8 +263,8 @@ class Couche {
     return n;
   }
   semer(t) {
-    const base = t.bloc * this.parTuile;
-    const cible = t.dehors ? 0 : Math.round(this.parTuile * this.frac);
+    const base = t.bloc * this.pas;
+    const cible = t.dehors ? 0 : this.pas;
     let n = 0;
     if (cible) {
       const al = graineTuile(t.gx, t.gz, this.sel);
@@ -260,10 +279,10 @@ class Couche {
         }
       }
     }
-    for (let i = n; i < this.parTuile; i++) this.mesh.setMatrixAt(base + i, ZERO);
+    for (let i = n; i < this.pas; i++) this.mesh.setMatrixAt(base + i, ZERO);
     const im = this.mesh;
-    im.instanceMatrix.addUpdateRange(base * 16, this.parTuile * 16); im.instanceMatrix.needsUpdate = true;
-    if (im.instanceColor) { im.instanceColor.addUpdateRange(base * 3, this.parTuile * 3); im.instanceColor.needsUpdate = true; }
+    im.instanceMatrix.addUpdateRange(base * 16, this.pas * 16); im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) { im.instanceColor.addUpdateRange(base * 3, this.pas * 3); im.instanceColor.needsUpdate = true; }
     this.occup[t.bloc] = t.cle;
     this.vivantes += n;
   }
@@ -443,8 +462,8 @@ function faucher() {
       const bloc = (((gx % c.N) + c.N) % c.N) * c.N + (((gz % c.N) + c.N) % c.N);
       const cle = gx + ':' + gz;
       if (c.occup[bloc] !== cle) continue;             // tuile pas (encore) semée ici
-      const base = bloc * c.parTuile;
-      for (let i = base; i < base + c.parTuile; i++) {
+      const base = bloc * c.pas;
+      for (let i = base; i < base + c.pas; i++) {
         const o = i * 16;
         if (a[o] === 0 && a[o + 1] === 0 && a[o + 2] === 0) continue;   // vide ou déjà coupée
         const x = a[o + 12], y = a[o + 13], z = a[o + 14];
@@ -1093,7 +1112,7 @@ function initSemis() {
   // moins fournie et s'arrête plus tôt dans la brume.
   Q.hooks.push((l) => {
     const fr = [1, 0.72, 0.45, 0.24][l], po = [1, 0.88, 0.72, 0.55][l];
-    for (const c of COUCHES) { c.frac = fr * c.poidsQ; c.facteur = po; c.refaire(); }
+    for (const c of COUCHES) { c.frac = Math.min(1, fr * c.poidsQ); c.facteur = po; if (c.refaire()) { c.majFile(player.pos.x, player.pos.z); c.travailler(1e9); } }
     if (perf.roseaux) perf.roseaux.visible = l < 3;
     if (perf.nenuphars) perf.nenuphars.visible = l < 2;
     if (perf.saules) for (const m of perf.saules) m.castShadow = l < 1;

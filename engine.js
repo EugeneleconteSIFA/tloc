@@ -48,6 +48,41 @@ export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 // compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
 // pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
 renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
+// ---------------------------------------------------------------------
+//  L'éclairage allégé au loin (modifie deux morceaux de shader de three, pour tous les
+//  matériaux, avant toute compilation)
+// ---------------------------------------------------------------------
+// Sur les cartes modestes, l'éclairage réaliste coûte à chaque pixel (mesuré le 28 septembre,
+// bourg, Iris Plus 655 : un matériau sans lumière irait 2,4 fois plus vite). Deux postes
+// travaillaient pour rien :
+// - l'ombre douce (PCFSoft) lit SEIZE texels de la carte d'ombre par pixel. Au-delà de
+//   `OMBRE_NETTE` mètres, un texel de la carte (9 cm) couvre moins d'un pixel : le filtre
+//   3 × 3 n'adoucit plus rien que l'œil distingue. Un bilinéaire de 4 texels y suffit ;
+// - chaque lampe du réservoir (6) faisait tout son calcul de reflet (GGX) sur chaque pixel
+//   de la scène, même à 200 m d'elle, pour une lumière multipliée par zéro. Hors de portée,
+//   on saute le calcul (`directLight.visible` est faux quand l'atténuation est nulle).
+// Rien ne change à moins de `OMBRE_NETTE` mètres ; au-delà, l'ombre est la même à ±1 texel.
+export const OMBRE_NETTE = 35;
+{ const SC = THREE.ShaderChunk;
+  const nuance = SC.shadowmap_pars_fragment.indexOf('#elif defined( SHADOWMAP_TYPE_PCF_SOFT )');
+  const finNuance = SC.shadowmap_pars_fragment.indexOf('#elif defined( SHADOWMAP_TYPE_VSM )');
+  const lampe = '\t\tRE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );\n\t}\n\t#pragma unroll_loop_end\n#endif\n#if ( NUM_SPOT_LIGHTS > 0 )';
+  if (nuance < 0 || finNuance < 0 || !SC.lights_fragment_begin.includes(lampe)) console.warn('éclairage allégé : three a changé, rien n\'est modifié');
+  else {
+    const debut = '#elif defined( SHADOWMAP_TYPE_PCF_SOFT )\n';
+    const corps = SC.shadowmap_pars_fragment.slice(nuance + debut.length, finNuance);
+    SC.shadowmap_pars_fragment = SC.shadowmap_pars_fragment
+      .replace('#ifdef USE_SHADOWMAP\n', '#ifdef USE_SHADOWMAP\n\tfloat tlocDistance = 0.0;\n')
+      .replace(debut + corps, debut + `\t\t\tif ( tlocDistance > ${OMBRE_NETTE.toFixed(1)} ) {
+\t\t\t\tvec2 f = fract( shadowCoord.xy * shadowMapSize - 0.5 ), uv0 = shadowCoord.xy - f / shadowMapSize, t = 1.0 / shadowMapSize;
+\t\t\t\tshadow = mix( mix( texture2DCompare( shadowMap, uv0, shadowCoord.z ), texture2DCompare( shadowMap, uv0 + vec2( t.x, 0.0 ), shadowCoord.z ), f.x ),
+\t\t\t\t              mix( texture2DCompare( shadowMap, uv0 + vec2( 0.0, t.y ), shadowCoord.z ), texture2DCompare( shadowMap, uv0 + t, shadowCoord.z ), f.x ), f.y );
+\t\t\t} else {\n` + corps + '\t\t\t}\n');
+    SC.lights_fragment_begin = SC.lights_fragment_begin
+      .replace('IncidentLight directLight;\n', 'IncidentLight directLight;\n#ifdef USE_SHADOWMAP\n\ttlocDistance = length( vViewPosition );\n#endif\n')
+      .replace(lampe, '\t\tif ( directLight.visible ) ' + lampe.slice(2));
+  }
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -148,35 +183,154 @@ const vignette = new ShaderPass({
   fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float d = distance(vUv, vec2(0.5)); c.rgb *= 1.0 - smoothstep(0.5, 1.0, d) * 0.4; gl_FragColor = c; }',
 });
 composer.addPass(vignette);
-composer.addPass(new OutputPass());
+// L'anticrénelage (FXAA, version « console »), à la définition RÉDUITE, juste avant la
+// sortie : calculée en plus petit, l'image montrait ses arêtes en escalier une fois agrandie
+// (vu au bourg le 28 septembre, poteaux et planches de l'étal). Passé à la basse définition,
+// il ne coûte presque rien ; il n'agit que là où le contraste local dit « arête ». La
+// luminance est comprimée (l / (1 + l)) : l'image est encore en lumière brute ici.
+const antiCrenelage = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, texel: { value: new THREE.Vector2(1, 1) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 texel; varying vec2 vUv;
+    float L(vec3 c) { float l = dot(c, vec3(0.299, 0.587, 0.114)); return l / (1.0 + l); }
+    vec3 T(vec2 d) { return texture2D(tDiffuse, vUv + d).rgb; }
+    void main() {
+      vec4 m = texture2D(tDiffuse, vUv);
+      float lM = L(m.rgb), lNO = L(T(-texel)), lNE = L(T(vec2(texel.x, -texel.y))), lSO = L(T(vec2(-texel.x, texel.y))), lSE = L(T(texel));
+      float lMin = min(lM, min(min(lNO, lNE), min(lSO, lSE))), lMax = max(lM, max(max(lNO, lNE), max(lSO, lSE)));
+      if (lMax - lMin < max(0.0312, lMax * 0.125)) { gl_FragColor = m; return; }
+      vec2 dir = vec2(-((lNO + lNE) - (lSO + lSE)), (lNO + lSO) - (lNE + lSE));
+      float reduc = max((lNO + lNE + lSO + lSE) * 0.03125, 1.0 / 128.0);
+      dir = clamp(dir / (min(abs(dir.x), abs(dir.y)) + reduc), -8.0, 8.0) * texel;
+      vec3 a = 0.5 * (T(dir * (1.0 / 3.0 - 0.5)) + T(dir * (2.0 / 3.0 - 0.5)));
+      vec3 b = a * 0.5 + 0.25 * (T(dir * -0.5) + T(dir * 0.5));
+      float lB = L(b);
+      gl_FragColor = vec4((lB < lMin || lB > lMax) ? a : b, m.a);
+    }`,
+});
+{ const rendre = antiCrenelage.render.bind(antiCrenelage);
+  antiCrenelage.render = (r, w, lu, ...reste) => { antiCrenelage.uniforms.texel.value.set(1 / lu.width, 1 / lu.height); return rendre(r, w, lu, ...reste); }; }
+composer.addPass(antiCrenelage);
+// La sortie AGRANDIT et RAVIVE. Le compositeur peut calculer l'image plus petite que l'écran
+// (`echelleRendu`, réglée par l'automate de qualité) : la passe finale, qui écrit à la pleine
+// définition de l'écran, l'agrandit par interpolation puis rend le piqué perdu par un filtre
+// de netteté adaptatif (le RCAS d'AMD FSR, simplifié) : chaque pixel est rehaussé d'après ses
+// quatre voisins, d'autant moins que le contraste local est déjà fort — les arêtes ne s'auréolent
+// pas. Le filtre travaille APRÈS le tone mapping (sur ce que l'œil voit, pas sur la lumière
+// brute, où un ciel à 8 faisait déborder le rehaussement).
+const sortie = new OutputPass();
+sortie.uniforms.texel = { value: new THREE.Vector2(1, 1) };
+sortie.uniforms.nettete = { value: 0 };
+sortie.material.fragmentShader = `precision highp float;
+  uniform sampler2D tDiffuse; uniform vec2 texel; uniform float nettete;
+  #include <tonemapping_pars_fragment>
+  #include <colorspace_pars_fragment>
+  varying vec2 vUv;
+  vec3 tm(vec3 c) {
+    #ifdef ACES_FILMIC_TONE_MAPPING
+      c = ACESFilmicToneMapping(c);
+    #elif defined( AGX_TONE_MAPPING )
+      c = AgXToneMapping(c);
+    #elif defined( REINHARD_TONE_MAPPING )
+      c = ReinhardToneMapping(c);
+    #elif defined( LINEAR_TONE_MAPPING )
+      c = LinearToneMapping(c);
+    #endif
+    return c;
+  }
+  void main() {
+    vec4 c0 = texture2D(tDiffuse, vUv); vec3 c = tm(c0.rgb);
+    if (nettete > 0.0) {
+      vec3 n = tm(texture2D(tDiffuse, vUv + vec2(0.0, texel.y)).rgb), s = tm(texture2D(tDiffuse, vUv - vec2(0.0, texel.y)).rgb);
+      vec3 e = tm(texture2D(tDiffuse, vUv + vec2(texel.x, 0.0)).rgb), o = tm(texture2D(tDiffuse, vUv - vec2(texel.x, 0.0)).rgb);
+      vec3 mn = min(min(min(n, s), min(e, o)), c), mx = max(max(max(n, s), max(e, o)), c);
+      vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, 1e-4), 0.0, 1.0));
+      vec3 w = -amp * nettete * 0.2;
+      c = clamp((c + (n + s + e + o) * w) / (1.0 + 4.0 * w), 0.0, 1.0);
+    }
+    gl_FragColor = vec4(c, c0.a);
+    #ifdef SRGB_TRANSFER
+      gl_FragColor = sRGBTransferOETF(gl_FragColor);
+    #endif
+  }`;
+{ const rendre = sortie.render.bind(sortie);
+  sortie.render = (r, w, lu, ...reste) => { sortie.uniforms.texel.value.set(1 / lu.width, 1 / lu.height); return rendre(r, w, lu, ...reste); }; }
+composer.addPass(sortie);
 export const G = { postFX: true, echelle: 1, camYaw: Math.PI, camBack: 10.5, camUp: 6.5, camMaxY: Infinity, level: null, freeCam: null, fade: 0, fadeTarget: 0, fadeCb: null, journal: false, shake: 0, camPitch: 0, bowOut: false, mouseLook: false, mouseT: -10 };
+let echelleRendu = 1;          // part de la définition de l'écran que calcule le compositeur
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
+  // Le compositeur garde SON ratio de pixels, pris une fois à sa création (1,5 sur un écran
+  // Retina) : sans cette ligne, baisser la résolution ne changeait rien tant que le
+  // post-traitement était actif — les images passaient par ses tampons, restés à 1,5.
+  // Mesuré le 28 septembre (Iris Plus 655, 1440 × 900 Retina, bourg) : 8,8 img/s au ratio
+  // 1,5 comme au ratio 0,5 ; une fois corrigé, 14,8 au ratio 1 et 19,1 à 0,75.
+  composer.setPixelRatio(renderer.getPixelRatio() * echelleRendu);
   composer.setSize(w, h);
+  // netteté modérée : à fond, elle rendait le pavé granuleux (vu au bourg, calcul à ×0,5)
+  sortie.uniforms.nettete.value = echelleRendu < 0.99 ? clamp((1 - echelleRendu) * 1.2, 0.2, 0.6) : 0;
+  antiCrenelage.enabled = echelleRendu < 0.99;
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize); resize();
 
-// ---------- qualité adaptative : on baisse automatiquement si ça rame ----------
+// ---------- qualité adaptative : la résolution de calcul d'abord, les effets ensuite ----------
+// Sur les machines modestes le jeu est limité par les PIXELS : l'éclairage réaliste (PBR,
+// ombres, reflets du ciel) coûte à chaque pixel — mesuré le 28 septembre au bourg, un
+// matériau sans lumière irait 2,4 fois plus vite, et aucun poste isolé ne pèse plus de 20 %.
+// On tient donc la cadence en réglant la part de l'écran que calcule le compositeur
+// (`echelleRendu`), la sortie agrandissant et ravivant l'image ; l'écran, lui, reste à sa
+// définition. Ce n'est qu'au plancher, et toujours lent, qu'on retire des effets.
+// Le post-traitement reste allumé à TOUS les niveaux : l'éteindre recompilait tous les
+// shaders (plusieurs secondes figées) et passait l'image au multi-échantillonnage, plus cher
+// que le post lui-même. Les niveaux éteignent le flou, puis le halo, puis les ombres.
+// Le niveau choisi au clavier (1 à 4) est gardé ; celui qu'a pris l'automate ne l'est plus :
+// l'ancienne clé `tloc_quality` retenait à vie un niveau 4 pris un soir de surchauffe.
+const Q_CIBLE = 45, Q_AISE = 57, Q_PLANCHER = 0.7;   // plancher : pixels calculés par point d'écran
 export const Q = {
-  level: 0, hooks: [], frames: 0, acc: 0, warm: 0, locked: false,
+  level: 0, hooks: [], frames: 0, acc: 0, warm: 0, locked: false, choisi: false,
+  sortie: 1, echelle: 1, plancher: 0.5, calme: 0,
   apply(l, silent = false) {
     l = clamp(l, 0, 3); Q.level = l;
     const dpr = window.devicePixelRatio || 1;
-    renderer.setPixelRatio([Math.min(dpr, 1.5), Math.min(dpr, 1.25), 1, 0.85][l]);
+    Q.sortie = [Math.min(dpr, 1.5), Math.min(dpr, 1.5), Math.min(dpr, 1.25), Math.min(dpr, 1)][l];
+    Q.plancher = clamp(Q_PLANCHER / Q.sortie, 0.4, 1);
+    // on part d'un calcul à la définition « CSS » (1 pixel par point) : sur un écran Retina,
+    // 1,5 coûte 2,25 fois les pixels ; l'automate remonte si la machine suit. Aux changements
+    // de niveau suivants, l'échelle trouvée est gardée.
+    if (!Q.regle) Q.echelle = clamp(1 / Q.sortie, Q.plancher, 1); Q.regle = true;
+    Q.echelle = clamp(Q.echelle, Q.plancher, 1); echelleRendu = Q.echelle;
+    renderer.setPixelRatio(Q.sortie);
     sun.shadow.mapSize.set([2048, 1024, 1024, 512][l], [2048, 1024, 1024, 512][l]); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
     sun.castShadow = l < 3 && Q.shadowsWanted;
-    G.postFX = l < 2 && Q.postWanted; bokeh.enabled = l < 1;
+    G.postFX = Q.postWanted; bokeh.enabled = l < 1; bloom.enabled = l < 2;
     resize();
     for (const h of Q.hooks) h(l);
-    try { localStorage.setItem('tloc_quality', String(l)); } catch (e) {}
     if (!silent) showMessage(`Qualité graphique : ${['maximale', 'élevée', 'moyenne', 'basse'][l]} (touches 1 à 4 pour choisir)`, 2.5);
   },
+  // le joueur choisit : le niveau reste, la résolution continue de suivre la cadence
+  choisir(l) { Q.choisi = true; Q.apply(l); try { localStorage.setItem('tloc_qualite', String(Q.level)); } catch (e) {} },
+  // Changer d'échelle réalloue les tampons du compositeur (quelques millisecondes) : on le
+  // fait par pas de 5 %, et pas plus d'une fois toutes les deux secondes et demie.
+  mettreEchelle(e) {
+    e = clamp(Math.round(e * 20) / 20, Q.plancher, 1);
+    if (Math.abs(e - Q.echelle) < 0.01) return false;
+    Q.echelle = echelleRendu = e; resize(); Q.calme = 2.5; return true;
+  },
+  // dt : la VRAIE durée de l'image (celle de la boucle est bornée à 50 ms, et une moyenne
+  // faite dessus ne descendait jamais sous 20 images/s)
   tick(dt) {
-    Q.warm += dt; if (Q.warm < 6 || Q.locked) return;
+    Q.warm += dt; if (Q.warm < 4 || Q.locked) return;
+    if (Q.calme > 0) { Q.calme -= dt; Q.frames = 0; Q.acc = 0; return; }
     Q.frames++; Q.acc += dt;
-    if (Q.acc >= 2.5) { const fps = Q.frames / Q.acc; Q.frames = 0; Q.acc = 0; if (fps < 34 && Q.level < 3) Q.apply(Q.level + 1); }
+    if (Q.acc < 1.5) return;
+    const fps = Q.frames / Q.acc; Q.frames = 0; Q.acc = 0;
+    if (fps < Q_CIBLE) {
+      // le coût suit à peu près le nombre de pixels calculés, donc le carré de l'échelle
+      if (Q.mettreEchelle(Q.echelle * clamp(Math.sqrt(fps / (Q_CIBLE + 5)), 0.7, 0.95))) return;
+      if (fps < 28 && Q.level < 3 && !Q.choisi) { Q.apply(Q.level + 1); Q.warm = 0; }
+    } else if (fps > Q_AISE) Q.mettreEchelle(Q.echelle * 1.08);
   },
   shadowsWanted: true, postWanted: true,
 };
@@ -1956,7 +2110,9 @@ export function minimapDots(g, P) {
 function updateCounts() {
   countsEl.innerHTML = G.level && G.level.counts ? G.level.counts() : '';
   const boss = enemies.find(e => e.k.boss);
-  if (boss && !boss.dead && !boss.caged) { document.getElementById('bossbar').style.display = 'block'; document.getElementById('bossfill').style.width = (100 * boss.hp / boss.k.hp) + '%'; }
+  // la barre de Phinaert, quand on est près de lui : en instance il est libre dès l'arrivée,
+  // et la barre restait en travers de l'écran pendant toute la partie, n'importe où
+  if (boss && !boss.dead && !boss.caged && Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z) < 60) { document.getElementById('bossbar').style.display = 'block'; document.getElementById('bossfill').style.width = (100 * boss.hp / boss.k.hp) + '%'; }
   else document.getElementById('bossbar').style.display = 'none';
 }
 
@@ -1982,9 +2138,13 @@ let enterPressed = false;
 // de poser chacun leur guetteur de clavier. Elles ne jouent qu'en jeu, hors menu et hors
 // cinématique — le filtre est ici, une fois pour toutes.
 export const TOUCHES = {};
+// 1 à 4 : la qualité. Le message de Q.apply les annonçait, mais plus rien ne les écoutait.
+for (let i = 0; i < 4; i++) TOUCHES['Digit' + (i + 1)] = () => Q.choisir(i);
 // Les crochets : ce que le moteur demande aux autres modules sans les importer.
 //   gaufre() -> vrai si la gaufre ramassée a été rangée (la poche), faux s'il faut la manger
-export const CROCHETS = { gaufre: null };
+export const CROCHETS = { gaufre: null, onde: null };
+//   onde(s) -> appelé à chaque image pour chaque onde de choc de Phinaert (s.x, s.z, s.y, s.r) :
+//              le multijoueur y fait encaisser les bots (l'onde frappe tout le monde)
 
 // ---------------------------------------------------------------------
 //  L'aide des touches, sur le côté droit
@@ -2477,7 +2637,10 @@ export function updatePlayer(dt) {
   const rigge = !!(ud.ctrl && HOOK_CAMILLE);
   if (rigge) {
     const drawingR = p.bowT >= 0, bowOutR = state.bow && G.bowOut;
-    m.visible = !(p.invuln > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
+    // le clignotement de l'invincibilité, seulement quand le temps passe : figé (écran titre,
+    // updatePlayer(0)) sur une phase éteinte, Camille restait invisible — puis toute l'armoire
+    // de l'instance, jeu en pause (vu en équipes, où l'on arrive invincible, 29 septembre)
+    m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
     m.rotation.x = 0;
     if (p.pose) {
       const ps = p.pose;
@@ -2514,7 +2677,7 @@ export function updatePlayer(dt) {
   ud.bowHand.visible = state.bow && (drawing || bowOut); ud.bowBack.visible = state.bow && !drawing && !bowOut;
   if (bowOut && !drawing && p.attackT < 0) { ud.arms[0].rotation.x = -1.1; ud.elbows[0].rotation.x = -0.4; }
   if (drawing) { ud.arms[0].rotation.x = -Math.PI / 2; ud.elbows[0].rotation.x = 0; ud.arms[1].rotation.x = -Math.PI / 2 + 0.3; ud.arms[1].rotation.y = 0.2; ud.elbows[1].rotation.x = -1.6; }
-  m.visible = !(p.invuln > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
+  m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
   // respiration au repos
   ud.body.position.y = -1.1 + (walking ? 0 : Math.sin(state.time * 2.2) * 0.015); ud.head.rotation.y = walking ? 0 : Math.sin(state.time * 0.7) * 0.15;
   ud.sword.visible = state.sword; ud.shield.visible = state.sword;
@@ -2747,6 +2910,7 @@ export function updateShockwaves(dt) {
     s.mesh.scale.set(s.r, s.r, 1); s.mesh.material.opacity = Math.max(0, 0.85 - s.t * 0.6);
     const d = Math.hypot(player.pos.x - s.x, player.pos.z - s.z);
     if (!s.hit && Math.abs(d - s.r) < 1.3 && player.pos.y - s.y < 1.2) { s.hit = true; damagePlayer(2, s.x, s.z); }
+    if (CROCHETS.onde) CROCHETS.onde(s);
     if (s.t > 1.4) { scene.remove(s.mesh); shockwaves.splice(i, 1); }
   }
 }
@@ -2982,34 +3146,81 @@ const fadeEl = document.getElementById('fade');
 // le compteur de three.js n'est remis à zéro qu'une fois par image (et non à chaque passe,
 // où il ne gardait que la dernière, la sortie plein écran : deux triangles).
 renderer.info.autoReset = false;
+// Le compte Createur l'a en permanence, en bas à gauche, au-dessus du bouton « Accueil »
+// de tloc-multi.js (qui appelle
+// perfCreateur) : pour doubler la fluidité il faut voir, sur la vraie machine et en jouant,
+// où part chaque image — pas seulement au banc. F3 l'ouvre ou le ferme pour tout le monde.
 const perfUI = (() => { const d = document.createElement('div'); d.id = 'hudPerf';
-  d.style.cssText = 'position:fixed;right:14px;top:200px;z-index:6;display:none;padding:8px 11px;border-radius:8px;background:rgba(8,10,22,.78);color:#e8f0ff;font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre;pointer-events:none;';
+  d.style.cssText = 'position:fixed;left:12px;bottom:60px;z-index:6;display:none;padding:7px 10px;border-radius:8px;background:rgba(8,10,22,.72);color:#e8f0ff;font:11px/1.45 ui-monospace,Menlo,monospace;white-space:pre;pointer-events:none;';
   document.body.appendChild(d); return d; })();
-const perfMes = { t: 0, images: 0, js: 0 };
+const perfMes = { t: 0, images: 0, js: 0, rendu: 0, pire: 0, gpu: 0, nGpu: 0 };
+export function perfCreateur(oui = true) { perfUI.style.display = oui ? 'block' : 'none'; }
+if (/[?&]perf\b/.test(location.search)) perfCreateur(true);
 window.addEventListener('keydown', (e) => { if (e.code === 'F3') { e.preventDefault(); perfUI.style.display = perfUI.style.display === 'none' ? 'block' : 'none'; } });
-function majPerfUI(dt, js) {
-  perfMes.t += dt; perfMes.images++; perfMes.js += js;
-  if (perfMes.t < 0.5 || perfUI.style.display === 'none') { if (perfMes.t >= 0.5) { perfMes.t = 0; perfMes.images = 0; perfMes.js = 0; } return; }
-  const i = renderer.info;
-  perfUI.textContent = `${(perfMes.images / perfMes.t).toFixed(0)} img/s   JS ${(perfMes.js / perfMes.images).toFixed(1)} ms\n`
-    + `appels    ${i.render.calls}\ntriangles ${(i.render.triangles / 1e6).toFixed(2)} M\n`
-    + `géométries ${i.memory.geometries}  textures ${i.memory.textures}\n`
-    + `qualité ${Q.level + 1}  ombre ${sun.castShadow ? 'oui' : 'non'}  post ${G.postFX ? 'oui' : 'non'}\n`
-    + `lumières ${POOL.lampes.length ? POOL.lampes.length + ' / ' + POOL.sources.length : 'directes'}`;
-  perfMes.t = 0; perfMes.images = 0; perfMes.js = 0;
+// Chronomètre de la carte graphique, là où le navigateur le donne (Chrome sous Windows et
+// Linux ; pas Safari, ni Chrome sur Mac via Metal). Sans lui, le goulot se déduit : si le
+// processeur ne remplit pas l'image, c'est la carte qui attend.
+const gpuT = (() => { const gl = renderer.getContext(), ext = gl.getExtension && gl.getExtension('EXT_disjoint_timer_query_webgl2');
+  if (!ext) return null;
+  const libres = [], encours = [];
+  return {
+    debut() { if (perfUI.style.display === 'none' || encours.length > 3) return null; const q = libres.pop() || gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, q); return q; },
+    fin(q) { if (!q) return; gl.endQuery(ext.TIME_ELAPSED_EXT); encours.push(q); },
+    relever() {
+      while (encours.length && gl.getQueryParameter(encours[0], gl.QUERY_RESULT_AVAILABLE)) {
+        const q = encours.shift();
+        if (!gl.getParameter(ext.GPU_DISJOINT_EXT)) { perfMes.gpu += gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; perfMes.nGpu++; }
+        libres.push(q);
+      }
+    },
+  };
+})();
+function majPerfUI(dt, js, rendu) {
+  perfMes.t += dt; perfMes.images++; perfMes.js += js; perfMes.rendu += rendu; perfMes.pire = Math.max(perfMes.pire, dt);
+  if (gpuT) gpuT.relever();
+  if (perfMes.t < 0.5) return;
+  if (perfUI.style.display !== 'none') {
+    const i = renderer.info, n = perfMes.images, ips = n / perfMes.t, image = 1000 * perfMes.t / n;
+    const mJS = perfMes.js / n, mRendu = perfMes.rendu / n, gpu = perfMes.nGpu ? perfMes.gpu / perfMes.nGpu : null;
+    // l'indice : 100 = 60 images/s régulières. La pire image de la demi-seconde pèse : un
+    // jeu à 50 images/s qui saccade toutes les secondes se sent moins fluide qu'un 40 régulier.
+    const indice = Math.round(100 * Math.min(1, ips / 60) * Math.min(1, (image * 1.6) / Math.max(image, perfMes.pire * 1000)));
+    const coul = indice >= 75 ? '#7fe08a' : indice >= 45 ? '#f2c14e' : '#ff6b5e';
+    // le goulot : ce que fait le processeur (jeu + préparation des appels) remplit-il l'image ?
+    const cpu = mJS + mRendu, goulot = ips > 57 ? 'aucun (60 img/s)'
+      : gpu != null && gpu > cpu ? 'carte graphique'
+      : cpu > image * 0.75 ? (mRendu > mJS ? 'processeur : appels de dessin' : 'processeur : logique du jeu')
+      : 'carte graphique (probable)';
+    const dpr = renderer.getPixelRatio(), W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+    const mem = performance.memory ? `  tas ${(performance.memory.usedJSHeapSize / 1048576).toFixed(0)} Mo` : '';
+    perfUI.innerHTML = `<b style="color:${coul};font-size:13px">● indice ${indice}</b>  ${ips.toFixed(0)} img/s  pire ${(perfMes.pire * 1000).toFixed(0)} ms\n`
+      + `image ${image.toFixed(1)} ms = jeu ${mJS.toFixed(1)} + rendu ${mRendu.toFixed(1)}${gpu != null ? '  GPU ' + gpu.toFixed(1) : ''}\n`
+      + `goulot : ${goulot}\n`
+      + `appels ${i.render.calls}  triangles ${(i.render.triangles / 1e6).toFixed(2)} M\n`
+      + `qualité ${Q.level + 1}${Q.locked ? ' figée' : Q.choisi ? ' choisie' : ' auto'}  ${W}×${H} calcul ×${Q.echelle.toFixed(2)}  ombre ${sun.castShadow ? 'oui' : 'non'}  post ${G.postFX ? 'oui' : 'non'}\n`
+      + `lumières ${POOL.lampes.length ? POOL.lampes.length + ' / ' + POOL.sources.length : 'directes'}  géom ${i.memory.geometries}  tex ${i.memory.textures}${mem}`;
+  }
+  perfMes.t = 0; perfMes.images = 0; perfMes.js = 0; perfMes.rendu = 0; perfMes.pire = 0; perfMes.gpu = 0; perfMes.nGpu = 0;
 }
 
+// L'ombre du soleil est redessinée une image sur deux. Sa passe coûtait 25 % du processeur
+// au bourg (profil du 28 septembre : chaque objet qui porte ombre, redessiné dans la carte
+// d'ombre à chaque image). La carte et sa matrice restent cohérentes entre deux mises à
+// jour (three les calcule ensemble) : le décor immobile ne bouge pas d'un pixel, seules les
+// ombres de ce qui bouge suivent à 30 images/s au lieu de 60 — invisible en jeu.
+renderer.shadowMap.autoUpdate = false;
+const OMBRE_PAS = 2; let ombreImage = OMBRE_PAS;
 let last = performance.now();
 function loop(now) {
   const debutJS = performance.now();
   renderer.info.reset();
   requestAnimationFrame(loop);
   if (G.sommeil) { last = now; return; }             // un intérieur est ouvert par-dessus : la ville dort
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const brut = (now - last) / 1000, dt = Math.min(0.05, brut); last = now;   // brut : la vraie durée, pour le compteur
   if (sky && sky.material.uniforms && sky.material.uniforms.time) sky.material.uniforms.time.value = now * 0.001;
   const L = G.level;
   if (state.running && !state.over && !state.paused) {
-    state.time += dt; Q.tick(dt);
+    state.time += dt; Q.tick(brut);
     updatePlayer(dt); lieuxTick();
     for (const e of enemies) updateEnemy(e, dt);
     updateArrows(dt); updateShockwaves(dt); updateParticles(dt);
@@ -3033,8 +3244,14 @@ function loop(now) {
   // fondu au noir
   if (G.fade !== G.fadeTarget) { G.fade = clamp(G.fade + Math.sign(G.fadeTarget - G.fade) * dt * 2.5, 0, 1); if (Math.abs(G.fade - G.fadeTarget) < 0.03) { G.fade = G.fadeTarget; if (G.fadeCb) { const cb = G.fadeCb; G.fadeCb = null; cb(); } } fadeEl.style.opacity = clamp(G.fade, 0, 1); }
   majPool();
+  // une carte d'ombre jetée (changement de qualité, touche O) se refait tout de suite : sans
+  // carte, three ombrerait toute la scène le temps d'une image
+  if (++ombreImage >= OMBRE_PAS || (sun.castShadow && !sun.shadow.map)) { renderer.shadowMap.needsUpdate = true; ombreImage = 0; }
+  const debutRendu = performance.now(), q = gpuT && gpuT.debut();
   if (G.postFX) composer.render(); else renderer.render(scene, camera);
-  majPerfUI(dt, performance.now() - debutJS);
+  if (q) gpuT.fin(q);
+  const finRendu = performance.now();
+  majPerfUI(brut, debutRendu - debutJS, finRendu - debutRendu);
 }
 export function startLoop() { requestAnimationFrame(loop); }
 
@@ -3402,6 +3619,33 @@ export function tuilerInstances() {
 }
 
 // ---------------------------------------------------------------------
+//  Une géométrie par instancié
+// ---------------------------------------------------------------------
+// three.js range la configuration des attributs (le VAO) par couple géométrie × programme,
+// PAS par objet. Or un instancié ajoute son propre tampon de matrices : deux instanciés sur
+// la même géométrie (les tuiles d'une essence, 219 pour la plus répandue) se disputent le
+// même VAO, et three le reconfigure attribut par attribut à chaque appel de dessin — mesuré
+// le 28 septembre au bourg, 2 866 vertexAttribPointer par image et 11 % du temps processeur.
+// Chaque instancié partagé reçoit donc une VUE de la géométrie : un objet neuf qui pointe
+// sur les mêmes attributs. Les tampons de la carte graphique sont rangés par attribut : rien
+// n'est copié ni renvoyé, seul le VAO devient propre à l'instancié.
+// Piège : ne jamais `dispose()` une vue, three effacerait les tampons des autres.
+export function separerGeometries() {
+  const vus = new Map(); let vues = 0;
+  scene.traverse((o) => { if (o.isMesh && o.geometry) vus.set(o.geometry, (vus.get(o.geometry) || 0) + 1); });
+  scene.traverse((o) => {
+    if (!o.isInstancedMesh || vus.get(o.geometry) < 2) return;
+    const g = o.geometry, v = new THREE.BufferGeometry();
+    v.index = g.index; for (const k in g.attributes) v.attributes[k] = g.attributes[k];
+    v.morphAttributes = g.morphAttributes; v.morphTargetsRelative = g.morphTargetsRelative;
+    v.groups = g.groups; v.drawRange = g.drawRange; v.boundingBox = g.boundingBox; v.boundingSphere = g.boundingSphere;
+    v.name = g.name; v.userData = { ...g.userData, vue: true };
+    o.geometry = v; vus.set(g, vus.get(g) - 1); vues++;
+  });
+  return vues;
+}
+
+// ---------------------------------------------------------------------
 //  Le réservoir de lumières
 // ---------------------------------------------------------------------
 // En rendu forward, CHAQUE lumière ponctuelle entre dans le shader de chaque matériau, et
@@ -3626,11 +3870,13 @@ export async function bootLevel(level, titleMenuFn) {
   try { const r = mergeStatics(); console.log('statiques fusionnés :', r); } catch (e) { console.warn('fusion impossible', e); }
   console.log('lots :', regrouperLots());
   console.log('instances en tuiles :', tuilerInstances());
+  console.log('géométries séparées :', separerGeometries());
   console.log('lumières :', poolLumieres());
   // Q.apply repasse sur toute la scène (ombres, densités) : sans cette étape la barre
   // restait affichée à 100 % pendant cinq secondes, ce qui est pire que pas de barre.
   await etape('réglages');
-  { let ql = 0; try { ql = parseInt(localStorage.getItem('tloc_quality') || '0') || 0; } catch (e) {} Q.apply(ql, true); }
+  { let ql = null; try { ql = localStorage.getItem('tloc_qualite'); } catch (e) {}
+    if (ql !== null) Q.choisi = true; Q.apply(parseInt(ql || '0') || 0, true); }
   await etape('préparation du rendu');
   await prechaufferRendu();
   finCharge();

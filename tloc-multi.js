@@ -19,13 +19,14 @@ import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import * as ATLAS from './atlas.js';
 import * as PNJ from './pnj.js';
-import { TOWN, bastions, sdEau, sdPent, townWorld } from './carte.js';
+import { APO, ENCEINTE, PARC_BOIS_R, PONT_Z1, TOWN, bastions, enQuartier, sdEau, sdEnceinte, sdPent, surOuvrage, surPont, townWorld } from './carte.js';
 import { PARTAGE } from './etat.js';
+import { openGate } from './quetes.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
-  hideMenu, menu, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=27';
+  CROCHETS, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
+} from './engine.js?v=28';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -36,6 +37,11 @@ const INVULN = 0.9;
 // =====================================================================
 //  0. Où l'on joue : une partie solo, ou une instance
 // =====================================================================
+// Le compte Createur voit en permanence l'état de performance (bas à gauche, engine.js) :
+// c'est sur sa machine et en jouant qu'on voit ce qui coûte. Hors ligne ou sans compte,
+// rien ne s'affiche (F3 reste pour tous).
+if (C.connecte()) C.profil().then((p) => { if (p && p.createur) perfCreateur(true); }).catch(() => {});
+
 const inst = C.instance();
 const actif = !!(inst && inst.code && C.connecte());
 // en instance, le nom du personnage a été choisi à l'entrée ; en solo, c'est le nom de la partie
@@ -130,7 +136,174 @@ if (actif) {
       `${monPerso} entre dans la citadelle. Ici, pas de quête : les monstres, les remparts, et les autres joueurs.`, 6);
     G.level.arriveMessage = () => `De retour dans l\u2019instance « ${inst.nom} ».`;
     G.level.entry = () => null;      // pas de scène d'arrivée scénarisée
+    // Phinaert est un monstre comme les autres (Eugène, 29 septembre) : sa mort ne lance pas
+    // la cinématique de la quête (le donjon libéré, la clé au sommet) en pleine partie
+    const tuer = G.level.onKill;
+    G.level.onKill = (e) => { if (e.k && e.k.boss) { BOURSE.prime(e); showMessage('Phinaert est à terre !', 3); return; } return tuer && tuer(e); };
   }
+  // son onde de choc frappe tout le monde : chaque navigateur simule ses monstres, et donc
+  // celle de mon Phinaert atteint les bots que je fais vivre (les autres humains encaissent
+  // celle du leur). Même chemin qu'un coup reçu : recul, riposte, mise à terre.
+  CROCHETS.onde = (s) => {
+    if (!s.bots) s.bots = new Set();
+    for (const b of bots.values()) {
+      if (!b.pos || b.mortT > 0 || s.bots.has(b.id) || b.niveau !== (G.level && G.level.name)) continue;
+      const d = Math.hypot(b.pos.x - s.x, b.pos.z - s.z);
+      if (Math.abs(d - s.r) < 1.3 && b.pos.y - s.y < 1.2) { s.bots.add(b.id); recevoirPourBot(b.id, { t: 'touche', d: 2, p: [s.x, s.z], de: null }); }
+    }
+  };
+}
+// La grille de l'enclos du donjon, ouverte en instance : Phinaert libre, et le portail OUVERT —
+// la quête, qui l'anime, ne tourne pas ici (on passait une grille baissée sans collision).
+let donjonOuvert = false;
+function ouvrirDonjon() {
+  if (!actif || donjonOuvert || !G.level || G.level.name !== 'citadel' || !PARTAGE.donjonGate || !enemies.some((e) => e.k && e.k.boss)) return;
+  donjonOuvert = true;
+  openGate(); PARTAGE.donjonGate.userData.poser(1);
+}
+
+// =====================================================================
+//  La partie qui se resserre (Eugène, 29 septembre)
+// =====================================================================
+// Plus la manche avance, plus l'aire de jeu se réduit : on finit par se croiser. Trois
+// aires, toutes mesurées au tracé de la citadelle (sdPent) : toute la châtellenie, son parc
+// (jusqu'au bois, PARC_BOIS_R), la citadelle elle-même — et quand on s'y resserre, la herse
+// de la Porte Royale retombe sur le pont. Le calendrier dépend de la règle :
+//   chrono      : le parc quand il reste 5 min, la citadelle quand il reste 2 min 30 ;
+//   match à mort: le parc au bout de 5 min de jeu, la citadelle au bout de 10 ;
+//   drapeaux    : une aire fixe selon la durée (moins de 5 min la citadelle, moins de 10 le
+//                 parc, sinon tout) — la même que celle où tombent les drapeaux.
+// Chaque navigateur la calcule sur le chrono de la manche : rien à arbitrer au serveur.
+// 50 s avant chaque resserrement, une annonce et un rideau de lumière qui se lève à la
+// future limite ; ensuite, hors de l'aire, on perd un demi-cœur toutes les 1,5 s (les bots
+// aussi, et ils rentrent d'eux-mêmes).
+const AIRES = {
+  tout: { r: Infinity, nom: 'toute la châtellenie' },
+  parc: { r: PARC_BOIS_R, nom: 'le parc de la citadelle' },
+  citadelle: { r: 2, nom: 'la citadelle' },
+};
+const PREAVIS = 50;
+let debutCours = 0;                                   // pour le match à mort, qui n'a pas de chrono
+function calendrierAire() {
+  if (!manche) return [];
+  const d = manche.duree || 180;
+  if (regle === 'temps') return [{ t: 0, aire: 'tout' }, { t: d - 300, aire: 'parc' }, { t: d - 150, aire: 'citadelle' }];
+  if (regle === 'survie') return [{ t: 0, aire: 'tout' }, { t: 300, aire: 'parc' }, { t: 600, aire: 'citadelle' }];
+  if (regle === 'drapeaux') return [{ t: 0, aire: d < 300 ? 'citadelle' : d < 600 ? 'parc' : 'tout' }];
+  return [];
+}
+// secondes de jeu dans la manche en cours (null hors manche)
+function tempsManche() {
+  if (!manche || manche.etat !== 'cours') return null;
+  if (manche.reste != null && manche.duree) return manche.duree - (manche.reste - (performance.now() - recuManche) / 1000);
+  if (manche.depuis != null) return manche.depuis + (performance.now() - recuManche) / 1000;   // donné par le serveur
+  return (performance.now() - debutCours) / 1000;
+}
+// l'aire en vigueur et la prochaine (avec son délai), à l'instant t
+function etatAire(t) {
+  const cal = calendrierAire();
+  let cur = 'tout', suiv = null;
+  for (const e of cal) { if (e.t <= t) cur = e.aire; else if (!suiv && e.aire !== cur) suiv = { aire: e.aire, dans: e.t - t }; }
+  return { cur, suiv };
+}
+const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && sdPent(x, z) > AIRES[aire].r;
+
+// le rideau : un ruban vertical le long de la limite, lumière qui monte et ondoie
+const rideaux = new Map();
+function rideau(aire) {
+  if (rideaux.has(aire)) return rideaux.get(aire);
+  const R = AIRES[aire].r, C = [0, 40], N = 220, pts = [];
+  for (let k = 0; k <= N; k++) {                    // le contour sdPent = R, pris par dichotomie sur chaque rayon
+    const a = k / N * TAU, ux = Math.cos(a), uz = Math.sin(a);
+    let lo = 0, hi = 2500;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (sdPent(C[0] + ux * m, C[1] + uz * m) < R) lo = m; else hi = m; }
+    const x = C[0] + ux * lo, z = C[1] + uz * lo; pts.push([x, z, getH(x, z)]);
+  }
+  const contour = pts.map(([x, z]) => [x, z]);       // pour la minicarte et la carte M (PARTAGE.aires)
+  const H = 26, pos = [], uv = [], idx = [];
+  let s = 0;
+  pts.forEach(([x, z, y], k) => { if (k) s += Math.hypot(x - pts[k - 1][0], z - pts[k - 1][1]); pos.push(x, y - 2, z, x, y + H, z); uv.push(s / 12, 0, s / 12, 1); if (k) { const b = 2 * k; idx.push(b - 2, b - 1, b, b - 1, b + 1, b); } });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { t: { value: 0 }, a: { value: 0 }, c: { value: new THREE.Color(aire === 'citadelle' ? 0xff6a3a : 0xffc860) } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `uniform float t, a; uniform vec3 c; varying vec2 vUv;
+      void main(){ float bas = smoothstep(1.0, 0.0, vUv.y), raie = 0.55 + 0.45 * sin(vUv.x * 6.2832 - t * 1.7 + vUv.y * 5.0);
+        gl_FragColor = vec4(c * (0.35 + 0.65 * raie), a * bas * bas); }` });
+  const mesh = new THREE.Mesh(g, m); mesh.userData.dynamic = true; mesh.userData.contour = contour; mesh.frustumCulled = false; mesh.visible = false; scene.add(mesh);
+  rideaux.set(aire, mesh); return mesh;
+}
+
+let aireAnnoncee = null, aireEnVigueur = 'tout', brulure = 0;
+// un point sûr pour réapparaître : l'arrivée choisie si elle est dans l'aire, sinon la place
+function pointDansAire(p, aire = aireEnVigueur) {
+  if (!p || !horsAire(p.x, p.z, aire)) return p;
+  const pl = lieux.find((l) => l.id === 'place');
+  return pl ? { x: pl.x, y: getH(pl.x, pl.z), z: pl.z } : p;
+}
+function tickAire(dt, now) {
+  const t = tempsManche();
+  const { cur, suiv } = t === null ? { cur: 'tout', suiv: null } : etatAire(t);
+  // la herse suit l'aire : baissée tant qu'on est resserré sur la citadelle
+  if (PARTAGE.herse) { const h = PARTAGE.herse.userData, but = cur === 'citadelle' ? 1 : 0;
+    if (Math.abs(h.f - but) > 0.001) h.poser(but > h.f ? Math.min(but, h.f + dt / 3) : Math.max(but, h.f - dt / 2)); }
+  for (const [k, r] of rideaux) r.visible = false;
+  // les cartes tracent la limite en vigueur (trait plein) et celle qui s'annonce (tirets)
+  PARTAGE.aires = [];
+  if (cur !== aireEnVigueur) {
+    const avant = aireEnVigueur; aireEnVigueur = cur;
+    if (t !== null && AIRES[cur].r < AIRES[avant].r) {
+      showMessage(cur === 'citadelle' ? 'La herse de la Porte Royale retombe : on se bat dans la citadelle !' : `La partie se resserre sur ${AIRES[cur].nom} !`, 5);
+      G.shake = Math.max(G.shake, 0.6); try { SFX.stomp(); } catch (e) {}
+    }
+  }
+  if (t === null) { aireAnnoncee = null; return; }
+  // le préavis : l'annonce une fois, le rideau qui se lève à la future limite
+  if (suiv && suiv.dans <= PREAVIS) {
+    if (aireAnnoncee !== suiv.aire) {
+      aireAnnoncee = suiv.aire;
+      showMessage(suiv.aire === 'citadelle' ? `Dans ${Math.round(suiv.dans)} s, la herse de la Porte Royale retombe : rentre dans la citadelle !`
+        : `Dans ${Math.round(suiv.dans)} s, la partie se resserre sur ${AIRES[suiv.aire].nom} : rapproche-toi !`, 6);
+      try { SFX.roar(); } catch (e) {}
+    }
+    const r = rideau(suiv.aire); r.visible = true;
+    r.material.uniforms.t.value = now / 1000;
+    r.material.uniforms.a.value = Math.min(1, (PREAVIS - suiv.dans) / 6) * (0.35 + 0.25 * Math.sin(now / 180));
+    PARTAGE.aires.push({ pts: r.userData.contour, couleur: suiv.aire === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: true });
+  }
+  if (AIRES[cur].r !== Infinity) {                   // la limite en vigueur reste visible, plus sage
+    const r = rideau(cur); r.visible = true; r.material.uniforms.t.value = now / 1000; r.material.uniforms.a.value = 0.28;
+    PARTAGE.aires.push({ pts: r.userData.contour, couleur: cur === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: false });
+  }
+  // hors de l'aire, ça brûle : moi…
+  brulure -= dt;
+  if (brulure <= 0) {
+    brulure = 1.5;
+    const p = player;
+    if (!elimine && horsAire(p.pos.x, p.pos.z, cur)) {
+      const d = Math.hypot(p.pos.x, p.pos.z - 40) || 1;
+      encaisser(1, p.pos.x + p.pos.x / d * 3, p.pos.z + (p.pos.z - 40) / d * 3, null, null, 'aire');
+      showMessage(`Hors de ${AIRES[cur].nom} ! Rentre, ou tu perds des cœurs.`, 1.4);
+    }
+    // … et les bots que je fais vivre
+    for (const b of bots.values()) if (b.pos && !(b.mortT > 0) && horsAire(b.pos.x, b.pos.z, cur)) recevoirPourBot(b.id, { t: 'touche', d: 1, p: [b.pos.x * 1.02, b.pos.z * 1.02], de: null });
+  }
+}
+// un bot hors de l'aire (ou de celle qui s'annonce) rentre vers la place
+function botRentre(b) {
+  const t = tempsManche(); if (t === null || !b.pos) return false;
+  const { cur, suiv } = etatAire(t), vise = suiv && suiv.dans <= PREAVIS ? suiv.aire : cur;
+  if (!horsAire(b.pos.x, b.pos.z, vise)) return false;
+  const pl = lieux.find((l) => l.id === 'place'); if (!pl) return false;
+  // la citadelle ne s'entre que par le pont de la Porte Royale : hors grille de chemins (elle
+  // n'existe qu'en drapeaux), le bot filait droit sur la place et restait au bord du fossé
+  if (vise === 'citadelle') {
+    const surPontR = Math.abs(b.pos.x) < 3.5 && b.pos.z > APO - 12 && b.pos.z < PONT_Z1 + 3;
+    b.but = surPontR ? { x: 0, z: APO - 14 } : { x: 0, z: PONT_Z1 + 6 };
+    if (Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 3) b.but = surPontR ? { x: pl.x, z: pl.z } : { x: 0, z: PONT_Z1 - 2 };
+    return true;
+  }
+  b.but = { x: pl.x, z: pl.z }; return true;
 }
 
 // =====================================================================
@@ -934,15 +1107,24 @@ function majMarques() {
 // On attend la grille des chemins (cf. preparerNav) : un emplacement doit être dégagé (le
 // cercle entier libre) et atteignable depuis la place d'Armes — au premier essai, la poterne
 // tombait dans une cour fermée, et le donjon est derrière une grille close. On échantillonne
-// l'intérieur de l'enceinte (à 12 m au moins des courtines), puis on garde les plus écartés.
+// une zone qui grandit avec la durée de la partie (Eugène, 29 septembre) : moins de 5 min, la
+// citadelle seule (à 12 m de ses courtines) — on s'y croise, c'est plus vif ; de 5 à 10 min,
+// son parc jusqu'à la Deûle ; 10 min et plus, toute la châtellenie (à 12 m de l'enceinte de
+// la ville). Toujours à ciel ouvert (pas sous un porche du quartier). On garde ensuite les
+// plus écartés : chacun au plus loin des précédents, ils se répartissent sur toute la zone.
 const NB_EMPLACEMENTS = 20;
 function nomEmplacement(x, z, pris, place) {
   const l = lieux.filter((q) => q.id !== 'donjon' && Math.hypot(q.x - x, q.z - z) < 40).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
   let nom = l ? l.nom : '';
   if (!nom) {
+    // l'article selon le nom de la zone ; certains l'ont déjà (« Les rues de Lille »), et
+    // depuis que les drapeaux sortent de la citadelle il faut les noms du parc et de la ville
     const zn = (world.zoneName ? world.zoneName(x, z) : '') || 'Place d\u2019Armes', m = zn.charAt(0).toLowerCase() + zn.slice(1);
-    nom = /^(remparts|fossés|casernes|galeries|jardins)/.test(m) ? 'les ' + m : /^(place|porte|poterne|caserne|chapelle|cour|courtine|esplanade|galerie)/.test(m) ? 'la ' + m
-      : /^[aeiouhéè]/.test(m) ? 'l\u2019' + m : 'le ' + m;
+    nom = /^(les|la|le|l[’'])\s?/.test(m) ? m
+      : /^(remparts|fossés|casernes|galeries|jardins|rues|quais)\b/.test(m) ? 'les ' + m
+      : /^[aeiouhéèêâîô]/.test(m) ? 'l\u2019' + m
+      : /^(place|porte|poterne|caserne|chapelle|cour|courtine|galerie|façade|plaine|rue|passerelle|citadelle|deûle|prairie|pâture|promenade|voie|route|ferme|maison|chaumière|lisière|berge|rive)\b/.test(m) ? 'la ' + m
+      : 'le ' + m;
   }
   if (pris.has(nom)) {                              // deux fois « la place d'Armes » : on dit le côté
     const a = Math.atan2(-(z - place.z), x - place.x), cotes = ['est', 'nord-est', 'nord', 'nord-ouest', 'ouest', 'sud-ouest', 'sud', 'sud-est'];
@@ -954,6 +1136,7 @@ function nomEmplacement(x, z, pris, place) {
 }
 function proposerDrapeaux() {
   if (regle !== 'drapeaux' || drapeauxProposes || lieuxDrapeauxServeur || !lieux.length || !state.running || !G.level) return;
+  if (!manche || !manche.duree) return;               // la zone dépend de la durée
   if (!nav || nav.fait < nav.nz) return;
   const place = lieux.find((l) => l.id === 'place');
   if (!place) return;
@@ -963,12 +1146,14 @@ function proposerDrapeaux() {
   // un cercle dégagé, lu dans la grille : deux couronnes de cases libres
   const anneaux = [];
   for (const r of [3.5, RAYON_DRAPEAU - 1]) for (let k = 0; k < 16; k++) anneaux.push([Math.round(Math.cos(k / 16 * TAU) * r / NAV_PAS), Math.round(Math.sin(k / 16 * TAU) * r / NAV_PAS)]);
+  const zone = manche.duree < 300 ? 'citadelle' : manche.duree < 600 ? 'parc' : 'tout';
+  const parc = zone === 'parc' ? intraDeule(p0) : null;
   const cands = [];
   for (let j = 0; j < nz; j += 2) for (let i = 0; i < nx; i += 2) {
     const k = j * nx + i;
     if (relie[k] < 0) continue;
     const x = nav.x0 + (i + 0.5) * NAV_PAS, z = nav.z0 + (j + 0.5) * NAV_PAS;
-    if (sdPent(x, z) > -12) continue;
+    if (zone === 'citadelle' ? sdPent(x, z) > -12 : zone === 'parc' ? !parc[k] || sdPent(x, z) > PARC_BOIS_R || enQuartier(x, z) : sdEnceinte(x, z) > -12) continue;
     if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
   // les plus écartés : la place, puis toujours le point le plus loin de ceux déjà retenus
@@ -976,15 +1161,39 @@ function proposerDrapeaux() {
   while (choisis.length < NB_EMPLACEMENTS && cands.length) {
     let k = 0; for (let i = 1; i < cands.length; i++) if (dmin[i] > dmin[k]) k = i;
     if (dmin[k] < 2.5 * RAYON_DRAPEAU) break;       // plus de place sans que deux cercles se touchent
-    const [x, z] = cands[k]; choisis.push([x, z]);
+    const [x, z] = cands[k];
+    // sous un toit (porche, galerie) : on l'écarte pour de bon et on cherche le suivant
+    if (!BOURSE.aCielOuvert(x, world.levelH ? world.levelH(x, z) : getH(x, z), z)) { dmin[k] = -1; continue; }
+    choisis.push([x, z]);
     for (let i = 0; i < cands.length; i++) dmin[i] = Math.min(dmin[i], Math.hypot(cands[i][0] - x, cands[i][1] - z));
   }
   const noms = new Set();
   const liste = choisis.map(([x, z], k) => ({ id: 'd' + k, nom: nomEmplacement(x, z, noms, place), p: [+x.toFixed(2), +z.toFixed(2)],
     y: +(world.levelH ? world.levelH(x, z) : getH(x, z)).toFixed(2), n: G.level.name }));
   drapeauxProposes = true;
-  console.log('drapeaux : %d emplacements —', liste.length, liste.map((d) => `${d.nom} (${Math.round(d.p[0])}, ${Math.round(d.p[1])})`).join(' · '));
+  console.log('drapeaux (%s) : %d emplacements —', zone, liste.length, liste.map((d) => `${d.nom} (${Math.round(d.p[0])}, ${Math.round(d.p[1])})`).join(' · '));
   if (liste.length) envoyer({ t: 'drapeaux-lieux', drapeaux: liste });
+}
+// Le parc de la citadelle, c'est ce qu'on atteint depuis la place sans franchir la Deûle :
+// on inonde la grille en fermant les ponts du relevé (PONTS, carte.js — ceux des fossés de la
+// place n'en font pas partie : citadelle.js les bâtit à part). La frontière suit l'eau telle
+// qu'elle est ; mais le relevé ne ferme pas la Deûle tout autour, et l'inondation filait par la
+// terre jusque dans les rues de Lille : on la borne aussi au bois du parc (PARC_BOIS_R), hors
+// du tissu bâti de la ville (enQuartier) qui l'entame côté Esplanade.
+function intraDeule(p0) {
+  const { nx, nz, libre } = nav, vu = new Uint8Array(nx * nz), file = new Int32Array(nx * nz);
+  const ouvert = (k) => { const i = k % nx, j = (k - i) / nx; return libre[k] && surPont(nav.x0 + (i + 0.5) * NAV_PAS, nav.z0 + (j + 0.5) * NAV_PAS) === null; };
+  const k0 = caseNav(p0.x, p0.z); if (k0 < 0) return vu;
+  let tete = 0, queue = 0; vu[k0] = 1; file[queue++] = k0;
+  while (tete < queue) {
+    const k = file[tete++], i = k % nx, j = (k - i) / nx;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+      const q = b * nx + a; if (vu[q] || !ouvert(q) || !passe(k, q)) continue;
+      vu[q] = 1; file[queue++] = q;
+    }
+  }
+  return vu;
 }
 // Un drapeau veut du champ : son cercle doit être libre (au donjon, le point praticable le
 // plus proche collait à la tour, et le cercle passait à travers ses murs). On cherche autour
@@ -1567,9 +1776,10 @@ function mourir(de, pseudo) {
   const p = player;
   burst(p.pos.x, p.pos.y + 1, p.pos.z, 0xb0a0ff, 18, 6, 0.8, 8, 1.4);
   try { SFX.dead(); } catch (e) {}
-  if (apparition) {
+  const ici = pointDansAire(apparition);             // jamais hors de l'aire : on y mourrait en boucle
+  if (ici) {
     const a = Math.random() * TAU, r = 1 + Math.random() * 3;
-    p.pos.set(apparition.x + Math.cos(a) * r, apparition.y, apparition.z + Math.sin(a) * r);
+    p.pos.set(ici.x + Math.cos(a) * r, ici.y, ici.z + Math.sin(a) * r);
     p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
   }
   p.vy = 0; p.kb.set(0, 0, 0); p.hp = p.maxHp; p.invuln = 3; p.attackT = -1; p.rollT = -1;
@@ -1694,7 +1904,7 @@ function pointDeDepart() {
   return pl ? { x: pl.x, z: pl.z } : (G.level ? { x: player.pos.x, z: player.pos.z } : null);
 }
 function placerBot(b) {
-  const base = baseDe(b);
+  const base = pointDansAire(baseDe(b));             // jamais hors de l'aire en vigueur
   if (!base) return false;
   let p = null;
   for (let k = 0; k < 12 && !p; k++) {
@@ -1731,7 +1941,13 @@ function avancer(b, dirX, dirZ, vitesse, dt) {
   const base = Math.atan2(dirX / n, dirZ / n);
   for (const dev of [0, 0.6, -0.6, 1.3, -1.3, 2, -2]) {
     const an = base + dev, dx = Math.sin(an) * pas, dz = Math.cos(an) * pas;
-    if (sdEau(b.pos.x + dx * 4, b.pos.z + dz * 4) < 1.2) continue;       // pas dans l'eau
+    // pas dans l'eau — sauf sur un ouvrage qui la franchit (pont, tablier, bastion : la règle
+    // du moteur, surOuvrage). Sans cette exception, les bots s'arrêtaient au bout de chaque
+    // pont (au banc du 29 septembre, tous plantés devant le pont de la Porte Royale).
+    const ax = b.pos.x + dx * 4, az = b.pos.z + dz * 4;
+    // (à la hauteur qu'il aura LÀ-BAS : la rampe d'un pont monte, et jugé à la hauteur de ses
+    // pieds le tablier lui paraissait trop haut pour être le sien)
+    if (sdEau(ax, az) < 1.2 && !surOuvrage(ax, az, getH(ax, az, b.pos.y + 0.5))) continue;
     if (tryMove(b.pos, dx, dz, 0.45, false)) {
       b.pos.y = getH(b.pos.x, b.pos.z, b.pos.y + 0.5);
       b.yaw = lerpAngle(b.yaw, an, Math.min(1, dt * 10));
@@ -1753,38 +1969,69 @@ function butAuHasard(b) {
 
 // Les chemins des bots. Entre un bot et son drapeau, il y a les murs de la citadelle : le
 // détour de quelques mètres de la poursuite ne suffit pas (au banc, la moitié du camp restait
-// collée à une courtine). Une grille de praticabilité (1,5 m, les règles de `praticable`)
-// couvre les drapeaux et leurs abords ; elle se remplit quelques lignes par image — jamais
-// d'écran figé — puis chaque drapeau reçoit un champ de distances (parcours en largeur
-// depuis son cercle) : un bot n'a plus qu'à descendre la pente.
-const NAV_PAS = 1.5, NAV_MARGE = 90, NAV_COTE_MAX = 520;
+// collée à une courtine). Une grille de praticabilité (les règles de `praticable`) couvre
+// toute la châtellenie, puisque les drapeaux y sont semés ; elle se remplit quelques lignes
+// par image — jamais d'écran figé — puis chaque drapeau reçoit un champ de distances
+// (parcours en largeur depuis son cercle) : un bot n'a plus qu'à descendre la pente.
+// Pas de 2 m (1,5 m quand elle ne couvrait que la citadelle) : 5,5 µs par case, il y en a
+// 500 000 dans le relevé (hors du rectangle penché, rien n'est testé), soit ~2,8 s de calcul
+// étalées à 6 ms par image — les drapeaux sont posés une quinzaine de secondes après l'arrivée.
+const NAV_PAS = 2, NAV_BUDGET_MS = 6;
+// peut-on passer de la case k à sa voisine q ? (les deux libres, et rien entre elles)
+const passe = (k, q) => (q === k + 1 ? nav.est[k] : q === k - 1 ? nav.est[q] : q === k + nav.nx ? nav.sud[k] : nav.sud[q]) === 1;
 let nav = null;
 const caseNav = (x, z) => {
   const i = Math.floor((x - nav.x0) / NAV_PAS), j = Math.floor((z - nav.z0) / NAV_PAS);
   return i < 0 || j < 0 || i >= nav.nx || j >= nav.nz ? -1 : j * nav.nx + i;
 };
-// la grille couvre les points forts possibles (pas seulement ceux en jeu) : elle sert aussi à
-// choisir où planter les drapeaux
+// la grille couvre toute la châtellenie : elle sert aussi à choisir où planter les drapeaux
 function preparerNav() {
   if (!lieux.length || !G.level) return;
   if (!nav) {
-    const pts = candidatsDrapeaux();
+    // partie courte : les drapeaux restent dans la citadelle, la grille n'en couvre que les
+    // abords (une vingtaine de fois moins de cases) ; sinon toute la châtellenie
+    if (!manche || !manche.duree) return;
+    const pts = manche.duree < 300 ? candidatsDrapeaux().map((l) => [l.x, l.z]) : ENCEINTE;
     if (!pts.length) return;
-    const xs = pts.map((l) => l.x), zs = pts.map((l) => l.z);
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
-    const lx = Math.min(NAV_COTE_MAX, Math.max(...xs) - Math.min(...xs) + 2 * NAV_MARGE), lz = Math.min(NAV_COTE_MAX, Math.max(...zs) - Math.min(...zs) + 2 * NAV_MARGE);
-    const nx = Math.ceil(lx / NAV_PAS), nz = Math.ceil(lz / NAV_PAS);
-    nav = { x0: cx - lx / 2, z0: cz - lz / 2, nx, nz, libre: new Uint8Array(nx * nz), fait: 0, champs: new Map() };
+    const marge = manche.duree < 300 ? 90 : 0;
+    const xs = pts.map((q) => q[0]), zs = pts.map((q) => q[1]);
+    const x0 = Math.min(...xs) - marge, z0 = Math.min(...zs) - marge;
+    const nx = Math.ceil((Math.max(...xs) + marge - x0) / NAV_PAS), nz = Math.ceil((Math.max(...zs) + marge - z0) / NAV_PAS);
+    nav = { x0, z0, nx, nz, libre: new Uint8Array(nx * nz), haut: new Float32Array(nx * nz), est: new Uint8Array(nx * nz), sud: new Uint8Array(nx * nz), fait: 0, champs: new Map() };
   }
   if (nav.fait >= nav.nz) return;
   const t0 = performance.now();
-  while (nav.fait < nav.nz && performance.now() - t0 < 3) {
+  while (nav.fait < nav.nz && performance.now() - t0 < NAV_BUDGET_MS) {
     const j = nav.fait++, z = nav.z0 + (j + 0.5) * NAV_PAS;
     for (let i = 0; i < nav.nx; i++) {
       const x = nav.x0 + (i + 0.5) * NAV_PAS;
-      nav.libre[j * nav.nx + i] = !(world.bounds && world.bounds(x, z)) && sdEau(x, z) > 1.5
-        && !blocked(x, z, 0.6, false, world.levelH ? world.levelH(x, z) : 0) ? 1 : 0;
+      if (sdEnceinte(x, z) >= 0 || (world.bounds && world.bounds(x, z))) { nav.libre[j * nav.nx + i] = 0; continue; }
+      // Au-dessus de l'eau, on ne passe que sur un ouvrage (surOuvrage, la règle du moteur), à
+      // la hauteur de son tablier (getH la rend). Tester le fond rendait tous les ponts
+      // infranchissables : la citadelle était une île dans la grille, et aucun drapeau ne
+      // pouvait se poser au-delà des fossés. Ne tester que la hauteur ouvrait au contraire
+      // l'eau voisine du pont de la Porte Royale : les bots y butaient contre le parapet.
+      const sol = world.levelH ? world.levelH(x, z) : 0;
+      const k = j * nav.nx + i;
+      // à la hauteur où l'on MARCHE (getH : chaussée gravée, dalles, plateformes), pas au relief
+      // brut : un obstacle qui ne vaut qu'au-dessus d'une hauteur (`.bottom`, parapets des ponts
+      // relevés) échappait à la grille, et le bot, 30 cm plus haut sur les pavés, y butait
+      // Sous un pont relevé, on se place sur son TABLIER : c'est là que passent les bots (sur
+      // l'avenue Léon Jouhaux, à 8 m), et ses parapets ne valent qu'à cette hauteur — vue du
+      // sol en dessous, la grille ouvrait des chemins qui les traversaient
+      const tab = surPont(x, z);
+      if (sdEau(x, z) > 1.5) { const yh = tab !== null ? tab : getH(x, z, sol + 0.5); nav.libre[k] = !blocked(x, z, 0.6, false, yh) ? 1 : 0; nav.haut[k] = yh; continue; }
+      const y = getH(x, z, sol + 15);
+      nav.libre[k] = surOuvrage(x, z, y) && !blocked(x, z, 0.6, false, y) ? 1 : 0; nav.haut[k] = y;
     }
+    // LES PASSAGES entre cases voisines, testés à mi-chemin : un mur mince (parapet de pont,
+    // ravelin de la Porte Royale) tombe entre deux centres distants de 2 m sans toucher ni
+    // l'un ni l'autre, et le chemin le traversait — les bots piétinaient contre (29 sept.).
+    const { nx, libre, haut } = nav, zj = nav.z0 + (j + 0.5) * NAV_PAS;
+    for (let i = 0; i < nx - 1; i++) { const k = j * nx + i;
+      if (libre[k] && libre[k + 1]) nav.est[k] = !blocked(nav.x0 + (i + 1) * NAV_PAS, zj, 0.45, false, Math.max(haut[k], haut[k + 1])) ? 1 : 0; }
+    if (j > 0) for (let i = 0; i < nx; i++) { const k = j * nx + i, u = k - nx;
+      if (libre[k] && libre[u]) nav.sud[u] = !blocked(nav.x0 + (i + 0.5) * NAV_PAS, nav.z0 + j * NAV_PAS, 0.45, false, Math.max(haut[k], haut[u])) ? 1 : 0; }
   }
 }
 function champ(d) {
@@ -1803,7 +2050,7 @@ function champ(d) {
     const k = file[tete++], i = k % nx, j = (k - i) / nx;
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
-      const q = b * nx + a; if (!libre[q] || dist[q] >= 0) continue;
+      const q = b * nx + a; if (!libre[q] || dist[q] >= 0 || !passe(k, q)) continue;
       dist[q] = dist[k] + 1; file[queue++] = q;
     }
   }
@@ -1825,11 +2072,17 @@ function pasVers(b, d) {
   const { nx, nz } = nav;
   let i = Math.floor((b.pos.x - nav.x0) / NAV_PAS), j = Math.floor((b.pos.z - nav.z0) / NAV_PAS);
   if (i < 0 || j < 0 || i >= nx || j >= nz) return null;
+  // une case qu'il peut rejoindre en ligne droite, sans rien heurter
+  const joignable = (a, c) => { const x = nav.x0 + (a + 0.5) * NAV_PAS, z = nav.z0 + (c + 0.5) * NAV_PAS;
+    for (const t of [0.25, 0.5, 0.75, 1]) if (blocked(b.pos.x + (x - b.pos.x) * t, b.pos.z + (z - b.pos.z) * t, 0.45, false, b.pos.y)) return false;
+    return true; };
   if (dist[j * nx + i] < 0) {                      // posé sur une case pleine (contre un mur) : la voisine libre
+    // … joignable : la plus proche du but était souvent DERRIÈRE le mur qu'il frôlait (le
+    // garde-corps du pont de la Porte Royale), et il y poussait sans fin
     let best = -1;
     for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
       const a = i + di, c = j + dj; if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
-      const v = dist[c * nx + a]; if (v >= 0 && (best < 0 || v < dist[best])) best = c * nx + a;
+      const v = dist[c * nx + a]; if (v >= 0 && (best < 0 || v < dist[best]) && joignable(a, c)) best = c * nx + a;
     }
     if (best < 0) return null;
     i = best % nx; j = (best - i) / nx;
@@ -1839,9 +2092,14 @@ function pasVers(b, d) {
     let mi = i, mj = j;
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const a = i + di, c = j + dj; if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
-      const v = dist[c * nx + a]; if (v >= 0 && v < dist[mj * nx + mi]) { mi = a; mj = c; }
+      const v = dist[c * nx + a]; if (v >= 0 && v < dist[mj * nx + mi] && passe(k, c * nx + a)) { mi = a; mj = c; }
     }
     if (mi === i && mj === j) break;
+    // viser plus loin sur le chemin, oui, mais pas en coupant un coin : au bout du garde-corps,
+    // la ligne droite vers la quatrième case passait à travers son extrémité. Si même la
+    // première n'est pas joignable (le bot frôle le mur, loin du centre de sa case), il vise
+    // d'abord le centre de la sienne, d'où le passage est dégagé.
+    if (!joignable(mi, mj)) break;
     i = mi; j = mj;
   }
   return { x: nav.x0 + (i + 0.5) * NAV_PAS, z: nav.z0 + (j + 0.5) * NAV_PAS };
@@ -1974,6 +2232,8 @@ function penserBot(b, dt, now) {
   }
 
   // la bannière d'abord pour le porteur ; les autres ne la ramassent que s'ils passent dessus
+  // hors de l'aire (ou de celle qui s'annonce) : il rentre d'abord, le reste attendra
+  if (botRentre(b)) { b.act = 0; avancer(b, b.but.x - b.pos.x, b.but.z - b.pos.z, P.vitesse, dt); return; }
   const obj = regle === 'drapeaux' ? objectifDrapeau(b, camp) : objectifBanniere(b, camp);
   const porte = obj && regle !== 'drapeaux' && bannieres && bannieres[autreCamp(camp)] && bannieres[autreCamp(camp)].porteur === b.id;
   // en route vers un drapeau, on ne se bat que contre qui barre le chemin (4 m) ou tient le
@@ -1989,7 +2249,11 @@ function penserBot(b, dt, now) {
     // (une terrasse, un recoin que la grille croit ouvert), il décroche et contourne à l'ancienne
     if (via && !(b.sansGrille > now)) {
       b.detour = null; avancer(b, via.x - b.pos.x, via.z - b.pos.z, P.vitesse, dt);
-      const dd = Math.hypot(obj.drapeau.p[0] - b.pos.x, obj.drapeau.p[1] - b.pos.z);
+      // la progression se lit LE LONG DU CHEMIN (la distance de la grille), pas à vol d'oiseau :
+      // pour un drapeau au nord, le chemin part d'abord vers le sud (la Porte Royale), et le
+      // bot, se croyant bloqué au bout d'1,5 s, lâchait la grille et tournait sur la place
+      const ch = champ(obj.drapeau), kc = caseNav(b.pos.x, b.pos.z);
+      const dd = ch && kc >= 0 && ch[kc] >= 0 ? ch[kc] * NAV_PAS : Math.hypot(obj.drapeau.p[0] - b.pos.x, obj.drapeau.p[1] - b.pos.z);
       if (dd > (b.dVia ?? Infinity) - P.vitesse * dt * 0.3) b.bloqueVia = (b.bloqueVia || 0) + dt; else b.bloqueVia = 0;
       b.dVia = dd;
       if (b.bloqueVia > 1.5) { b.bloqueVia = 0; b.sansGrille = now + 3000; b.bloqueObj = 2; }
@@ -2207,11 +2471,12 @@ function majManche(m) {
 // tout le monde repart à égalité : cœurs pleins, au point d'arrivée, quelques secondes à l'abri
 function debutManche() {
   const p = player;
-  elimine = false;
+  elimine = false; debutCours = performance.now(); aireAnnoncee = null;
   p.hp = p.maxHp; p.invuln = 2; p.attackT = -1; p.rollT = -1; p.vy = 0; p.kb.set(0, 0, 0);
-  if (apparition) {
+  const ici = pointDansAire(apparition, etatAire(0).cur);   // en drapeaux courts, l'aire est déjà la citadelle
+  if (ici) {
     const a = Math.random() * TAU, r = 1 + Math.random() * 3;
-    p.pos.set(apparition.x + Math.cos(a) * r, apparition.y, apparition.z + Math.sin(a) * r);
+    p.pos.set(ici.x + Math.cos(a) * r, ici.y, ici.z + Math.sin(a) * r);
     p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
   }
   for (const b of bots.values()) { b.mortT = 0; b.decal = null; if (b.pos || apparition) placerBot(b); }
@@ -2251,6 +2516,9 @@ function peindreManche() {
     ligne = elimine ? `Éliminée — ${enLice} encore en lice`
       : `${enLice} encore en lice${mesVies !== null && (manche.vies_max || 1) > 1 ? ` &nbsp; toi : <b style="color:#ffe7a3">${mesVies} vie${mesVies > 1 ? 's' : ''}</b>` : ''}`;
   } else if (manche.etat === 'fin') ligne = `Prochaine manche dans ${reste} s`;
+  // le préavis du resserrement, compté à rebours
+  { const t = tempsManche(), e = t === null ? null : etatAire(t);
+    if (e && e.suiv && e.suiv.dans <= PREAVIS) ligne += `<br><b style="color:${e.suiv.aire === 'citadelle' ? '#ff9a70' : '#ffd070'}">⚠ ${e.suiv.aire === 'citadelle' ? 'La herse retombe' : 'Resserrement sur ' + AIRES[e.suiv.aire].nom} dans ${mmss(Math.max(0, Math.ceil(e.suiv.dans)))}</b>`; }
   bandeauManche.innerHTML = `${titre}<br>${ligne}`;
 }
 
@@ -2285,7 +2553,19 @@ function poserStyleResultats() {
   .resultats-manche .rejouer { background:#E2B25A; color:#2A1808; border:1px solid #FFE3A1; box-shadow:0 3px 0 #8A6424; }
   .resultats-manche .rejouer[aria-pressed="true"] { background:#3F7F5A; color:#fff; border-color:#6FC498; box-shadow:0 3px 0 #23513A; }
   .resultats-manche .accueil { flex:0 0 auto; padding:0 18px; background:transparent; color:#EDE3CC; border:1px solid rgba(237,227,204,.35); }
-  .resultats-manche .suite { margin:10px 18px 0; text-align:center; font-size:13px; color:#C4BBA6; }`;
+  .resultats-manche .suite { margin:10px 18px 0; text-align:center; font-size:13px; color:#C4BBA6; }
+  .resultats-manche.en-camps { width:min(820px, 94vw); }
+  .resultats-manche .camps { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:0 18px; }
+  .resultats-manche .camp { border-radius:10px; background:#0F1420; border:1px solid rgba(237,227,204,.14); padding:10px 10px 12px; }
+  .resultats-manche .camp.gagne { border-color:#E2B25A; box-shadow:0 0 0 1px rgba(226,178,90,.35) inset; }
+  .resultats-manche .camp header { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:0 4px 8px; border-bottom:1px solid rgba(237,227,204,.14); margin-bottom:8px; }
+  .resultats-manche .camp header b { font-size:17px; }
+  .resultats-manche .camp .compte { font-family:Grenze,Georgia,serif; font-size:40px; font-weight:700; line-height:1; color:#FFE3A1; }
+  .resultats-manche .camp .compte small { font-family:"Alegreya Sans",sans-serif; font-size:13px; font-weight:400; color:#C4BBA6; margin-left:4px; }
+  .resultats-manche .camp .tenue { padding:0 4px 8px; font-size:13px; color:#C4BBA6; }
+  .resultats-manche .camp ol { margin:0; }
+  .resultats-manche .camp li { background:#161C2B; }
+  @media (max-width: 620px) { .resultats-manche .camps { grid-template-columns:1fr; } }`;
   document.head.appendChild(st);
 }
 let jePrets = false;
@@ -2301,26 +2581,41 @@ function afficherResultats(m) {
     const g = m.classement.find((e) => e.id === m.gagnants[0]);
     titre = regle === 'survie' ? `${g ? nomDe_(g) : '?'} reste le dernier debout !` : `${g ? nomDe_(g) : '?'} gagne la manche !`;
   } else titre = m.gagnants && m.gagnants.length ? 'Égalité en tête !' : 'Personne ne l’emporte';
-  const lignes = (m.classement || []).slice(0, 12).map((e, k) => {
+  const ligne = (e, k) => {
     const sc = regle === 'drapeaux' ? `${e.cap || 0}<small>drapeau${(e.cap || 0) > 1 ? 'x' : ''} · ${e.k} / ${e.m}</small>` : regle === 'temps' ? `${e.k - e.m > 0 ? '+' : ''}${e.k - e.m}<small>${e.k} / ${e.m}</small>` : `${e.k}<small>à terre</small>`;
     const couleur = enEquipes() && CAMPS[e.camp] ? `color:${CAMPS[e.camp].couleur}` : '';
     const cls = [moi && e.id === moi.id ? 'moi' : '', (m.gagnants || []).includes(e.id) ? 'gagne' : ''].join(' ');
     return `<li class="${cls}"><span class="rang">${k + 1}</span><span class="nom" style="${couleur}">${nomDe_(e)}</span><span class="score">${sc}</span>
       ${e.badges.length ? `<span class="badges">${e.badges.map((b) => `<span class="badge">${ech(noms[b] || b)}</span>`).join('')}</span>` : ''}</li>`;
-  }).join('');
+  };
+  const lignes = (m.classement || []).slice(0, 12).map(ligne).join('');
+  // Prise des drapeaux en équipes : le compte PAR CAMP, et le détail de chaque camp à côté
+  // (Eugène, 29 septembre) — deux colonnes, le camp gagnant cerclé d'or
+  const parCamps = regle === 'drapeaux' && enEquipes() && m.drapeaux;
+  const blocCamps = !parCamps ? '' : (() => {
+    const t = m.tenue || {};
+    return '<div class="camps">' + Object.keys(CAMPS).map((c) => {
+      const n = m.drapeaux.filter((d) => d.camp === c).length;
+      const siens = (m.classement || []).filter((e) => e.camp === c);
+      return `<section class="camp${m.camp_gagnant === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b>`
+        + `<span class="compte">${n}<small>drapeau${n > 1 ? 'x' : ''}</small></span></header>`
+        + `<div class="tenue">Tenus ${t[c] || 0} s en tout</div>`
+        + `<ol>${siens.map(ligne).join('') || '<li><span></span><span class="nom" style="opacity:.6">personne</span><span></span></li>'}</ol></section>`;
+    }).join('') + '</div>';
+  })();
   const miens = ((m.classement || []).find((e) => moi && e.id === moi.id) || { badges: [] }).badges;
   resultats = document.createElement('section');
-  resultats.className = 'resultats-manche';
+  resultats.className = 'resultats-manche' + (parCamps ? ' en-camps' : '');
   resultats.setAttribute('role', 'dialog'); resultats.setAttribute('aria-label', 'Résultats de la manche');
   resultats.innerHTML = `<div class="frise"></div>
     <p class="regle">${ech(NOM_REGLE[regle] || '')} · fin de la manche</p>
     <h2>${titre}</h2>
-    ${regle === 'drapeaux' && m.drapeaux ? (() => {
+    ${!parCamps && regle === 'drapeaux' && m.drapeaux ? (() => {
       const n = (c) => m.drapeaux.filter((d) => d.camp === c).length, t = m.tenue || {};
       return `<p class="miens" style="margin-top:-6px"><b style="color:${CAMPS.garnison.couleur}">${n('garnison')}</b> drapeau${n('garnison') > 1 ? 'x' : ''} à <b style="color:${CAMPS.bourg.couleur}">${n('bourg')}</b>`
         + (n('garnison') === n('bourg') ? ` <span style="opacity:.75">— départagés par le temps de tenue : ${t.garnison || 0} s contre ${t.bourg || 0} s</span>` : '') + '</p>';
     })() : ''}
-    <ol>${lignes}</ol>
+    ${parCamps ? blocCamps : `<ol>${lignes}</ol>`}
     <p class="miens">${miens.length
       ? `Tes badges : ${miens.map((b) => `<b style="color:#FFE3A1">${ech(noms[b] || b)}</b>`).join(', ')} — ils rejoignent ton compte.`
       : '<span style="opacity:.75">Pas de badge cette fois.</span>'}</p>
@@ -2369,7 +2664,7 @@ function boucle(now) {
   requestAnimationFrame(boucle);
   const dt = Math.min(0.05, (now - precedent) / 1000); precedent = now;
 
-  if (actif) premiereEntree();
+  if (actif) { premiereEntree(); ouvrirDonjon(); tickAire(dt, now); }
   // point de réapparition : celui choisi sur la carte ; à défaut, là où la partie a
   // démarré, relevé une fois lancée
   if (state.running && !apparition) {

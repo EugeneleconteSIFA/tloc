@@ -1,11 +1,11 @@
 // hud.js — ce que le joueur lit à l'écran.
 //
 // Secteur Quêtes : minimap, compteurs de progression, menu titre.
-import * as E from './engine.js?v=27';
+import * as E from './engine.js?v=28';
 import {
   THREE, TAU, addLieu, enemies, estDecouvert, hasSave, hideMenu, lieux, minimapDots, showMenu,
   startGame, state,
-} from './engine.js?v=27';
+} from './engine.js?v=28';
 import {
   APO, DEHORS, ENCEINTE, HOUSE, LILLE, PLAINE_R, PONTS, PONT_Z1, TRACE, bastions,
 } from './carte.js';
@@ -147,6 +147,14 @@ export function minimap(g, W) {
     }
     g.restore();
   };
+  // l'aire de jeu du multi, qui se resserre (tloc-multi.js) : la limite en vigueur en trait
+  // plein, la prochaine en tirets — on voit où rentrer avant que ça brûle
+  for (const a of PARTAGE.aires || []) {
+    g.save(); g.strokeStyle = a.couleur; g.lineWidth = 2; if (a.tirets) g.setLineDash([5, 4]);
+    g.beginPath();
+    a.pts.forEach(([x, z], k) => { const mx = (c.MARGE + (x + c.R) * CARTE_PX - sx) * ech, mz = (c.MARGE + (z + c.R) * CARTE_PX - sz) * ech; if (k) g.lineTo(mx, mz); else g.moveTo(mx, mz); });
+    g.stroke(); g.restore();
+  }
   point(HOUSE.x, HOUSE.z, COUL.maison, '#25123a', 4.4);
   // les objets du multi à prendre (tloc-multi.js : l'armure aux casernes, l'écu sur la place)
   for (const m of PARTAGE.marques || []) point(m.x, m.z, m.fond, m.bord, 4, m.forme);
