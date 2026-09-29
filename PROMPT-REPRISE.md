@@ -1036,6 +1036,34 @@ Depuis, en local (non publié) :
   des 9 demi-lunes et contregardes se gravissent (pas max 0,09 m) ; la lunette du Grand Carré
   touche la limite du monde. Chargement inchangé (≈ 14,4 s de somme d'étapes).
 
+### U. Accueil refait, badges classés, page admin (29 septembre, nuit) — **faits, rien de publié**
+
+- **Accueil** : « Rejoindre des amis » est une barre fine sur toute la largeur (visible même
+  avec une partie en cours) ; dessous, « L'Épopée du Plat Pays » (le solo, renommé) et
+  « Ouvrir une partie » en trois étapes empilées de hauteur fixe : mode de jeu (Balade, Match
+  à mort, Chrono, Drapeaux ; le réglage — vies, durée à la minute, 5 min par défaut — se
+  glisse dans la même ligne pendant que les autres modes se replient en icônes ; description
+  en bulle au survol), seul ou en équipes (Drapeaux fige « Chacun pour soi »), bots. Nom de
+  partie obligatoire ; « Lancer la partie » crée et fait entrer. Tout tient à 1000 × 536.
+  *Reste ouvert* : une prise des drapeaux à chacun pour soi (le serveur l'impose en équipes).
+- **Badges, deux sortes** (serveur : `BADGES`, `badges_de_manche`, `hauts_faits`) : un STYLE
+  DE JEU par manche (12, du Badaud au Faucheur : le plus haut rang mérité) et des
+  RÉCOMPENSES en plus — 5 exploits de manche (Vainqueur, Rempart, Fléau des Flandres,
+  Intouchable, Globe-trotteur) et 15 hauts faits une fois pour toutes : voyage (5 / 15 / 42 /
+  100 km — mètres comptés par le serveur sur les positions en multi, par `state.distance` en
+  solo), quêtes (lues dans les parties solo synchronisées), fidélité (manches jouées et
+  gagnées, table `compteurs`). Quatre rangs : commun, rare, épique, légendaire. Onglet Badges
+  classé par famille et par rang, avec la progression. Vérifié par une vraie manche de chrono
+  contre 5 bots : un style chacun, « Vainqueur » en plus pour le gagnant.
+- **Cavaliers distants** : le serveur retirait `ch` (à cheval) de l'état relayé ; les autres ne
+  voyaient pas le cavalier en selle. Relayé désormais (et sert au badge Chevalier).
+- **Page admin** (`admin.html`, `admin.js`, `/api/admin/detail`, créateur seul ; `/admin` en
+  local) : tableau de bord, joueurs triables (dernière visite, solo, quêtes, km, manches,
+  badges), parties en cours, manches, parties ouvertes, répartition des badges, retours des
+  testeurs. Les comptes des bancs (`banc` + 6 hex) sont masqués par défaut. En production,
+  le lien pointe `admin.html` (l'adresse `/admin` dépend de nginx).
+- « Se déconnecter » cerclé de rouge.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js

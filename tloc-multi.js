@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=30';
+} from './engine.js?v=31';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -2576,7 +2576,8 @@ function poserStyleResultats() {
   .resultats-manche .score { font-family:Grenze,Georgia,serif; font-size:20px; font-weight:600; color:#FFE3A1; text-align:right; }
   .resultats-manche .score small { font-family:"Alegreya Sans",sans-serif; font-size:12px; color:#C4BBA6; font-weight:400; margin-left:4px; }
   .resultats-manche .badges { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; }
-  .resultats-manche .badge { padding:1px 9px; border-radius:10px; background:rgba(226,178,90,.18); color:#FFE3A1; font-size:12px; }
+  .resultats-manche .badge { padding:1px 9px; border-radius:10px; background:rgba(237,227,204,.1); color:#EDE3CC; font-size:12px; }
+  .resultats-manche .badge.recompense { background:rgba(226,178,90,.22); color:#FFE3A1; box-shadow:0 0 0 1px rgba(226,178,90,.5) inset; }
   .resultats-manche .miens { margin:14px 18px 0; text-align:center; font-size:15px; }
   .resultats-manche .boutons { display:flex; gap:10px; margin:16px 18px 0; }
   .resultats-manche button { flex:1; height:48px; border-radius:8px; font:inherit; font-size:17px; font-weight:700; cursor:pointer; }
@@ -2631,7 +2632,7 @@ function afficherResultats(m) {
     const couleur = enEquipes() && CAMPS[e.camp] ? `color:${CAMPS[e.camp].couleur}` : '';
     const cls = [moi && e.id === moi.id ? 'moi' : '', (m.gagnants || []).includes(e.id) ? 'gagne' : ''].join(' ');
     return `<li class="${cls}"><span class="rang">${k + 1}</span><span class="nom" style="${couleur}">${nomDe_(e)}</span><span class="score">${sc}</span>
-      ${e.badges.length ? `<span class="badges">${e.badges.map((b) => `<span class="badge">${ech(noms[b] || b)}</span>`).join('')}</span>` : ''}</li>`;
+      ${e.badges.length ? `<span class="badges">${e.badges.map((b, k) => `<span class="badge${k ? ' recompense' : ''}">${ech(noms[b] || b)}</span>`).join('')}</span>` : ''}</li>`;
   };
   const lignes = (m.classement || []).slice(0, 12).map(ligne).join('');
   // Prise des drapeaux en équipes : le compte PAR CAMP, et le détail de chaque camp à côté
@@ -2661,7 +2662,8 @@ function afficherResultats(m) {
     })() : ''}
     ${parCamps ? blocCamps : `<ol>${lignes}</ol>`}
     <p class="miens">${miens.length
-      ? `Tes badges : ${miens.map((b) => `<b style="color:#FFE3A1">${ech(noms[b] || b)}</b>`).join(', ')} — ils rejoignent ton compte.`
+      // le premier est le style de jeu (un par manche), les suivants des récompenses (serveur, badges_de_manche)
+      ? `Ton style : <b style="color:#FFE3A1">${ech(noms[miens[0]] || miens[0])}</b>${miens.length > 1 ? ` · récompense${miens.length > 2 ? 's' : ''} : ${miens.slice(1).map((b) => `<b style="color:#FFE3A1">${ech(noms[b] || b)}</b>`).join(', ')}` : ''} — ils rejoignent ton compte.`
       : '<span style="opacity:.75">Pas de badge cette fois.</span>'}</p>
     <div class="boutons">
       <button type="button" class="rejouer" aria-pressed="false">Rejouer</button>

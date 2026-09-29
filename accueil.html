@@ -35,7 +35,7 @@
     });
   })();
 </script>
-<link rel="stylesheet" href="tloc-portail.css?v=27">
+<link rel="stylesheet" href="tloc-portail.css?v=29">
 </head>
 <body>
 <header class="barre">
@@ -66,7 +66,7 @@
 
   <div class="modes">
     <section class="mode mode-solo" aria-labelledby="mSolo">
-      <div class="mode-tete"><span class="mode-icone"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6L9 21l-6-6z"/><path d="M5 13l6 6"/></svg></span><div><h2 id="mSolo">Seul</h2><p>L'aventure de Camille</p></div></div>
+      <div class="mode-tete"><span class="mode-icone"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6L9 21l-6-6z"/><path d="M5 13l6 6"/></svg></span><div><h2 id="mSolo">L’Épopée du Plat Pays</h2><p>Seul · sus à Phinaert, sauve Eugène</p></div></div>
       <div id="reprendre"></div>
       <div class="separateur">ou</div>
       <div class="rangee mode-pied">
@@ -89,46 +89,47 @@
 
       <section class="mode mode-creer" aria-labelledby="mCreer">
         <div class="mode-tete"><span class="mode-icone"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><h2 id="mCreer">Ouvrir une partie</h2><p>Avec tes amis, des bots, ou les deux</p></div></div>
-        <div class="creer-grille">
-        <div class="sous-section">
+        <!-- Trois étapes l'une sous l'autre, chacune de hauteur fixe : où commence une étape ne
+             dépend pas de la précédente (Eugène, 29 septembre). La description d'un mode est une
+             bulle au survol ; son réglage (vies, durée) se glisse dans la même ligne. -->
+        <div class="etapes">
+        <div class="etape">
         <h3 class="sous-titre" aria-hidden="true">Mode de jeu</h3>
-        <fieldset class="choix-mode">
+        <div class="mode-ligne" id="modeLigne">
+        <fieldset class="choix-regle">
           <legend class="sr">Mode de jeu</legend>
-          <label class="choix"><input type="radio" name="modeInstance" value="libre" checked><span><svg class="choix-logo" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l11 11"/><path d="M20 4L9 15"/><path d="M12.5 17.5l5-5"/><path d="M6.5 12.5l5 5"/><path d="M16.5 16.5l3 3"/><path d="M7.5 16.5l-3 3"/></svg><b>Chacun pour soi</b><small>jusqu'à 4 joueurs</small></span></label>
+          <label class="regle-case"><input type="radio" name="regleInstance" value="balade" checked aria-describedby="aide-balade"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="7.5" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="8" cy="14.6" r="1.9" fill="currentColor" stroke="none"/><ellipse cx="16" cy="11" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="16" cy="18.1" r="1.9" fill="currentColor" stroke="none"/></svg><em>Balade</em></span><span class="bulle" role="tooltip" id="aide-balade"></span></label>
+          <label class="regle-case"><input type="radio" name="regleInstance" value="survie" aria-describedby="aide-survie"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V10a6 6 0 0 1 12 0v11"/><path d="M3 21h18"/><path d="M12 9v6M9.5 11.5h5"/></svg><em>Match à mort</em></span><span class="bulle" role="tooltip" id="aide-survie"></span></label>
+          <label class="regle-case"><input type="radio" name="regleInstance" value="temps" aria-describedby="aide-temps"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg><em>Chrono</em></span><span class="bulle" role="tooltip" id="aide-temps"></span></label>
+          <label class="regle-case"><input type="radio" name="regleInstance" value="drapeaux" aria-describedby="aide-drapeaux"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="20" rx="7.5" ry="2.5"/><path d="M9 20V3"/><path d="M9 4h10l-2.5 3.5L19 11H9"/></svg><em>Drapeaux</em></span><span class="bulle" role="tooltip" id="aide-drapeaux"></span></label>
+        </fieldset>
+        <div class="reglage-regle" id="reglageVies" aria-hidden="true">
+          <span class="etiquette" id="etqVies">Vies</span>
+          <div class="pas-a-pas" role="group" aria-labelledby="etqVies">
+            <button type="button" class="icone mini" id="viesMoins" aria-label="Une vie de moins" tabindex="-1">−</button>
+            <output id="nbVies" aria-live="polite">1</output>
+            <button type="button" class="icone mini" id="viesPlus" aria-label="Une vie de plus" tabindex="-1">+</button>
+          </div>
+        </div>
+        <div class="reglage-regle" id="reglageDuree" aria-hidden="true">
+          <span class="etiquette" id="etqDuree">Durée</span>
+          <div class="pas-a-pas" role="group" aria-labelledby="etqDuree">
+            <button type="button" class="icone mini" id="dureeMoins" aria-label="Une minute de moins" tabindex="-1">−</button>
+            <output id="nbDuree" aria-live="polite">5 min</output>
+            <button type="button" class="icone mini" id="dureePlus" aria-label="Une minute de plus" tabindex="-1">+</button>
+          </div>
+        </div>
+        </div>
+        </div>
+        <div class="etape">
+        <h3 class="sous-titre" aria-hidden="true">Seul ou en équipes</h3>
+        <fieldset class="choix-mode">
+          <legend class="sr">Seul ou en équipes</legend>
+          <label class="choix" id="choixLibre"><input type="radio" name="modeInstance" value="libre" checked><span><svg class="choix-logo" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l11 11"/><path d="M20 4L9 15"/><path d="M12.5 17.5l5-5"/><path d="M6.5 12.5l5 5"/><path d="M16.5 16.5l3 3"/><path d="M7.5 16.5l-3 3"/></svg><b>Chacun pour soi</b><small id="petitLibre">jusqu'à 4 joueurs</small></span></label>
           <label class="choix"><input type="radio" name="modeInstance" value="equipes"><span><svg class="choix-logo" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h8v5.5c0 4.5-4 7-4 7s-4-2.5-4-7z"/><path d="M14 5h8v5.5c0 4.5-4 7-4 7s-4-2.5-4-7z"/><path d="M6 8v5" stroke-linecap="round"/><path d="M16 10.5h4" stroke-linecap="round"/></svg><b>En équipes</b><small>jusqu'à 8 joueurs</small></span></label>
         </fieldset>
         </div>
-        <div class="sous-section">
-        <h3 class="sous-titre" aria-hidden="true">Règle</h3>
-        <!-- une icône par règle (Eugène, 29 septembre) : le chemin, la pierre tombale, l'horloge, le drapeau -->
-        <fieldset class="choix-niveau choix-regle">
-          <legend class="sr">Règle</legend>
-          <label><input type="radio" name="regleInstance" value="balade" checked><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="7.5" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="8" cy="14.6" r="1.9" fill="currentColor" stroke="none"/><ellipse cx="16" cy="11" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="16" cy="18.1" r="1.9" fill="currentColor" stroke="none"/></svg>Balade</span></label>
-          <label><input type="radio" name="regleInstance" value="survie"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V10a6 6 0 0 1 12 0v11"/><path d="M3 21h18"/><path d="M12 9v6M9.5 11.5h5"/></svg>Match à mort</span></label>
-          <label><input type="radio" name="regleInstance" value="temps"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>Chrono</span></label>
-          <label class="cache" id="regleDrapeaux"><input type="radio" name="regleInstance" value="drapeaux"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="20" rx="7.5" ry="2.5"/><path d="M9 20V3"/><path d="M9 4h10l-2.5 3.5L19 11H9"/></svg>Drapeaux</span></label>
-        </fieldset>
-        <p class="indice" id="indiceRegle">Sans fin ni score : on se promène et on se bat.</p>
-        </div>
-        <div class="sous-section sous-deroule">
-        <h3 class="sous-titre" aria-hidden="true">Déroulé</h3>
-        <div class="bots-ligne cache" id="reglageVies">
-          <span class="etiquette" id="etqVies">Vies par manche</span>
-          <div class="pas-a-pas" role="group" aria-labelledby="etqVies">
-            <button type="button" class="icone mini" id="viesMoins" aria-label="Une vie de moins">−</button>
-            <output id="nbVies" aria-live="polite">1</output>
-            <button type="button" class="icone mini" id="viesPlus" aria-label="Une vie de plus">+</button>
-          </div>
-        </div>
-        <fieldset class="choix-niveau choix-duree cache" id="reglageDuree">
-          <legend class="sr">Durée d'une manche</legend>
-          <label><input type="radio" name="dureeManche" value="120"><span>2 min</span></label>
-          <label><input type="radio" name="dureeManche" value="180" checked><span>3 min</span></label>
-          <label><input type="radio" name="dureeManche" value="300"><span>5 min</span></label>
-          <label><input type="radio" name="dureeManche" value="600"><span>10 min</span></label>
-        </fieldset>
-        </div>
-        <div class="sous-section">
+        <div class="etape">
         <h3 class="sous-titre" aria-hidden="true">Bots</h3>
         <div class="bots">
           <div class="bots-ligne">
@@ -150,8 +151,8 @@
         </div>
         </div>
         <div class="rangee mode-pied">
-          <div class="champ"><label for="nomInstance" class="sr">Nom de la partie</label><input id="nomInstance" maxlength="40" placeholder="Nom de la partie" autocomplete="off"></div>
-          <button class="plein" id="creerInstance">Créer</button>
+          <div class="champ"><label for="nomInstance" class="sr">Nom de la partie</label><input id="nomInstance" maxlength="40" placeholder="Nom de la partie, pour tes amis" autocomplete="off" required aria-required="true"></div>
+          <button class="plein" id="creerInstance">Lancer la partie</button>
         </div>
       </section>
     </div>
@@ -184,6 +185,6 @@
 
 <!-- les retours brefs (copié, supprimé, rejoint) : en bas, sans déplacer la page -->
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
-<script type="module" src="accueil.js?v=30"></script>
+<script type="module" src="accueil.js?v=31"></script>
 </body>
 </html>

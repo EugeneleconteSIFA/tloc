@@ -5,7 +5,7 @@
 // casse jamais faute d'un fichier.
 import * as THREE from 'three';
 import * as A from './assets.js';
-import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, phMat, phPeint } from './engine.js?v=30';
+import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, phMat, phPeint } from './engine.js?v=31';
 
 export const IDS = [
   'tenues:Female_Peasant', 'tenues:Male_Peasant', 'tenues:Female_Ranger', 'tenues:Male_Ranger',

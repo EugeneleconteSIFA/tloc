@@ -158,7 +158,9 @@ export async function chargerAdmin() {
   let a; try { a = await C.admin(); } catch (e) { zone.innerHTML = `<p class="sous-titre">${ECH(e.message)}</p>`; return; }
   const heures = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`);
   const carte = (chiffre, titre, detail) => `<div class="stat"><b>${chiffre}</b><span>${titre}</span><small>${detail}</small></div>`;
-  zone.innerHTML = `<p class="sous-titre">Les autres joueurs — toi exclu</p>
+  // le détail (joueur par joueur, parties, manches, badges, retours) est sur la page admin
+  zone.innerHTML = `<a class="bouton plein lien-admin" href="admin.html">Ouvrir la page admin →</a>
+    <p class="sous-titre">Les autres joueurs — toi exclu</p>
     <div class="stats">
       ${carte(a.joueurs.total, 'joueurs inscrits', `+${a.joueurs.nouveaux_7j} cette semaine · ${a.joueurs.actifs_24h} venus aujourd’hui`)}
       ${carte(heures(a.solo.minutes), 'de jeu en solo', `${a.solo.parties} partie${a.solo.parties > 1 ? 's' : ''} sauvegardée${a.solo.parties > 1 ? 's' : ''}`)}

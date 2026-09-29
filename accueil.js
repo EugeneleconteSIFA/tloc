@@ -1,7 +1,7 @@
 // accueil.js — l'accueil du compte : les parties et les instances.
 // La connexion, elle, se fait sur le portail (connexion.html).
 import * as C from './tloc-compte.js?v=1';
-import * as SOCIAL from './accueil-social.js?v=1';
+import * as SOCIAL from './accueil-social.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -107,8 +107,7 @@ function peindreCompte() {
         <section data-panneau="infos" id="panneauInfos" role="tabpanel" hidden></section>
         <section data-panneau="amis" id="panneauAmis" role="tabpanel" hidden></section>
         <section data-panneau="badges" role="tabpanel" hidden>
-          <p class="sous-titre">Badges d’honneur, gagnés à la fin des manches</p>
-          <ul class="badges" id="listeBadges"><li class="vide" style="grid-column:1/-1">Chargement…</li></ul>
+                    <ul class="badges" id="listeBadges"><li class="vide" style="grid-column:1/-1">Chargement…</li></ul>
         </section>
         <section data-panneau="admin" id="panneauAdmin" role="tabpanel" hidden></section>
         <section data-panneau="version" id="panneauVersion" role="tabpanel" hidden></section>
@@ -144,9 +143,11 @@ function peindreCompte() {
   $('plusieurs').classList.toggle('cache', !c);
 }
 
-// Les badges : leur nom et leur phrase viennent du serveur (une seule source) ; ici, leur
-// médaille. Ceux qui restent à gagner sont montrés en gris : on sait ce qu'on peut viser.
+// Les badges : leur nom, leur phrase, leur famille et leur rang viennent du serveur (une seule
+// source) ; ici, leur médaille. Classés par famille puis du commun au légendaire ; ceux qui
+// restent à gagner sont montrés en gris avec ce qu'il faut faire : on sait ce qu'on peut viser.
 const MEDAILLES = {
+  badaud: '<circle cx="12" cy="7" r="3"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>',
   vainqueur: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
   premiere_lame: '<path d="M14 4h6v6L9 21l-6-6z"/><path d="M5 13l6 6"/>',
   faucheur: '<path d="M4 20L14 6"/><path d="M14 6c3-2 6-2 7 1-3 0-5 1-7 3"/>',
@@ -155,21 +156,62 @@ const MEDAILLES = {
   bourrin: '<path d="M6 11V7a2 2 0 0 1 4 0v3M10 10V6a2 2 0 0 1 4 0v4M14 10V7a2 2 0 0 1 4 0v6c0 4-3 7-7 7s-6-3-6-6v-2a2 2 0 0 1 4 0"/>',
   increvable: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
   tete_brulee: '<path d="M12 21c-4 0-6-3-6-6 0-4 3-5 3-9 3 2 4 4 4 6 1-1 2-2 2-4 3 2 5 5 5 8 0 3-3 5-8 5z"/>',
+  oeil_de_lynx: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  chevalier: '<path d="M7 21l1.5-6.5L5 12l4-7 3 1 5 3 1 4-4-1-1.5 9z"/>',
+  fleau: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  intouchable: '<path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/>',
+  porte_etendard: '<path d="M5 22V3"/><path d="M5 4h12l-2.5 4L17 12H5"/>',
+  conquerant: '<path d="M4 21V4"/><path d="M4 5h8l-2 3 2 3H4"/><path d="M14 21V9"/><path d="M14 10h6l-1.5 2.5L20 15h-6"/>',
+  rempart: '<path d="M4 21V8h3V5h3v3h4V5h3v3h3v13z"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/>',
+  globe_trotteur: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  promeneur: '<path d="M8 3c2 0 2.5 3 2 6H6c-.5-3 0-6 2-6z"/><path d="M6 12h4v2a2 2 0 0 1-4 0z"/><path d="M16 8c2 0 2.5 3 2 6h-4c-.5-3 0-6 2-6z"/><path d="M14 17h4v2a2 2 0 0 1-4 0z"/>',
+  pelerin: '<path d="M9 22L15 3"/><circle cx="15.5" cy="4" r="2"/><path d="M11 14c2 0 4 1 5 3"/>',
+  aventurier: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  arpenteur: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  archere: '<path d="M6 3c8 3 8 15 0 18"/><path d="M6 3v18"/><path d="M4 12h14l-3-3M18 12l-3 3"/>',
+  ami_des_chats: '<path d="M5 20v-9l-1-6 4 3h8l4-3-1 6v9z"/><path d="M9 13h.01M15 13h.01M10 16h4"/>',
+  chasse_corbeaux: '<path d="M2 12c4-1 6-5 10-5 3 0 5 2 5 4l5 1-5 2c-1 3-4 5-8 5l2-4c-4 0-7-1-9-3z"/>',
+  exorciste: '<path d="M5 21V10a7 7 0 0 1 14 0v11l-2.5-2-2.5 2-2-2-2 2-2.5-2z"/><path d="M9.5 10h.01M14.5 10h.01"/>',
+  guetteur: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  tombeur: '<path d="M5 19L19 5"/><path d="M19 5c0 4-2 7-6 7"/><path d="M5 19l-2 2M8 16l-3-3"/>',
+  liberateur: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+  habitue: '<path d="M5 8h10v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M15 11h2a2 2 0 0 1 0 4h-2"/><path d="M6 5c1-2 3-2 4 0 1-2 3-2 4 0"/>',
+  pilier: '<path d="M4 21h16M5 3h14M7 3v18M17 3v18M12 3v18"/>',
+  champion: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8"/>',
+  legende: '<path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5-5-2.6-5 2.6 1-5.5-4-3.9 5.5-.8z"/><path d="M4 21h16"/>',
 };
+const RANGS = ['commun', 'rare', 'epique', 'legendaire'];
+const NOM_RANG = { commun: 'Commun', rare: 'Rare', epique: 'Épique', legendaire: 'Légendaire' };
+// ce qui reste à parcourir, dans l'unité qui parle : les mètres en kilomètres
+const avance = (b) => (b.id in { promeneur: 1, pelerin: 1, aventurier: 1, arpenteur: 1 }
+  ? `${(Math.min(b.val, b.but) / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} / ${Math.round(b.but / 1000)} km`
+  : `${Math.min(b.val, b.but)} / ${b.but}`);
 async function chargerBadges() {
   let liste;
   try { liste = await C.badges(); } catch (e) { $('listeBadges').innerHTML = `<li style="grid-column:1/-1">${ECH(e.message)}</li>`; return; }
   const total = liste.reduce((t, b) => t + b.n, 0);
   $('totalBadges').textContent = String(total);
   $('totalBadges').classList.toggle('cache', !total);
-  // les plus gagnés d'abord, puis ceux qui restent à décrocher
-  liste.sort((a, b) => b.n - a.n);
-  $('listeBadges').innerHTML = liste.map((b) => `
-    <li class="badge${b.n ? '' : ' vide'}" title="${ECH(b.desc)}">
-      <span class="medaille"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MEDAILLES[b.id] || ''}</svg></span>
-      <span><b>${ECH(b.nom)}</b><small>${b.n ? ECH(b.desc) : 'À gagner'}</small></span>
-      ${b.n ? `<span class="fois" aria-label="${b.n} fois">×${b.n}</span>` : ''}
-    </li>`).join('');
+  const familles = [];
+  for (const b of liste) if (!familles.includes(b.famille)) familles.push(b.famille);
+  $('listeBadges').innerHTML = familles.map((f) => {
+    const siens = liste.filter((b) => b.famille === f).sort((a, b) => RANGS.indexOf(a.rang) - RANGS.indexOf(b.rang));
+    const gagnes = siens.filter((b) => b.n).length;
+    // les styles de jeu te disent quel joueur tu as été ; le reste, ce sont des récompenses
+    const entete = f === 'style' ? '<li class="sorte-badges" style="grid-column:1/-1">Tes styles de jeu<small>Un par manche : ce qui t’a le plus distingué.</small></li>'
+      : f === familles.find((x) => x !== 'style') ? '<li class="sorte-badges" style="grid-column:1/-1">Récompenses<small>En plus du style : exploits de manche, et hauts faits qui se débloquent une fois.</small></li>' : '';
+    // la famille « styles » a déjà son grand titre : seul le compte s'y ajoute
+    return entete + `<li class="famille-badges" style="grid-column:1/-1">${f === 'style' ? '' : ECH(siens[0].nom_famille)} <span>${gagnes} / ${siens.length}</span></li>`
+      + siens.map((b) => {
+        const multiple = b.but === undefined;          // exploit de manche : se regagne ; haut fait : une fois
+        return `<li class="badge rang-${b.rang}${b.n ? '' : ' vide'}" title="${ECH(b.desc)}">
+          <span class="medaille"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MEDAILLES[b.id] || ''}</svg></span>
+          <span><b>${ECH(b.nom)}</b><span class="rang">${NOM_RANG[b.rang]}</span><small>${ECH(b.desc)}</small>
+            ${!multiple && !b.n && b.but > 1 ? `<span class="progres"><i style="width:${Math.min(100, 100 * b.val / b.but)}%"></i></span><span class="avance">${avance(b)}</span>` : ''}</span>
+          ${b.n && multiple ? `<span class="fois" aria-label="${b.n} fois">×${b.n}</span>` : ''}
+        </li>`;
+      }).join('');
+  }).join('');
 }
 
 // un clic hors du menu du compte le referme, comme tout menu déroulant
@@ -527,25 +569,40 @@ const niveauChoisi = () => (document.querySelector('input[name="niveauBots"]:che
 const regleChoisie = () => (document.querySelector('input[name="regleInstance"]:checked') || {}).value || 'balade';
 const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono', drapeaux: 'prise des drapeaux' };
 let nbVies = 1;
-const dureeChoisie = () => +((document.querySelector('input[name="dureeManche"]:checked') || {}).value || 180);
+// la durée se règle à la minute près (5 par défaut) : quatre cases figées ne laissaient pas
+// le choix (Eugène, 29 septembre). Le serveur accepte d'une à quinze minutes.
+let nbMinutes = 5;
+const dureeChoisie = () => nbMinutes * 60;
 // chaque règle a son réglage à elle : les vies pour le match à mort, la durée pour le chrono
 const TEXTE_REGLE = {
   balade: () => 'Sans fin ni score : on se promène et on se bat.',
   survie: () => `${nbVies > 1 ? nbVies + ' vies' : 'Une seule vie'} par manche : le dernier debout gagne.`,
   temps: () => `${dureeChoisie() / 60} minutes : mis à terre moins tombé, le meilleur gagne.`,
-  drapeaux: () => `${dureeChoisie() / 60} minutes : des drapeaux aux points forts de la citadelle (un de moins que la moitié des joueurs, bots compris), pris en tenant leur cercle. Le camp qui en tient le plus à la fin gagne.`,
+  drapeaux: () => `${dureeChoisie() / 60} minutes, en équipes : des drapeaux aux points forts de la carte, pris en tenant leur cercle. Le camp qui en tient le plus à la fin gagne.`,
 };
 function majBots() {
-  // la prise des drapeaux se joue à deux camps : elle n'apparaît qu'en équipes
-  const enEquipes = modeChoisi() === 'equipes';
-  $('regleDrapeaux').classList.toggle('cache', !enEquipes);
-  if (!enEquipes && regleChoisie() === 'drapeaux') document.querySelector('input[name="regleInstance"][value="balade"]').checked = true;
+  // La prise des drapeaux se joue à deux camps (le serveur l'impose) : on la choisit
+  // d'abord, elle coche « En équipes » et fige « Chacun pour soi ». Une version à chacun
+  // pour soi reste à inventer.
+  const drapeaux = regleChoisie() === 'drapeaux';
+  if (drapeaux) document.querySelector('input[name="modeInstance"][value="equipes"]').checked = true;
+  document.querySelector('input[name="modeInstance"][value="libre"]').disabled = drapeaux;
+  $('choixLibre').classList.toggle('fige', drapeaux);
+  $('petitLibre').textContent = drapeaux ? 'pas pour les drapeaux' : "jusqu'à 4 joueurs";
   nbVies = Math.max(1, Math.min(5, nbVies));
   $('nbVies').value = $('nbVies').textContent = String(nbVies);
   $('viesMoins').disabled = nbVies <= 1; $('viesPlus').disabled = nbVies >= 5;
-  $('reglageVies').classList.toggle('cache', regleChoisie() !== 'survie');
-  $('reglageDuree').classList.toggle('cache', !['temps', 'drapeaux'].includes(regleChoisie()));
-  $('indiceRegle').textContent = TEXTE_REGLE[regleChoisie()]();
+  nbMinutes = Math.max(1, Math.min(15, nbMinutes));
+  $('nbDuree').value = $('nbDuree').textContent = nbMinutes + ' min';
+  $('dureeMoins').disabled = nbMinutes <= 1; $('dureePlus').disabled = nbMinutes >= 15;
+  // le réglage du mode se glisse dans la ligne des modes, qui se replient en icônes (CSS)
+  const reglage = regleChoisie() === 'survie' ? 'vies' : ['temps', 'drapeaux'].includes(regleChoisie()) ? 'duree' : '';
+  $('modeLigne').dataset.reglage = reglage;
+  for (const [id, cle] of [['reglageVies', 'vies'], ['reglageDuree', 'duree']]) {
+    $(id).setAttribute('aria-hidden', String(reglage !== cle));
+    $(id).querySelectorAll('button').forEach((b) => { b.tabIndex = reglage === cle ? 0 : -1; });
+  }
+  for (const r of Object.keys(TEXTE_REGLE)) $('aide-' + r).textContent = TEXTE_REGLE[r]();
   nbBots = Math.max(0, Math.min(TOTAL_MAX - 1, nbBots));
   $('nbBots').value = $('nbBots').textContent = String(nbBots);
   $('botsMoins').disabled = nbBots === 0;
@@ -556,12 +613,14 @@ function majBots() {
   $('indiceBots').textContent = !nbBots ? ''
     : `${nbBots} bot${nbBots > 1 ? 's' : ''} ${NOM_NIVEAU[niveauChoisi()]}${nbBots > 1 ? 's' : ''} · `
       + (amis ? `${amis} place${amis > 1 ? 's' : ''} pour tes amis` : 'rien que toi et les bots');
-  // avec des bots, on n'attend personne : la partie s'ouvre et on y entre
-  $('creerInstance').textContent = nbBots && !SOCIAL.surMobile ? 'Créer et jouer' : 'Créer';
+  // on entre dans la partie en la lançant, bots ou pas : les amis la rejoignent par son code
+  $('creerInstance').textContent = SOCIAL.surMobile ? 'Créer' : 'Lancer la partie';
 }
 $('botsMoins').onclick = () => { nbBots--; majBots(); };
 $('botsPlus').onclick = () => { nbBots++; majBots(); };
-document.querySelectorAll('input[name="modeInstance"], input[name="niveauBots"], input[name="regleInstance"], input[name="dureeManche"]').forEach((r) => { r.onchange = majBots; });
+document.querySelectorAll('input[name="modeInstance"], input[name="niveauBots"], input[name="regleInstance"]').forEach((r) => { r.onchange = majBots; });
+$('dureeMoins').onclick = () => { nbMinutes--; majBots(); };
+$('dureePlus').onclick = () => { nbMinutes++; majBots(); };
 $('viesMoins').onclick = () => { nbVies--; majBots(); };
 $('viesPlus').onclick = () => { nbVies++; majBots(); };
 majBots();
@@ -579,15 +638,23 @@ async function copierCode(code, bouton) {
 
 $('creerInstance').onclick = async () => {
   if (!C.connecte()) return message($('msgInstances'), 'Il faut un compte pour ouvrir une instance.');
+  // Le nom est obligatoire, même pour jouer seul contre des bots : c'est lui que les amis
+  // voient quand on leur partage la partie (Eugène, 29 septembre).
+  const nom = $('nomInstance').value.trim();
+  if (!nom) {
+    $('nomInstance').classList.remove('manque'); void $('nomInstance').offsetWidth; $('nomInstance').classList.add('manque');
+    $('nomInstance').focus();
+    return message($('msgInstances'), 'Donne un nom à ta partie : c’est lui que tes amis verront.');
+  }
   $('creerInstance').disabled = true;
   try {
-    const i = await C.creerInstance($('nomInstance').value || 'Partie entre amis', modeChoisi(), true,   // bourse toujours en jeu dans les duels
+    const i = await C.creerInstance(nom, modeChoisi(), true,   // bourse toujours en jeu dans les duels
       nbBots, niveauChoisi(), regleChoisie(), nbVies, dureeChoisie());
     $('nomInstance').value = '';
     message($('msgInstances'), '');
     // le geste suivant, c'est presque toujours d'envoyer le code aux copains : il est déjà copié
     const copie = await copierCode(i.code, null);
-    if (nbBots && !SOCIAL.surMobile) {             // des bots : on entre tout de suite (sur ordinateur)
+    if (!SOCIAL.surMobile) {                       // « Lancer la partie » : on y entre (sur ordinateur)
       const perso = (C.compte() || {}).pseudo || 'Camille';
       C.activerInstance(i.code);
       C.poserInstance({ code: i.code, nom: i.nom, perso });

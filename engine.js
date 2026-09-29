@@ -2015,7 +2015,9 @@ export const state = { running: false, over: false, won: false, paused: false, t
   // histoire (v14) : épée reçue de Lydéric, intro vue, prince libéré, clé de la cage ; quêtes secondaires q_* : 0 inconnue, 1 acceptée, 2 condition remplie, 3 terminée
   sword: false, introSeen: false, metLyderic: false, cageKey: false, princeFreed: false, ending: false, q_cat: 0, q_crows: 0, q_ghosts: 0, catFound: false,
   // v28 : carte a reveler (decouverts = { idDuLieu: true }), maison du vieux mage
-  decouverts: {}, mageIndice: false, mageHeart: false, mageParle: false };
+  decouverts: {}, mageIndice: false, mageHeart: false, mageParle: false,
+  // les mètres parcourus : les badges de voyage du compte les lisent dans la partie synchronisée
+  distance: 0 };
 const RUNTIME_KEYS = new Set(['running', 'over', 'won', 'paused', 'time', 'kills', 'saveT']);
 export const player = {
   pos: new THREE.Vector3(0, 0, 0), yaw: Math.PI, hp: 12, maxHp: 12, speed: 7.2, vy: 0, onGround: true, fallFrom: 0,
@@ -3253,7 +3255,9 @@ function loop(now) {
   const L = G.level;
   if (state.running && !state.over && !state.paused) {
     state.time += dt; Q.tick(brut);
+    const px0 = player.pos.x, pz0 = player.pos.z;
     updatePlayer(dt); lieuxTick();
+    { const d = Math.hypot(player.pos.x - px0, player.pos.z - pz0); if (d < 2) state.distance += d; }   // un saut de plus de 2 m en une image : un changement de lieu
     for (const e of enemies) updateEnemy(e, dt);
     updateArrows(dt); updateShockwaves(dt); updateParticles(dt);
     if (L.update) L.update(dt);

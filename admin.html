@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>The Legend of Camille — Admin</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Grenze+Gotisch:wght@700&family=Grenze:wght@500;600&display=swap">
+<script>
+  // même thème que l'accueil, posé avant la feuille de style
+  (() => { let t = 'clair'; try { t = localStorage.getItem('tloc_theme') || 'clair'; } catch (e) {} document.documentElement.dataset.theme = t; })();
+</script>
+<link rel="stylesheet" href="tloc-portail.css?v=29">
+</head>
+<body class="page-admin">
+<!-- La vue admin du créateur, en grand (Eugène, 29 septembre) : le panneau « Admin » du menu
+     du compte donne quatre chiffres ; ici, tout, joueur par joueur. Le serveur refuse les
+     données à tout autre compte que celui du créateur (/api/admin/detail). -->
+<header class="barre">
+  <a class="marque" href="accueil.html"><img src="favicon.svg" alt=""><span>The Legend of Camille</span></a>
+  <span class="etiquette-admin">Admin</span>
+  <div class="barre-droite"><button type="button" id="rafraichir">Rafraîchir</button> <a class="bouton" href="accueil.html">Retour à l’accueil</a></div>
+</header>
+<main class="admin" id="admin">
+  <p class="sous-titre">Chargement…</p>
+</main>
+<script type="module" src="admin.js?v=31"></script>
+</body>
+</html>
