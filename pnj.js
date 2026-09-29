@@ -5,7 +5,7 @@
 // casse jamais faute d'un fichier.
 import * as THREE from 'three';
 import * as A from './assets.js';
-import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, phMat, phPeint } from './engine.js?v=28';
+import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, phMat, phPeint } from './engine.js?v=29';
 
 export const IDS = [
   'tenues:Female_Peasant', 'tenues:Male_Peasant', 'tenues:Female_Ranger', 'tenues:Male_Ranger',
@@ -1144,9 +1144,31 @@ export function animeCamille(m, p, dt, ctx) {
       else if (ud.bassinAssis) bassin.position.copy(ud.bassinAssis);
     }
     enfourcher(ud.os, m);
+    // …et le buste se penche vers le côté de l'épée et vers le bas, le temps du coup : sans
+    // ça la lame, tenue à hauteur de cavalier, passait au-dessus de la tête des piétons
+    // Le mixeur ne réécrit pas toujours ces os (selon le clip et le fondu) : sans précaution,
+    // l'inclinaison s'ajoutait d'une image à l'autre et le buste finissait retourné, invisible
+    // derrière le cheval. On retient donc la pose d'avant l'inclinaison, et si l'os n'a pas
+    // bougé depuis (le mixeur ne l'a pas repris), on la lui rend avant d'incliner à nouveau.
+    ud.penche ||= {};
+    const f = p.attackT >= 0 ? Math.sin(Math.PI * Math.min(1, p.attackT / 0.38)) : 0;
+    for (const [n, k] of [['spine_01', 0.45], ['spine_02', 0.35], ['spine_03', 0.2]]) {
+      const o = ud.os[n]; if (!o) continue;
+      const mem = ud.penche[n] ||= { base: new THREE.Quaternion(), apres: new THREE.Quaternion(), actif: false };
+      if (mem.actif && o.quaternion.equals(mem.apres)) o.quaternion.copy(mem.base);
+      mem.actif = f > 0;
+      if (!mem.actif) continue;
+      mem.base.copy(o.quaternion);
+      o.rotateX(SELLE_PENCHE.cote * k * f); o.rotateZ(SELLE_PENCHE.avant * k * f);
+      mem.apres.copy(o.quaternion);
+    }
   }
   return true;
 }
+// l'inclinaison du buste pendant la frappe en selle (rad, répartie sur les trois vertèbres).
+// Axes lus à l'image (29 septembre) : sur ces os, X penche vers le côté de l'épée et vers le
+// bas, Z plie le buste en avant, dans l'encolure — un soupçon suffit.
+export const SELLE_PENCHE = { cote: 0.45, avant: 0.12 };
 
 /**
  * Remplace Camille par sa version riggée, dans n'importe quel niveau.

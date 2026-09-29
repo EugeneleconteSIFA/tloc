@@ -6,7 +6,7 @@ import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
-} from './engine.js?v=28';
+} from './engine.js?v=29';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,
@@ -39,12 +39,33 @@ export function populate() {
   // Les petits coffres à écus des bastions (bourse.js) : un par bastion, sauf celui de
   // Turenne qui a déjà le coffre de l'arc. Posés vers la pointe, là où l'on ne va que pour
   // le plaisir de la vue — et cherchés en spirale sur une dalle libre (canons, guérites).
+  // joignable en ligne droite depuis l'arrivée de la rampe sur le terre-plein (on y monte
+  // forcément), ou à défaut depuis le centre du bastion — celui du Dauphin porte le mât
+  const joignableDuCoeur = (b, x, z) => {
+    const libre = (ax, az) => { for (let t = 0; t <= 1.0001; t += 0.05) if (blocked(ax + (x - ax) * t, az + (z - az) * t, 0.5, false, BAST_H + 0.1)) return false; return true; };
+    // l'arrivée de la rampe touche ses garde-corps, le centre porte le mât : on part du point
+    // libre le plus proche de chacun
+    const depuis = (px, pz) => { for (let r = 0; r <= 8; r += 0.5) for (let k = 0; k < 16; k++) {
+      const x1 = px + Math.cos(k / 16 * Math.PI * 2) * r, z1 = pz + Math.sin(k / 16 * Math.PI * 2) * r;
+      if (bastionAt(x1, z1) && !blocked(x1, z1, 0.5, false, BAST_H + 0.1)) return libre(x1, z1); } return false; };
+    const s = (b.sPalier ?? 0) + 3, t = b.tRampe ?? 0;
+    if (depuis(b.V[0] + b.u[0] * s + b.v[0] * t, b.V[1] + b.u[1] * s + b.v[1] * t)) return true;
+    return depuis(b.poly.reduce((a, q) => a + q[0], 0) / b.poly.length, b.poly.reduce((a, q) => a + q[1], 0) / b.poly.length);
+  };
   bastions.forEach((b, i) => {
     if (i === 3) return;
-    const x0 = b.V[0] + b.u[0] * 10 * ECH, z0 = b.V[1] + b.u[1] * 10 * ECH;
+    // d'abord vers la pointe ; à défaut, autour de l'arrivée de la rampe (au Dauphin, rien de
+    // joignable près de la pointe : ses parapets suivent les faces théoriques, pas le relevé)
+    const sP = (b.sPalier ?? 0) + 3, tP = b.tRampe ?? 0;
+    for (const [x0, z0] of [[b.V[0] + b.u[0] * 10 * ECH, b.V[1] + b.u[1] * 10 * ECH], [b.V[0] + b.u[0] * sP + b.v[0] * tP, b.V[1] + b.u[1] * sP + b.v[1] * tP]])
     for (let r = 0; r < 40; r += 1.5) for (let k = 0; k < 16; k++) {
       const a = k / 16 * Math.PI * 2, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
       if (!bastionAt(x, z) || blocked(x, z, 1.2, false, BAST_H + 0.1) || !BOURSE.aCielOuvert(x, BAST_H, z)) continue;
+      // du bon côté du parapet : au Dauphin, la dalle « libre » était la bande du bastion AU-DELÀ
+      // de son parapet (1,4 m), côté fossé — on n'y allait ni à pied ni en sautant (banc
+      // d'accessibilité, 29 septembre). On exige une ligne droite dégagée depuis le cœur du
+      // terre-plein jusqu'au coffre.
+      if (!joignableDuCoeur(b, x, z)) continue;
       BOURSE.petitCoffre('bastion-' + i, x, BAST_H, z, 12 + i, Math.atan2(-b.u[0], -b.u[1]));
       return;
     }

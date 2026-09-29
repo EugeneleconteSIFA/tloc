@@ -308,8 +308,15 @@ rentre à l'écurie, reposé. Les autres voient le cavalier en selle (`ch` dans 
   (tête à 2,35 m) ; il regarde vers −z (`DOS_CHEVAL`).
 - Camille en selle : la pose assise (`Sitting_Idle_Loop`), remontée de `SELLE` (0,62 m) par
   le pivot, cuisses écartées et jambes le long des flancs par `enfourcher()` (pnj.js,
-  réglages `MONTE`, choisis au banc entre une quinzaine d'essais). Pas encore : une vraie
-  frappe en selle (le coup rejoue le clip debout), et les bots ne montent pas.
+  réglages `MONTE`, choisis au banc entre une quinzaine d'essais). Les bots ne montent pas.
+- **La frappe en selle (29 septembre)** : le coup se donne au galop (90 % de la vitesse au
+  lieu de 25 % à pied) et porte plus loin et plus large (`EPEE_SELLE`, engine.js : 3,4 m et
+  ±1,7 rad au lieu de 2,6 m et ±1,25), contre monstres, joueurs et bots. Le buste se penche
+  vers le côté de l'épée et un peu en avant le temps du coup (`SELLE_PENCHE`, pnj.js : X de
+  ces os = côté, Z = avant, lus à l'image) ; la pose d'avant l'inclinaison est retenue et
+  rendue si le mixeur ne réécrit pas l'os — sans quoi l'inclinaison s'accumulait et Camille
+  finissait retournée derrière le cheval. Vérifié : une moule à 3,8 m est touchée à cheval,
+  pas à pied.
 
 ### Deux de chaque, et l'arc (27 septembre)
 

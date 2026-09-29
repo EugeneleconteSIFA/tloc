@@ -25,8 +25,8 @@ import { openGate } from './quetes.js';
 import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
-  CROCHETS, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=28';
+  CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
+} from './engine.js?v=29';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -228,8 +228,11 @@ function rideau(aire) {
     uniforms: { t: { value: 0 }, a: { value: 0 }, c: { value: new THREE.Color(aire === 'citadelle' ? 0xff6a3a : 0xffc860) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `uniform float t, a; uniform vec3 c; varying vec2 vUv;
-      void main(){ float bas = smoothstep(1.0, 0.0, vUv.y), raie = 0.55 + 0.45 * sin(vUv.x * 6.2832 - t * 1.7 + vUv.y * 5.0);
-        gl_FragColor = vec4(c * (0.35 + 0.65 * raie), a * bas * bas); }` });
+      // des raies franches qui montent (une frontière, pas la lumière du soir) et un liseré vif
+      // au ras du sol, qui trace la limite là où l'on marche
+      void main(){ float bas = smoothstep(1.0, 0.0, vUv.y), raie = pow(0.5 + 0.5 * sin(vUv.x * 6.2832 - t * 1.7 + vUv.y * 5.0), 3.0);
+        float lisere = smoothstep(0.07, 0.0, vUv.y);
+        gl_FragColor = vec4(c * (0.25 + 1.1 * raie + 1.5 * lisere), a * (bas * bas * (0.35 + 0.65 * raie) + lisere)); }` });
   const mesh = new THREE.Mesh(g, m); mesh.userData.dynamic = true; mesh.userData.contour = contour; mesh.frustumCulled = false; mesh.visible = false; scene.add(mesh);
   rideaux.set(aire, mesh); return mesh;
 }
@@ -268,11 +271,11 @@ function tickAire(dt, now) {
     }
     const r = rideau(suiv.aire); r.visible = true;
     r.material.uniforms.t.value = now / 1000;
-    r.material.uniforms.a.value = Math.min(1, (PREAVIS - suiv.dans) / 6) * (0.35 + 0.25 * Math.sin(now / 180));
+    r.material.uniforms.a.value = Math.min(1, (PREAVIS - suiv.dans) / 6) * (0.6 + 0.3 * Math.sin(now / 180));
     PARTAGE.aires.push({ pts: r.userData.contour, couleur: suiv.aire === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: true });
   }
   if (AIRES[cur].r !== Infinity) {                   // la limite en vigueur reste visible, plus sage
-    const r = rideau(cur); r.visible = true; r.material.uniforms.t.value = now / 1000; r.material.uniforms.a.value = 0.28;
+    const r = rideau(cur); r.visible = true; r.material.uniforms.t.value = now / 1000; r.material.uniforms.a.value = 0.45;   // assez pour se voir de loin (0,28 : on ne le voyait pas)
     PARTAGE.aires.push({ pts: r.userData.contour, couleur: cur === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: false });
   }
   // hors de l'aire, ça brûle : moi…
@@ -436,6 +439,7 @@ function peindrePanneau() {
     const G_ = CAMPS.garnison, B_ = CAMPS.bourg;
     lignes.push(`<b style="color:${G_.couleur}">Garnison ${points.garnison}</b> — <b style="color:${B_.couleur}">${points.bourg} Bourg</b>`
       + (state.camp ? ` <span style="opacity:.7">(tu es ${state.camp === 'garnison' ? 'de la garnison' : 'du bourg'})</span>` : ''));
+    if (regle === 'balade') lignes.push(`<span style="opacity:.8;font-size:12px">premier camp à ${VICTOIRE_BALADE} points : victoire</span>`);
     if (regle === 'drapeaux' && drapeaux.length) {
       const n = (c) => drapeaux.filter((d) => d.camp === c).length;
       lignes.push(`<span style="opacity:.85;font-size:12px">drapeaux : <span style="color:${CAMPS.garnison.couleur}">${n('garnison')}</span> · <span style="color:${CAMPS.bourg.couleur}">${n('bourg')}</span> sur ${drapeaux.length}</span>`);
@@ -624,6 +628,7 @@ function connecter() {
     } else if (m.t === 'fete-score') { majFete(m);
     } else if (m.t === 'fete-fin') { finirFete(m);
     } else if (m.t === 'banniere') { evenementBanniere(m);
+    } else if (m.t === 'victoire') { afficherVictoire(m);
     } else if (m.t === 'drapeaux') { lieuxDrapeauxServeur = 1; evenementDrapeaux(m);
     } else if (m.t === 'bourse') { poserBourse(m);
     } else if (m.t === 'bourse-prise') { prendreBourse(m);
@@ -1266,7 +1271,9 @@ function peindreDrapeaux() {
 }
 function tickDrapeaux(now) {
   if (regle !== 'drapeaux') return;
-  if (state.running && !state.paused) preparerNav();
+  // aussi pendant l'arrivée (titre, armoire, camp, carte : le jeu est figé), et plus vite :
+  // c'est là que la grille de toute la carte se remplit sans que personne ne le sente
+  if (G.level && !G.sommeil) preparerNav();
   proposerDrapeaux();
   const t = now / 1000;
   for (const d of drapeaux) {
@@ -1814,9 +1821,10 @@ function coupsEpee() {
   for (const a of autres.values()) {
     if (touchesDuSwing.has(a.id) || a.hp <= 0 || a.niveau !== G.level.name || memeCamp(a) || estElimine(a.id)) continue;
     const dx = a.mesh.position.x - p.pos.x, dz = a.mesh.position.z - p.pos.z, d = Math.hypot(dx, dz);
-    if (d > PORTEE_EPEE + 0.6 || Math.abs(a.mesh.position.y - p.pos.y) > 3) continue;
+    const portee = monte ? EPEE_SELLE.portee : PORTEE_EPEE, arc = monte ? EPEE_SELLE.arc : 1.25;   // en selle : plus loin, plus large
+    if (d > portee + 0.6 || Math.abs(a.mesh.position.y - p.pos.y) > 3) continue;
     const da = ((Math.atan2(dx, dz) - p.yaw + Math.PI) % TAU + TAU) % TAU - Math.PI;
-    if (Math.abs(da) > 1.25 && d > 1.2) continue;
+    if (Math.abs(da) > arc && d > 1.2) continue;
     touchesDuSwing.add(a.id);
     envoyer({ t: 'coup', c: a.id, d: DEGATS_EPEE, k: 'epee' });
     burst(a.mesh.position.x, a.mesh.position.y + 1.3, a.mesh.position.z, 0xfff0a0, 8, 5, 0.35);
@@ -1976,7 +1984,7 @@ function butAuHasard(b) {
 // Pas de 2 m (1,5 m quand elle ne couvrait que la citadelle) : 5,5 µs par case, il y en a
 // 500 000 dans le relevé (hors du rectangle penché, rien n'est testé), soit ~2,8 s de calcul
 // étalées à 6 ms par image — les drapeaux sont posés une quinzaine de secondes après l'arrivée.
-const NAV_PAS = 2, NAV_BUDGET_MS = 6;
+const NAV_PAS = 2, NAV_BUDGET_MS = 6, NAV_BUDGET_FIGE_MS = 14;   // en jeu / jeu figé (arrivée, pause)
 // peut-on passer de la case k à sa voisine q ? (les deux libres, et rien entre elles)
 const passe = (k, q) => (q === k + 1 ? nav.est[k] : q === k - 1 ? nav.est[q] : q === k + nav.nx ? nav.sud[k] : nav.sud[q]) === 1;
 let nav = null;
@@ -1985,8 +1993,21 @@ const caseNav = (x, z) => {
   return i < 0 || j < 0 || i >= nav.nx || j >= nav.nz ? -1 : j * nav.nx + i;
 };
 // la grille couvre toute la châtellenie : elle sert aussi à choisir où planter les drapeaux
+// l'attente estimée avant les drapeaux, à la vitesse où la grille se remplit (null : on ne sait pas encore)
+const navVitesse = { t0: 0, f0: 0 };
+function attenteDrapeaux() {
+  if (!nav) return null;
+  if (nav.fait >= nav.nz) return 1;
+  const dt = (performance.now() - navVitesse.t0) / 1000, fait = nav.fait - navVitesse.f0;
+  const e = dt > 0.5 && fait > 0 ? (nav.nz - nav.fait) / (fait / dt) : null;
+  // la vitesse change (14 ms par image à l'arrivée, 6 ms en jeu) : on la reprend toutes les 3 s
+  if (dt > 3) { navVitesse.t0 = performance.now(); navVitesse.f0 = nav.fait; navVitesse.e = e; }
+  return e ?? navVitesse.e ?? null;
+}
 function preparerNav() {
   if (!lieux.length || !G.level) return;
+  // pas avant la fin du chargement : les lieux existent pendant la construction, les murs pas encore tous
+  if (!nav && !document.getElementById('loading')?.classList.contains('hidden')) return;
   if (!nav) {
     // partie courte : les drapeaux restent dans la citadelle, la grille n'en couvre que les
     // abords (une vingtaine de fois moins de cases) ; sinon toute la châtellenie
@@ -1997,11 +2018,13 @@ function preparerNav() {
     const xs = pts.map((q) => q[0]), zs = pts.map((q) => q[1]);
     const x0 = Math.min(...xs) - marge, z0 = Math.min(...zs) - marge;
     const nx = Math.ceil((Math.max(...xs) + marge - x0) / NAV_PAS), nz = Math.ceil((Math.max(...zs) + marge - z0) / NAV_PAS);
+    navVitesse.t0 = performance.now(); navVitesse.f0 = 0;
     nav = { x0, z0, nx, nz, libre: new Uint8Array(nx * nz), haut: new Float32Array(nx * nz), est: new Uint8Array(nx * nz), sud: new Uint8Array(nx * nz), fait: 0, champs: new Map() };
   }
   if (nav.fait >= nav.nz) return;
   const t0 = performance.now();
-  while (nav.fait < nav.nz && performance.now() - t0 < NAV_BUDGET_MS) {
+  const budget = state.running && !state.paused ? NAV_BUDGET_MS : NAV_BUDGET_FIGE_MS;
+  while (nav.fait < nav.nz && performance.now() - t0 < budget) {
     const j = nav.fait++, z = nav.z0 + (j + 0.5) * NAV_PAS;
     for (let i = 0; i < nav.nx; i++) {
       const x = nav.x0 + (i + 0.5) * NAV_PAS;
@@ -2507,6 +2530,11 @@ function peindreManche() {
     const n = (c) => drapeaux.filter((d) => d.camp === c).length;
     const puces = drapeaux.map((d) => `<span style="color:${d.camp ? CAMPS[d.camp].couleur : '#e6dcc0'};${d.conteste ? 'text-shadow:0 0 6px #fff' : ''}">⚑</span>`).join(' ');
     ligne = `<b style="font-size:20px">${mmss(reste || 0)}</b> &nbsp; <b style="color:${CAMPS.garnison.couleur}">${n('garnison')}</b> ${puces} <b style="color:${CAMPS.bourg.couleur}">${n('bourg')}</b>${ligneDrapeau()}`;
+    // tant que les drapeaux ne sont pas posés (la grille des chemins se remplit : jusqu'à une
+    // vingtaine de secondes sur toute la carte), on dit combien de temps il reste — sinon on
+    // croit la partie cassée
+    if (!drapeaux.length) { const e = attenteDrapeaux();
+      ligne += `<br><span style="color:#ffe7a3">⚑ Les drapeaux arrivent${e != null ? ` dans ~${Math.max(1, Math.ceil(e))} s` : '…'}</span>`; }
   } else if (manche.etat === 'cours' && regle === 'temps') {
     const moiSc = scoreManche(moi && moi.id);
     ligne = `<b style="font-size:20px">${mmss(reste || 0)}</b>${moiSc !== null ? ` &nbsp; toi : <b style="color:#ffe7a3">${moiSc > 0 ? '+' : ''}${moiSc}</b>` : ''}`;
@@ -2631,6 +2659,41 @@ function afficherResultats(m) {
   majBoutonsResultats(m);
   try { if (m.gagnants && moi && m.gagnants.includes(moi.id)) SFX.win(); } catch (e) {}
 }
+// Balade par équipes : le premier camp à VICTOIRE_BALADE points l'emporte (le serveur tranche,
+// cf. victoire_balade). Le même cadre que la fin de manche, les deux camps côte à côte ; la
+// balade continue derrière, points et bannières remis à zéro. « Continuer » ferme, ou 15 s.
+let VICTOIRE_BALADE = 10;                        // = VICTOIRE_BALADE (app.py) ; le serveur le redit à chaque victoire
+let victoireT = null;
+function afficherVictoire(m) {
+  if (m.objectif) VICTOIRE_BALADE = m.objectif;
+  poserStyleResultats();
+  if (resultats) resultats.remove();
+  clearTimeout(victoireT);
+  const nom = (j) => (moi && j.id === moi.id ? `${ech(monPerso)} (toi)` : ech(j.perso));
+  const colonnes = Object.keys(CAMPS).map((c) => {
+    const siens = (m.joueurs || []).filter((j) => j.camp === c);
+    const li = siens.map((j, k) => `<li class="${moi && j.id === moi.id ? 'moi' : ''}"><span class="rang">${k + 1}</span><span class="nom" style="color:${CAMPS[c].couleur}">${nom(j)}</span>`
+      + `<span class="score">${j.mises + 3 * j.bannieres}<small>${j.mises} à terre · ${j.bannieres} bannière${j.bannieres > 1 ? 's' : ''}</small></span></li>`).join('');
+    return `<section class="camp${m.camp === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b>`
+      + `<span class="compte">${m.points[c] || 0}<small>point${(m.points[c] || 0) > 1 ? 's' : ''}</small></span></header>`
+      + `<ol>${li || '<li><span></span><span class="nom" style="opacity:.6">personne</span><span></span></li>'}</ol></section>`;
+  }).join('');
+  resultats = document.createElement('section');
+  resultats.className = 'resultats-manche en-camps'; resultats.dataset.victoire = '1';
+  resultats.setAttribute('role', 'dialog'); resultats.setAttribute('aria-label', 'Victoire de camp');
+  resultats.innerHTML = `<div class="frise"></div>
+    <p class="regle">Balade par équipes · premier à ${m.objectif || VICTOIRE_BALADE} points</p>
+    <h2>${ech(CAMPS[m.camp].nom)} l’emporte !</h2>
+    <div class="camps">${colonnes}</div>
+    <p class="miens">${state.camp === m.camp ? 'Victoire de ton camp !' : 'Ce sera pour la prochaine.'} <span style="opacity:.75">Les points et les bannières repartent de zéro.</span></p>
+    <div class="boutons"><button type="button" class="rejouer">Continuer</button></div>`;
+  document.body.appendChild(resultats);
+  const fermer = () => { clearTimeout(victoireT); if (resultats) { resultats.remove(); resultats = null; } };
+  resultats.querySelector('.rejouer').onclick = fermer;
+  victoireT = setTimeout(fermer, 15000);
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+  try { if (state.camp === m.camp) SFX.win(); } catch (e) {}
+}
 function rejouer() {
   if (jePrets || !manche || manche.etat !== 'fin') return;
   jePrets = true;
@@ -2650,6 +2713,8 @@ function majBoutonsResultats(m) {
 // Entrée rejoue tant que les résultats sont affichés (le moteur ne la voit pas : il
 // l'interpréterait comme « parler »)
 window.addEventListener('keydown', (e) => {
+  // l'écran de victoire de la balade : Entrée ou Échap le ferment
+  if (resultats && resultats.dataset.victoire && /^(Enter|NumpadEnter|Escape)$/.test(e.code)) { e.stopImmediatePropagation(); e.preventDefault(); resultats.querySelector('.rejouer').click(); return; }
   if (!resultats || !manche || manche.etat !== 'fin') return;
   if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // le chat garde son Entrée
   if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.stopImmediatePropagation(); e.preventDefault(); rejouer(); }

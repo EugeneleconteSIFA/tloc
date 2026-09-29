@@ -42,7 +42,7 @@ await page.evaluate(() => { TLOC.state.introSeen = true; TLOC.menu.items[0].fn()
 await page.waitForTimeout(3000);
 
 const res = await page.evaluate(async ([QUAL, AUTO, ECH]) => {
-  const E = await import('./engine.js?v=28'), { renderer, composer, Q, G, player, state } = E;
+  const E = await import('./engine.js?v=29'), { renderer, composer, Q, G, player, state } = E;
   if (!AUTO) { Q.locked = true; Q.apply(QUAL, true); if (ECH) Q.mettreEchelle(ECH); }
   const gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
   // chronométrer le rendu SANS toucher au moteur : on enveloppe les deux points d'entrée

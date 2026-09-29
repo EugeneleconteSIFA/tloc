@@ -2142,6 +2142,8 @@ export const TOUCHES = {};
 for (let i = 0; i < 4; i++) TOUCHES['Digit' + (i + 1)] = () => Q.choisir(i);
 // Les crochets : ce que le moteur demande aux autres modules sans les importer.
 //   gaufre() -> vrai si la gaufre ramassée a été rangée (la poche), faux s'il faut la manger
+// la frappe en selle : portée (m) et demi-angle (rad) — partagés avec le multijoueur
+export const EPEE_SELLE = { portee: 3.4, arc: 1.7 };
 export const CROCHETS = { gaufre: null, onde: null };
 //   onde(s) -> appelé à chaque image pour chaque onde de choc de Phinaert (s.x, s.z, s.y, s.r) :
 //              le multijoueur y fait encaisser les bots (l'onde frappe tout le monde)
@@ -2592,14 +2594,17 @@ export function updatePlayer(dt) {
     speed = 0;
   } else if (p.attackT >= 0) {
     p.attackT += dt;
-    speed *= 0.25;
+    // À CHEVAL (G.monte, tloc-multi.js), le coup se donne au galop — une charge, pas un arrêt —
+    // et porte plus loin et plus large : le cavalier frappe de haut, sur le côté de sa monture
+    const selle = !!G.monte, portee = selle ? EPEE_SELLE.portee : 2.6, arc = selle ? EPEE_SELLE.arc : 1.25;
+    speed *= selle ? 0.9 : 0.25;
     if (p.attackT > 0.08 && p.attackT < 0.3) {
       for (const e of enemies) {
         if (e.dead || p.hitSet.has(e) || e.caged) continue;
         const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz);
-        if (d < 2.6 + e.k.r && Math.abs(e.pos.y - p.pos.y) < 3) {
+        if (d < portee + e.k.r && Math.abs(e.pos.y - p.pos.y) < 3) {
           let da = ((Math.atan2(dx, dz) - p.yaw + Math.PI) % TAU + TAU) % TAU - Math.PI;
-          if (Math.abs(da) < 1.25 || d < 1.2) { p.hitSet.add(e); hitEnemy(e, 1, p.pos.x, p.pos.z); }
+          if (Math.abs(da) < arc || d < 1.2) { p.hitSet.add(e); hitEnemy(e, 1, p.pos.x, p.pos.z); }
         }
       }
     }
@@ -3203,6 +3208,32 @@ function majPerfUI(dt, js, rendu) {
   perfMes.t = 0; perfMes.images = 0; perfMes.js = 0; perfMes.rendu = 0; perfMes.pire = 0; perfMes.gpu = 0; perfMes.nGpu = 0;
 }
 
+// Les personnages lointains ne sont pas dessinés. Un villageois riggé pèse 10 à 20 000
+// triangles, et son squelette se recalcule à chaque image : mesuré le 29 septembre au moulin,
+// 222 000 triangles de personnages à plus de 400 m, pour quelques pixels. Au-delà de
+// PERSO_LOIN, un personnage passe sur un calque que la caméra ne voit pas — ni la carte
+// d'ombre, qui teste le même calque — et three.js ne met plus son squelette à jour.
+// Le calque et non `visible` : d'autres modules règlent déjà `visible` (avatars du multi,
+// clignotement de l'invincibilité), on ne se marche pas dessus. Les géants restent : on les
+// voit de loin, et c'est le but.
+const PERSO_LOIN = 140, CALQUE_LOIN = 30;
+let persosLoin = [], persosT = 0;
+function trierPersonnages(dt) {
+  persosT -= dt;
+  if (persosT <= 0) {                                 // les nouveaux venus (avatars, bots) : toutes les deux secondes
+    persosT = 2; persosLoin = [];
+    scene.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      let n = o; while (n && n !== player.mesh) n = n.parent; if (n) return;          // Camille, jamais
+      if (o.userData.geant === undefined) { const g = o.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
+        o.userData.geant = g.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > 4; }
+      if (!o.userData.geant) persosLoin.push(o);
+    });
+  }
+  const cx = camera.position.x, cz = camera.position.z, loin = 1 << CALQUE_LOIN;
+  for (const m of persosLoin) { const e = m.matrixWorld.elements; m.layers.mask = Math.hypot(e[12] - cx, e[14] - cz) > PERSO_LOIN ? loin : 1; }
+}
+
 // L'ombre du soleil est redessinée une image sur deux. Sa passe coûtait 25 % du processeur
 // au bourg (profil du 28 septembre : chaque objet qui porte ombre, redessiné dans la carte
 // d'ombre à chaque image). La carte et sa matrice restent cohérentes entre deux mises à
@@ -3243,7 +3274,7 @@ function loop(now) {
   if (sky) sky.position.copy(camera.position);
   // fondu au noir
   if (G.fade !== G.fadeTarget) { G.fade = clamp(G.fade + Math.sign(G.fadeTarget - G.fade) * dt * 2.5, 0, 1); if (Math.abs(G.fade - G.fadeTarget) < 0.03) { G.fade = G.fadeTarget; if (G.fadeCb) { const cb = G.fadeCb; G.fadeCb = null; cb(); } } fadeEl.style.opacity = clamp(G.fade, 0, 1); }
-  majPool();
+  majPool(); trierPersonnages(brut);
   // une carte d'ombre jetée (changement de qualité, touche O) se refait tout de suite : sans
   // carte, three ombrerait toute la scène le temps d'une image
   if (++ombreImage >= OMBRE_PAS || (sun.castShadow && !sun.shadow.map)) { renderer.shadowMap.needsUpdate = true; ombreImage = 0; }

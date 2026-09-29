@@ -23,7 +23,7 @@ import * as BOURSE from './bourse.js';
 import {
   THREE, Q, SFX, T, TAU, addCap, blocked, burst, capsulesNear, clamp, distSeg, fbm, getH, lerp, mat,
   mergeParts, phMat, player, rand, scene, spawnGaufre, state,
-} from './engine.js?v=28';
+} from './engine.js?v=29';
 import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,

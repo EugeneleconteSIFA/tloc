@@ -2,12 +2,12 @@
 //
 // Secteur Campagne : maison de Camille, chaumière du vieux mage, moulin d'Émile et ses
 // champs, route du pont au village.
-import * as E from './engine.js?v=28';
+import * as E from './engine.js?v=29';
 import {
   THREE, IRON, Q, STEEL, T, TAU, addBox, addCap, addInteract, addLieu, boxG, brickScaled,
   clamp, corniceAround, distSeg, goToLevel, lerp, makeCanvas, mat, mergeParts, mesh, pbr,
   pbrRepeat, phMat, rand, rboxG, scene, sphG, state, stoneMat, tex, wallBox, world,
-} from './engine.js?v=28';
+} from './engine.js?v=29';
 import {
   CHAMPS, ECH, FERME, HOUSE, LARGEUR_CHEMIN, graverVoie, LARGEUR_ROUTE, LILLE, VOIE_C, MAGE, MOAT_OUT, cobbles, levelBlocked, libreNature, margePlate,
   nearTown, patinerMat, roadPts, sdPent, solPlaine, HOUSE_SMOKE_TOP,

@@ -1,0 +1,82 @@
+{
+ "index": {
+  "cases": 1343820,
+  "m2": 1343820,
+  "cote": 2600,
+  "essais": 5390568,
+  "interactions": 21,
+  "hors": [],
+  "finesAtteintes": [
+   "ouvrir le coffret",
+   "ouvrir le petit coffre"
+  ],
+  "secondes": 51.5
+ },
+ "house": {
+  "cases": 1441,
+  "m2": 90.0625,
+  "cote": 80,
+  "essais": 6448,
+  "interactions": 4,
+  "hors": [],
+  "finesAtteintes": [],
+  "secondes": 0
+ },
+ "tavern": {
+  "cases": 100780,
+  "m2": 6298.75,
+  "cote": 80,
+  "essais": 401840,
+  "interactions": 3,
+  "hors": [],
+  "finesAtteintes": [],
+  "secondes": 0.1
+ },
+ "chapelle": {
+  "cases": 99878,
+  "m2": 6242.375,
+  "cote": 80,
+  "essais": 398232,
+  "interactions": 6,
+  "hors": [],
+  "finesAtteintes": [],
+  "secondes": 0.1
+ },
+ "mage": {
+  "cases": 498,
+  "m2": 31.125,
+  "cote": 80,
+  "essais": 1992,
+  "interactions": 3,
+  "hors": [],
+  "finesAtteintes": [],
+  "secondes": 0
+ },
+ "cave": {
+  "cases": 14055,
+  "m2": 878.4375,
+  "cote": 80,
+  "essais": 56124,
+  "interactions": 5,
+  "hors": [
+   {
+    "quoi": "parler à Eugène",
+    "x": 84,
+    "y": 0,
+    "z": 6,
+    "r": 3.2,
+    "zone": "Galerie des fosses"
+   },
+   {
+    "quoi": "ouvrir le petit coffre",
+    "x": 87,
+    "y": 0,
+    "z": 15,
+    "r": 1.9,
+    "zone": "Galerie des fosses"
+   }
+  ],
+  "finesAtteintes": [],
+  "secondes": 0
+ }
+}

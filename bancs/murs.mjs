@@ -41,7 +41,7 @@ await page.waitForTimeout(3000);
 
 const t0 = Date.now();
 const res = await page.evaluate(async (DEMI) => {
-  const E = await import('./engine.js?v=28'), C = await import('./carte.js'), THREE = E.THREE, { world, scene, renderer } = E;
+  const E = await import('./engine.js?v=29'), C = await import('./carte.js'), THREE = E.THREE, { world, scene, renderer } = E;
   const PAS = 0.5, [cx0, cz0] = C.townWorld(0, -4);
   const x0 = Math.round(cx0 - DEMI), z0 = Math.round(cz0 - DEMI), N = Math.round(2 * DEMI / PAS);
   const HAUT = 140, BAS = -20;
@@ -173,7 +173,7 @@ console.log(`carte : bancs/murs-${JOUR}.png`);
 if (PHOTOS) {
   const lst = [...res.zMurs.slice(0, 6), ...res.zMarches.slice(0, 3), ...res.zPerdues.slice(0, 3)];
   for (const [k, z] of lst.entries()) {
-    await page.evaluate(async (z) => { const E = await import('./engine.js?v=28');
+    await page.evaluate(async (z) => { const E = await import('./engine.js?v=29');
       if (!window.__repere) { window.__repere = new E.THREE.Mesh(new E.THREE.SphereGeometry(0.3, 12, 8), new E.THREE.MeshBasicMaterial({ color: 0xff2020, depthTest: false })); window.__repere.renderOrder = 999; E.scene.add(window.__repere); }
       window.__repere.position.set(z.x, z.y + 0.5, z.z);
       E.G.freeCam = { pos: { x: z.x + 6, y: z.y + 4, z: z.z + 5 }, at: { x: z.x, y: z.y + 0.5, z: z.z } };

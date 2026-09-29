@@ -53,6 +53,9 @@ DON_MAX = 999
 BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
+# En balade par équipes, il n'y a pas de manche : le premier camp à VICTOIRE_BALADE points
+# l'emporte, on montre le tableau, et points et bannières repartent de zéro (Eugène).
+VICTOIRE_BALADE = int(os.environ.get("TLOC_VICTOIRE_BALADE", 10))   # abaissé au banc
 # La prise des drapeaux (règle `drapeaux`, en équipes) : des drapeaux aux points forts de la
 # citadelle, pris en restant dans leur cercle. À la fin du chrono, le camp qui en tient le
 # plus gagne ; à égalité, celui qui les a tenus le plus longtemps (drapeaux × secondes).
@@ -1016,6 +1019,8 @@ class Salon:
         self.bannieres = {c: {"etat": "base", "porteur": None, "p": None, "t": 0.0} for c in CAMPS}
         self.regle = "balade"                     # posés à l'entrée du premier joueur
         self.equipes = False
+        # ce que chacun a apporté à son camp depuis la dernière victoire de balade
+        self.apport: dict[int, dict] = {}           # id -> { "mises": n, "bannieres": n }
         self.vies = 1
         self.duree = 180
         # la manche en cours (survie, temps) : { etat: compte|cours|fin, fin, stats, elimines, ... }
@@ -1396,6 +1401,25 @@ class Salon:
                 o.update(p=list(o["maison"]["p"]), y=o["maison"]["y"], pv=CHEVAL_PV)
         await self.annoncer_objets(evt="raz")
 
+    async def victoire_balade(self):
+        """En balade par équipes : un camp à VICTOIRE_BALADE points l'emporte. On diffuse le
+        tableau (qui a apporté quoi), puis tout repart : points à zéro, bannières au ralliement."""
+        if self.regle != "balade" or not self.equipes:
+            return
+        gagnant = next((c for c in CAMPS if self.points[c] >= VICTOIRE_BALADE), None)
+        if not gagnant:
+            return
+        joueurs = [{"id": c.id, "perso": c.perso, "camp": c.camp, **self.apport.get(c.id, {"mises": 0, "bannieres": 0})}
+                   for c in self.joueurs.values() if c.camp in CAMPS]
+        joueurs.sort(key=lambda j: (j["camp"] != gagnant, -(j["mises"] + BANNIERE_POINTS * j["bannieres"])))
+        await self.diffuser({"t": "victoire", "camp": gagnant, "points": dict(self.points), "joueurs": joueurs,
+                             "objectif": VICTOIRE_BALADE})
+        self.points = {c: 0 for c in CAMPS}
+        self.apport = {}
+        for b in self.bannieres.values():
+            b.update(etat="base", porteur=None, p=None)
+        await self.diffuser({"t": "banniere", "bannieres": self.vue_bannieres(), "evt": "raz", "points": self.points})
+
     def vue_bannieres(self) -> dict:
         return {c: {k: v for k, v in b.items() if k != "t"} for c, b in self.bannieres.items()}
 
@@ -1740,8 +1764,10 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                     return
                 b.update(etat="base", porteur=None, p=None)
                 salon.points[moi.camp] += BANNIERE_POINTS
+                salon.apport.setdefault(moi.id, {"mises": 0, "bannieres": 0})["bannieres"] += 1
                 await salon.diffuser({"t": "banniere", "bannieres": salon.vue_bannieres(), "evt": "marque",
                                       "camp": autre, "perso": moi.perso, "id": moi.id, "points": salon.points})
+                await salon.victoire_balade()
 
         elif t == "ramasser":
             # la bourse est au premier qui l'atteint : le serveur tranche, pas les clients
@@ -1863,6 +1889,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 tueur.frags += 1
                 if equipes and tueur.camp in CAMPS and tueur.camp != moi.camp:
                     salon.points[tueur.camp] += 1
+                    salon.apport.setdefault(tueur.id, {"mises": 0, "bannieres": 0})["mises"] += 1
             await salon.faire_tomber(moi)
             await salon.diffuser({
                 "t": "mort", "id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso,
@@ -1872,6 +1899,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 "scores": [c.vue() for c in salon.joueurs.values()],
                 "points": salon.points,
             })
+            await salon.victoire_balade()
             # la bourse en jeu : la victime a déjà retiré ce qu'elle perd ; la bourse
             # tombe là où elle est tombée, et reste BOURSE_VIE secondes
             try:

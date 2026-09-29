@@ -955,6 +955,48 @@ Notées telles quelles, par thème.
 Chargement après tout ça : 13,7 s en somme des étapes (froid), 15,0 s (relance) —
 `bancs/charge-2026-09-29-multi-aires.json`.
 
+**Publié sur le dev le 29 (`00d3ce9`, version 28)** — à essayer par Eugène avant « Promouvoir ».
+Depuis, en local (non publié) :
+- **Personnages lointains** (engine.js, `trierPersonnages`) : au-delà de 140 m, un riggé passe
+  sur un calque que ni la caméra ni l'ombre ne voient (squelette non recalculé) ; les géants
+  restent. 112 personnages sur 129 écartés au moulin. Banc, qualité 1 à ×0,75 : 19,6 img/s
+  (16,1 avant, machine chaude) — ×2 depuis le départ (9,9).
+- **Mesure qui clôt une piste** : 82 % des triangles de décor sont dans des objets de plus de
+  20 m (quartier, remparts, sols) ; les petits objets (< 2 m) n'en font que 13 %. Un niveau
+  de détail des petits décors rapporterait peu.
+- **Drapeaux** : la grille des chemins se remplit aussi pendant l'arrivée (titre, armoire,
+  carte : 14 ms par image, jeu figé) — drapeaux posés 18 s après l'entrée en jeu au lieu de
+  30 à 50. Le bot immobile du banc précédent n'a pas été reproduit (7 bots sur 7 en route).
+- **Rideau de l'aire** : raies franches et liseré au sol (il passait pour la lumière du soir).
+  Piège : une variable GLSL accentuée (`liseré`) casse le shader sans bruit — ASCII seulement.
+- Ponts revus en image : les bouts de tablier sont au ras du sol.
+
+**Reprise du 29 au soir — les quatre points d'Eugène, dans l'ordre** (rien de publié) :
+- Bandeau des drapeaux : « ⚑ Les drapeaux arrivent dans ~N s » tant que la grille se remplit
+  (`attenteDrapeaux`, tloc-multi.js). Fait, vu.
+- **1. Frappe en selle** : faite et vérifiée (NOTE-MULTI.md, « La frappe en selle »).
+- **2. Textures KTX2** : EN ATTENTE de l'accord d'Eugène pour télécharger KTX2Loader +
+  basis_transcoder (jsdelivr, three@0.160.0) et l'encodeur Basis Universal. Réserve à lui
+  redire : UASTC (qualité) grossit les fichiers → le téléchargement en ligne peut empirer ;
+  ETC1S abîme l'image. Proposer un essai sur ~10 textures mesuré avant/après.
+- **3. Banc d'accessibilité** `node bancs/acces.mjs [page]` : FAIT (1 min 40 pour tout).
+  Inondation aux règles de Camille (marche 0,5, saut 1,3 ; 1 m dehors avec sous-pas de 25 cm,
+  25 cm dedans), puis une passe fine à 25 cm et à étages illimités (un colimaçon empile onze
+  tours) autour de chaque interaction non atteinte ; le rapport donne la case atteinte la plus
+  proche. Trois pièges du banc lui-même, chacun démasqué par une vraie marche de Camille
+  (`tryMove`) : escaliers raides, colimaçons, départ dans une collision. **Vrai défaut
+  trouvé et corrigé** : le petit coffre du bastion du Dauphin était posé au-delà de son
+  parapet (1,4 m), inatteignable — `quetes.js` exige maintenant une ligne droite dégagée
+  depuis l'arrivée de la rampe (ou le centre) jusqu'au coffre. Résultat : 21 interactions sur
+  21 dehors, tout atteint dans les intérieurs ; à la cave, Eugène et le coffre de la galerie
+  sont derrière la grille du levier (voulu).
+- **4. Écran de victoire en balade par équipes** : FAIT. Le serveur (`victoire_balade`,
+  `VICTOIRE_BALADE` = 10, `TLOC_VICTOIRE_BALADE` pour le banc) donne la victoire au premier
+  camp à 10 points (mise à terre 1, bannière 3), diffuse `victoire` avec l'apport de chacun,
+  puis remet points et bannières à zéro. Le client (`afficherVictoire`) montre les deux camps
+  côte à côte ; « Continuer », Entrée ou Échap, ou 15 s. Le panneau dit l'objectif. Vérifié
+  avec 7 bots et un objectif abaissé à 2.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js
