@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=29';
+} from './engine.js?v=30';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -1158,7 +1158,9 @@ function proposerDrapeaux() {
     const k = j * nx + i;
     if (relie[k] < 0) continue;
     const x = nav.x0 + (i + 0.5) * NAV_PAS, z = nav.z0 + (j + 0.5) * NAV_PAS;
-    if (zone === 'citadelle' ? sdPent(x, z) > -12 : zone === 'parc' ? !parc[k] || sdPent(x, z) > PARC_BOIS_R || enQuartier(x, z) : sdEnceinte(x, z) > -12) continue;
+    // à 40 m au moins de la limite du monde : près d'elle, les rues continuent au-delà sans
+    // rempart dessiné, et l'on bute contre un « faux mur » en voyant le drapeau (Eugène, 29 sept.)
+    if (zone === 'citadelle' ? sdPent(x, z) > -12 : zone === 'parc' ? !parc[k] || sdPent(x, z) > PARC_BOIS_R || enQuartier(x, z) : sdEnceinte(x, z) > -40) continue;
     if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
   // les plus écartés : la place, puis toujours le point le plus loin de ceux déjà retenus
@@ -2593,8 +2595,23 @@ function poserStyleResultats() {
   .resultats-manche .camp .tenue { padding:0 4px 8px; font-size:13px; color:#C4BBA6; }
   .resultats-manche .camp ol { margin:0; }
   .resultats-manche .camp li { background:#161C2B; }
-  @media (max-width: 620px) { .resultats-manche .camps { grid-template-columns:1fr; } }`;
+  .resultats-manche .miroir { display:grid; grid-template-columns:1fr auto auto auto 1fr; align-items:center; gap:0 14px; margin:0 18px 14px; }
+  .resultats-manche .miroir b { font-size:19px; }
+  .resultats-manche .miroir b:first-child { text-align:right; }
+  .resultats-manche .miroir .compte { font-family:Grenze,Georgia,serif; font-size:48px; font-weight:700; line-height:1; color:#FFE3A1; }
+  .resultats-manche .miroir .tiret { font-family:Grenze,Georgia,serif; font-size:34px; color:#C4BBA6; }
+  .resultats-manche .miroir .unite { grid-column:1 / -1; text-align:center; font-size:13px; color:#C4BBA6; }
+  @media (max-width: 620px) { .resultats-manche .camps { grid-template-columns:1fr; } .resultats-manche .miroir b { font-size:15px; } }`;
   document.head.appendChild(st);
+}
+// Le score des deux camps en miroir, comme au stade : « La Garnison 0 – 2 Les gens du
+// bourg » (Eugène, 29 septembre). Il se lisait mal en deux gros chiffres dans deux en-têtes
+// de colonne. Les colonnes restent dessous, pour le détail de chacun.
+function scoreMiroir(pts, unite) {
+  const [a, b] = Object.keys(CAMPS);
+  return `<div class="miroir"><b style="color:${CAMPS[a].couleur}">${ech(CAMPS[a].nom)}</b>`
+    + `<span class="compte">${pts[a] || 0}</span><span class="tiret">–</span><span class="compte">${pts[b] || 0}</span>`
+    + `<b style="color:${CAMPS[b].couleur}">${ech(CAMPS[b].nom)}</b>${unite ? `<span class="unite">${unite}</span>` : ''}</div>`;
 }
 let jePrets = false;
 function afficherResultats(m) {
@@ -2621,12 +2638,11 @@ function afficherResultats(m) {
   // (Eugène, 29 septembre) — deux colonnes, le camp gagnant cerclé d'or
   const parCamps = regle === 'drapeaux' && enEquipes() && m.drapeaux;
   const blocCamps = !parCamps ? '' : (() => {
-    const t = m.tenue || {};
-    return '<div class="camps">' + Object.keys(CAMPS).map((c) => {
-      const n = m.drapeaux.filter((d) => d.camp === c).length;
+    const t = m.tenue || {}, pts = {};
+    for (const c of Object.keys(CAMPS)) pts[c] = m.drapeaux.filter((d) => d.camp === c).length;
+    return scoreMiroir(pts, 'drapeaux tenus à la fin') + '<div class="camps">' + Object.keys(CAMPS).map((c) => {
       const siens = (m.classement || []).filter((e) => e.camp === c);
-      return `<section class="camp${m.camp_gagnant === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b>`
-        + `<span class="compte">${n}<small>drapeau${n > 1 ? 'x' : ''}</small></span></header>`
+      return `<section class="camp${m.camp_gagnant === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b></header>`
         + `<div class="tenue">Tenus ${t[c] || 0} s en tout</div>`
         + `<ol>${siens.map(ligne).join('') || '<li><span></span><span class="nom" style="opacity:.6">personne</span><span></span></li>'}</ol></section>`;
     }).join('') + '</div>';
@@ -2674,8 +2690,7 @@ function afficherVictoire(m) {
     const siens = (m.joueurs || []).filter((j) => j.camp === c);
     const li = siens.map((j, k) => `<li class="${moi && j.id === moi.id ? 'moi' : ''}"><span class="rang">${k + 1}</span><span class="nom" style="color:${CAMPS[c].couleur}">${nom(j)}</span>`
       + `<span class="score">${j.mises + 3 * j.bannieres}<small>${j.mises} à terre · ${j.bannieres} bannière${j.bannieres > 1 ? 's' : ''}</small></span></li>`).join('');
-    return `<section class="camp${m.camp === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b>`
-      + `<span class="compte">${m.points[c] || 0}<small>point${(m.points[c] || 0) > 1 ? 's' : ''}</small></span></header>`
+    return `<section class="camp${m.camp === c ? ' gagne' : ''}"><header><b style="color:${CAMPS[c].couleur}">${ech(CAMPS[c].nom)}</b></header>`
       + `<ol>${li || '<li><span></span><span class="nom" style="opacity:.6">personne</span><span></span></li>'}</ol></section>`;
   }).join('');
   resultats = document.createElement('section');
@@ -2684,6 +2699,7 @@ function afficherVictoire(m) {
   resultats.innerHTML = `<div class="frise"></div>
     <p class="regle">Balade par équipes · premier à ${m.objectif || VICTOIRE_BALADE} points</p>
     <h2>${ech(CAMPS[m.camp].nom)} l’emporte !</h2>
+    ${scoreMiroir(m.points || {}, 'points')}
     <div class="camps">${colonnes}</div>
     <p class="miens">${state.camp === m.camp ? 'Victoire de ton camp !' : 'Ce sera pour la prochaine.'} <span style="opacity:.75">Les points et les bannières repartent de zéro.</span></p>
     <div class="boutons"><button type="button" class="rejouer">Continuer</button></div>`;

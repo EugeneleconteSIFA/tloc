@@ -2,6 +2,7 @@
 // Autonome : ne dépend pas de engine.js, s'utilise depuis n'importe quelle page du jeu.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { clipsPour, NOMS as NOMS_LOCO } from './locomotion.js';
@@ -148,7 +149,37 @@ export function footprint(obj, shrink = 0) {
  */
 const decodeur = new THREE.ImageBitmapLoader().setOptions({ imageOrientation: 'flipY' });
 const enCours = new Set();
+
+// ---------------------------------------------------------------------
+//  L'essai KTX2 (?ktx2 dans l'adresse, 29 septembre)
+// ---------------------------------------------------------------------
+// Les .ktx2 (outils_ktx2.mjs, à côté des .webp) arrivent compressés pour la carte graphique :
+// pas de décodage, un envoi quasi immédiat, 4 fois moins de mémoire graphique. Le piège : la
+// texture revient tout de suite, vide, et on en tire des copies avant qu'elle soit chargée
+// (tex(), puis unifierMateriaux) — or une CompressedTexture garde ses niveaux (mipmaps) et son
+// format dans CHAQUE copie, pas dans l'image partagée. TextureKTX2 les lit donc sur la source
+// commune : toutes les copies se remplissent ensemble, où qu'elles aient été faites.
+const KTX2 = typeof location !== 'undefined' && /[?&]ktx2\b/.test(location.search);
+let ktx2 = null, ktxRendu = null;
+export function brancherKTX2(renderer) { ktxRendu = renderer; }
+class TextureKTX2 extends THREE.CompressedTexture {
+  get mipmaps() { return (this.source && this.source.ktxMips) || []; }
+  set mipmaps(v) {}
+  get format() { return (this.source && this.source.ktxFormat) ?? THREE.RGBAFormat; }
+  set format(v) {}
+}
+function chargerKTX2(url, surErreur) {
+  if (!ktx2) ktx2 = new KTX2Loader().setTranscoderPath('lib/addons/libs/basis/').detectSupport(ktxRendu);
+  const t = new TextureKTX2(null, 1, 1);
+  const p = new Promise((fin) => ktx2.load(url.replace(/\.webp$/, '.ktx2'), (kt) => {
+    const s = t.source; s.data = kt.image; s.ktxMips = kt.mipmaps; s.ktxFormat = kt.format; s.needsUpdate = true; t.needsUpdate = true; fin();
+  }, undefined, (e) => { if (surErreur) surErreur(e); fin(); }));
+  enCours.add(p); p.then(() => enCours.delete(p));
+  return t;
+}
+
 export function chargerTexture(url, surErreur) {
+  if (KTX2 && ktxRendu) return chargerKTX2(url, surErreur);
   const t = new THREE.Texture();
   t.flipY = false;
   const p = new Promise((fin) => decodeur.load(url, (bmp) => { t.image = bmp; t.needsUpdate = true; fin(); }, undefined, (e) => { if (surErreur) surErreur(e); fin(); }));

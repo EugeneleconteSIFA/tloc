@@ -36,7 +36,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, dev
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 if (process.env.TLOC_ENGINE) { const src = fs.readFileSync(process.env.TLOC_ENGINE, 'utf8');
   await page.route(/\/engine\.js(\?.*)?$/, (route) => route.fulfill({ contentType: 'text/javascript', body: src })); }
-await page.goto(ORIGINE + '/index.html');
+await page.goto(ORIGINE + '/index.html' + (process.env.TLOC_PARAMS || ''));
 await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000, polling: 200 });
 await page.evaluate(() => { TLOC.state.introSeen = true; TLOC.menu.items[0].fn(); });
 await page.waitForTimeout(3000);

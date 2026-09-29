@@ -975,10 +975,19 @@ Depuis, en local (non publié) :
 - Bandeau des drapeaux : « ⚑ Les drapeaux arrivent dans ~N s » tant que la grille se remplit
   (`attenteDrapeaux`, tloc-multi.js). Fait, vu.
 - **1. Frappe en selle** : faite et vérifiée (NOTE-MULTI.md, « La frappe en selle »).
-- **2. Textures KTX2** : EN ATTENTE de l'accord d'Eugène pour télécharger KTX2Loader +
-  basis_transcoder (jsdelivr, three@0.160.0) et l'encodeur Basis Universal. Réserve à lui
-  redire : UASTC (qualité) grossit les fichiers → le téléchargement en ligne peut empirer ;
-  ETC1S abîme l'image. Proposer un essai sur ~10 textures mesuré avant/après.
+- **2. Textures KTX2** : ESSAI FAIT (accord d'Eugène), NON ACTIVÉ par défaut — décision
+  d'Eugène. `KTX2Loader` et le transcodeur Basis de three r160 sont dans lib/addons ;
+  `?ktx2` dans l'adresse fait lire les .ktx2 à la place des .webp (assets.js,
+  `TextureKTX2` : niveaux et format lus sur la source commune, sans quoi les copies faites
+  avant la fin du chargement restaient vides). `node outils_ktx2.mjs` (encodeur Basis
+  Universal hors dépôt, `BASIS_ENCODER=…/basis_encoder.js`) convertit les 176 textures
+  (Poly Haven, forêt) en ETC1S qualité 255, en 7 min ; les .ktx2 sont ignorés par git.
+  Mesures : sur 10 textures, ETC1S 128 −58 % / 255 −34 % pour les grandes couleurs mais les
+  petites cartes (512²) grossissent — **23,0 Mo → 23,0 Mo au total** ; UASTC 3× plus lourd
+  (écarté). Fidélité ETC1S 255 : 26–34 dB, léger adoucissement à taille réelle, rien de
+  visible en jeu (captures du bourg). Chargement : préparation du rendu −1 à −1,5 s
+  (entrelacé, bruité) ; mémoire graphique ÷ 4 (BC7) ; **cadence en jeu inchangée**
+  (15,7 → 15,4 img/s). Intérêt surtout pour des cartes graphiques à court de mémoire.
 - **3. Banc d'accessibilité** `node bancs/acces.mjs [page]` : FAIT (1 min 40 pour tout).
   Inondation aux règles de Camille (marche 0,5, saut 1,3 ; 1 m dehors avec sous-pas de 25 cm,
   25 cm dedans), puis une passe fine à 25 cm et à étages illimités (un colimaçon empile onze
@@ -996,6 +1005,36 @@ Depuis, en local (non publié) :
   puis remet points et bannières à zéro. Le client (`afficherVictoire`) montre les deux camps
   côte à côte ; « Continuer », Entrée ou Échap, ou 15 s. Le panneau dit l'objectif. Vérifié
   avec 7 bots et un objectif abaissé à 2.
+
+### T. Retours d'Eugène sur ses captures (29 septembre, soir) — **faits, rien de publié**
+
+- **Les « trucs noirs » du moulin** : les haies IGN (`haiesIGN`, carte.js) étaient deux plans
+  continus tendus de `forest_leaves_04` — une texture de SOL, sans transparence. Ce sont
+  maintenant des touffes détourées (la carte `buisson` des buissons de nature.js), une tous
+  les 1,1 m, teinte sombre (la carte seule jaunit au soleil).
+- **Score en miroir** (`scoreMiroir`, tloc-multi.js) : « La garnison 0 – 2 Les gens du
+  bourg » en tête de la fin de manche aux drapeaux et de la victoire en balade ; les colonnes
+  de chaque camp restent dessous, sans leur gros chiffre.
+- **Accueil** : à 1000 × 536 (l'écran d'Eugène), « Rejoindre » est entier. Le grand titre
+  part sous 640 px de haut, les sous-titres des tuiles aussi ; les réglages de « Ouvrir une
+  partie » restent sur deux colonnes jusqu'à 820 px (ils passaient en une seule dès 1080 px :
+  c'était le vide) ; la seconde rangée prend le surplus, « Rejoindre » colle à « Seul ». Au
+  pire (équipes, drapeaux, bots), seul le bouton « Créer » dépasse de 18 px.
+- **Icônes de règle** : Balade = deux empreintes de pas ; Drapeaux = un drapeau planté dans
+  son cercle (on le tient pour le prendre). *À confirmer : « l'icône capture » était-elle
+  bien celle-là ?*
+- **Carte plein écran, tournée** (`couvrir`, `versEcran`/`versMonde`, atlas.js) : le relevé
+  couche son grand côté sur celui de l'écran (−75° en paysage) et le couvre ; clic, glissé,
+  flèches passent par l'inverse exact. La flèche du nord tourne avec, les noms restent droits.
+- **Drapeau « derrière un faux mur »** : les emplacements restent à 40 m de l'enceinte
+  (le mur de fin du monde coupe des rues ; il ne se voit pas là où elles le traversent — à
+  rendre visible un jour).
+- **Les ouvrages avancés deviennent des reliefs** (`talusDehors`, `talusMaillage`, carte.js) :
+  côté terre ferme, un talus de 7 m, arrondi en haut, descend du terre-plein au pré ; côté
+  fossé l'escarpe reste droite. Maillé en jupe depuis le bord même (une grille à cheval sur
+  le bord laissait voir l'escarpe). Marche simulée depuis 11 m dehors : tous les côtés secs
+  des 9 demi-lunes et contregardes se gravissent (pas max 0,09 m) ; la lunette du Grand Carré
+  touche la limite du monde. Chargement inchangé (≈ 14,4 s de somme d'étapes).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

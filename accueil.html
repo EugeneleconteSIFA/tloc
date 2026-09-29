@@ -35,7 +35,7 @@
     });
   })();
 </script>
-<link rel="stylesheet" href="tloc-portail.css?v=26">
+<link rel="stylesheet" href="tloc-portail.css?v=27">
 </head>
 <body>
 <header class="barre">
@@ -103,10 +103,10 @@
         <!-- une icône par règle (Eugène, 29 septembre) : le chemin, la pierre tombale, l'horloge, le drapeau -->
         <fieldset class="choix-niveau choix-regle">
           <legend class="sr">Règle</legend>
-          <label><input type="radio" name="regleInstance" value="balade" checked><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21c2-4 6-4 7-8s-3-6 0-9"/><path d="M13 21c1.5-3 5-3.5 5.5-7"/><circle cx="17" cy="5" r="1.2" fill="currentColor"/><circle cx="19.5" cy="9" r="1.2" fill="currentColor"/></svg>Balade</span></label>
+          <label><input type="radio" name="regleInstance" value="balade" checked><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="8" cy="7.5" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="8" cy="14.6" r="1.9" fill="currentColor" stroke="none"/><ellipse cx="16" cy="11" rx="2.6" ry="4" fill="currentColor" stroke="none"/><circle cx="16" cy="18.1" r="1.9" fill="currentColor" stroke="none"/></svg>Balade</span></label>
           <label><input type="radio" name="regleInstance" value="survie"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V10a6 6 0 0 1 12 0v11"/><path d="M3 21h18"/><path d="M12 9v6M9.5 11.5h5"/></svg>Match à mort</span></label>
           <label><input type="radio" name="regleInstance" value="temps"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>Chrono</span></label>
-          <label class="cache" id="regleDrapeaux"><input type="radio" name="regleInstance" value="drapeaux"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22V3"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Drapeaux</span></label>
+          <label class="cache" id="regleDrapeaux"><input type="radio" name="regleInstance" value="drapeaux"><span><svg class="regle-icone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="9" cy="20" rx="7.5" ry="2.5"/><path d="M9 20V3"/><path d="M9 4h10l-2.5 3.5L19 11H9"/></svg>Drapeaux</span></label>
         </fieldset>
         <p class="indice" id="indiceRegle">Sans fin ni score : on se promène et on se bat.</p>
         </div>
@@ -184,6 +184,6 @@
 
 <!-- les retours brefs (copié, supprimé, rejoint) : en bas, sans déplacer la page -->
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
-<script type="module" src="accueil.js?v=29"></script>
+<script type="module" src="accueil.js?v=30"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { chargerTexture, texturesEnAttente } from './assets.js';     // les textures décodées en tâche de fond
+import { brancherKTX2, chargerTexture, texturesEnAttente } from './assets.js';     // les textures décodées en tâche de fond
 export { THREE };
 
 // =====================================================================
@@ -48,6 +48,7 @@ export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 // compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
 // pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
 renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
+brancherKTX2(renderer);          // l'essai KTX2 (?ktx2) a besoin de savoir ce que la carte sait décoder
 // ---------------------------------------------------------------------
 //  L'éclairage allégé au loin (modifie deux morceaux de shader de three, pour tous les
 //  matériaux, avant toute compilation)

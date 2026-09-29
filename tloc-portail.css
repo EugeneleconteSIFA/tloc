@@ -87,7 +87,8 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
    rapport à la partie multijoueur ») : « Seul » et « Rejoindre », peu remplis, s'empilent à
    gauche ; « Ouvrir une partie » a toute la droite, et ses réglages tiennent en deux colonnes —
    tout se voit sans défiler, même en équipes, au chrono, avec des bots. */
-.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.7fr); gap:18px; text-align:left; align-items:start; }
+.modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.7fr); grid-template-rows:auto 1fr; gap:18px; text-align:left; align-items:start; }
+/* la seconde rangée prend le surplus de « Ouvrir une partie » : « Rejoindre » reste collé sous « Seul » */
 .modes-multi { display:contents; }
 .mode-solo { grid-column:1; grid-row:1; }
 .mode-rejoindre { grid-column:1; grid-row:2; }
@@ -148,7 +149,15 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
 .choix input:checked + span b { color:var(--or-clair); }
 .choix input:focus-visible + span { outline:2px solid var(--or); outline-offset:2px; }
 .vitrine > .msg { width:min(1240px,100%); margin:16px auto 0; text-align:left; }
-@media (max-width: 1080px) {
+/* Les réglages restent sur deux colonnes jusqu'à 820 px : en une seule, l'encadré s'étirait
+   en hauteur, plein de vide à droite des cases, et poussait « Rejoindre » sous le bas d'un
+   écran de 1000 × 536 (Eugène, 29 septembre). Dans une colonne étroite, les cases s'empilent. */
+@media (max-width: 1180px) {
+  .creer-grille .choix-mode { grid-template-columns:1fr; }
+  .creer-grille .choix-regle { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .creer-grille .choix-duree { grid-template-columns:repeat(4, minmax(0,1fr)); }   /* « 10 min » tient en 60 px */
+}
+@media (max-width: 820px) {
   .creer-grille { grid-template-columns:1fr; }
 }
 /* un portable de 768 px de haut (≈ 680 utiles) : le titre se tasse pour que tout le
@@ -157,6 +166,20 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
   .vitrine { padding-top:14px; }
   h1.logo { font-size:clamp(34px,4vw,52px); }
   .sous { margin:2px 0 10px; font-size:16px; }
+}
+/* un écran bas (portable avec le dock, fenêtre réduite) : le grand titre part, la barre du
+   haut porte déjà le nom du jeu — les trois tuiles tiennent alors dans le premier écran */
+@media (max-height: 640px) and (min-width: 701px) {
+  .vitrine { padding-top:12px; }
+  h1.logo, .vitrine > .sous { display:none; }
+  .mode { gap:10px; padding:14px 16px; }
+  .mode .accroche { font-size:17px; line-height:1.35; }
+  .mode-rejoindre .cases input { height:42px; }
+  .mode-tete { gap:10px; }
+  .mode-tete p { display:none; }
+  .mode-icone { width:34px; height:34px; }
+  .revoir-prologue { margin-top:4px; }
+  .choix span { padding:6px 10px; }
 }
 @media (max-width: 700px) {
   .modes { grid-template-columns:1fr; }

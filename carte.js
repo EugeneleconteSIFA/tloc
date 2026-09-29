@@ -8,13 +8,15 @@
 // z = sud, Porte Royale au sud. Les élévations ne suivent PAS l'échelle du plan —
 // elles étaient déjà réalistes.
 import { THREE, clamp, lerp, rand, TAU, distSeg, pointInPoly, scene, T, mat, pbr, pbrRepeat, phMat, stoneMat,
-  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=29';
+  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=30';
 
 // Alias : plusieurs fonctions déclarent un « E » local (un THREE.Euler de travail)
 // qui masquerait le namespace du moteur. On passe donc par un nom qui ne peut pas
 // être masqué — c'est une erreur qui ne se voit qu'à l'exécution.
 export const patinerMat = (m, o) => patiner(m, o);
 import { PARTAGE } from './etat.js';
+import * as FORET from './foret.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Les quatre fichiers de la carte partent ENSEMBLE, dès l'évaluation du module : attendus
 // l'un après l'autre (chaque `await fetch` plus bas), ils coûtaient quatre allers-retours au
@@ -836,6 +838,29 @@ export function dehorsAt(x, z) {
   for (const o of DEHORS) {
     if (Math.hypot(x - o.c[0], z - o.c[1]) > o.rr) continue;
     if (pointInPoly(x, z, o.poly)) return o;
+  }
+  return null;
+}
+
+// LE TALUS DES OUVRAGES. Leur terre-plein tombait à pic sur le pré, d'un à deux mètres et
+// demi : des plates-formes qu'on longeait sans pouvoir y monter (Eugène, 29 septembre :
+// « des zones surélevées autour de la citadelle, je voudrais que ce soient des reliefs
+// accessibles »). Côté terre ferme, un talus de TALUS_DEHORS mètres descend du bord du
+// terre-plein jusqu'au sol ; côté fossé, l'escarpe reste droite — un talus y mènerait sous
+// l'eau. Le couloir du pont est exclu, comme dans dehorsAt.
+export const TALUS_DEHORS = 7;
+export function talusDehors(x, z) {
+  if (Math.abs(x) < PONT_HW && z > APO && z < PONT_Z1 + 10) return null;
+  for (const o of DEHORS) {
+    if (Math.hypot(x - o.c[0], z - o.c[1]) > o.rr + TALUS_DEHORS) continue;
+    if (pointInPoly(x, z, o.poly)) return null;              // le terre-plein : dehorsAt
+    let d = Infinity;
+    for (let i = 0; i < o.poly.length; i++) { const a = o.poly[i], b = o.poly[(i + 1) % o.poly.length]; d = Math.min(d, distSeg(x, z, a[0], a[1], b[0], b[1])); }
+    if (d >= TALUS_DEHORS || sdEau(x, z) < 0) continue;
+    const sol = solPlaine(x, z);
+    if (sol >= o.h) continue;
+    const t = d / TALUS_DEHORS;
+    return o.h + (sol - o.h) * t * (2 - t);                  // arrondi en haut, raccordé au pré
   }
   return null;
 }
@@ -2359,45 +2384,43 @@ export function essenceAt(x, z) {
   return null;
 }
 
-// Les haies relevées, posées comme une file de feuillage bas. Le jeu en inventait le
-// long de la route ; celles-ci sont celles du terrain.
+// Les haies relevées, posées comme une file de touffes de buisson. Le jeu en inventait le
+// long de la route ; celles-ci sont celles du terrain. Elles étaient deux plans continus
+// tendus d'une texture de SOL de feuilles (forest_leaves_04, sans transparence) : de près,
+// de longues bandes noires à côté du moulin, « qui ne servent à rien » (Eugène, 29 septembre).
+// Même carte détourée que les buissons de nature.js : la haie se lit par sa silhouette.
 export function haiesIGN() {
   const g = new THREE.Group(); g.name = 'haies-ign';
   if (!IGN.haies.length) return g;
-  const feuille = phMat('forest_leaves_04', 1, 1, { color: 0x4e6b32, roughness: 1 });
-  const H = 1.5, DEMI = 0.75;
-  const pos = [], uv = [], idx = [];
+  const touffes = [];
   for (const h of IGN.haies) {
     const p = h.p;
     for (let i = 0; i < p.length - 1; i++) {
       const a = p[i], b = p[i + 1];
       const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz);
       if (L < 0.5) continue;
-      const nx = -dz / L, nz = dx / L, pas = Math.max(1, Math.ceil(L / 3));
-      for (let k = 0; k < pas; k++) {
-        const t0 = k / pas, t1 = (k + 1) / pas;
-        const x0 = a[0] + dx * t0, z0 = a[1] + dz * t0, x1 = a[0] + dx * t1, z1 = a[1] + dz * t1;
-        const y0 = solPlaine(x0, z0), y1 = solPlaine(x1, z1);
-        // deux plans croisés : une haie se lit de tous les côtés sans coûter un buisson
-        for (const [ox, oz] of [[nx * DEMI, nz * DEMI], [0, 0]]) {
-          const n0 = pos.length / 3;
-          pos.push(x0 - ox, y0, z0 - oz, x1 - ox, y1, z1 - oz,
-                   x1 + ox, y1 + H, z1 + oz, x0 + ox, y0 + H, z0 + oz);
-          uv.push(0, 0, 1, 0, 1, 1, 0, 1);
-          idx.push(n0, n0 + 1, n0 + 2, n0, n0 + 2, n0 + 3);
-        }
+      const nx = -dz / L, nz = dx / L;
+      for (let s = 0; s < L; s += 1.1) {
+        const t = s / L, cote = rand(-0.35, 0.35);
+        const x = a[0] + dx * t + nx * cote, z = a[1] + dz * t + nz * cote;
+        touffes.push([x, solPlaine(x, z), z, rand(1.0, 1.45), rand(0, TAU), rand(0, 1)]);
       }
     }
   }
-  if (!pos.length) return g;
-  const ge = new THREE.BufferGeometry();
-  ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  ge.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  ge.setIndex(idx); ge.computeVertexNormals();
-  const m = new THREE.Mesh(ge, feuille);
-  m.material.side = THREE.DoubleSide; m.material.transparent = true; m.material.alphaTest = 0.4;
-  m.castShadow = m.receiveShadow = true;
-  g.add(m);
+  if (!touffes.length) return g;
+  const q1 = new THREE.PlaneGeometry(1.7, 1.25); q1.translate(0, 0.6, 0);
+  const q2 = q1.clone(); q2.rotateY(Math.PI / 3);
+  const q3 = q1.clone(); q3.rotateY(-Math.PI / 3);
+  const geo = mergeGeometries([q1, q2, q3]);
+  const feuille = new THREE.MeshStandardMaterial({ map: FORET.carteForet('buisson'), alphaTest: 0.40, side: THREE.DoubleSide, roughness: 1 });
+  const im = new THREE.InstancedMesh(geo, feuille, touffes.length);
+  const M4 = new THREE.Matrix4(), QT = new THREE.Quaternion(), PV = new THREE.Vector3(), SV = new THREE.Vector3(), AX = new THREE.Vector3(0, 1, 0), CL = new THREE.Color();
+  touffes.forEach(([x, y, z, sc, ry, t], i) => {
+    im.setMatrixAt(i, M4.compose(PV.set(x, y - 0.1, z), QT.setFromAxisAngle(AX, ry), SV.set(sc, sc * 1.1, sc)));
+    im.setColorAt(i, CL.setRGB(0.26 + t * 0.10, 0.40 + t * 0.12, 0.20 + t * 0.06));   // vert sombre de haie : la carte seule jaunit au soleil
+  });
+  im.castShadow = im.receiveShadow = true;
+  g.add(im);
   return g;
 }
 // LE BOIS DU PARC DE LA CITADELLE. Le relevé de Lille ne compte que 24 ha de « bois »
@@ -2503,7 +2526,61 @@ export function terrassesDehors() {
       g.add(dessus);
     }
   }
+  g.add(talusMaillage());
   return g;
+}
+
+// Le talus, maillé en JUPE : des rayons partent du bord même du terre-plein, vers le dehors,
+// et chaque point prend la hauteur de talusDehors — ce qu'on voit est ce sur quoi on marche.
+// Une grille posée à cheval sur le bord laissait voir l'escarpe entre ses cases. Aux angles
+// saillants, un éventail de rayons ferme le coin ; côté fossé, pas de rayon (pas de talus).
+function talusMaillage() {
+  const PAS = 1.25, N = Math.ceil(TALUS_DEHORS / 0.8), pos = [], uv = [], idx = [];
+  for (const o of DEHORS) {
+    const P = o.poly, n = P.length;
+    let A = 0;
+    for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+    const sgn = A < 0 ? -1 : 1, nor = [];
+    for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; nor.push([sgn * (b[1] - a[1]) / L, -sgn * (b[0] - a[0]) / L]); }
+    const rayons = [];                               // [x, z, nx, nz] : un pied au bord, une direction
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n], np = nor[(i - 1 + n) % n], nc = nor[i];
+      // l'éventail de l'angle : de la normale du côté précédent à celle du côté courant
+      const ang = Math.atan2(np[0] * nc[1] - np[1] * nc[0], np[0] * nc[0] + np[1] * nc[1]);
+      if (ang * sgn < 0) {
+        const k = Math.ceil(Math.abs(ang) / 0.25);
+        for (let j = 1; j < k; j++) { const t = Math.atan2(np[1], np[0]) + ang * j / k; rayons.push([a[0], a[1], Math.cos(t), Math.sin(t)]); }
+      }
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.max(1, Math.ceil(L / PAS));
+      for (let j = 0; j < m; j++) rayons.push([a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m, nc[0], nc[1]]);
+    }
+    const debut = pos.length / 3, R = rayons.length, vivant = [];
+    for (const [x, z, nx, nz] of rayons) {
+      // un rayon qui part vers l'eau n'a pas de talus
+      vivant.push(talusDehors(x + nx * 1.5, z + nz * 1.5) !== null);
+      for (let k = 0; k <= N; k++) {
+        const d = TALUS_DEHORS * k / N, px = x + nx * d, pz = z + nz * d;
+        const t = k === 0 ? o.h : talusDehors(px, pz);
+        pos.push(px, t === null ? solPlaine(px, pz) - 0.06 : t, pz); uv.push(px / 100, -pz / 100);
+      }
+    }
+    for (let r = 0; r < R; r++) {
+      const r2 = (r + 1) % R;
+      if (!vivant[r] && !vivant[r2]) continue;
+      for (let k = 0; k < N; k++) {
+        const a = debut + r * (N + 1) + k, b = debut + r2 * (N + 1) + k;
+        // l'ordre suit le sens du polygone : la face regarde toujours le ciel
+        if (sgn > 0) idx.push(a, b, a + 1, b, b + 1, a + 1); else idx.push(a, a + 1, b, b, a + 1, b + 1);
+      }
+    }
+  }
+  const ge = new THREE.BufferGeometry();
+  ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  ge.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  ge.setIndex(idx); ge.computeVertexNormals();
+  const m = new THREE.Mesh(ge, phMat('grass_ground', 100, 100, { color: 0x8fb45f }));
+  m.receiveShadow = true; m.name = 'talus-ouvrages';
+  return m;
 }
 
 
@@ -2658,6 +2735,7 @@ export function levelH(x, z) {
   // (le tablier des ponts de la Deûle n'est PLUS le sol : c'est une plateforme, posée
   //  par preparerPonts — sans quoi on ne peut pas passer dessous)
   { const o = dehorsAt(x, z); if (o) return o.h; }
+  { const t = talusDehors(x, z); if (t !== null) return t; }
   if (BOURG_CALE && inTown(x, z)) return solBourg(x, z);   // dallage du bourg (cf. calerBourg)
   return solPlaine(x, z) + epaisseurVoie(x, z);
 }

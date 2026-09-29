@@ -26,7 +26,7 @@ const res = { date: new Date().toISOString(), origine: ORIGINE };
 for (const passe of ['froid', 'relance']) {
   reseau.length = 0;
   const t0 = Date.now();
-  await page.goto(ORIGINE + '/index.html');
+  await page.goto(ORIGINE + '/index.html' + (process.env.TLOC_PARAMS || ''));
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000, polling: 100 });
   const total = (Date.now() - t0) / 1000;
   const etapes = await page.evaluate(() => JSON.parse(localStorage.getItem('tloc_poids_charge') || 'null'));

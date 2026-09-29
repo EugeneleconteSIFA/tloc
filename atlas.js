@@ -17,7 +17,7 @@ import { PARTAGE } from './etat.js';
 import {
   SFX, THREE, cut, estDecouvert, hideMenu, lieux, menu, player, resumeGame, saveGame,
   showMenu, showMessage, state,
-} from './engine.js?v=29';
+} from './engine.js?v=30';
 
 export const aLaCarte = () => !!state.carteBeffroi;
 
@@ -91,7 +91,21 @@ const MARQUE = {                              // de quoi on parle, et comment on
 const couleurLieu = (id) => MARQUE[id] || (id.startsWith('caserne') ? '#8d6a55' : '#e0b358');
 
 let ecran = null, cv = null, ctx = null;
-const vue = { zoom: 0.55, cx: 0, cz: 0, suivre: true };   // zoom : pixels d'écran par pixel de carte
+const vue = { zoom: 0.55, cx: 0, cz: 0, suivre: true, rot: 0 };   // zoom : pixels d'écran par pixel de carte
+// `rot` : l'angle dont la carte tourne à l'écran. Le nord n'importe pas (Eugène, 29 septembre :
+// « on s'en fout du nord ») ; ce qui compte, c'est que le relevé, penché de 75° et plus long
+// que large, remplisse l'écran — on le couche donc dans le sens de l'écran (cf. couvrir).
+// monde -> écran, et son inverse exact
+function versEcran(x, z) {
+  const k = HUD.CARTE_PX * vue.zoom, c = Math.cos(vue.rot), s = Math.sin(vue.rot);
+  const dx = x - vue.cx, dz = z - vue.cz;
+  return [window.innerWidth / 2 + (dx * c - dz * s) * k, window.innerHeight / 2 + (dx * s + dz * c) * k];
+}
+function versMonde(sx, sy) {
+  const k = HUD.CARTE_PX * vue.zoom, c = Math.cos(vue.rot), s = Math.sin(vue.rot);
+  const u = (sx - window.innerWidth / 2) / k, v = (sy - window.innerHeight / 2) / k;
+  return [vue.cx + u * c + v * s, vue.cz - u * s + v * c];
+}
 // Choisir où apparaître : la même carte, où un clic pose un point au lieu de rien faire.
 // `valider(x, z)` dit si l'endroit est praticable (et le recale au besoin) ; `fin` rend la
 // main à l'appelant avec le point retenu, ou null si le joueur refuse de choisir.
@@ -120,10 +134,7 @@ function peindre() {
   const W = window.innerWidth, H = window.innerHeight;
   const PX = HUD.CARTE_PX;
   if (vue.suivre) { vue.cx = player.pos.x; vue.cz = player.pos.z; }
-  // monde -> écran
   const k = vue.zoom;
-  const ax = (x) => W / 2 + (x - vue.cx) * PX * k;
-  const az = (z) => H / 2 + (z - vue.cz) * PX * k;
 
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#0b1020'; ctx.fillRect(0, 0, W, H);
@@ -132,12 +143,13 @@ function peindre() {
   // penché (ENCEINTE, dans carte.js) posé dans un carré : on ne montre que lui, et le cadre
   // en suit le bord — encadrer le carré laissait une carte de travers flotter dans un fond
   // olive qui n'est pas de la carte.
-  const x0 = ax(-c.R), z0 = az(-c.R), taille = 2 * c.R * PX * k;
-  const contour = () => { ctx.beginPath(); ENCEINTE.forEach(([x, z], i) => (i ? ctx.lineTo(ax(x), az(z)) : ctx.moveTo(ax(x), az(z)))); ctx.closePath(); };
+  const contour = () => { ctx.beginPath(); ENCEINTE.forEach(([x, z], i) => { const [sx, sy] = versEcran(x, z); if (i) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy); }); ctx.closePath(); };
   ctx.save();
   contour(); ctx.clip();
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(c.cv, c.MARGE, c.MARGE, 2 * c.R * PX, 2 * c.R * PX, x0, z0, taille, taille);
+  // l'image tourne avec la carte : on se place dans le repère du monde (mètres), centré sur la vue
+  ctx.translate(W / 2, H / 2); ctx.rotate(vue.rot); ctx.scale(PX * k, PX * k); ctx.translate(-vue.cx, -vue.cz);
+  ctx.drawImage(c.cv, c.MARGE, c.MARGE, 2 * c.R * PX, 2 * c.R * PX, -c.R, -c.R, 2 * c.R, 2 * c.R);
   ctx.restore();
 
   // cadre parcheminé, au bord du relevé
@@ -157,7 +169,7 @@ function peindre() {
   const pts = [];
   let quartier = null;
   for (const l of lieux) {
-    const x = ax(l.x), y = az(l.z);
+    const [x, y] = versEcran(l.x, l.z);
     // LE VILLAGE n'est pas un point parmi d'autres : c'est le quartier où tiennent le
     // beffroi, l'estaminet, la chapelle et l'école. Point et nom classiques, il perdait
     // toujours la place à ses voisins et ne s'écrivait jamais (Eugène, 27 septembre).
@@ -209,7 +221,7 @@ function peindre() {
   // le rendez-vous posé par l'hôte : une étoile, toujours visible, même quand on a
   // cliqué ailleurs — c'est un repère, pas seulement une proposition
   if (choix && choix.rdv) {
-    const qx = ax(choix.rdv.x), qy = az(choix.rdv.z);
+    const [qx, qy] = versEcran(choix.rdv.x, choix.rdv.z);
     ctx.save(); ctx.translate(qx, qy); ctx.beginPath();
     for (let i = 0; i < 10; i++) { const r = i % 2 ? 6 : 14, a = i * Math.PI / 5 - Math.PI / 2; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
     ctx.closePath(); ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#2a1d10'; ctx.stroke(); ctx.restore();
@@ -219,13 +231,13 @@ function peindre() {
   }
   // le point d'apparition proposé, ou le refus du dernier clic
   if (choix && choix.point) {
-    const qx = ax(choix.point.x), qy = az(choix.point.z);
+    const [qx, qy] = versEcran(choix.point.x, choix.point.z);
     ctx.beginPath(); ctx.arc(qx, qy, 11, 0, Math.PI * 2);
     ctx.lineWidth = 3; ctx.strokeStyle = '#ffe7a3'; ctx.stroke();
     ctx.beginPath(); ctx.arc(qx, qy, 4, 0, Math.PI * 2); ctx.fillStyle = '#ffe7a3'; ctx.fill();
   }
   if (choix && choix.refus) {
-    const qx = ax(choix.refus.x), qy = az(choix.refus.z);
+    const [qx, qy] = versEcran(choix.refus.x, choix.refus.z);
     ctx.strokeStyle = '#ff7b6b'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(qx - 7, qy - 7); ctx.lineTo(qx + 7, qy + 7);
     ctx.moveTo(qx + 7, qy - 7); ctx.lineTo(qx - 7, qy + 7); ctx.stroke();
@@ -234,19 +246,19 @@ function peindre() {
   // l'aire de jeu du multi qui se resserre : la limite en vigueur, la prochaine en tirets
   for (const a of PARTAGE.aires || []) {
     ctx.save(); ctx.strokeStyle = a.couleur; ctx.lineWidth = 3; if (a.tirets) ctx.setLineDash([10, 7]);
-    ctx.beginPath(); a.pts.forEach(([x, z], k) => { if (k) ctx.lineTo(ax(x), az(z)); else ctx.moveTo(ax(x), az(z)); });
+    ctx.beginPath(); a.pts.forEach(([x, z], k) => { const [sx, sy] = versEcran(x, z); if (k) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy); });
     ctx.stroke(); ctx.restore();
   }
   // les repères du multi (tloc-multi.js) : objets à prendre, joueurs en équipes, drapeaux
   for (const m of PARTAGE.marques || []) {
-    const x = ax(m.x), y = az(m.z);
+    const [x, y] = versEcran(m.x, m.z);
     if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
     ctx.save(); ctx.translate(x, y); HUD.glyphe(ctx, m, m.forme === 'drapeau' ? 1.6 : 1.2); ctx.restore();
   }
 
   // Camille, et son regard
-  const px = ax(player.pos.x), pz = az(player.pos.z);
-  ctx.save(); ctx.translate(px, pz); ctx.rotate(-player.yaw);
+  const [px, pz] = versEcran(player.pos.x, player.pos.z);
+  ctx.save(); ctx.translate(px, pz); ctx.rotate(vue.rot - player.yaw);
   ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2a1d10'; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-6.5, -7); ctx.lineTo(0, -3.4); ctx.lineTo(6.5, -7);
   ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
@@ -262,18 +274,23 @@ function peindre() {
   ctx.font = '13px "Trebuchet MS", sans-serif'; ctx.textAlign = 'left';
   ctx.fillStyle = '#ffe7a3'; ctx.fillText(metres + ' m', bx, by - 14);
 
-  // le nord
-  ctx.textAlign = 'center'; ctx.font = 'bold 15px "Trebuchet MS", sans-serif';
-  ctx.fillStyle = 'rgba(255,231,163,.85)'; ctx.fillText('N', W - 40, 34);
-  ctx.beginPath(); ctx.moveTo(W - 40, 44); ctx.lineTo(W - 44, 58); ctx.lineTo(W - 36, 58);
-  ctx.closePath(); ctx.fill();
+  // le nord, qui tourne avec la carte : une flèche dans un rond, sous le bandeau
+  const nx = W - 40, ny = 100;
+  ctx.save(); ctx.translate(nx, ny);
+  ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fillStyle = 'rgba(8,11,22,.6)'; ctx.fill();
+  ctx.rotate(vue.rot);                          // le nord du monde est vers −z
+  ctx.fillStyle = 'rgba(255,231,163,.9)';
+  ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(-5, -3); ctx.lineTo(5, -3); ctx.closePath(); ctx.fill();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 12px "Trebuchet MS", sans-serif';
+  ctx.translate(0, 7); ctx.rotate(-vue.rot); ctx.fillText('N', 0, 0);
+  ctx.restore();
 }
 
 function ouvrir() {
   if (ecran) { fermer(); return; }
   state.paused = true;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
-  couvrir(player.pos.z);
+  couvrir(player.pos);
 
   ecran = document.createElement('div');
   ecran.style.cssText = 'position:fixed; inset:0; z-index:8; background:#0b1020; cursor:grab;';
@@ -326,8 +343,7 @@ function ouvrir() {
   });
   ecran.addEventListener('mousemove', (e) => {
     if (!tire) return;
-    const k = HUD.CARTE_PX * vue.zoom;
-    vue.cx -= (e.clientX - tire.x) / k; vue.cz -= (e.clientY - tire.y) / k;
+    deplacer(tire.x - e.clientX, tire.y - e.clientY);
     tire = { x: e.clientX, y: e.clientY };
     peindre();
   });
@@ -336,8 +352,7 @@ function ouvrir() {
 
 // écran -> monde, l'inverse exact de `ax`/`az` dans peindre()
 function designer(sx, sy) {
-  const k = HUD.CARTE_PX * vue.zoom;
-  const x = vue.cx + (sx - window.innerWidth / 2) / k, z = vue.cz + (sy - window.innerHeight / 2) / k;
+  const [x, z] = versMonde(sx, sy);
   const p = choix.valider(x, z);
   const el = ecran.querySelector('#choixTLOC'), ok = ecran.querySelector('#okTLOC');
   if (p) {
@@ -372,7 +387,7 @@ export function choisirPoint(valider, rdv = null) {
     const pre = rdv ? valider(rdv.x, rdv.z) : null;
     choix = { valider, fin, point: pre, refus: null, retenu: null, rdv: pre ? rdv : null };
     ouvrir();
-    couvrir(pre ? rdv.z : 52);     // la place d'Armes (PLACE_C ≈ 4, 52), ou le rendez-vous, au milieu
+    couvrir(pre ? rdv : { x: 4, z: 52 });     // la place d'Armes (PLACE_C), ou le rendez-vous, au milieu
     if (pre) {
       const el = ecran.querySelector('#choixTLOC'), ok = ecran.querySelector('#okTLOC');
       el.innerHTML = `<span style="color:#ffd24a">Le rendez-vous de l’hôte${rdv.nom ? ' : <b>' + ech(rdv.nom) + '</b>' : ''}.</span> Entrée pour y aller, ou clique ailleurs.`;
@@ -383,28 +398,41 @@ export function choisirPoint(valider, rdv = null) {
 }
 
 // La carte COUVRE l'écran. Faire tenir tout le relevé laissait deux tiers de fond noir : le
-// rectangle est penché de 15° et en portrait, l'écran en paysage (Eugène, 29 septembre :
-// « sur presque l'ensemble de l'écran »). On montre toute sa largeur est-ouest ; le nord et
-// le sud se découvrent en glissant, aux flèches ou à la molette (qui dézoome jusqu'au tout).
-// `zc` : la hauteur à mettre au milieu — Camille, ou le rendez-vous — bornée pour ne pas
-// ouvrir sur du vide au-delà du relevé.
-function couvrir(zc) {
-  const PX = HUD.CARTE_PX, W = window.innerWidth, H = window.innerHeight, MARGE = 12;
-  const xs = ENCEINTE.map((q) => q[0]), zs = ENCEINTE.map((q) => q[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
-  vue.suivre = false;
-  vue.zoom = Math.min(4, Math.max(0.16, (W - 2 * MARGE) / ((x1 - x0) * PX)));
-  vue.cx = (x0 + x1) / 2;
-  const demi = H / 2 / (PX * vue.zoom);
-  vue.cz = z1 - z0 <= 2 * demi ? (z0 + z1) / 2 : Math.min(z1 - demi, Math.max(z0 + demi, zc));
+// rectangle est penché de 75° et en portrait, l'écran en paysage. On le tourne donc pour que
+// son grand côté suive le grand côté de l'écran (« on s'en fout du nord », Eugène,
+// 29 septembre), puis on zoome jusqu'à ce qu'il remplisse l'écran ; ce qui déborde se
+// découvre en glissant, aux flèches ou à la molette (qui dézoome jusqu'au tout).
+// `f` : le point à garder en vue — Camille, ou le rendez-vous —, borné pour ne pas ouvrir
+// sur du vide au-delà du relevé.
+function couvrir(f) {
+  const PX = HUD.CARTE_PX, W = window.innerWidth, H = window.innerHeight;
+  // le grand côté du relevé, et l'angle qui le couche le long du grand côté de l'écran
+  let a = 0, L = 0;
+  ENCEINTE.forEach(([x, z], i) => { const [x2, z2] = ENCEINTE[(i + 1) % ENCEINTE.length]; const l = Math.hypot(x2 - x, z2 - z); if (l > L) { L = l; a = Math.atan2(z2 - z, x2 - x); } });
+  let rot = (W >= H ? 0 : Math.PI / 2) - a;
+  while (rot > Math.PI / 2) rot -= Math.PI;       // le plus petit des deux demi-tours
+  while (rot <= -Math.PI / 2) rot += Math.PI;
+  vue.rot = rot; vue.suivre = false;
+  // l'emprise du relevé dans ce repère tourné
+  const c = Math.cos(rot), s = Math.sin(rot), us = [], vs = [];
+  for (const [x, z] of ENCEINTE) { us.push(x * c - z * s); vs.push(x * s + z * c); }
+  const u0 = Math.min(...us), u1 = Math.max(...us), v0 = Math.min(...vs), v1 = Math.max(...vs);
+  vue.zoom = Math.min(4, Math.max(0.16, Math.max(W / ((u1 - u0) * PX), H / ((v1 - v0) * PX))));
+  // centre : le milieu du relevé sur l'axe qui tient entier, le point `f` borné sur l'autre
+  const demiU = W / 2 / (PX * vue.zoom), demiV = H / 2 / (PX * vue.zoom);
+  const fu = f.x * c - f.z * s, fv = f.x * s + f.z * c;
+  const cu = u1 - u0 <= 2 * demiU ? (u0 + u1) / 2 : Math.min(u1 - demiU, Math.max(u0 + demiU, fu));
+  const cv_ = v1 - v0 <= 2 * demiV ? (v0 + v1) / 2 : Math.min(v1 - demiV, Math.max(v0 + demiV, fv));
+  vue.cx = cu * c + cv_ * s; vue.cz = -cu * s + cv_ * c;
   if (ctx) peindre();
 }
 
 function zoomer(f) { vue.zoom = Math.min(4, Math.max(0.16, vue.zoom * f)); peindre(); }
-function deplacer(dx, dz) {
+// dx, dy : un déplacement À L'ÉCRAN (pixels) — la carte tournée, il n'est pas celui du monde
+function deplacer(dx, dy) {
   vue.suivre = false;
-  const k = HUD.CARTE_PX * vue.zoom;
-  vue.cx += dx / k; vue.cz += dz / k;
+  const [x, z] = versMonde(window.innerWidth / 2 + dx, window.innerHeight / 2 + dy);
+  vue.cx = x; vue.cz = z;
   peindre();
 }
 
