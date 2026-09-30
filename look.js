@@ -12,7 +12,7 @@
 
 import {
   G, SFX, THREE, bokeh, camera, makeHead, phMat, player, saveGame, showMessage, state,
-} from './engine.js?v=38';
+} from './engine.js?v=39';
 
 // =====================================================================
 //  Les palettes — indices rangés dans la sauvegarde, pas des couleurs

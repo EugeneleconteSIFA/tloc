@@ -87,7 +87,7 @@ async function entrerPartie(code, nom, bouton) {
     const perso = (C.compte() || {}).pseudo || 'Camille';
     C.activerInstance(code);
     C.poserInstance({ code, nom, perso });
-    location.href = 'index.html';
+    sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
   } catch (e) {
     toast(e.message, { erreur: true });
     if (bouton) { bouton.disabled = false; bouton.textContent = 'Rejoindre'; }

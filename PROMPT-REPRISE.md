@@ -1170,6 +1170,11 @@ Eugène : « à part pour le créateur, rends le mode solo inaccessible — en p
   on repart à l'accueil avant tout chargement. Les bancs (Playwright, `navigator.webdriver`)
   passent. Vérifié : compte ordinaire renvoyé, créateur (serveur de test isolé) accepté.
 - *Pour rouvrir le solo à tous* : `ouvrirSolo(true)` inconditionnel et retirer la garde.
+- **On entre par l'accueil, pour tous** (index.html, script de tête) : ouvert directement,
+  index.html renvoie à l'accueil — sauf un rechargement (`performance` navigation `reload`), une
+  arrivée depuis l'accueil (`tloc_entree`, posé par accueil.js et accueil-social.js juste avant
+  la navigation, consommé à l'arrivée) ou une navigation du jeu (`tloc_auto`, `tloc_arrive`).
+  Vérifié sur les quatre cas.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

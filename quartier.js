@@ -16,7 +16,7 @@
 // de sommet, ce qui ne coûte pas un appel de dessin de plus.
 import {
   THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat, phPeint,
-} from './engine.js?v=38';
+} from './engine.js?v=39';
 import {
   ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
   solPlaine, surVoie, townLocal, voieCombattants,

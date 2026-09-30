@@ -6,6 +6,21 @@
   // Le jeu se joue au clavier et à la souris : sur un téléphone ou une tablette sans souris,
   // on repart tout de suite vers l'accueil (qui dit pourquoi), avant de charger la citadelle.
   if (matchMedia('(hover: none) and (pointer: coarse)').matches) location.replace('accueil.html#ordinateur');
+  // ON ENTRE PAR L'ACCUEIL (Eugène, 30 septembre) : index.html ouvert directement renvoie à
+  // l'accueil — sauf un rechargement (F5, rechargement forcé, reprise après une perte de la
+  // carte graphique), une arrivée depuis l'accueil (tloc_entree, posé juste avant d'y venir),
+  // ou une navigation du jeu lui-même (tloc_auto, tloc_arrive : reprise, nouvelle partie,
+  // changement de lieu). Les bancs d'essai (Playwright) passent.
+  (() => {
+    let ok = !!navigator.webdriver;
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (nav && nav.type === 'reload') ok = true;
+      if (sessionStorage.getItem('tloc_entree') || sessionStorage.getItem('tloc_auto') || sessionStorage.getItem('tloc_arrive')) ok = true;
+      sessionStorage.removeItem('tloc_entree');
+    } catch (e) { ok = true; }
+    if (!ok) location.replace('accueil.html');
+  })();
   // le dev a son favicon inversé : on sait d'un coup d'œil sur quelle version on joue
   if (location.hostname.startsWith('tloc-dev')) addEventListener('DOMContentLoaded', () => { document.querySelector('link[rel="icon"]').href = 'favicon-dev.svg'; });
 </script>
@@ -141,7 +156,7 @@
      ?v= d'engine.js et des scripts : le lien d'engine.js suit (même motif « src= »/« href= »
      à vérifier après un bump). APRÈS l'importmap : avant elle, les modules préchargés ne
      savaient pas résoudre « three », et le chargement restait bloqué à 0 %. -->
-<link rel="modulepreload" href="engine.js?v=38">
+<link rel="modulepreload" href="engine.js?v=39">
 <link rel="modulepreload" href="lib/three.module.js">
 <link rel="modulepreload" href="carte.js">
 <link rel="modulepreload" href="etat.js">
@@ -180,7 +195,7 @@
 <link rel="modulepreload" href="lib/addons/shaders/LuminosityHighPassShader.js">
 <link rel="modulepreload" href="lib/addons/shaders/BokehShader.js">
 <link rel="modulepreload" href="lib/addons/shaders/OutputShader.js">
-<script type="module" src="game.js?v=38"></script>
-<script type="module" src="tloc-multi.js?v=38"></script>
+<script type="module" src="game.js?v=39"></script>
+<script type="module" src="tloc-multi.js?v=39"></script>
 </body>
 </html>

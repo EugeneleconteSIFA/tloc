@@ -251,7 +251,7 @@ function jouerPartie(id, bouton) {
   if (SOCIAL.surMobile) return SOCIAL.montrerOrdinateur();
   occuper(bouton);
   C.activer(id); C.poserInstance(null);
-  location.href = 'index.html';
+  sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
 }
 
 // Une partie qu'on vient de supprimer reste récupérable quelques secondes : elle disparaît
@@ -506,7 +506,7 @@ async function actionInstance(code, act, bouton) {
     // une instance a sa propre sauvegarde : les parties solo ne bougent pas d'un pouce
     C.activerInstance(i.code);
     C.poserInstance({ code: i.code, nom: i.nom, perso });
-    location.href = 'index.html';
+    sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
   } else if (act === 'quitter') {
     if (!confirm('Quitter cette instance ? Si tu en es l’hôte, elle est fermée pour tout le monde.')) return;
     await C.quitterInstance(code).catch(() => {});
@@ -545,7 +545,7 @@ $('revoirPrologue').onclick = () => {
   if (SOCIAL.surMobile) return SOCIAL.montrerOrdinateur();
   C.poserInstance(null);
   sessionStorage.setItem('tloc_auto', 'prologue');
-  location.href = 'index.html';
+  sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
 };
 
 $('nouvellePartie').onclick = async () => {
@@ -564,7 +564,7 @@ $('nouvellePartie').onclick = async () => {
   try { await C.pousser(id); } catch (e) {}
   // sur téléphone, le personnage est créé (et monte sur le compte) ; on y jouera sur ordinateur
   if (SOCIAL.surMobile) { toast(`${(C.slots().find((s) => s.id === id) || {}).nom || 'Ton personnage'} est prêt : joue-le sur ordinateur.`); return; }
-  location.href = 'index.html';
+  sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
 };
 
 // =====================================================================
@@ -669,7 +669,7 @@ function entrerDansPartie(i) {
   const perso = (C.compte() || {}).pseudo || 'Camille';
   C.activerInstance(i.code);
   C.poserInstance({ code: i.code, nom: i.nom, perso });
-  location.href = 'index.html';
+  sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
 }
 $('creerInstance').onclick = async () => {
   if (partiePrete) return entrerDansPartie(partiePrete);
