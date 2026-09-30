@@ -1,10 +1,10 @@
-import * as PNJ_E from './engine.js?v=31';
+import * as PNJ_E from './engine.js?v=32';
 import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 3 : l'intérieur de la maison de Camille
 import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, addPlatform, addRamp, makeChest, makeTorch, SFX, state, player, enemies,
   addInteract, showMessage, showMenu, hideMenu, saveGame, resumeGame, goToLevel, fadeTo, bootLevel, naviguer, minimapDots, makeSky, cutscene,
-  burst, lerp } from './engine.js?v=31';
+  burst, lerp } from './engine.js?v=32';
 import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 

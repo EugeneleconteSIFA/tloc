@@ -2,7 +2,7 @@
 //
 // Secteur Citadelle : courtines, bastions, Porte Royale, casernes, galeries voûtées,
 // donjon, poterne. Le tracé vient de carte.js, jamais l'inverse.
-import * as E from './engine.js?v=31';
+import * as E from './engine.js?v=32';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   THREE, GOLD, IRON, Q, SFX, T, TAU, addBox, addCap, addHelix, addInteract, addLieu, addPlatform,
@@ -11,7 +11,7 @@ import {
   mergeParts, mesh, mouldingRun, pbr, pbrRepeat, phMat, pickups, pilaster, player, pointInPoly, rand,
   rboxG, saveGame, scene, setQuest, showMessage, sky, spawnGaufre, sphG, state, stoneMat, uvMeters,
   wallBox, world, etape,
-} from './engine.js?v=31';
+} from './engine.js?v=32';
 import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,

@@ -595,14 +595,14 @@ function majBots() {
   nbMinutes = Math.max(1, Math.min(15, nbMinutes));
   $('nbDuree').value = $('nbDuree').textContent = nbMinutes + ' min';
   $('dureeMoins').disabled = nbMinutes <= 1; $('dureePlus').disabled = nbMinutes >= 15;
-  // le réglage du mode se glisse dans la ligne des modes, qui se replient en icônes (CSS)
+  // la bande sous les modes montre le réglage du mode choisi (CSS : fondu, rien ne bouge)
   const reglage = regleChoisie() === 'survie' ? 'vies' : ['temps', 'drapeaux'].includes(regleChoisie()) ? 'duree' : '';
   $('modeLigne').dataset.reglage = reglage;
   for (const [id, cle] of [['reglageVies', 'vies'], ['reglageDuree', 'duree']]) {
     $(id).setAttribute('aria-hidden', String(reglage !== cle));
     $(id).querySelectorAll('button').forEach((b) => { b.tabIndex = reglage === cle ? 0 : -1; });
   }
-  for (const r of Object.keys(TEXTE_REGLE)) $('aide-' + r).textContent = TEXTE_REGLE[r]();
+  $('descRegle').textContent = TEXTE_REGLE[regleChoisie()]();
   nbBots = Math.max(0, Math.min(TOTAL_MAX - 1, nbBots));
   $('nbBots').value = $('nbBots').textContent = String(nbBots);
   $('botsMoins').disabled = nbBots === 0;

@@ -87,61 +87,60 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
    partie » à droite, ses étapes l'une sous l'autre. */
 .modes { width:min(1240px,100%); margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.7fr); gap:14px 18px; text-align:left; align-items:start; }
 .modes-multi { display:contents; }
-/* « Rejoindre des amis » en BARRE sur toute la largeur, au-dessus des deux autres (Eugène,
-   29 septembre : avec une partie en cours, la tuile solo le poussait sous le bas de l'écran).
-   Titre, six cases et bouton sur une ligne : il se voit toujours, et ne prend que 70 px. */
-.mode.mode-rejoindre { grid-column:1 / -1; grid-row:1; display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; align-items:center; column-gap:18px; padding-top:10px; padding-bottom:10px; }
-.mode-rejoindre .code-ligne { grid-column:2; }
-.mode-rejoindre .indice { grid-column:3; font-size:13px; line-height:1.3; }
-.mode-rejoindre .mode-pied { grid-column:4; margin:0; }
-.mode-rejoindre .mode-pied button { width:auto; padding:0 26px; }
-.mode.mode-rejoindre .cases { width:330px; }   /* `.mode .cases` (100 %) l'écrasait : dans une colonne auto, les cases tombaient à zéro */
-.mode-solo { grid-column:1; grid-row:2; }
-.mode-creer, .mode-local { grid-column:2; grid-row:2; }
-.mode-solo, .mode-rejoindre { gap:10px; padding:14px 16px; }
-.mode-solo .mode-tete h2, .mode-rejoindre .mode-tete h2 { font-size:22px; }
-.mode-rejoindre .cases input { height:42px; font-size:19px; }
+.mode-solo { grid-column:1; grid-row:1; }
+.mode-creer, .mode-local { grid-column:2; grid-row:1; }
+/* la ligne de titre du multi porte aussi le nom de la partie et le bouton qui la lance */
+.tete-multi { flex-wrap:wrap; }
+.tete-multi h2 { white-space:nowrap; }
+.tete-multi .champ { flex:1 1 180px; min-width:0; }
+.tete-multi .champ input { width:100%; }
+.tete-multi button { flex:none; }
+/* Rejoindre une partie : dans la même tuile (c'est du multijoueur), mais encadré de terracotta
+   pour qu'on ne le confonde pas avec « Lancer la partie » */
+.rejoindre-bloc { display:grid; grid-template-columns:minmax(120px,1fr) auto auto; grid-template-rows:auto auto; align-items:center; gap:0 12px; padding:8px 12px;
+  border-radius:10px; border:2px solid var(--brique); background:rgba(156,59,40,.07); }
+.mode-creer .rejoindre-bloc { margin-top:auto; }   /* en bas de la tuile, quelle que soit sa hauteur */
+.rejoindre-titre { grid-column:1; grid-row:1; align-self:end; display:flex; align-items:center; gap:8px; margin:0; font-family:var(--titre); font-size:17px; color:var(--brique); white-space:nowrap; }
+:root[data-theme="sombre"] .rejoindre-titre { color:#E48C73; }
+.rejoindre-bloc .indice { grid-column:1; grid-row:2; align-self:start; font-size:12px; line-height:1.3; }
+.rejoindre-bloc .code-ligne { grid-column:2; grid-row:1 / span 2; }
+.mode .rejoindre-bloc .cases { width:250px; gap:5px; }   /* `.mode .cases` (100 %) l'écrasait dans sa colonne auto */
+.rejoindre-bloc .cases input { height:40px; font-size:18px; }
+.rejoindre-bloc #rejoindreInstance { grid-column:3; grid-row:1 / span 2; width:auto; padding:0 20px; }
+.mode-solo { gap:10px; padding:14px 16px; }
+.mode-solo .mode-tete h2 { font-size:22px; }
 /* « Ouvrir une partie » : trois étapes l'une sous l'autre — mode, seul ou en équipes, bots —,
    chacune de HAUTEUR FIXE, pour que le début d'une étape ne dépende jamais de ce que la
    précédente affiche (Eugène, 29 septembre). */
 .etapes { display:flex; flex-direction:column; gap:10px; }
 .etape { display:flex; flex-direction:column; gap:6px; height:72px; min-width:0; }
+.etape:first-child { height:124px; }   /* le mode : ses cases et sa bande */
 .sous-section { display:flex; flex-direction:column; gap:8px; min-width:0; }
 .sous-titre { margin:0; font-family:var(--corps, inherit); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--sourd); }
-/* Les modes sur une ligne. Quand le mode a un réglage (les vies du match à mort, la durée du
-   chrono et des drapeaux), les autres cases se replient en icônes et le réglage se glisse à
-   droite, dans la même ligne : la hauteur ne bouge pas. */
-.mode-ligne { display:flex; align-items:stretch; height:48px; }   /* sans gap : un réglage caché ne doit pas laisser d'écart */
-.choix-regle { display:flex; gap:6px; flex:1 1 auto; min-width:0; margin:0; padding:0; border:0; }
-.regle-case { position:relative; flex:1 1 0; min-width:44px; cursor:pointer; transition:flex .3s ease; }
+/* Les modes : quatre cases qui ne bougent JAMAIS. Dessous, une bande de hauteur fixe dit ce
+   qu'est le mode choisi et porte son réglage à droite (vies, durée) ; seul son contenu change,
+   en fondu. Le repli des cases en icônes, la veille, faisait perdre l'œil (Eugène,
+   30 septembre) — on fait comme les règles de combat de Smash Bros. ou les onglets de mode de
+   Rocket League : ce qu'on a cliqué reste à sa place. */
+.choix-regle { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin:0; padding:0; border:0; }
+.regle-case { position:relative; height:44px; cursor:pointer; }
 .regle-case > input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
-.regle-case > span:first-of-type { display:flex; align-items:center; justify-content:center; gap:7px; height:100%; padding:0 10px; overflow:hidden;
+.regle-case > span { display:flex; align-items:center; justify-content:center; gap:7px; height:100%; padding:0 8px; overflow:hidden;
   border-radius:8px; border:1px solid var(--bord2); background:var(--silhouette); color:var(--pierre); font-size:15px; white-space:nowrap; }
-.regle-case em { font-style:normal; max-width:12em; overflow:hidden; transition:max-width .3s ease, opacity .2s ease; }
+.regle-case em { font-style:normal; overflow:hidden; text-overflow:ellipsis; }
 .regle-case input:checked + span { border-color:var(--or); background:rgba(226,178,90,.14); color:var(--or-clair); font-weight:700; }
 .regle-case input:focus-visible + span { outline:2px solid var(--or); outline-offset:2px; }
 .regle-icone { flex:none; width:18px; height:18px; }
-.mode-ligne[data-reglage="vies"] .regle-case:not(:has(input:checked)),
-.mode-ligne[data-reglage="duree"] .regle-case:not(:has(input:checked)) { flex:0 0 44px; }
-.mode-ligne[data-reglage="vies"] .regle-case:not(:has(input:checked)) em,
-.mode-ligne[data-reglage="duree"] .regle-case:not(:has(input:checked)) em { max-width:0; opacity:0; }
-.mode-ligne[data-reglage="vies"] .regle-case:not(:has(input:checked)) > span:first-of-type,
-.mode-ligne[data-reglage="duree"] .regle-case:not(:has(input:checked)) > span:first-of-type { padding:0; gap:0; }
-.reglage-regle { display:flex; align-items:center; gap:8px; flex:0 0 auto; max-width:0; overflow:hidden; opacity:0; visibility:hidden;
-  padding:0; border-radius:8px; border:1px solid transparent; transition:max-width .3s ease, opacity .25s ease, padding .3s ease; }
-.mode-ligne[data-reglage="vies"] #reglageVies, .mode-ligne[data-reglage="duree"] #reglageDuree {
-  max-width:220px; opacity:1; visibility:visible; padding:0 8px 0 12px; margin-left:8px; border-color:var(--or); background:rgba(226,178,90,.08); }
+.regle-bande { display:flex; align-items:center; gap:12px; height:46px; padding:0 8px 0 12px; border-radius:8px;
+  background:rgba(226,178,90,.08); border:1px dashed var(--bord2); }
+.regle-desc { flex:1 1 auto; min-width:0; margin:0; font-size:13px; line-height:1.3; color:var(--sourd);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; animation:fondu .18s ease; }
+.reglage-regle { display:none; align-items:center; gap:8px; flex:none; animation:fondu .18s ease; }
+.regle-bande[data-reglage="vies"] #reglageVies, .regle-bande[data-reglage="duree"] #reglageDuree { display:flex; }
 .reglage-regle .etiquette { font-size:14px; color:var(--sourd); }
 .reglage-regle output { min-width:54px; font-size:18px; }
-/* la description du mode : une bulle au survol ou au clavier, plus une ligne qui pousse la suite */
-.regle-case .bulle { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translate(-50%, 4px); z-index:5; width:max-content; max-width:260px;
-  padding:8px 11px; border-radius:8px; background:#211a13; color:#f3e9d2; border:1px solid rgba(226,178,90,.45); font-size:13px; line-height:1.35; white-space:normal;
-  box-shadow:0 8px 24px rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:opacity .15s ease, transform .15s ease; }
-.regle-case:first-child .bulle { left:0; transform:translate(0, 4px); }
-.regle-case:last-child .bulle { left:auto; right:0; transform:translate(0, 4px); }
-.regle-case:hover .bulle, .regle-case:focus-within .bulle { opacity:1; transform:translate(-50%, 0); }
-.regle-case:first-child:hover .bulle, .regle-case:first-child:focus-within .bulle,
-.regle-case:last-child:hover .bulle, .regle-case:last-child:focus-within .bulle { transform:translate(0, 0); }
+.reglage-regle .pas-a-pas button { width:32px; height:32px; }
+@keyframes fondu { from { opacity:0; } to { opacity:1; } }
 /* « Chacun pour soi » figé quand on joue aux drapeaux (deux camps, forcément) */
 .choix.fige { opacity:.5; cursor:not-allowed; }
 .choix.fige input { cursor:not-allowed; }
@@ -153,7 +152,7 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
 .etape .bots .indice { flex:1 1 auto; font-size:13px; line-height:1.3; }
 /* le nom manquant : la case tremble et s'entoure de rouge */
 #nomInstance.manque { border-color:var(--danger); animation:tremble .4s; }
-@media (prefers-reduced-motion: reduce) { .regle-case, .regle-case em, .reglage-regle { transition:none; } #nomInstance.manque { animation:none; } }
+@media (prefers-reduced-motion: reduce) { .regle-desc, .reglage-regle { animation:none; } #nomInstance.manque { animation:none; } }
 /* le titre « Bots » de la sous-section suffit : l'étiquette du compteur reste pour les lecteurs d'écran */
 .mode-creer .bots-ligne { justify-content:flex-start; }
 .mode-creer .bots-ligne .etiquette { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
@@ -215,7 +214,6 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
   h1.logo, .vitrine > .sous { display:none; }
   .mode { gap:10px; padding:14px 16px; }
   .mode .accroche { font-size:17px; line-height:1.35; }
-  .mode-rejoindre .cases input { height:42px; }
   .mode-tete { gap:10px; }
   .mode-tete p { display:none; }
   .mode-icone { width:34px; height:34px; }
@@ -227,9 +225,13 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
   /* sur téléphone la hauteur fixe des étapes n'a plus d'objet : les bots passent à la ligne */
   .etape { height:auto; }
   .etape .bots { flex-wrap:wrap; }
-  .mode-solo, .mode-rejoindre, .mode-creer, .mode-local { grid-column:auto; grid-row:auto; }
-  .mode.mode-rejoindre { display:flex; flex-direction:column; align-items:stretch; }
-  .mode.mode-rejoindre .cases { width:100%; }
+  .mode-solo, .mode-creer, .mode-local { grid-column:auto; grid-row:auto; }
+  .rejoindre-bloc { grid-template-columns:1fr; gap:6px; }
+  .rejoindre-bloc > * { grid-column:1 !important; grid-row:auto !important; }
+  .mode .rejoindre-bloc .cases { width:100%; }
+  .choix-regle { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .etape:first-child { height:auto; }
+  .regle-bande { height:auto; min-height:46px; flex-wrap:wrap; padding:8px 12px; }
 }
 
 /* rang-de-Lille : brique, pierre, brique sombre, pierre — la frise sépare la vitrine du reste */
@@ -665,6 +667,9 @@ button.code:hover { border-style:solid; }
 /* ---------- l'en-tête : la marque, le bandeau des testeurs au centre, le compte ---------- */
 .barre { display:grid; grid-template-columns:auto 1fr auto; column-gap:16px; height:auto; min-height:72px; padding-top:8px; padding-bottom:8px; }
 .barre .bandeau-testeurs { justify-self:center; margin:0; padding:6px 14px; font-size:14px; max-width:100%; }
+/* les boutons restent à droite même quand le bandeau des testeurs est masqué (sinon ils
+   glissaient dans la colonne du milieu, collés au nom du jeu) */
+.barre .barre-droite { grid-column:3; justify-self:end; }
 .marque .etiquette-dev { margin-left:4px; }
 @media (max-width: 1100px) {
   /* plus assez de place entre la marque et le compte : le bandeau passe dessous, pleine largeur */

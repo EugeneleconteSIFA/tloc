@@ -1035,6 +1035,11 @@ Depuis, en local (non publié) :
   le bord laissait voir l'escarpe). Marche simulée depuis 11 m dehors : tous les côtés secs
   des 9 demi-lunes et contregardes se gravissent (pas max 0,09 m) ; la lunette du Grand Carré
   touche la limite du monde. Chargement inchangé (≈ 14,4 s de somme d'étapes).
+- **À REPRENDRE le 30 septembre (Eugène, 29 au soir)** : il signale un problème avec ces
+  nouveaux talus des ouvrages autour de la citadelle — le détail n'est pas encore donné. Lui
+  demander ce qu'il a vu (capture), puis regarder en rendu : raccord talus / pré, arbres ou
+  chemins posés sur la pente (`surDehors` ne couvre que le cercle circonscrit), côtés fossé
+  restés à pic, talus dans le couloir du pont, bots (grille de nav) sur les pentes.
 
 ### U. Accueil refait, badges classés, page admin (29 septembre, nuit) — **faits, rien de publié**
 
@@ -1063,6 +1068,16 @@ Depuis, en local (non publié) :
   testeurs. Les comptes des bancs (`banc` + 6 hex) sont masqués par défaut. En production,
   le lien pointe `admin.html` (l'adresse `/admin` dépend de nginx).
 - « Se déconnecter » cerclé de rouge.
+- **Accueil, 30 septembre** : deux tuiles. « Mode Solo : Pursuit of Prince Eugène » (sans
+  sous-titre) ; « Mode Multi » porte le nom de la partie et « Lancer la partie » sur sa ligne
+  de titre, et « Rejoindre une partie » en bas de la même tuile, encadré terracotta. Les modes
+  ne se replient plus (Eugène : ça perdait l'œil) : quatre cases fixes, et dessous une bande
+  de hauteur fixe — description du mode, réglage (vies, durée) à droite, en fondu seul —
+  comme les règles de combat de Smash Bros. ou les onglets de Rocket League. Tout tient à
+  1000 × 536, partie solo en cours comprise. Au passage : les boutons de la barre du haut
+  glissaient au milieu quand le bandeau des testeurs est masqué (grille à trois colonnes) —
+  épinglés à droite. *Reste* : la bulle du chat (fixe, en bas à droite) recouvre en partie
+  « Rejoindre » à 1000 px de large.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
