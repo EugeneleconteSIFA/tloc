@@ -1053,6 +1053,7 @@ Depuis, en local (non publié) :
   a désormais deux limites invisibles (`terrassesDehors`) : un garde-fou en haut du
   terre-plein, et la berme elle-même occupée sur 2,4 m. Plus aucune fosse atteignable autour
   des onze ouvrages ; les montées restent toutes possibles.
+- **Talus validés par Eugène le 30 septembre** (version 33 en ligne) : chantier clos.
 
 ### U. Accueil refait, badges classés, page admin (29 septembre, nuit) — **faits, rien de publié**
 
