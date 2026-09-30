@@ -19,7 +19,7 @@ import * as FORET from './foret.js';
 import * as BOURSE from './bourse.js';
 // Pas de `import * as E` ici : trois fonctions de ce fichier déclarent un THREE.Euler
 // nommé `E`, et le namespace du moteur serait masqué à l'intérieur — une erreur qui ne
-// se voit qu'à l'exécution (cf. ORCHESTRATION.md). Tout passe par l'import nommé.
+// se voit qu'à l'exécution (cf. docs/ORCHESTRATION.md). Tout passe par l'import nommé.
 import {
   THREE, Q, SFX, T, TAU, addCap, blocked, burst, capsulesNear, clamp, distSeg, fbm, getH, lerp, mat,
   mergeParts, phMat, player, rand, scene, spawnGaufre, state,

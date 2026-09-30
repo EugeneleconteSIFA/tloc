@@ -14,14 +14,14 @@
 //
 //   node bancs/crawl.mjs [http://127.0.0.1:8000] [xmin,zmin,xmax,zmax]
 //
-// Sortie : bancs/crawl-<date>.json et bancs/crawl-<date>.png (planche des zones).
+// Sortie : bancs/resultats/crawl-<date>.json et bancs/resultats/crawl-<date>.png (planche des zones).
 import { createRequire } from 'module';
 import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const BOITE = (process.argv[3] || '-450,-450,650,800').split(',').map(Number);
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -134,5 +134,5 @@ p.save('${DIR}crawl-${JOUR}.png')
 PY`);
   for (const f of photos) fs.unlinkSync(f);
   fs.unlinkSync(DIR + '.crawl-legendes.json');
-  console.log(`planche : bancs/crawl-${JOUR}.png`);
+  console.log(`planche : bancs/resultats/crawl-${JOUR}.png`);
 }

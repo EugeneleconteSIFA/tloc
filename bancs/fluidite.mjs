@@ -18,7 +18,7 @@
 //   dans le tableau = pixels calculés par point d'écran. TLOC_DPR=1 pour un écran ordinaire ; TLOC_ENGINE=fichier.js sert ce fichier à la place
 //   d'engine.js (A/B contre `git show HEAD:engine.js > …`, sans toucher au dossier)
 //
-// Écrit bancs/fluidite-<date>-<étiquette>.json. Comparer avant / après sur la même machine,
+// Écrit bancs/resultats/fluidite-<date>-<étiquette>.json. Comparer avant / après sur la même machine,
 // à froid (la machine chauffe : une série de deux passes, garder la meilleure).
 // Le moteur s'importe à l'adresse EXACTE que la page a chargée (engine.js?v=…) : une autre
 // version en serait un second exemplaire, avec son propre rendu, et le banc mesurerait à côté.
@@ -30,7 +30,7 @@ const ETIQ = process.argv[3] || (AUTO ? 'auto' : 'q' + (QUAL + 1));
 const ORIGINE = process.argv[4] || 'http://127.0.0.1:8000';
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname;
+const DIR = new URL('resultats/', import.meta.url).pathname;
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true,
   args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-gpu-vsync', '--disable-frame-rate-limit'] });

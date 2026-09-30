@@ -20,13 +20,16 @@ Rien n'a été supprimé : les formats inutilisables sur le web (FBX, OBJ/MTL, B
 03_textures/     matériaux et textures autonomes
   polyhaven/              23 matériaux PBR CC0 ......... couleur / normale / rugosité / métal, WebP 1024
   retro_fantasy/          kenney_retro-textures-fantasy  119 .png (écarté, cf. politique d'assets)
-04_vfx/          particules
-  particules/             kenney_particle-pack ......... 192 .png (transparent + fond noir)
 05_audio/        sons
-  impacts/                kenney_impact-sounds ......... 130 .ogg
+  musique/                13 morceaux d'ambiance (m4a, lus en flux, cf. SFX dans engine.js)
 _licences/       une licence par pack, copiée et renommée
-_sources/        packs d'origine, allégés de ce qui a été extrait ci-dessus (423 Mo)
 ```
+
+Retirés le 30 septembre, parce qu'aucune page ne les chargeait : `04_vfx/` (particules
+Kenney) et `05_audio/impacts/` (sons Kenney ; le jeu synthétise les siens) — dans l'historique
+git ; `_sources/`, `pine_forest/`, `00_previews/` (packs d'origine, jamais suivis) — à la
+Corbeille du Mac, avec `verdant_trail/`, `hidden_alley/` et la bibliothèque d'animations.
+Reconvertir un asset demandera de retélécharger son pack.
 
 ## Format par pack
 
@@ -135,11 +138,11 @@ multipliées par la taille réelle de l'élément : tuile canal ≈ 16 cm de lar
 
 ## 02_personnages/animations/
 `ual2.glb` — Universal Animation Library 2 (Quaternius, CC0), 42 clips, allégée pour le web
-(8,09 Mo → 1,50 Mo) par `outils_prune_anims.py` à la racine du dépôt : maillages et matériaux
+(8,09 Mo → 1,50 Mo) par `outils_prune_anims.py` (retiré le 30 septembre, dans l'historique git) : maillages et matériaux
 retirés, pistes d'échelle supprimées, translations gardées pour `root` et `pelvis` seulement.
 Le rig est **identique** au mannequin UE5 des packs de personnages (65 os, mêmes noms, bind pose
 en T) ; `assets.js` recale malgré tout chaque piste en delta sur la pose de repos du personnage,
 les proportions différant de 1 à 2 %.
 
-Les sources d'origine restent dans `Universal Animation Library 2[Standard]/`.
+Les sources d'origine ne sont plus dans le dossier (Corbeille, 30 septembre).
 **Manque la volume 1**, qui porte la locomotion de base (Idle, Walk, Run, Jump).

@@ -548,7 +548,7 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'tavern', getH: () => 0, zoneName: () => "L'Estaminet", build, populate, animate, minimap, onLoad,
+  name: 'tavern', musique: 'taverne', getH: () => 0, zoneName: () => "L'Estaminet", build, populate, animate, minimap, onLoad,
   entry: () => ({ title: "L'Estaminet", sub: 'Gaufres et bière de la citadelle', cam: [3.6, 2.6, 3.4], at: [-1.5, 1.1, -1.5], cam2: [1.2, 2.0, 3.4], at2: [0, 1.3, 0.5], dur: 3.5 }),
   counts: () => `<small>L'estaminet du village — Gustave, au comptoir, offre une gaufre (Entrée). Les clients attablés ont aussi des choses à raconter. Porte derrière toi pour sortir.</small>`,
   start: () => showMessage("L'estaminet : ça sent la gaufre chaude et la bière de la citadelle. Gustave est au comptoir.", 5),

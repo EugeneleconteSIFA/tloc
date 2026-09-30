@@ -61,7 +61,7 @@ multijoueur, une économie (bourse, écus, potions), et une personnalisation de 
 
 37 vérifications passées en navigateur réel avec deux joueurs : inscription, partie qui
 remonte sur le compte, instance rejointe par code, avatars, coup d'épée, mort et
-réapparition, menus cliquables. Voir `NOTE-MULTI.md` et `serveur/deploiement.md`.
+réapparition, menus cliquables. Voir `docs/NOTE-MULTI.md` et `serveur/deploiement.md`.
 
 **Une instance n'est pas une partie** : ni intro, ni quête principale, ni quêtes
 secondaires, ni journal, et une sauvegarde à part (`tloc_save_v2:inst:<CODE>`) pour que la
@@ -71,7 +71,7 @@ balade à plusieurs n'écrive jamais dans une progression solo.
 
 - **Entrée d'instance** : armoire, puis carte en mode choix (`ATLAS.choisirPoint`) ; le
   point est recalé sur un sol sec et libre, gardé dans `state.apparition`, et sert aussi
-  de point de réapparition. Détails dans `NOTE-MULTI.md`.
+  de point de réapparition. Détails dans `docs/NOTE-MULTI.md`.
 - **Chacun sa Camille** : les avatars distants sont riggés et portent l'apparence de
   leur joueur (message `look`, filtré par le serveur). Vérifié avec une vraie page et un
   second joueur simulé en WebSocket : avatar riggé, contrôleur chargé, même échelle que
@@ -220,7 +220,7 @@ Sans elle, Camille reprend son allure d'origine dans ces deux lieux.
 
 ### D. Les vagues suivantes de l'équipement
 
-`REPONSE-EQUIPEMENT.md` tient la spécification complète (écus, poche, gourdes, atouts,
+`docs/REPONSE-EQUIPEMENT.md` tient la spécification complète (écus, poche, gourdes, atouts,
 quêtes, prix, courbe). Ordre prévu, chaque étape jouable à la fin :
 
 | étape | fichiers | contenu |
@@ -363,7 +363,7 @@ dans le dev chaque nuit à 3 h 30. Le dev n'admet que le compte Createur.
 
 ### G. Le mode de jeu en équipe (plusieurs contre plusieurs)
 
-**Fait le 25 septembre** (voir `NOTE-MULTI.md`) : deux camps à 8 places, tunique et plaque
+**Fait le 25 septembre** (voir `docs/NOTE-MULTI.md`) : deux camps à 8 places, tunique et plaque
 aux couleurs du camp, pas de tir ami (serveur), points de camp, ralliement par camp,
 **bannières à prendre et à rapporter** (3 points), et autour : la bourse en jeu, la fête de la moisson (`/fete`), les dons (`/donner`). Vérifié
 de bout en bout avec un vrai navigateur et deux clients WebSocket. L'esquisse d'origine,
@@ -393,7 +393,7 @@ qu'on DESSINE et ce sur quoi on MARCHE. On ne les cherche plus à l'œil : on le
 **Outil en place** : `node bancs/crawl.mjs` (serveur lancé). Compare `getH` à une vue de
 dessus rendue en profondeur, sur 1,4 km², en ~16 s ; sort les zones INVISIBLE (on marche
 sur rien) / ENFONCÉ (sol dessiné au-dessus des pieds), nommées, et une planche photo
-(`bancs/crawl-<date>.png`, repère rouge). Dernier passage : **1 586 m² suspects**, aucune
+(`bancs/resultats/crawl-<date>.png`, repère rouge). Dernier passage : **1 586 m² suspects**, aucune
 zone au-dessus de 200 m² (on partait de 122 000). À relancer après toute retouche du décor
 ou du relief, et à comparer au passage précédent.
 
@@ -442,12 +442,12 @@ demain ensemble »). Tout est sur le dev (`f2691c5` prologue, `7e5bdeb` armure e
   sauvegardé pendant le prologue ; une sauvegarde automatique prise en route le relance au
   début (`onLoad`). Les monstres dorment (`caged`) jusqu'à l'enlèvement.
   Vérifié en rendu, étape par étape (captures au banc). Chargement : 16,9 s en somme des
-  étapes après (bancs/charge-2026-09-26-apres-prologue.json), dans le budget.
+  étapes après (bancs/resultats/charge-2026-09-26-apres-prologue.json), dans le budget.
 - **Au passage** : Phinaert n'atteignait jamais le pont dans l'intro d'origine (210 m à
   6 m/s, coupés à 8 s) — il part maintenant de 40 m. La réplique de Lydéric disait « Espace
   pour frapper » : c'est clic gauche ou F. Eugène n'a plus ni couronne ni cape (pnj.js).
 - **« Prince » retiré** de tous les textes visibles (13 fichiers) ; les noms de code restent.
-- **L'armure et l'écu en multi** (point 2) : voir NOTE-MULTI.md, « L'équipement ».
+- **L'armure et l'écu en multi** (point 2) : voir docs/NOTE-MULTI.md, « L'équipement ».
 - **Le cheval, préparé seulement** : `assets_back/02_personnages/animaux/cheval.glb`
   (1,5 Mo, 8 clips : Walk, Gallop, Idle, Idle_Headlow, Eating, Death, Idle_HitReact1,
   Attack_Kick ; fait par `glb.py` du même dossier), essayé en jeu à côté de Camille :
@@ -574,12 +574,12 @@ voir le § 4.E (étapes lentes du chargement, KTX2).
   en garder une copie ailleurs (Google Drive, ou le Mac).
 - Ce fichier, les § 3 : ils ne racontent pas encore le travail des 25–26 septembre (portail
   flamand, bots, manches, badges, social, mise en ligne, vue mobile). Le détail est dans
-  `NOTE-MULTI.md` et `serveur/deploiement/LISEZMOI.md`.
+  `docs/NOTE-MULTI.md` et `serveur/deploiement/LISEZMOI.md`.
 
 **Ordre proposé** : 4 (une heure, ça se sent tout de suite) → 5 (l'arc, utile au multi) →
 2 (les objets qui font le multi) → 6 (chargement) → 1 (le prologue : écrire l'histoire
 avec Eugène avant de coder) → 3 (la carte).
-**Fait au 27 septembre** : 4, 1, 5, 2 (armure, écu, cheval — cf. NOTE-MULTI.md). Retours
+**Fait au 27 septembre** : 4, 1, 5, 2 (armure, écu, cheval — cf. docs/NOTE-MULTI.md). Retours
 d'Eugène le 27 : armure 4 cœurs (forge 5, 6), une armure brisée ne revient plus, flèche à
 un demi-cœur, jauge d'armure en cœurs — faits ; armes redessinées (épée, rondache aux armes
 de Lille, écu, cuirasse) et la masse de Phinaert enfin dans sa main (`prise()`, geants.js :
@@ -607,7 +607,7 @@ mesure, ~45 s avec le chargement) : autour du bourg, case de 0,5 m par case, il 
 collisions sans rien de dessiné (MUR, avec la ligne de code de chaque capsule), les marches
 ≥ 0,5 m entre deux cases libres de la rue (MARCHE : `tryMove` ne les monte pas), et inonde
 depuis la place aux règles de Camille (rayon 0,5) pour lister la rue qu'on n'atteint pas.
-Carte en couleurs : `bancs/murs-<date>.png` (gris rue atteinte, orange coupée, rouge mur).
+Carte en couleurs : `bancs/resultats/murs-<date>.png` (gris rue atteinte, orange coupée, rouge mur).
 Pièges du banc : un objet mince (poteau, rame) ne se voit pas d'en haut — on prend le plus
 haut dessiné à une case près ; les voies relevées passent SOUS les maisons du bourg et sous
 l'eau des fossés — une case sous un toit n'est plus « rue », et les MUR « levelBlocked » des
@@ -821,7 +821,7 @@ arpenteur 872 m², marches sur la rue 3, entrées 6/6, ponts 8/8 ; chargement 15
 
 Eugène a remplacé le « trésor commun » par une **prise des drapeaux** (nombre =
 arrondi supérieur(joueurs ÷ 2) − 1), puis demandé un **chat de camp** où les bots disent
-leurs intentions. Tout est décrit dans NOTE-MULTI.md (« La prise des drapeaux », « Équipement
+leurs intentions. Tout est décrit dans docs/NOTE-MULTI.md (« La prise des drapeaux », « Équipement
 égal », « Parler à son camp »). Mesuré au banc (7 bots vétérans) : les trois drapeaux
 changent de mains, la garnison l'emporte 3 à 0 avec badge Conquérant, les phrases des bots
 arrivent au camp seulement ; chargement 14,9 s (somme des étapes).
@@ -974,7 +974,7 @@ Notées telles quelles, par thème.
   1366 × 680, clair et sombre ; une colonne sur téléphone.
 
 Chargement après tout ça : 13,7 s en somme des étapes (froid), 15,0 s (relance) —
-`bancs/charge-2026-09-29-multi-aires.json`.
+`bancs/resultats/charge-2026-09-29-multi-aires.json`.
 
 **Publié sur le dev le 29 (`00d3ce9`, version 28)** — à essayer par Eugène avant « Promouvoir ».
 Depuis, en local (non publié) :
@@ -995,7 +995,7 @@ Depuis, en local (non publié) :
 **Reprise du 29 au soir — les quatre points d'Eugène, dans l'ordre** (rien de publié) :
 - Bandeau des drapeaux : « ⚑ Les drapeaux arrivent dans ~N s » tant que la grille se remplit
   (`attenteDrapeaux`, tloc-multi.js). Fait, vu.
-- **1. Frappe en selle** : faite et vérifiée (NOTE-MULTI.md, « La frappe en selle »).
+- **1. Frappe en selle** : faite et vérifiée (docs/NOTE-MULTI.md, « La frappe en selle »).
 - **2. Textures KTX2** : ESSAI FAIT (accord d'Eugène), NON ACTIVÉ par défaut — décision
   d'Eugène. `KTX2Loader` et le transcodeur Basis de three r160 sont dans lib/addons ;
   `?ktx2` dans l'adresse fait lire les .ktx2 à la place des .webp (assets.js,
@@ -1191,6 +1191,18 @@ fantôme exactement comme `updateArrows` (40 m/s, retombée 2,5, 1,5 s) jusqu'au
 à un monstre, et pose là un point rouge (sprite de taille constante, vu à travers l'herbe).
 *Limite* : en multi, il ne s'arrête pas sur les autres joueurs (la flèche, elle, les touche par
 proximité, tloc-multi.js `coupsFleche`).
+
+### X. La musique, et le rangement du dépôt (30 septembre, soir) — **faits, vérifiés**
+
+- **Musique** : 13 morceaux (`assets_back/05_audio/musique/`, m4a, lus en flux, rien au
+  chargement). Le lecteur est dans `SFX` (engine.js) : fondu de 3 s, changement après 3 s dans
+  la nouvelle zone, reprise là où l'on en était. Chaque niveau dit son ambiance : la ville par
+  `ambiance(zone)` (carte.js, d'après les noms de `zoneName`), un intérieur par `musique:`.
+  La cave garde la nappe synthétisée. **La fanfare** (« Ralis sauvé ») : `SFX.fanfare(duree)`
+  aux quêtes terminées, au prince libéré, à la herse (jusqu'au bout) et à la victoire.
+  *Pas encore écouté par Eugène : volume (0,3) à juger.*
+- **Rangement** : notes dans `docs/`, relevés dans `bancs/resultats/` (les bancs y écrivent).
+  Liste des suppressions possibles : `PLAN-2026-10-01.md`, § 2.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

@@ -2,7 +2,7 @@
 //
 // Mesure un chargement froid puis une relance de la citadelle : durée totale, durée de
 // chaque étape (celles d'engine.js, `etape()`), réseau (fichiers, mégaoctets, les plus
-// lourds). Écrit le résultat dans bancs/charge-<date>.json pour comparer d'une fois sur
+// lourds). Écrit le résultat dans bancs/resultats/charge-<date>.json pour comparer d'une fois sur
 // l'autre.
 //
 //   node bancs/charge.mjs [http://127.0.0.1:8000]
@@ -15,7 +15,7 @@ import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname;
+const DIR = new URL('resultats/', import.meta.url).pathname;
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();

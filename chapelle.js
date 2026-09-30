@@ -367,7 +367,7 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'chapelle', getH: () => 0, zoneName: () => 'Chapelle Saint-Roch', build, populate, animate, minimap,
+  name: 'chapelle', musique: 'chapelle', getH: () => 0, zoneName: () => 'Chapelle Saint-Roch', build, populate, animate, minimap,
   counts: () => `<small>La chapelle Saint-Roch — le retable, la plaque de la garnison et les cierges se lisent (Entrée). Le portail, derrière toi, pour ressortir.</small>`,
   start: () => showMessage('Il fait frais. La lumière des vitraux traverse la nef en biais et tombe sur les dalles.', 5),
   arriveMessage: () => 'La chapelle Saint-Roch.',

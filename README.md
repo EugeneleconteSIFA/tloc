@@ -178,7 +178,7 @@ restants sont dans `PROMPT-REPRISE.md`, § 4.E.
 |---|---|
 | `CLAUDE.md` | les règles de travail (à lire en premier) |
 | `PROMPT-REPRISE.md` | l'état du chantier, ce qui reste, ce que le code a appris |
-| `NOTE-MULTI.md` | le multijoueur en détail |
-| `REPONSE-EQUIPEMENT.md` | la spécification de l'économie et de l'équipement |
-| `BRIEF-CARTE.md`, `NOTE-CAMPAGNE.md`, `NOTE-INTERIEURS.md` | la carte, la campagne, les intérieurs |
-| `CONTEXT.md`, `BRIEF-DESIGN.md`, `REPONSE-PERSONNAGES.md`, `REPONSE-GEANTS.md` | l'histoire technique et la direction artistique |
+| `docs/NOTE-MULTI.md` | le multijoueur en détail |
+| `docs/REPONSE-EQUIPEMENT.md` | la spécification de l'économie et de l'équipement |
+| `docs/BRIEF-CARTE.md`, `docs/NOTE-CAMPAGNE.md`, `docs/NOTE-INTERIEURS.md` | la carte, la campagne, les intérieurs |
+| `docs/CONTEXT.md`, `docs/BRIEF-DESIGN.md`, `docs/REPONSE-PERSONNAGES.md`, `docs/REPONSE-GEANTS.md` | l'histoire technique et la direction artistique |

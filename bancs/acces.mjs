@@ -11,14 +11,14 @@
 //   node bancs/acces.mjs [page, défaut toutes] [http://127.0.0.1:8000]
 //     pages : index house tavern chapelle mage cave
 //
-// Écrit bancs/acces-<date>.json ; le résumé s'affiche.
+// Écrit bancs/resultats/acces-<date>.json ; le résumé s'affiche.
 import { createRequire } from 'module';
 import fs from 'fs';
 const PAGES = process.argv[2] && !process.argv[2].startsWith('http') ? [process.argv[2]] : ['index', 'house', 'tavern', 'chapelle', 'mage', 'cave'];
 const ORIGINE = process.argv.find((a) => a.startsWith('http')) || 'http://127.0.0.1:8000';
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const bilan = {};

@@ -114,7 +114,7 @@ export function gagner(n, pos = null) {
 // =====================================================================
 //  Les primes des monstres
 // =====================================================================
-// Ce que rapporte une mise à terre (cf. REPONSE-EQUIPEMENT.md, § 2). Un intervalle [a, b]
+// Ce que rapporte une mise à terre (cf. docs/REPONSE-EQUIPEMENT.md, § 2). Un intervalle [a, b]
 // tire au hasard entre les deux. Les niveaux appellent `prime(e)` depuis leur onKill ;
 // monstres et coffres ne sont pas plafonnés — ils ne repoussent pas, la verdure si.
 export const PRIMES = { corbeau: [1, 2], chauve: [1, 2], moule: 3, rat: 3, fantome: 4, ratroi: 25, phinaert: 60 };
@@ -275,7 +275,7 @@ export function boutique(titre, sous, intro, articles, onFin = null) {
 // =====================================================================
 //  La poche
 // =====================================================================
-// Trois zones, comme dans la spécification (REPONSE-EQUIPEMENT.md, § 4) : les armes et
+// Trois zones, comme dans la spécification (docs/REPONSE-EQUIPEMENT.md, § 4) : les armes et
 // l'outil (qu'on a ou qu'on n'a pas, rien à gérer), les objets (6 places, 12 au plus,
 // achetées chez le colporteur), les gourdes. Les objets de quête n'y vont pas : ils restent
 // au journal, sinon la poche se remplirait de ce qu'on n'a pas le droit de jeter.

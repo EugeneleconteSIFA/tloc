@@ -2,7 +2,7 @@
 //
 // Tracé de la citadelle (relevé OSM, cf. carte/README.md), relief de la plaine, zones,
 // distances signées, exclusions. Tous les autres modules s'y réfèrent et aucun ne
-// redéfinit de géométrie dans son coin (cf. ORCHESTRATION.md).
+// redéfinit de géométrie dans son coin (cf. docs/ORCHESTRATION.md).
 //
 // Conventions : une unité = un mètre, origine au centre de la citadelle, x = est,
 // z = sud, Porte Royale au sud. Les élévations ne suivent PAS l'échelle du plan —
@@ -2835,6 +2835,20 @@ export function zoneName(x, z) {
   if (distBati(x, z) < 22) return 'Les rues de Lille';
   { const o = coucheAt(LILLE.parcs, x, z, 0); if (o) return o.nom || 'Les jardins de la ville'; }
   return 'Bois de Boulogne';
+}
+// L'ambiance musicale de la ville (SFX.music, engine.js), d'après le nom de zone ci-dessus.
+// Ces noms viennent du relevé réel de Lille — 120 différents, relevés sur toute la carte le
+// 30 septembre —, d'où des motifs plutôt qu'une liste. Tout ce qui n'est ni bois, ni eau, ni
+// citadelle, ni jardin est une rue : le bourg.
+export function ambiance(zone = '') {
+  if (/donjon/i.test(zone)) return 'donjon';
+  if (/^(Bastion|Contregarde|Demi-lune|Lunette)|^(Remparts|Galeries|Place d'Armes|Porte Royale|La voie des combattants|Façade de l'Esplanade)$/.test(zone)) return 'citadelle';
+  if (/vieux mage/.test(zone)) return 'mage';
+  if (/Fossé|Canal|Berges|Lavoir|^Pont /.test(zone)) return 'eau';
+  if (/Moulin|Hameau/.test(zone)) return 'campagne';
+  if (/^(Parc|Jardin|Square|Plaine)|jardins/.test(zone)) return 'jardins';
+  if (!zone || /^Bois|Sentier du Bois/.test(zone)) return 'bois';
+  return 'bourg';
 }
 // La courtine de la Porte Royale n'est plus forcément la troisième : sur le tracé réel
 // elle dépend de l'ordre angulaire des bastions. On la retrouve par la géométrie, et on

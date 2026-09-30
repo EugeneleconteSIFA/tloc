@@ -21,7 +21,7 @@ const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const BOITE = (process.argv[3] || '-450,-450,650,800').split(',').map(Number);
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

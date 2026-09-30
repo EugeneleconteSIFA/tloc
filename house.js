@@ -232,7 +232,7 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'house', getH: () => 0, zoneName: () => 'Maison de Camille', build, populate, animate, minimap,
+  name: 'house', musique: 'maison', getH: () => 0, zoneName: () => 'Maison de Camille', build, populate, animate, minimap,
   counts: () => `<small>Chez Camille — Entrée devant le lit pour dormir, devant l'armoire pour se changer, devant la porte pour sortir. Le coffre est sur la mezzanine.</small>`
     + BOURSE.ligneHUD(),
   start: () => showMessage('La maison de Camille. Le lit est au fond à gauche.', 4),

@@ -7,7 +7,7 @@
 // seul objet mutable, que tout le monde lit et écrit.
 //
 // N'y mettre QUE ce qui traverse vraiment une frontière de secteur : tout ce qui reste
-// dans un module doit rester une variable de ce module (cf. ORCHESTRATION.md).
+// dans un module doit rester une variable de ce module (cf. docs/ORCHESTRATION.md).
 export const PARTAGE = {
   // citadelle
   waterMat: null, donjonGate: null, poterneGrille: null, keyChest: null, bowChest: null,

@@ -805,7 +805,7 @@ export function brickScaled(w, h, extra = {}) {
 export const brickMat = brickScaled(4, 4);
 
 // =====================================================================
-//  Matériaux photographiques (Poly Haven, CC0) — cf. BRIEF-DESIGN.md règle 3
+//  Matériaux photographiques (Poly Haven, CC0) — cf. docs/BRIEF-DESIGN.md règle 3
 // =====================================================================
 // « tuile » = taille réelle du motif en mètres ; « repli » = teinte utilisée
 // tant que la texture n'est pas chargée, ou si le fichier manque.
@@ -1242,7 +1242,8 @@ export const SFX = (() => {
     } catch (e) { /* audio indisponible */ }
   }
   // LA MUSIQUE : des morceaux enregistrés (assets_back/05_audio/musique, découpés le 30
-  // septembre), une liste par ambiance de lieu (ambianceDe, plus bas). Chacun est un <audio>
+  // septembre), une liste par ambiance de lieu : chaque niveau dit la sienne (`musique`, ou
+  // `ambiance(zone)` pour la ville, cf. carte.js). Chacun est un <audio>
   // lu en flux, preload « none » : rien ne se télécharge avant d'entrer dans le lieu, et le
   // chargement du jeu n'en porte pas un octet. Il passe par le contexte WebAudio pour deux
   // raisons : suspendre le contexte (veille) le fait taire avec le reste, et le fondu se règle
@@ -1384,22 +1385,9 @@ export const SFX = (() => {
     dead: () => [440, 370, 311, 220].forEach((f, i) => setTimeout(() => tone(f, f, 0.35, 'triangle', 0.15), i * 220)),
   };
 })();
-// Quelle ambiance pour quel lieu : les intérieurs d'après leur niveau, la ville d'après le nom
-// de zone qu'affiche le HUD (zoneName, carte.js). Ces noms viennent du relevé réel de Lille —
-// 120 différents, relevés sur toute la carte le 30 septembre —, d'où des motifs plutôt qu'une
-// liste. Tout ce qui n'est ni bois, ni eau, ni citadelle, ni jardin est une rue : le bourg.
-const AMB_NIVEAU = { tavern: 'taverne', chapelle: 'chapelle', house: 'maison', mage: 'mage', cave: 'cave' };
-export function ambianceDe(niveau, zone = '') {
-  if (AMB_NIVEAU[niveau]) return AMB_NIVEAU[niveau];
-  if (/donjon/i.test(zone)) return 'donjon';
-  if (/^(Bastion|Contregarde|Demi-lune|Lunette)|^(Remparts|Galeries|Place d'Armes|Porte Royale|La voie des combattants|Façade de l'Esplanade)$/.test(zone)) return 'citadelle';
-  if (/vieux mage/.test(zone)) return 'mage';
-  if (/Fossé|Canal|Berges|Lavoir|^Pont /.test(zone)) return 'eau';
-  if (/Moulin|Hameau/.test(zone)) return 'campagne';
-  if (/^(Parc|Jardin|Square|Plaine)|jardins/.test(zone)) return 'jardins';
-  if (!zone || /^Bois|Sentier du Bois/.test(zone)) return 'bois';
-  return 'bourg';
-}
+
+// l'ambiance musicale d'un niveau : la ville la déduit de la zone, un intérieur n'en a qu'une
+function ambianceNiveau(L, zone) { return L ? (L.ambiance ? L.ambiance(zone) : L.musique) : null; }
 
 // =====================================================================
 
@@ -2332,7 +2320,7 @@ window.addEventListener('keydown', (e) => {
     if (t && state.running && !state.paused && !state.over && !e.repeat) { t(e); return; } }
   if (e.code === 'KeyP') G.postFX = !G.postFX;
   if (e.code === 'KeyM') showMessage(SFX.toggleMute() ? 'Musique coupée' : 'Musique', 1.5);
-  if (state.running) SFX.music(ambianceDe(G.level && G.level.name, curZone));
+  if (state.running) SFX.music(ambianceNiveau(G.level, curZone));
   if (e.code === 'KeyO') { sun.castShadow = !sun.castShadow; showMessage(sun.castShadow ? 'Ombres activées' : 'Ombres désactivées (plus fluide)', 2); }
   if (e.code === 'Enter') enterPressed = true;
   if (e.code === 'Escape' && state.running && !state.over) pauseGame();
@@ -3473,7 +3461,7 @@ function loop(now) {
     cutTick(dt);
     state.saveT += dt; if (state.saveT > 20) { state.saveT = 0; saveGame(true); }
     const z = world.zoneName(player.pos.x, player.pos.z);
-    if (z !== curZone) { curZone = z; zoneEl.textContent = z; zoneEl.style.opacity = 1; zoneT = 2.5; SFX.music(ambianceDe(L.name, z)); }
+    if (z !== curZone) { curZone = z; zoneEl.textContent = z; zoneEl.style.opacity = 1; zoneT = 2.5; SFX.music(ambianceNiveau(L, z)); }
     if (zoneT > 0) { zoneT -= dt; if (zoneT <= 0) zoneEl.style.opacity = 0; }
     if (msgT > 0) { msgT -= dt; if (msgT <= 0) msgEl.style.opacity = 0; }
     drawHearts(); drawMinimap(); updateCounts(); majAide();

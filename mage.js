@@ -354,7 +354,7 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'mage', getH: () => 0, zoneName: () => 'Chaumière du vieux mage', build, populate, animate, minimap,
+  name: 'mage', musique: 'mage', getH: () => 0, zoneName: () => 'Chaumière du vieux mage', build, populate, animate, minimap,
   counts: () => `<small>La chaumière du vieux mage — Entrée devant lui pour l'écouter, Entrée devant l'établi pour ses fioles, Entrée devant la porte pour ressortir.</small>`
     + BOURSE.ligneHUD(),
   start: () => showMessage('Ça sent la fumée verte et le vieux papier. Un homme très vieux remue son chaudron.', 5),

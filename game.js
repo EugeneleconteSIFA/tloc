@@ -9,7 +9,7 @@ import {
   APO, DEHORS, DONJON, ECH, HOUSE, HOUSE_SMOKE_TOP, MAGE, MOAT_IN, MOAT_OUT, MOUNDS, POTERNE,
   TOWN, bastions, haiesIGN, levelBlocked, levelH, nappesLille, pontsLille, sdEau, sdPent, solVille, terrassesDehors,
   voiriesLille,
-  zoneName,
+  zoneName, ambiance,
 } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { CLOUD_X, perf } from './nature.js';
@@ -77,7 +77,7 @@ function animate(now, dt) {
   T.waterN.offset.x += dt * 0.015; T.waterN.offset.y += dt * 0.01;
 }
 const level = {
-  name: 'citadel', getH: levelH, blocked: levelBlocked, zoneName,
+  name: 'citadel', getH: levelH, blocked: levelBlocked, zoneName, ambiance,
   // Camille et les villageois mesuraient 2,97 m, alors que la citadelle et les 1 975
   // hauteurs relevées sont au 1:1 : une maison de rue lilloise de 9,50 m ne faisait que
   // 3,2 fois sa taille, au lieu de 5,4. Dehors, le personnage est donc ramené à 1,80 m.

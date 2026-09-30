@@ -12,7 +12,7 @@
 //
 //   node bancs/murs.mjs [http://127.0.0.1:8000] [demi-côté en m, défaut 170] [--photos]
 //
-// Sortie : bancs/murs-<date>.json, et bancs/murs-<date>.png avec --photos.
+// Sortie : bancs/resultats/murs-<date>.json, et bancs/resultats/murs-<date>.png avec --photos.
 import { createRequire } from 'module';
 import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
@@ -20,7 +20,7 @@ const DEMI = +(process.argv[3] || 170);
 const PHOTOS = process.argv.includes('--photos');
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -168,7 +168,7 @@ console.log('— rues libres mais coupées de la place :');
 for (const z of res.zPerdues.slice(0, 20)) console.log(`  ${String(z.m2).padStart(6)} m²  ${z.lieu}  (${z.x}, ${z.z}) local ${z.local}`);
 fs.writeFileSync(DIR + `murs-${JOUR}.png`, Buffer.from(res.png.split(',')[1], 'base64'));
 const { png, ...sans } = res; fs.writeFileSync(DIR + `murs-${JOUR}.json`, JSON.stringify(sans, null, 1));
-console.log(`carte : bancs/murs-${JOUR}.png`);
+console.log(`carte : bancs/resultats/murs-${JOUR}.png`);
 
 if (PHOTOS) {
   const lst = [...res.zMurs.slice(0, 6), ...res.zMarches.slice(0, 3), ...res.zPerdues.slice(0, 3)];
@@ -197,6 +197,6 @@ for k, im in enumerate(ims):
 p.save('${DIR}murs-${JOUR}-photos.png')
 os.remove('${DIR}.murs-legendes.json')
 PY`);
-  console.log(`photos : bancs/murs-${JOUR}-photos.png`);
+  console.log(`photos : bancs/resultats/murs-${JOUR}-photos.png`);
 }
 await browser.close();

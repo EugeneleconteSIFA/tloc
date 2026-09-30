@@ -15,13 +15,13 @@
 //
 //   node bancs/objets.mjs [http://127.0.0.1:8000]
 //
-// Sortie : bancs/objets-<date>.json et bancs/objets-<date>.png (planche, repère rouge).
+// Sortie : bancs/resultats/objets-<date>.json et bancs/resultats/objets-<date>.png (planche, repère rouge).
 import { createRequire } from 'module';
 import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('.', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -133,5 +133,5 @@ for k, im in enumerate(ims):
 p.save('${DIR}objets-${JOUR}.png')
 os.remove('${DIR}.objets-legendes.json')
 PY`);
-  console.log(`planche : bancs/objets-${JOUR}.png`);
+  console.log(`planche : bancs/resultats/objets-${JOUR}.png`);
 }

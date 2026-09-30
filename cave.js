@@ -860,7 +860,7 @@ function objective() {
     : "descends dans la contre-mine en suivant le caniveau, et tire la vanne n° 4 qui ouvre la grille";
 }
 const level = {
-  name: 'cave', getH: levelH, blocked: levelBlocked, zoneName, build, populate, update, animate, minimap, counts, onLoad, onFall, objective,
+  name: 'cave', musique: 'cave', getH: levelH, blocked: levelBlocked, zoneName, build, populate, update, animate, minimap, counts, onLoad, onFall, objective,
   start: () => showMessage("Les galeries de Vauban. Ça suinte, ça résonne. Les torches allumées marquent le chemin ; le caniveau descend vers la contre-mine.", 6),
   arriveMessage: () => state.princeFreed ? "Les galeries. Le prince te suit : remonte par l'escalier, sous le rai de jour." : "Les galeries de Vauban. Suis les torches allumées : celles qui sont mortes ne mènent nulle part.",
   entry: () => state.princeFreed ? null : { title: 'Les galeries de Vauban', sub: 'Sous la citadelle', cam: [startPos.x + 13, 3.6, startPos.z + 9], at: [startPos.x + 2, 1.4, startPos.z + 1], cam2: [startPos.x + 3.5, 2.5, startPos.z + 4.5], at2: [startPos.x, 1.5, startPos.z], dur: 4.5, text: 'Quelque part au bout de ces galeries, Eugène attend…' },
