@@ -4294,8 +4294,35 @@ export function finCharge() {
 // paquets pour que la barre avance, puis la compilation asynchrone de three.js, qui laisse
 // le pilote compiler en parallèle quand il sait le faire (KHR_parallel_shader_compile).
 const CARTES_TEX = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap', 'displacementMap', 'lightMap'];
+// SUR TÉLÉPHONE, DES TEXTURES À 512 (30 septembre). Mesuré : 176 textures de 1024 px pèsent
+// 975 Mo en mémoire graphique (1,1 Go en tout) — plus que ce qu'un iPhone laisse à un onglet.
+// À 512, c'est le quart ; sur un écran de téléphone, la différence ne se voit presque pas.
+// On réduit l'image AVANT son envoi à la carte (prechaufferRendu), puis de temps en temps
+// celles arrivées après (intérieurs, avatars du multi). Une ImageBitmap part telle quelle
+// (three.js ne la retourne pas) : sa copie sur toile garde donc flipY = false, sans quoi les
+// personnages auraient leurs textures à l'envers.
+const TEX_MAX_TACTILE = 512;
+function reduireTexture(t) {
+  const im = t && t.image;
+  if (!im || t.isCompressedTexture || t.isDataTexture || t.isVideoTexture || t.isCubeTexture || t.userData.reduite) return;
+  const w = im.width || 0, h = im.height || 0;
+  if (!w || !h || Math.max(w, h) <= TEX_MAX_TACTILE || typeof im.getContext === 'function' && t.userData.vivante) return;
+  const k = TEX_MAX_TACTILE / Math.max(w, h), c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+  try { c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); } catch (e) { return; }
+  if (typeof ImageBitmap !== 'undefined' && im instanceof ImageBitmap) { t.flipY = false; t.premultiplyAlpha = false; try { im.close(); } catch (e) {} }
+  t.image = c; t.userData.reduite = true; t.needsUpdate = true;
+}
+function reduireTextures(racine) {
+  racine.traverse((o) => {
+    const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    for (const m of ms) for (const k of CARTES_TEX) if (m && m[k] && m[k].isTexture) reduireTexture(m[k]);
+  });
+}
+if (TACTILE) setInterval(() => { if (state.running) reduireTextures(scene); }, 5000);
 async function prechaufferRendu() {
   const t0 = performance.now(), textures = new Set();
+  if (TACTILE) reduireTextures(scene);
   // les images décodées en tâche de fond (assets.js) : on les attend, sinon celles qui
   // arrivent après partiraient à la première image du jeu — un à-coup juste après « Prêt »
   { const att = texturesEnAttente(); if (att.length) { peindreCharge(`préparation du rendu — ${att.length} images à décoder`, chargeP); await Promise.all(att); } }

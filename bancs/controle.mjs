@@ -69,7 +69,7 @@ else {
   // un Mac occupé fausse la mesure : on attend qu'il se calme (5 min au plus), et on le dit
   for (let i = 0; i < 30 && os.loadavg()[0] > 4; i++) await new Promise((r) => setTimeout(r, 10000));
   const charge = os.loadavg()[0].toFixed(1);
-  const sommes = [], mos = [];
+  const sommes = [], mos = [], tas = [], tex = [];
   for (let k = 1; k <= PASSES; k++) {
     const etiq = `controle-${k}`;
     spawnSync(process.execPath, [RACINE + 'bancs/charge.mjs', ORIGINE], { env: { ...process.env, TLOC_ETIQUETTE: etiq }, encoding: 'utf8' });
@@ -77,13 +77,15 @@ else {
       .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
     const d = f && JSON.parse(fs.readFileSync(f, 'utf8'));
     if (!d || !d.froid || !d.froid.etapes) { echecs.push(`banc : la passe ${k} n'a rien mesuré`); break; }
-    sommes.push(Object.values(d.froid.etapes).reduce((a, b) => a + b, 0) / 1000); mos.push(d.froid.Mo);
+    sommes.push(Object.values(d.froid.etapes).reduce((a, b) => a + b, 0) / 1000); mos.push(d.froid.Mo); tas.push(d.froid.tasMo); tex.push(d.froid.texturesMo);
     fs.unlinkSync(f);                                 // les passes de contrôle ne s'accumulent pas
   }
   if (sommes.length === PASSES) {
     const med = (t) => [...t].sort((a, b) => a - b)[Math.floor(t.length / 2)];
     const s = med(sommes), mo = med(mos);
     dire(`3. banc à froid (médiane de ${PASSES}, charge du Mac ${charge}) : somme ${s.toFixed(1)} s / ${SOMME_MAX} s — ${mo} Mo / ${MO_MAX} Mo   [${sommes.map((x) => x.toFixed(1)).join(', ')}]`);
+    // la mémoire, pour information (le budget viendra quand un vrai téléphone aura parlé)
+    dire(`   mémoire (ordinateur) : tas JS ${med(tas)} Mo après ramasse-miettes, textures ${med(tex)} Mo`);
     if (s > SOMME_MAX) echecs.push(`banc : somme des étapes ${s.toFixed(1)} s, au-delà du budget de ${SOMME_MAX} s (CLAUDE.md, règle 8)`);
     if (mo > MO_MAX) echecs.push(`banc : ${mo} Mo au chargement, au-delà du plafond de ${MO_MAX} Mo`);
   }

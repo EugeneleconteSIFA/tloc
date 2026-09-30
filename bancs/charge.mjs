@@ -17,8 +17,11 @@ const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-
 const { chromium } = createRequire(PW)('playwright');
 const DIR = new URL('resultats/', import.meta.url).pathname;
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+// la MÉMOIRE (30 septembre) : ce qui fera tenir le jeu sur un téléphone ou non. Le tas JS après
+// un ramasse-miettes, et la mémoire graphique des textures (ce qu'elles pèseront une fois envoyées)
+const cdp = await page.context().newCDPSession(page);
 const reseau = [];
 page.on('response', async (r) => { try { const b = await r.body(); reseau.push({ url: r.url().replace(/^https?:\/\/[^/]+\//, ''), n: b.length }); } catch (e) {} });
 await page.goto(ORIGINE + '/connexion.html'); await page.evaluate(() => localStorage.clear());
@@ -31,9 +34,17 @@ for (const passe of ['froid', 'relance']) {
   const total = (Date.now() - t0) / 1000;
   const etapes = await page.evaluate(() => JSON.parse(localStorage.getItem('tloc_poids_charge') || 'null'));
   const octets = reseau.reduce((t, r) => t + r.n, 0);
-  res[passe] = { total, etapes, fichiers: reseau.length, Mo: +(octets / 1e6).toFixed(1),
+  await cdp.send('HeapProfiler.collectGarbage').catch(() => {});
+  const memoire = await page.evaluate(() => {
+    const vues = new Set(); let tex = 0;
+    window.TLOC.scene.traverse((o) => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of ms) for (const k in m) { const t = m[k]; if (!t || !t.isTexture) continue; const src = t.source || t.image; if (!src || vues.has(src)) continue; vues.add(src);
+        const im = t.image || {}; tex += t.isCompressedTexture ? (t.mipmaps || []).reduce((a, mm) => a + (mm.data ? mm.data.byteLength : 0), 0) : (im.width || 0) * (im.height || 0) * 4 * 1.33; } });
+    return { tasMo: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null, texturesMo: Math.round(tex / 1e6) };
+  });
+  res[passe] = { total, etapes, fichiers: reseau.length, Mo: +(octets / 1e6).toFixed(1), ...memoire,
     lourds: reseau.sort((a, b) => b.n - a.n).slice(0, 10).map((r) => `${(r.n / 1e6).toFixed(2)} Mo  ${r.url}`) };
-  console.log(`\n== ${passe} : ${total} s — ${reseau.length} fichiers, ${res[passe].Mo} Mo`);
+  console.log(`\n== ${passe} : ${total} s — ${reseau.length} fichiers, ${res[passe].Mo} Mo — tas ${memoire.tasMo} Mo, textures ${memoire.texturesMo} Mo`);
   console.log('étapes (ms) : ' + Object.entries(etapes || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' | '));
 }
 console.log('\nles plus lourds :\n  ' + res.froid.lourds.join('\n  '));

@@ -1204,6 +1204,15 @@ proximité, tloc-multi.js `coupsFleche`).
 - **Rangement** : notes dans `docs/`, relevés dans `bancs/resultats/` (les bancs y écrivent).
   Liste des suppressions possibles : `PLAN-2026-10-01.md`, § 2.
 
+### Y. Garde-fous et mobile (30 septembre, nuit) — **faits, publiés sur le dev**
+
+- **Garde-fous** : `bancs/controle.mjs` (syntaxe en module, démarrage des six pages, banc en
+  médiane de 3, mémoire affichée) ; `publier-dev.sh 'msg' chemins…` le passe et n'envoie que
+  les chemins donnés ; hook `.claude/garde.py` (git interdits, `.claude/verrous.txt`).
+  **`node --check x.js` ne voit pas les erreurs d'un module ES** (Node 24) : `--input-type=module`.
+- **Mobile en bêta** (`?mobile=1`) : tout est dans `PLAN-2026-10-01.md`, § 3, avec l'essai à
+  faire sur un vrai téléphone et le risque mémoire mesuré.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js
