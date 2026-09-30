@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=35';
+} from './engine.js?v=36';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -717,9 +717,18 @@ function praticable(x, z) {
   return null;
 }
 
+// le point d'arrivée cliqué sur la carte : praticable ET ouvert (cf. ouvert) — le plus proche
+// du clic qui le soit, sans quoi on arrivait dans un recoin entre trois murs
+function praticableOuvert(x, z) {
+  for (const r of [0, 3, 6, 10, 15]) for (let k = 0; k < (r ? 8 : 1); k++) {
+    const a = k / 8 * TAU, q = praticable(x + Math.cos(a) * r, z + Math.sin(a) * r);
+    if (q && ouvert(q.x, q.z)) return q;
+  }
+  return null;
+}
 async function choisirApparition() {
   const pre = monRdv();
-  const p = await ATLAS.choisirPoint(praticable, enEquipes() ? pre : (estHote ? null : pre));
+  const p = await ATLAS.choisirPoint(praticableOuvert, enEquipes() ? pre : (estHote ? null : pre));
   if (p) {
     player.pos.set(p.x, getH(p.x, p.z, (world.levelH ? world.levelH(p.x, p.z) : 0) + 0.5) + 0.1, p.z);
     player.vy = 0; player.kb.set(0, 0, 0);
@@ -1812,7 +1821,7 @@ function mourir(de, pseudo) {
   }
   if (regle === 'survie' && manche && manche.etat === 'cours') {
     elimine = true; p.invuln = 1e9;
-    showMessage(pseudo ? `${pseudo} t’a éliminée. Tu regardes la fin de la manche.` : 'Éliminée ! Tu regardes la fin de la manche.', 5);
+    showMessage((pseudo ? `${pseudo} t’a éliminée.` : 'Éliminée !') + ' Tu suis ceux qui restent — clic : le suivant.', 5);
     return;
   }
   showMessage(pseudo ? `${pseudo} t’a mise à terre. ${monPerso} se relève un peu plus loin.`
@@ -2486,6 +2495,24 @@ let regle = 'balade', manche = null, elimine = false, recuManche = 0;
 const NOM_REGLE = { balade: 'Balade', survie: 'Match à mort', temps: 'Chrono', drapeaux: 'Prise des drapeaux' };
 // la trêve : un compte à rebours d'avant-manche (MANCHE_OUVERTURE, app.py) — aucun coup ne porte
 const treve = () => !!(manche && manche.etat === 'compte');
+// LE SPECTATEUR. Éliminée au match à mort, Camille clignotait sans fin (l'invincibilité
+// infinie la faisait clignoter) et errait dans le décor (Eugène, 30 septembre : « je me déplace
+// mais je suis inexistant »). Elle disparaît, ne bouge plus, et la caméra suit un participant
+// encore en lice (G.spectateur, engine.js) ; un clic passe au suivant.
+let suiviIdx = 0;
+function enLice() {
+  const l = [];
+  for (const b of bots.values()) if (b.pos && !(b.mortT > 0) && !estElimine(b.id)) l.push({ id: b.id, pos: b.pos });
+  for (const a of autres.values()) if (!bots.has(a.id) && a.mesh && a.mesh.visible && !estElimine(a.id)) l.push({ id: a.id, pos: a.mesh.position });
+  return l;
+}
+function majSpectateur() {
+  const actif = elimine && regle === 'survie' && manche && manche.etat === 'cours';
+  if (!actif) { if (G.spectateur) G.spectateur = null; return; }
+  const l = enLice();
+  G.spectateur = l.length ? l[((suiviIdx % l.length) + l.length) % l.length].pos : null;
+}
+addEventListener('mousedown', (e) => { if (G.spectateur && e.button === 0) suiviIdx++; });
 const estElimine = (id) => !!(regle === 'survie' && manche && manche.etat === 'cours' && manche.elimines && manche.elimines.includes(id));
 // les vies qui restent (match à mort) ; null hors manche
 const viesDe = (id) => (regle === 'survie' && manche && manche.vies && manche.vies[id] != null ? manche.vies[id] : null);
@@ -2508,17 +2535,66 @@ function majManche(m) {
 }
 
 // tout le monde repart à égalité : cœurs pleins, au point d'arrivée, quelques secondes à l'abri
+// UN ENDROIT D'OÙ L'ON PEUT PARTIR. `praticable` dit qu'on tient debout ; pas qu'on en sort :
+// un recoin entre trois murs passait (Eugène, 30 septembre : « j'ai atterri dans une zone
+// bloquée entre trois murs »). On inonde, au mètre, aux règles de Camille (collision, marche
+// de 0,5 m) : il faut pouvoir s'éloigner de 25 m.
+function ouvert(x, z) {
+  const PAS = 1, R = 26, N = 2 * R + 1, vu = new Uint8Array(N * N), file = [[R, R]];
+  vu[R * N + R] = 1;
+  const h = (i, j) => { const px = x + (i - R) * PAS, pz = z + (j - R) * PAS; return world.levelH ? world.levelH(px, pz) : 0; };
+  while (file.length) {
+    const [i, j] = file.pop(), y = h(i, j);
+    if (Math.hypot(i - R, j - R) >= 25) return true;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N || vu[b * N + a]) continue;
+      const px = x + (a - R) * PAS, pz = z + (b - R) * PAS, y2 = h(a, b);
+      if (y2 - y > 0.5 || (sdEau(px, pz) < 1 && !surOuvrage(px, pz, y2)) || blocked(px, pz, 0.4, false, y2)) continue;
+      vu[b * N + a] = 1; file.push([a, b]);
+    }
+  }
+  return false;
+}
+// Un point de départ de manche ÉPARPILLÉ dans l'aire en vigueur, loin des autres (≥ 25 m) :
+// tous les bots partaient du point d'arrivée du joueur et se retrouvaient sur lui.
+function pointEparpille(aire, loin, autour = null) {
+  // autour du joueur quand on le sait (les bots doivent le trouver en une minute), sinon la place
+  const pl = autour || lieux.find((l) => l.id === 'place') || { x: 0, z: 0 };
+  const R = aire === 'citadelle' ? 110 : aire === 'parc' ? 180 : 200;   // assez près pour se trouver en une minute
+  for (let k = 0; k < 40; k++) {
+    const a = Math.random() * TAU, r = R * Math.sqrt(Math.random());
+    const q = praticable(pl.x + Math.cos(a) * r, pl.z + Math.sin(a) * r);
+    if (!q || horsAire(q.x, q.z, aire) || loin.some((o) => Math.hypot(o.x - q.x, o.z - q.z) < 25)) continue;
+    if (!relieAuJeu(q.x, q.z) || !ouvert(q.x, q.z)) continue;
+    return q;
+  }
+  return null;
+}
 function debutManche() {
   const p = player;
-  elimine = false; debutCours = performance.now(); aireAnnoncee = null;
+  elimine = false; G.spectateur = null; suiviIdx = 0; debutCours = performance.now(); aireAnnoncee = null;
   p.hp = p.maxHp; p.invuln = 2; p.attackT = -1; p.rollT = -1; p.vy = 0; p.kb.set(0, 0, 0);
-  const ici = pointDansAire(apparition, etatAire(0).cur);   // en drapeaux courts, l'aire est déjà la citadelle
+  const aire = etatAire(0).cur, ici = pointDansAire(apparition, aire);   // en drapeaux courts, l'aire est déjà la citadelle
   if (ici) {
-    const a = Math.random() * TAU, r = 1 + Math.random() * 3;
-    p.pos.set(ici.x + Math.cos(a) * r, ici.y, ici.z + Math.sin(a) * r);
-    p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
+    // près du point choisi, mais sur un endroit praticable ET ouvert
+    let q = null;
+    for (let k = 0; k < 16 && !q; k++) {
+      const a = Math.random() * TAU, r = k ? 2 + k * 1.5 : 0, c = praticable(ici.x + Math.cos(a) * r, ici.z + Math.sin(a) * r);
+      if (c && ouvert(c.x, c.z)) q = c;
+    }
+    q = q || pointEparpille(aire, []) || ici;
+    p.pos.set(q.x, getH(q.x, q.z) + 0.1, q.z);
   }
-  for (const b of bots.values()) { b.mortT = 0; b.decal = null; if (b.pos || apparition) placerBot(b); }
+  const occupes = [{ x: p.pos.x, z: p.pos.z }];
+  for (const b of bots.values()) {
+    b.mortT = 0; b.decal = null;
+    const q = regle !== 'balade' ? pointEparpille(aire, occupes, occupes[0]) : null;
+    if (q) {
+      b.pos = new THREE.Vector3(q.x, getH(q.x, q.z, (world.levelH ? world.levelH(q.x, q.z) : 0) + 0.5), q.z);
+      b.niveau = G.level.name; b.hp = b.mx; b.invuln = 2; b.act = 0; b.but = null; b.cible = null;
+      occupes.push(q);
+    } else if (b.pos || apparition) placerBot(b);
+  }
   equiperEquipe(false);
   const v = manche.vies_max || 1, min = Math.round((manche.duree || 180) / 60), nd = (manche.drapeaux || []).length;
   showMessage(regle === 'survie' ? `Match à mort : ${v > 1 ? v + ' vies' : 'une seule vie'}. Le dernier debout gagne !`
@@ -2795,6 +2871,7 @@ function boucle(now) {
     coupsEpee(); coupsFleche();
   }
 
+  majSpectateur();
   // avatars : on glisse vers la dernière position annoncée plutôt que de sauter dessus
   for (const a of autres.values()) {
     // arrivé avant que la banque ne soit prête, un avatar est né en primitives : on le

@@ -12,7 +12,7 @@
 
 import {
   G, SFX, THREE, bokeh, camera, makeHead, phMat, player, saveGame, showMessage, state,
-} from './engine.js?v=35';
+} from './engine.js?v=36';
 
 // =====================================================================
 //  Les palettes — indices rangés dans la sauvegarde, pas des couleurs
@@ -429,6 +429,11 @@ export function ouvrirArmoire(apres = null) {
   const L = look();
   state.paused = true;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+  // le modèle ne suit la position qu'à chaque pas de jeu : entré dans une partie à plusieurs
+  // directement (sans le menu titre), le jeu se met en pause pour l'armoire avant d'avoir joué
+  // une seule image — Camille restait à l'origine, et l'armoire filmait un chemin vide
+  // (Eugène, 30 septembre). On la pose d'abord où elle est.
+  if (player.mesh) { player.mesh.position.copy(player.pos); player.mesh.updateMatrixWorld(true); }
 
   // La caméra ne se plante PAS devant Camille : devant elle, il y a l'armoire, et on se
   // retrouverait dans le meuble. On reprend l'axe de la caméra de jeu — qui, elle, a déjà

@@ -1138,6 +1138,20 @@ Depuis, en local (non publié) :
   courtine de longueur nulle (5,5 m de rayon) bouchait le haut de la rampe (`percerCouloir`
   laisse tomber les tronçons de moins d'un mètre). *Reste* : quelques accrocs en bordure de
   rampe (Reine, Anjou : chute latérale du palier) — le milieu passe partout.
+- **Match à mort, retours du 30 au soir** (version 35 en ligne) :
+  - l'armoire ne montrait pas Camille : entrée directe en partie, le jeu se met en pause avant
+    d'avoir posé le modèle à la position (resté à l'origine) — `ouvrirArmoire` le pose d'abord ;
+  - arrivé « dans une zone bloquée entre trois murs » : `praticable` ne disait pas qu'on pouvait
+    en SORTIR — `ouvert` (tloc-multi.js : inondation au mètre, pas de 0,5 m, il faut s'éloigner
+    de 25 m) valide le point d'arrivée de la carte (`praticableOuvert`) et celui de la manche ;
+  - tous les bots au même endroit que le joueur : en manche, `pointEparpille` les disperse
+    dans l'aire, ouverts, à 25 m les uns des autres, dans 200 m autour du joueur (100–190 m
+    mesurés) ;
+  - éliminé : l'invincibilité infinie faisait clignoter Camille sans fin et on errait —
+    SPECTATEUR (`G.spectateur`, engine.js : caméra sur un participant en lice, Camille cachée et
+    immobile ; clic : le suivant). Vérifié par deux morts via `encaisser` (instance à 2 vies) ;
+  - les parapets du toit des galeries (1,05 m) se sautent : collision arrêtée à leur hauteur
+    (banc `sauts.mjs` : 30 → 24, le reste voulu).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

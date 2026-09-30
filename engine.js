@@ -2510,7 +2510,7 @@ export function updatePlayer(dt) {
   const p = player;
   p.invuln = Math.max(0, p.invuln - dt); p.attackCd = Math.max(0, p.attackCd - dt); p.rollCd = Math.max(0, p.rollCd - dt);
   if (p.sleeping > 0) { p.sleeping -= dt; }
-  const locked = cut.active; // cinématique ou dialogue : plus de commandes, seulement les déplacements scriptés
+  const locked = cut.active || !!G.spectateur; // cinématique, dialogue ou spectateur éliminé : plus de commandes
   if (!locked && down('KeyQ', 'ArrowLeft')) G.camYaw += 2.6 * dt;
   if (!locked && down('KeyE', 'ArrowRight')) G.camYaw -= 2.6 * dt;
   if (!locked && pressedOnce('KeyC') && state.bow) { G.bowOut = !G.bowOut; showMessage(G.bowOut ? 'Arc en main : clic gauche (ou F) pour tirer.' : 'Arc rangé : clic gauche (ou F) pour l\'épée.', 2); }
@@ -2666,7 +2666,7 @@ export function updatePlayer(dt) {
     // le clignotement de l'invincibilité, seulement quand le temps passe : figé (écran titre,
     // updatePlayer(0)) sur une phase éteinte, Camille restait invisible — puis toute l'armoire
     // de l'instance, jeu en pause (vu en équipes, où l'on arrive invincible, 29 septembre)
-    m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
+    m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0 && !G.spectateur;
     m.rotation.x = 0;
     if (p.pose) {
       const ps = p.pose;
@@ -2703,7 +2703,7 @@ export function updatePlayer(dt) {
   ud.bowHand.visible = state.bow && (drawing || bowOut); ud.bowBack.visible = state.bow && !drawing && !bowOut;
   if (bowOut && !drawing && p.attackT < 0) { ud.arms[0].rotation.x = -1.1; ud.elbows[0].rotation.x = -0.4; }
   if (drawing) { ud.arms[0].rotation.x = -Math.PI / 2; ud.elbows[0].rotation.x = 0; ud.arms[1].rotation.x = -Math.PI / 2 + 0.3; ud.arms[1].rotation.y = 0.2; ud.elbows[1].rotation.x = -1.6; }
-  m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0;
+  m.visible = !(p.invuln > 0 && dt > 0 && Math.floor(p.invuln * 14) % 2 === 0) && p.sleeping <= 0 && !G.spectateur;
   // respiration au repos
   ud.body.position.y = -1.1 + (walking ? 0 : Math.sin(state.time * 2.2) * 0.015); ud.head.rotation.y = walking ? 0 : Math.sin(state.time * 0.7) * 0.15;
   ud.sword.visible = state.sword; ud.shield.visible = state.sword;
@@ -2941,7 +2941,9 @@ export function updateShockwaves(dt) {
   }
 }
 export function updateCamera(dt) {
-  const p = player;
+  // SPECTATEUR (G.spectateur, posé par tloc-multi.js quand on est éliminé) : la caméra suit
+  // une autre position que celle de Camille — un joueur encore en lice
+  const p = G.spectateur ? { pos: G.spectateur, kb: player.kb, yaw: G.camYaw, helix: null } : player;
   const moving = p.kb.lengthSq() < 0.01 && (down('KeyW', 'ArrowUp', 'KeyS', 'ArrowDown', 'KeyD', 'ArrowRight', 'KeyA', 'ArrowLeft'));
   // la caméra se replace derrière Camille quand elle marche (demi-tour compris) ; la souris garde la main pendant 0,7 s après chaque mouvement
   const mouseRecent = G.mouseLook && state.time - G.mouseT < 0.7;

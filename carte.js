@@ -8,7 +8,7 @@
 // z = sud, Porte Royale au sud. Les élévations ne suivent PAS l'échelle du plan —
 // elles étaient déjà réalistes.
 import { THREE, clamp, lerp, rand, TAU, distSeg, pointInPoly, scene, T, mat, pbr, pbrRepeat, phMat, stoneMat,
-  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=35';
+  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=36';
 
 // Alias : plusieurs fonctions déclarent un « E » local (un THREE.Euler de travail)
 // qui masquerait le namespace du moteur. On passe donc par un nom qui ne peut pas

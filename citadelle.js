@@ -2,7 +2,7 @@
 //
 // Secteur Citadelle : courtines, bastions, Porte Royale, casernes, galeries voûtées,
 // donjon, poterne. Le tracé vient de carte.js, jamais l'inverse.
-import * as E from './engine.js?v=35';
+import * as E from './engine.js?v=36';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   THREE, GOLD, IRON, Q, SFX, T, TAU, addBox, addCap, addHelix, addInteract, addLieu, addPlatform,
@@ -11,7 +11,7 @@ import {
   mergeParts, mesh, mouldingRun, pbr, pbrRepeat, phMat, pickups, pilaster, player, pointInPoly, rand,
   rboxG, saveGame, scene, setQuest, showMessage, sky, spawnGaufre, sphG, state, stoneMat, uvMeters,
   wallBox, world, etape,
-} from './engine.js?v=35';
+} from './engine.js?v=36';
 import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,
@@ -1471,7 +1471,10 @@ export function buildGalleries() {
           mettre('dalle', gt); }
         const e0 = pt(ga, G.DEPTH / 2), e1 = pt(gb, G.DEPTH / 2);
         wallBox(e0[0], e0[1], e1[0], e1[1], 1.05, 0.45, stoneMat, G.ROOF, T.stone);
-        const pc = addCap(e0[0], e0[1], e1[0], e1[1], 0.3, Infinity); pc.bottom = G.ROOF - 0.9;
+        // le parapet se saute : sa collision s'arrête à sa hauteur (1,05 m, sous les 1,35 m que
+        // franchit le saut) — une limite à l'infini arrêtait Camille devant un muret « objectivement
+        // franchissable » (Eugène, 30 septembre). Derrière, c'est la place, six mètres plus bas.
+        const pc = addCap(e0[0], e0[1], e1[0], e1[1], 0.3, G.ROOF + 1.15); pc.bottom = G.ROOF - 0.9;
         wallBox(e0[0], e0[1], e1[0], e1[1], 0.35, 1.3, stoneMat, G.ROOF - 0.62, T.stone);  // corniche filante
       }
       for (const key of Object.keys(bins)) {
