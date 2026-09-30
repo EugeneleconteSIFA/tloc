@@ -1159,6 +1159,18 @@ Depuis, en local (non publié) :
     sa hauteur au-dessus du sol. Clip vu en rendu isolé ; *pas encore vu en partie*. Le clip
     soulève un peu le corps : à juger en jeu (double hauteur ?).
 
+### W. Le solo réservé au créateur (30 septembre, soir)
+
+Eugène : « à part pour le créateur, rends le mode solo inaccessible — en préparation ».
+- **Accueil** (`ouvrirSolo`, accueil.js) : la tuile Solo est FERMÉE par défaut (« Le mode solo
+  est en préparation. Patience : attends de voir ce que le créateur mijote… ») et la liste des
+  personnages cachée ; elle ne s'ouvre que si `/api/profil` répond `createur`. Le résultat est
+  mémorisé (`tloc_solo_ouvert`).
+- **Page de jeu** (tloc-multi.js, en tête) : hors d'une partie à plusieurs et sans ce feu vert,
+  on repart à l'accueil avant tout chargement. Les bancs (Playwright, `navigator.webdriver`)
+  passent. Vérifié : compte ordinaire renvoyé, créateur (serveur de test isolé) accepté.
+- *Pour rouvrir le solo à tous* : `ouvrirSolo(true)` inconditionnel et retirer la garde.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js

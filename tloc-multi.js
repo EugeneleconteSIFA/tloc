@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=37';
+} from './engine.js?v=38';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -44,6 +44,14 @@ if (C.connecte()) C.profil().then((p) => { if (p && p.createur) perfCreateur(tru
 
 const inst = C.instance();
 const actif = !!(inst && inst.code && C.connecte());
+// LE SOLO EST RÉSERVÉ AU CRÉATEUR pendant qu'il le prépare (Eugène, 30 septembre) : hors d'une
+// partie à plusieurs, sans le feu vert que l'accueil pose après avoir demandé au serveur
+// (tloc_solo_ouvert, cf. accueil.js), on repart à l'accueil — qui dit pourquoi.
+// (les bancs d'essai, pilotés par Playwright — navigator.webdriver —, passent : ils mesurent le solo)
+if (!actif && !navigator.webdriver) {
+  let ouvert = false; try { ouvert = localStorage.getItem('tloc_solo_ouvert') === '1'; } catch (e) {}
+  if (!ouvert) { try { (window.top || window).location.replace('accueil.html'); } catch (e) { location.replace('accueil.html'); } }
+}
 // en instance, le nom du personnage a été choisi à l'entrée ; en solo, c'est le nom de la partie
 const monPerso = (actif && inst.perso) || C.nomPersonnage();
 

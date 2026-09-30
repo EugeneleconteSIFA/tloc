@@ -1,10 +1,10 @@
 // The Legend of Camille — niveau 1 : la citadelle de Lille
-import * as E from './engine.js?v=37';
+import * as E from './engine.js?v=38';
 import * as PNJ from './pnj.js';
 import * as FORET from './foret.js';
 import {
   THREE, Q, T, blocked, bootLevel, camera, lerpAngle, makeSky, rand, scene, showMessage, state,
-} from './engine.js?v=37';
+} from './engine.js?v=38';
 import {
   APO, DEHORS, DONJON, ECH, HOUSE, HOUSE_SMOKE_TOP, MAGE, MOAT_IN, MOAT_OUT, MOUNDS, POTERNE,
   TOWN, bastions, haiesIGN, levelBlocked, levelH, nappesLille, pontsLille, sdEau, sdPent, solVille, terrassesDehors,

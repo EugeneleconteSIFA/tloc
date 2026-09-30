@@ -16,7 +16,7 @@
 // l'instanciera exactement comme un arbre procédural. Si le chargement échoue, l'espèce
 // retombe sur sa version procédurale : le jeu démarre toujours.
 // =====================================================================
-import { THREE, rand, clamp, TAU, T, mat, pbr, pbrRepeat, phMat, scene, addCap, makeCanvas, tex } from './engine.js?v=37';
+import { THREE, rand, clamp, TAU, T, mat, pbr, pbrRepeat, phMat, scene, addCap, makeCanvas, tex } from './engine.js?v=38';
 import * as A from './assets.js';
 
 // ---------------------------------------------------------------------

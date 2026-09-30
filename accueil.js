@@ -6,6 +6,14 @@ import * as SOCIAL from './accueil-social.js?v=2';
 const $ = (id) => document.getElementById(id);
 const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let partiePrete = null;        // la partie créée qui attend qu'on y entre (cf. montrerPartiePrete)
+// LE SOLO, RÉSERVÉ AU CRÉATEUR tant qu'il le prépare (Eugène, 30 septembre). Fermé par défaut,
+// il ne s'ouvre qu'une fois que le serveur a dit « c'est le créateur » ; la page de jeu lit le
+// même feu vert (tloc_solo_ouvert, cf. tloc-multi.js) et renvoie ici sans lui.
+function ouvrirSolo(oui) {
+  const t = document.querySelector('.mode-solo'); if (t) t.classList.toggle('solo-bloque', !oui);
+  const l = document.getElementById('parties'); if (l) l.classList.toggle('cache', !oui);
+  try { localStorage.setItem('tloc_solo_ouvert', oui ? '1' : '0'); } catch (e) {}
+}
 
 // Les messages ne s'écrivent plus dans la page : posés sur la vitrine, ils tombaient sur les
 // façades et ne se lisaient plus. Ils surgissent en toast ; `el`, lui, reste vide.
@@ -86,6 +94,8 @@ function depuis(t) {
 // Sans session ouverte et sans choix explicite de jouer en local, on renvoie au portail.
 const local = (() => { try { return localStorage.getItem('tloc_local') === '1'; } catch (e) { return false; } })();
 if (!C.connecte() && !local) location.replace('connexion.html');
+ouvrirSolo(false);
+if (C.connecte()) C.profil().then((p) => ouvrirSolo(!!(p && p.createur))).catch(() => {});
 
 function peindreCompte() {
   const c = C.compte();
@@ -727,8 +737,9 @@ setInterval(() => { if (C.connecte() && !document.hidden) chargerInstances(); },
 
 // la pastille « Toutes tes parties » : visible tant qu'on est en haut et que la liste est hors de l'écran
 {
-  const fl = $('flecheParties'), liste = $('parties');
-  const maj = () => fl.classList.toggle('cache', scrollY > 60 || liste.getBoundingClientRect().top < innerHeight - 40);
+  // la liste visée : les personnages, ou les parties à plusieurs quand le solo est fermé
+  const fl = $('flecheParties'), cible = () => (!$('parties').classList.contains('cache') ? $('parties') : $('plusieurs'));
+  const maj = () => { const c = cible(); fl.classList.toggle('cache', scrollY > 60 || c.classList.contains('cache') || c.getBoundingClientRect().top < innerHeight - 40); };
   addEventListener('scroll', maj, { passive: true }); addEventListener('resize', maj); maj();
-  document.querySelectorAll('a[href="#parties"]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); liste.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
+  document.querySelectorAll('a[href="#parties"]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); cible().scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
 }

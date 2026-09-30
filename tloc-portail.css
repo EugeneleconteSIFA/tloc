@@ -760,3 +760,11 @@ button.code:hover { border-style:solid; }
   border-radius:8px; border:1px dashed var(--or); background:rgba(226,178,90,.12); font-size:15px; white-space:nowrap; overflow:hidden; }
 .partie-prete > span { overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; }
 .partie-prete b { font-family:var(--mono); letter-spacing:.08em; color:var(--or-clair); }
+
+/* le solo fermé (réservé au créateur tant qu'il le prépare) : un mot à la place de la tuile */
+.solo-ferme { display:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; flex:1 1 auto; padding:18px 8px; text-align:center; }
+.solo-ferme svg { color:var(--or); }
+.solo-ferme p { margin:0; font-size:16px; line-height:1.45; }
+.solo-ferme b { font-family:var(--titre); font-size:19px; color:var(--or-clair); }
+.mode-solo.solo-bloque .solo-ferme { display:flex; }
+.mode-solo.solo-bloque > :not(.mode-tete):not(.solo-ferme) { display:none !important; }
