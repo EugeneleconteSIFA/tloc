@@ -1158,6 +1158,12 @@ Depuis, en local (non publié) :
     ×1,9 (1,47 s de clip pour 0,75 s en l'air) ; pour le cheval d'un autre, « en l'air » se lit à
     sa hauteur au-dessus du sol. Clip vu en rendu isolé ; *pas encore vu en partie*. Le clip
     soulève un peu le corps : à juger en jeu (double hauteur ?).
+  - **« enfoncée » au bout d'un bastion** (arrivée en partie) : pas un défaut de sol — apparue
+    contre le parapet (1,3 m) et tournée vers l'intérieur, Camille avait la caméra au-dessus du
+    fossé, qui la filmait par-dessus le parapet. `orienterArrivee` (tloc-multi.js) la tourne vers
+    le côté où, jusqu'à 7,5 m derrière elle, le sol est praticable et au même niveau ; appelé au
+    point d'arrivée choisi, au début de manche et à la relève. (Le relevé « on marche sous le
+    dessin » des bastions compte le parapet, que sa capsule rend inaccessible : faux positif.)
 
 ### W. Le solo réservé au créateur (30 septembre, soir)
 

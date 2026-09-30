@@ -3,14 +3,14 @@
 // Secteur Village : maisons à pignons à redents, enceinte et Porte des Flandres,
 // estaminet, place et marché, abords maraîchers, faubourg.
 import * as A from './assets.js';
-import * as E from './engine.js?v=40';
+import * as E from './engine.js?v=41';
 import { mouldingProfile,
   THREE, G, GOLD, IRON, SFX, T, TAU, addBox, addCap, addInteract, addLieu, archWindow, balcony,
   boxG, brickScaled, burst, corniceAround, dialogue, distSeg, dormer, enemies, fbm, goToLevel,
   keys, lerp, makeCanvas, mat, mergeParts, mesh, normalMapFrom, oriel, pbr, pbrRepeat, phMat,
   pilaster, player, questStep, rand, rboxG, scene, setQuest, sphG, state, stoneMat, uvMeters,
   wallBox, world,
-} from './engine.js?v=40';
+} from './engine.js?v=41';
 import {
   COBBLE_M, TOWN, TOWN_BOITE, calerBourg, cobbles, levelH, lisse, normale, patinerMat, townWorld,
 } from './carte.js';

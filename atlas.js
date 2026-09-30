@@ -17,7 +17,7 @@ import { PARTAGE } from './etat.js';
 import {
   SFX, THREE, cut, estDecouvert, hideMenu, lieux, menu, player, resumeGame, saveGame,
   showMenu, showMessage, state,
-} from './engine.js?v=40';
+} from './engine.js?v=41';
 
 export const aLaCarte = () => !!state.carteBeffroi;
 

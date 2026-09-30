@@ -12,11 +12,11 @@
 import * as FORET from './foret.js';
 import {
   THREE, T, TAU, addCap, mat, mesh, pbrRepeat, phMat, rand,
-} from './engine.js?v=40';
+} from './engine.js?v=41';
 import {
   LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, PONTS, cobbles, graverVoie, roadPts, rubanGeo, sdEau, sdPent, solPlaine, surDehors, surPont, voieCombattants,
 } from './carte.js';
-import { distSeg } from './engine.js?v=40';
+import { distSeg } from './engine.js?v=41';
 
 // Toutes les voies qu'on emprunte à pied — relevées, la route du pont royal, la voie des
 // combattants elle-même —, rangées par cases de 20 m, et la distance au BORD de la plus

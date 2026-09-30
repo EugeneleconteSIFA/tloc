@@ -23,7 +23,7 @@
 import {
   CROCHETS, SFX, THREE, TOUCHES, addCap, addInteract, burst, camera, cut, hideMenu, makeChest, menu, player,
   resumeGame, saveGame, scene, showMenu, showMessage, spawnGaufre, state,
-} from './engine.js?v=40';
+} from './engine.js?v=41';
 
 export const PLAFOND = 999, PLAFOND_GRAND = 9999;
 export const DEPART = 40;              // ce que Camille avait mis de côté chez elle

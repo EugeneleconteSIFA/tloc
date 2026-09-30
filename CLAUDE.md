@@ -7,6 +7,12 @@ un seul serveur (serveur/app.py) sert le jeu ET l'API des comptes et du multi, s
 ## À lire en premier
 
 `PROMPT-REPRISE.md` : l'état du chantier, ce qui reste à faire, et ce que le code a appris.
+`PLAN-2026-10-01.md` : le plan du 1er octobre — l'ordre du travail, et ce qu'Eugène autorise
+sans redemander (publier sur le dev si le contrôle passe ; déplacer oui, supprimer non).
+
+Pour l'histoire, **`STORY.md` fait foi** ; `SCENARIO.md` et `DIALOGUES-ACTE1.md` en sont le
+détail et se corrigent sur lui. `GAME_DESIGN_BRIEF.md` : les règles de fabrication (ton,
+langage, palettes, musique, sons, ce qu'il ne faut pas faire).
 
 ## Règles
 

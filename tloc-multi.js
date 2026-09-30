@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=40';
+} from './engine.js?v=41';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -740,6 +740,7 @@ async function choisirApparition() {
   if (p) {
     player.pos.set(p.x, getH(p.x, p.z, (world.levelH ? world.levelH(p.x, p.z) : 0) + 0.5) + 0.1, p.z);
     player.vy = 0; player.kb.set(0, 0, 0);
+    orienterArrivee();
     showMessage(p.nom ? `${monPerso} arrive : ${p.nom}.` : `${monPerso} arrive.`, 4);
   }
   state.apparition = { x: +player.pos.x.toFixed(2), y: +player.pos.y.toFixed(2), z: +player.pos.z.toFixed(2) };
@@ -1827,6 +1828,7 @@ function mourir(de, pseudo) {
     const a = Math.random() * TAU, r = 1 + Math.random() * 3;
     p.pos.set(ici.x + Math.cos(a) * r, ici.y, ici.z + Math.sin(a) * r);
     p.pos.y = getH(p.pos.x, p.pos.z) + 0.1;
+    orienterArrivee();
   }
   p.vy = 0; p.kb.set(0, 0, 0); p.hp = p.maxHp; p.invuln = 3; p.attackT = -1; p.rollT = -1;
   equiperEquipe(false);
@@ -2572,6 +2574,26 @@ function ouvert(x, z) {
   }
   return false;
 }
+// LE REGARD À L'ARRIVÉE. Apparue contre le parapet d'un bastion, tournée vers l'intérieur,
+// Camille avait la caméra dans son dos au-dessus du fossé : on la voyait par-dessus le
+// parapet, « enfoncée » jusqu'à la taille (Eugène, 30 septembre). On la tourne vers le côté
+// où, six mètres derrière elle, le sol est praticable et à la même hauteur : la caméra y reste.
+function orienterArrivee() {
+  const p = player.pos, y = p.y;
+  let mieux = null, score = -1;
+  for (let k = 0; k < 16; k++) {
+    const a = k / 16 * TAU, sx = Math.sin(a), sz = Math.cos(a);
+    let n = 0;                                            // combien de pas libres derrière elle
+    for (let d = 1.5; d <= 7.5; d += 1.5) {
+      const bx = p.x - sx * d, bz = p.z - sz * d, h = world.levelH ? world.levelH(bx, bz) : 0;
+      if (Math.abs(h - y) > 1 || blocked(bx, bz, 0.5, false, h) || (sdEau(bx, bz) < 1 && !surOuvrage(bx, bz, h))) break;
+      n++;
+    }
+    if (n > score) { score = n; mieux = a; }
+    if (n >= 5) break;
+  }
+  if (mieux !== null) { player.yaw = mieux; G.camYaw = mieux; }
+}
 // Un point de départ de manche ÉPARPILLÉ dans l'aire en vigueur, loin des autres (≥ 25 m) :
 // tous les bots partaient du point d'arrivée du joueur et se retrouvaient sur lui.
 function pointEparpille(aire, loin, autour = null) {
@@ -2601,6 +2623,7 @@ function debutManche() {
     }
     q = q || pointEparpille(aire, []) || ici;
     p.pos.set(q.x, getH(q.x, q.z) + 0.1, q.z);
+    orienterArrivee();
   }
   const occupes = [{ x: p.pos.x, z: p.pos.z }];
   for (const b of bots.values()) {
@@ -2929,6 +2952,6 @@ if (actif) { connecter(); setInterval(() => envoyer({ t: 'ping' }), 25000); }
 requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
-window.TLOC_MULTI = { autres, bots, envoyer, encaisser, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue }),
+window.TLOC_MULTI = { autres, bots, envoyer, encaisser, orienterArrivee, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue }),
   nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav, candidatsDrapeaux, terrainDrapeau,
   equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };

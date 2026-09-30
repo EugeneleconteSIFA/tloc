@@ -1,10 +1,17 @@
 # The Legend of Camille — le scénario du solo
 
+> **Pour l'histoire, `STORY.md` fait foi** (Eugène, 30 septembre). Ce document en est le
+> détail de fabrication : là où ils divergent, c'est `STORY.md` qui a raison, et ce fichier
+> qui doit être corrigé. La fin (§§ 3, 4, 15, 16) a été alignée le 30 au soir : Eugène ne
+> reste pas de l'autre côté, c'est Phinaert. Pas encore détaillés ici : les signaux d'Eugène
+> par les cloches pendant sa captivité, et la boutique de jouets d'Émilie (`STORY.md` §§ 4 et 13).
+> Les règles de fabrication (ton, langage, palettes, sons) sont dans `GAME_DESIGN_BRIEF.md`.
+
 Version 4 (30 septembre). Ce qu'Eugène a demandé, et qui commande tout le reste :
 - **les géants** et **le Temple des Géants**, qui relie les mondes ;
 - l'esprit **Zelda**, et le ton d'une **tragédie** : une mission sacrée qu'on doit mener
   jusqu'au bout, même quand on sait ce qu'elle va coûter ;
-- **l'Aveyron de la grande sécheresse**, grand, vallonné et libre, où l'on se bat pour l'eau comme des cow-boys ; **le Tibet** petit mais très haut ;
+- **l'Aveyron de la grande sécheresse**, grand, vallonné et libre, où l'on se bat pour l'eau comme des cow-boys ; **les temples de Thaïlande**, sur des îles petites mais très hautes, reliées par des passeurs en bateau et des tyroliennes ;
 - **l'obligation de parler aux gens**, avec les indices importants **en gras** — et jamais un
   gras sur une chose qu'on ne peut pas encore avoir (§ 7) ;
 - **des retours** : ce qu'on gagne dans un monde ouvre des lieux neufs dans les autres ;
@@ -74,12 +81,13 @@ fait de l'histoire une tragédie : on la lit en entier à l'acte VI, et on conti
    sens : c'est ce qui permet les retours.
 3. **Un géant ne peut pas sonner une cloche qui n'est pas la sienne.** Seul un humain le peut.
    C'est la raison d'être de l'héroïne, et la faiblesse de Phinaert.
-4. **Le sang de Lydéric ouvre le Temple, et lui seul peut le refermer — de l'intérieur.** Qui
-   le referme y reste, hors du temps, pour toujours. Eugène descend de Lydéric, sans le savoir.
+4. **Le sang de Lydéric ouvre le Temple, et lui seul peut le refermer.** Ce qui se trouve de
+   l'autre côté quand la porte se ferme y reste, hors du temps, pour toujours. Eugène descend
+   de Lydéric, sans le savoir.
 5. **Un morceau de la Grande Cloche fendue rend fou un géant.** Planté dans un géant gardien,
    il dérègle le temps de son monde : chaque monde souffre d'une maladie du temps différente.
 6. **Un géant libéré fait un don, et le don lui coûte ce qu'il est.** Le Dormeur de l’Aveyron donne
-   sa force et redevient falaise ; le yéti donne son souffle et devient neige ; le Colosse des
+   sa force et redevient falaise ; le Yak donne son souffle et devient écume ; le Colosse des
    Pouilles donne son élan et redevient statue ; le loup de Lozère donne sa course et
    s'endort sous la montagne. Ce qu'ils
    donnent reste à Camille pour toujours, et sert surtout **ailleurs**.
@@ -91,19 +99,19 @@ fait de l'histoire une tragédie : on la lit en entier à l'acte VI, et on conti
   Lydéric : **« Ce que la garde commence, la garde l'achève. »** La phrase revient à chaque
   cloche sonnée, dite par quelqu'un d'autre. À la fin, c'est Camille qui la dit, seule.
 - **Savoir, et continuer.** Dès l'acte III, Camille sait que chaque cloche qu'elle sonne sert
-  Phinaert. À l'acte VI, elle sait ce qu'il en coûtera à Eugène. Elle continue, parce qu'il
-  n'y a pas d'autre moyen d'enfermer Phinaert. Le joueur n'a pas le choix non plus : c'est
+  Phinaert. À l'acte VI, elle lit que le sang de Lydéric fermera la porte, sans savoir qui
+  restera de l'autre côté — le doute est voulu. Elle continue, parce qu'il n'y a pas d'autre
+  moyen d'enfermer Phinaert. Le joueur n'a pas le choix non plus : c'est
   ce qui fait la tragédie.
 - **Chaque cloche a un prix.** Aux Pouilles, les heures perdues ne reviennent pas : Nunzia
   reste vieille. Et chaque géant libéré meurt un peu en donnant son don (règle 6) :
   on ne gagne jamais rien gratuitement.
 - **Le maître qui s'est tu.** Le vieux mage est l'ermite de 620. Il garde la porte du Temple
   depuis mille quatre cents ans, sans pouvoir la fermer : il n'est pas du sang de Lydéric. Il
-  a vu la Grande Cloche se fendre, année après année, et **il n'a rien dit** : il savait que
-  ce jour-là viendrait quelqu'un du sang de Lydéric pour fermer la porte, et qu'enfin il
-  pourrait mourir. Il aime Eugène comme il a aimé Lydéric. Il l'avoue à l'acte VII.
-- **La fin est belle et triste** (§ 16) : Phinaert est enfermé, le monde est sauvé, et Eugène
-  reste de l'autre côté de la porte.
+  en sait plus qu'il n'en dit. À l'acte VII, il donne à Camille l'épée de Lydéric.
+- **La fin est belle, calme et un peu triste** (§ 16) : le temps repart, Phinaert reste de
+  l'autre côté de la porte — mais certaines pertes restent des pertes : Nunzia ne rajeunit
+  pas, les géants ne reprennent pas leur ancien état.
 
 ## 5. Phinaert, le Maître du Temps
 
@@ -125,7 +133,7 @@ chercher les cloches et les sonne.
 - Acte I : Phinaert est un géant brutal qui a enlevé Eugène.
 - Acte II : il ne se bat pas vraiment ; il fuit toujours juste avant qu'on l'atteigne. Jacques
   le Noir, son homme de main, lâche : « Le patron a dit de pas te tuer. »
-- Acte III : le yéti, en mourant en neige, dit ce qu'aucun géant n'a osé dire : « Tu sonnes
+- Acte III : le Yak, en devenant écume, dit ce qu'aucun géant n'a osé dire : « Tu sonnes
   pour lui. »
 - Acte IV : on le sait, et on sonne quand même la cloche des Pouilles, parce qu'un peuple
   entier vieillit d'une année par heure. Le premier choix tragique de Camille.
@@ -152,7 +160,8 @@ remontant le temps, sauf celles de l'épée de Lydéric (acte VII).
 | **Le vieux mage** | le maître | l'ermite de 620, gardien de la porte du Temple ; il sait tout, et s'est tu |
 | **Phinaert** | l'ennemi | § 5 |
 | **Le Dormeur** | géant gardien de l'Aveyron | une falaise en forme de géant couché, au bord du causse |
-| **Le yéti** | géant gardien du Tibet | le gardien du sommet, timide et bon |
+| **Le Yak** | géant gardien de Thaïlande | un géant de pierre et de faïence, gardien de la porte du plus haut temple ; timide et bon |
+| **Nok** | l'amie de Thaïlande | une jeune fille qui tresse des guirlandes pour le temple, la seule qui bouge encore sur les îles |
 | **Le Colosse** | géant gardien des Pouilles | un géant de bronze qui veille sur le port de Barletta (la vraie statue de 5 m existe toujours) |
 | **Nunzia** | l'amie des Pouilles | une jeune fille de Barletta, qui vieillit pendant qu'on la connaît |
 | **Le loup de Lozère** | géant gardien de la Lozère | un loup grand comme une grange, gardien des troupeaux ; rendu fou, c'est lui que l'histoire a appelé la Bête du Gévaudan |
@@ -186,16 +195,16 @@ On ne progresse pas en fouillant : on progresse en **apprenant des gens**.
 **Exemple — le même habitant, deux actes.**
 - Émile, acte I : « Le canyon ? Personne n'en est jamais revenu. Au fond, l'eau est si froide
   qu'elle coupe le souffle. » — un souvenir : pas de gras, pas de consigne.
-- Émile, acte VI, une fois qu'on a le souffle du yéti : « Toi, tu passerais. **Descends par
+- Émile, acte VI, une fois qu'on a le souffle du Yak : « Toi, tu passerais. **Descends par
   le vieux sentier des bergers, derrière le moulin**, et traverse la rivière du fond. »
 
-**Interdit** : Émile, à l'acte I, qui dirait « **Avec le souffle du yéti, tu traverserais** ».
+**Interdit** : Émile, à l'acte I, qui dirait « **Avec le souffle du Yak, tu traverserais** ».
 
 **Comment chaque monde fait parler** :
 - **Lille** : des habitants partout, des enquêtes classiques (`DIALOGUES-ACTE1.md`).
 - **L'Aveyron** : deux maisons de Roquette en guerre, qui s'accusent l'une l'autre ; le troisième témoin tranche. On
   y suit aussi des **traces** qu'un témoin nous a appris à lire.
-- **Le Tibet** : presque tout le monde est figé. Mais un moine figé a été arrêté au milieu
+- **La Thaïlande** : sur les îles, presque tout le monde est figé ; on parle aux passeurs, sur l'eau. Mais un moine figé a été arrêté au milieu
   d'une phrase : quand on relance le temps près de lui, il la finit. Chaque moine donne un
   morceau.
 
@@ -224,8 +233,8 @@ l'armurerie).
 **Dans les autres mondes**, une aide ou deux, pas plus :
 - **Aveyron** : le forgeron Roquette (un lasso plus long, des fers qui rendent le
   cheval plus rapide) ; la gare, une fois le pont reconstruit (le train, voyage rapide).
-- **Tibet** : Pema (le moulin tourne plus longtemps) ; le moine cuisinier (le thé qui
-  protège du froid).
+- **Thaïlande** : Nok (le gong sonne plus longtemps) ; les passeurs, une fois la course
+  gagnée (le voyage rapide).
 
 **Le principe** : une aide ne remplace jamais une étape. Elle rend le jeu plus agréable à
 qui prend le temps de parler aux gens, et plus rapide à qui revient. Le chemin le plus court
@@ -239,7 +248,7 @@ de l'heure de jeu n'en demande aucune.
 ACTE I    Lille                      ~60 min   épée, lanterne, arc, bombes
               Phinaert ouvre le Temple avec le sang d'Eugène et s'y enfuit
 ACTE II   L'Aveyron                  ~50 min   les rênes, le lasso     don : LA FORCE
-ACTE III  Le Tibet                   ~40 min   le moulin à prières,    don : LE SOUFFLE
+ACTE III  La Thaïlande              ~40 min   le gong,                don : LE SOUFFLE
                                                la poulie (tyrolienne)
 ACTE IV   Les Pouilles               ~45 min   le tambourin            don : L'ÉLAN
 ACTE V    La Lozère                  ~45 min   la sonnaille            don : LA COURSE
@@ -250,14 +259,14 @@ ACTE VII  Le final, au Temple        ~15 min   l'épée de Lydéric
 ```
 
 **Pour chaque monde** :
-- **ses objets** servent à le finir (le lasso en Aveyron, le moulin au Tibet) ;
+- **ses objets** servent à le finir (le lasso en Aveyron, le gong en Thaïlande) ;
 - **le don de son géant** se gagne à la fin et sert surtout à **rouvrir les mondes
   d'avant** ;
 - tout objet sert **au combat, à l'exploration et à une énigme**, et resservira ailleurs.
 
-**Pourquoi cet ordre** : l'Aveyron laisse respirer après Lille ; le Tibet, petit et
-exigeant, demande tout ce qu'on a appris ; les Pouilles rouvrent l'horizon, avec la mer
-qu'on n'a vue nulle part ailleurs, et demandent le souffle du Tibet pour les grottes marines ;
+**Pourquoi cet ordre** : l'Aveyron laisse respirer après Lille ; la Thaïlande, petite et
+exigeante, demande tout ce qu'on a appris ; les Pouilles rouvrent l'horizon, une côte
+qu'on longe à pied, et demandent le souffle du Yak pour les grottes marines ;
 la Lozère, toute proche de chez soi, est le monde où le temps est le plus cassé : la dernière
 marche avant le retour ; l'acte VI ramène à Lille avec tout, et c'est là que l'île s'ouvre enfin en entier.
 
@@ -427,7 +436,7 @@ fort. Le même geste sert pour un poisson ou pour un objet tombé à l'eau.
 - **énigme** : accrocher un objet hors d'atteinte et le ramener à soi ;
 - **combat** : tirer un ennemi hors de l'eau (les moules des fossés se cachent sous l'eau ;
   pêchées, elles sont sans défense) ;
-- **ailleurs** : en Aveyron, repêcher ce qui est tombé au fond des puits à sec ; au Tibet,
+- **ailleurs** : en Aveyron, repêcher ce qui est tombé au fond des puits à sec ; en Thaïlande,
   ramener une clé suspendue au-dessus du vide dans le temps figé ; à l'acte VI, pêcher dans
   la rivière du canyon.
 
@@ -532,7 +541,7 @@ western, mais chez nous.
 est un Roquette, le curé, l'aubergiste, le brigand : tous Roquette. Les grandes maisons sont
 des branches de la même famille, qui se connaissent depuis toujours et se disputent depuis
 aussi longtemps. On les appelle par leur maison : « les Roquette de Beauregard », « les
-Roquette du Bathut ». C'est le sel de l'acte : la guerre de l'eau est une guerre de famille.
+Roquette du Batut ». C'est le sel de l'acte : la guerre de l'eau est une guerre de famille.
 
 ### Les lieux mythiques
 
@@ -541,10 +550,55 @@ souvenirs sont à décrire par Eugène** ; ce qui suit ne fixe que leur rôle da
 
 | lieu | son rôle dans l'acte | à décrire par Eugène |
 |---|---|---|
-| **Beauregard** | une grande maison noble, celle d'une des deux branches en guerre ; on y arrive en premier | la maison, le domaine, qui y vit |
-| **Le Bathut** | une grande maison noble, l'autre branche ; elle tient le chemin du lac | la maison, le domaine, qui y vit |
-| **Le lac** | **la dernière eau de l'Aveyron**, que la sécheresse fait reculer chaque jour ; les deux maisons se la disputent ; c'est là qu'a lieu le duel de midi | son nom, ses rives, ce qu'on y faisait |
-| **La grande maison du Pouget** | la maison de l'aïeule des Roquette, que les deux branches respectent encore : le seul endroit où l'on ne se bat pas ; c'est là que tout se réconcilie à la fin | la maison, et si elle est bien en Aveyron (le hameau du Pouget de l'acte V est en Lozère) |
+| **Beauregard** | un manoir, celui de la branche la plus riche ; on y arrive en premier | ci-dessous ; qui y vit |
+| **Le Batut** | le château de l'autre branche ; il tient le chemin du lac | ci-dessous (d'après un dessin) ; qui y vit |
+| **Le lac de Saint-Gervais** | **la dernière eau de l'Aveyron**, que la sécheresse fait reculer chaque jour ; les deux maisons se la disputent ; c'est là qu'a lieu le duel de midi | ses rives, ce qu'on y faisait |
+| **La grande maison du Pouget** | la maison de l'aïeule des Roquette, que les deux branches respectent encore : le seul endroit où l'on ne se bat pas ; c'est là que tout se réconcilie à la fin | ci-dessous (d'après des photos) ; elle est en Aveyron, sans lien avec le hameau du Pouget de l'acte V, en Lozère — le hasard des noms, dont le jeu fait un clin d'œil |
+
+### Les trois maisons, telles qu'elles sont
+
+Eugène a donné des photos et un dessin (30 septembre). Ce qui suit les décrit assez
+précisément pour les bâtir sans les avoir sous les yeux. Matières : `phMat` de Poly Haven,
+pierre, lauze, bois peint — pas d'aplats (règle du style réaliste).
+
+**La grande maison du Pouget** (d'après deux photos) :
+- **Un manoir de granit gris**, en moellons irréguliers, trois niveaux : rez-de-chaussée,
+  étage, combles. Façade symétrique, longue d'une vingtaine de mètres.
+- **Un toit de lauzes** (pierres plates grises) à quatre pans, très pentu, avec une légère
+  cassure en bas ; deux **grandes cheminées de pierre** à chaque bout.
+- **Au centre, une tour carrée** qui dépasse du toit, coiffée d'un **dôme de lauzes en forme
+  de cloche** et d'un **petit clocheton pointu** tout en haut ; au niveau des combles, une
+  porte-fenêtre bleue sur un **balcon de fer forgé**, et un petit oculus au-dessus.
+- De chaque côté de la tour, **une lucarne** à fenêtre blanche, sous un petit capuchon de lauzes.
+- **Des volets bleu-gris** (bleu canard passé) à toutes les fenêtres ; fenêtres blanches à
+  petits carreaux ; trois ou quatre fenêtres par étage de chaque côté de l'axe.
+- **La porte d'entrée**, bleue, au centre, dans un encadrement de granit, trois marches de
+  pierre devant ; des pots de fleurs et des hortensias au pied de la façade, une haie basse.
+- **Le lierre** couvre l'aile de droite et le mur qui la prolonge ; une aile basse à gauche,
+  derrière un arbre.
+- **L'entrée du domaine** : un mur de pierre, deux **grands piliers de pierre** surmontés
+  d'ornements, une **grille de fer**, puis **une allée de gravier** droite jusqu'à la porte,
+  entre deux pelouses.
+- Sur les photos, **la pelouse est jaune, grillée par l'été** et le ciel est lourd : c'est
+  exactement l'Aveyron de la sécheresse. À la fin de l'acte, quand la pluie revient, la pelouse
+  du Pouget reverdit la première.
+
+**Le Batut** (d'après un dessin de P. Gaillac, « Le Château du Batut ») :
+- **Une maison de plusieurs corps** de hauteurs différentes, accolés les uns aux autres,
+  pas un bloc : un corps central haut de trois niveaux, sous un toit à deux pans avec **un
+  oculus rond** dans le pignon ; un corps plus bas à gauche ; à droite, une aile avec des
+  **fenêtres cintrées** (en arc), une **porte cintrée**, de petits oculus et une lucarne.
+- **Des murs clairs**, enduits, **presque entièrement couverts de lierre** au rez-de-chaussée
+  et au premier étage.
+- **Des volets à persiennes** (à lames), ouverts, à toutes les fenêtres.
+- **Un très grand arbre** à gauche de la maison, dont les branches couvrent le toit.
+- Un muret bas devant, une petite ouverture dans une haie.
+
+**Beauregard** : **un manoir**, celui de la branche des Roquette qui se dit la plus ancienne.
+Son aspect est **à décrire par Eugène** (une photo ou un dessin, comme pour le Pouget et le
+Batut). Dans l'histoire, il n'a besoin que d'une chose : être loin du lac, ce qui fait que
+les Roquette de Beauregard accusent ceux du Batut, qui en tiennent le chemin, de leur voler
+l'eau.
 
 **Les autres lieux**, moins personnels, gardés de la version précédente :
 
@@ -568,7 +622,7 @@ reverdit.
 
 ### La guerre de l'eau
 
-**Les Roquette de Beauregard** et **les Roquette du Bathut** se disputent le lac. Chacun
+**Les Roquette de Beauregard** et **les Roquette du Batut** se disputent le lac. Chacun
 accuse l'autre de voler ses bêtes et de détourner l'eau. Entre les deux, **la bande à
 Phinaert**, menée par **Jacques Roquette, dit le Noir** — la brebis galeuse de la famille —
 vole les troupeaux d'une maison et laisse des traces qui accusent l'autre. La guerre, c'est
@@ -595,22 +649,22 @@ maisons qui tirent sur tout ce qui approche du lac.
 | ce qui bloque | ce qu'il faut | qui le donne ou le dit |
 |---|---|---|
 | la mine est trop loin à pied sous le Midi | **les rênes** | le maquignon Roquette, à Beauregard : on dompte un cheval sauvage (tenir 20 secondes) ; **les rênes permettent ensuite de monter n'importe quel cheval, dans tous les mondes** |
-| les gorges, le pont effondré | **le lasso** | une jeune Roquette du Bathut, si l'on ramène son petit frère perdu dans le village abandonné |
+| les gorges, le pont effondré | **le lasso** | une jeune Roquette du Batut, si l'on ramène son petit frère perdu dans le village abandonné |
 | la guerre de l'eau : on tire sur quiconque approche du lac | **la preuve** que la bande vole les deux maisons | l'enquête (ci-dessous) |
 | l'entrée de la mine, murée par la bande | **les bombes** | déjà en poche (Lille) |
 | le fond de la mine | **la clé des wagonnets** | Jacques le Noir, dans la salle des treuils |
 
 **L'enquête : qui vole les troupeaux ?** Chaque maison accuse l'autre ; le troisième témoin
 tranche (la règle du § 7).
-- Le maître de Beauregard : « Ce sont ceux du Bathut. On a trouvé leurs traces près de notre
+- Le maître de Beauregard : « Ce sont ceux du Batut. On a trouvé leurs traces près de notre
   abreuvoir. Demandez au **bailli**, il a arrêté l'un d'eux. »
-- Le prisonnier du bailli, un Roquette du Bathut : « J'ai rien volé ! Les bêtes, je les ai
+- Le prisonnier du bailli, un Roquette du Batut : « J'ai rien volé ! Les bêtes, je les ai
   vues passer. Des cavaliers. **Leurs chevaux ont des fers marqués d'une étoile.** Le
   forgeron les connaît. »
 - Le forgeron Roquette : « Des fers à étoile ? C'est moi qui les fais, pour mon cousin
   Jacques. **Suivez l'étoile dans la poussière**, elle part du village abandonné. »
 - On suit les traces au galop jusqu'à l'enclos caché de la bande : les bêtes de Beauregard
-  **et** celles du Bathut y sont ensemble. On ramène la preuve aux deux maisons. **Le duel de
+  **et** celles du Batut y sont ensemble. On ramène la preuve aux deux maisons. **Le duel de
   midi**, au bord du lac, met fin à la guerre : Camille contre le bras droit de Jacques.
 
 ### Le donjon : la mine d'argent et les caves du Dormeur
@@ -648,6 +702,19 @@ premier repas en famille depuis la sécheresse. Tous les Roquette sont là, sauf
 L'aïeule à Camille : « Ce que tu as commencé, finis-le. Le géant a donné sa vie pour ça. »
 Retour au Temple, on sonne.
 
+### Clin d'œil : la course d'autrefois
+
+Un vieux Roquette, assis à l'ombre devant l'auberge, raconte à qui veut l'entendre **la
+course d'autrefois entre Beauregard et le Batut**. Réplique de souvenir, jamais en gras :
+
+> « Tu connais la course, petite ? Beauregard contre le Batut, il y a longtemps, avant la
+> sécheresse. Tout le monde était au bord du chemin. Ceux de Beauregard te diront qu'ils ont
+> gagné. Ceux du Batut te diront qu'ils ont gagné. Moi, j'y étais. Et je te dirai rien. »
+
+S'il est interrogé une seconde fois : « Rien, j'ai dit. Mais le jour où quelqu'un refera la
+course, je parlerai. » Une fois *La course des maisons* gagnée, il parle enfin — et ce qu'il
+dit reste à écrire avec Eugène.
+
 ### Les quêtes secondaires de l'Aveyron
 
 | quête | quoi | récompense |
@@ -655,7 +722,7 @@ Retour au Temple, on sonne.
 | **Les avis de recherche** | cinq brigands de la bande, sur toute la carte (des Roquette, bien sûr) | des primes, l'insigne du bailli |
 | **La belote de l'auberge** | une partie contre trois Roquette, dont un tricheur | un morceau de cœur |
 | **Le train** | la paie volée, cachée en trois endroits du causse | des écus |
-| **La course des maisons** | la course de chevaux de Beauregard au Bathut, par le lac | une selle plus rapide |
+| **La course des maisons** | la course de chevaux de Beauregard au Batut, par le lac ; la gagner règle enfin la dispute de la course d'autrefois (ci-dessous) | une selle plus rapide |
 | **Les sources** | rouvrir trois sources bouchées par la bande (bombes, lasso) | autant de points d'eau |
 | **L'arbre de la famille** | retrouver tous les Roquette de la carte et leur maison, pour l'aïeule du Pouget | un morceau de cœur, et l'arbre de famille affiché à la grande maison |
 
@@ -663,63 +730,95 @@ Retour au Temple, on sonne.
 
 ---
 
-## 12. Acte III — Le Tibet : la Cloche des Neiges
+## 12. Acte III — Les temples de Thaïlande : la Cloche des Îles
 
 ### Le format
 
-**Une carte minuscule, mais très haute.** Un seul pic : environ 150 m de large pour **400 m
-de haut**. Des temples empilés sur les flancs, des escaliers taillés dans la roche, des ponts
-de corde entre les pics, des corniches, des drapeaux de prière. On ne traverse pas ce monde :
-**on le monte.** L'opposé de l'Aveyron.
+**Un archipel de pitons.** Une baie de Thaïlande, sur le modèle de celle de Phang Nga : des
+îles de calcaire qui sortent de la mer comme des tours, hautes de cent à quatre cents mètres,
+couvertes de jungle, creusées de grottes. Sur chacune, **un temple thaïlandais** : toits
+pointus à plusieurs étages, tuiles rouges et vertes, bouddhas dorés, clochettes aux bords des
+toits, escaliers de centaines de marches (le temple de la grotte du Tigre, près de Krabi, en a
+plus de mille deux cents). La carte est petite, mais **très haute** : on ne traverse pas ce
+monde, **on monte** chaque île, puis on passe à la suivante.
 
+**On va d'une île à l'autre de deux façons** :
+- **en bateau, avec les passeurs** : des bateliers en longues barques à moteur (les bateaux à
+  longue queue) qui attendent au marché flottant ; chacun ne va que vers certaines îles, et
+  chacun a son prix — des écus, un service, une réponse ;
+- **en tyrolienne** : du haut d'une île, un câble descend vers une île plus basse. Jamais
+  l'inverse (voir plus bas).
+
+Ce que ça change au jeu :
 - **La caméra** regarde vers le haut et vers le bas autant qu'à l'horizontale.
-- **La chute** coûte des cœurs et renvoie à la dernière terrasse.
-- **Le vent** pousse sur les corniches.
-- **La progression se lit en hauteur** : de chaque terrasse, on voit la suivante au-dessus et
-  toutes les précédentes en dessous.
-- Un monde léger à charger : peu de terrain, un seul massif de bâtiments.
+- **La chute** coûte des cœurs et renvoie au dernier palier ; tomber dans la mer renvoie au
+  dernier passeur.
+- **Le vent de la mousson** pousse sur les corniches.
+- **La progression se lit en hauteur** : de chaque sommet, on voit les îles plus basses déjà
+  visitées, et les câbles qui y mènent.
+- Un monde léger à charger : de l'eau, quelques rochers, un temple par île.
 
-### Le mal du temps : le temps figé
+### Le mal du temps : les îles figées
 
-Tout s'est arrêté. **La neige est suspendue en l'air**, flocon par flocon ; une cascade est
-arrêtée en plein saut, sans être gelée ; les moines sont immobiles, arrêtés au milieu d'un
-geste — et d'une phrase ; le gong est muet. Seule **une jeune novice, Pema**, bouge encore :
-elle faisait tourner son moulin à prières quand le temps s'est arrêté.
+Sur les îles, tout s'est arrêté. **La pluie de la mousson est suspendue en l'air**, goutte par
+goutte ; une cascade est arrêtée en plein saut ; les moines en robe safran sont immobiles, au
+milieu d'un geste — et d'une phrase ; les clochettes des toits ne tintent plus ; le gong est
+muet. **La mer, elle, bouge encore** : le temps s'est arrêté sur les îles, pas sur l'eau. C'est
+pourquoi les passeurs vivent toujours, et pourquoi ils ont peur d'accoster.
 
-### Le géant : le yéti
+Seule **Nok**, une jeune fille qui tresse des guirlandes de jasmin pour le temple, bouge
+encore sur les îles : elle frappait le gong du temple quand le temps s'est arrêté.
 
-Le gardien du sommet. Timide et bon. Phinaert lui a planté le morceau de cloche au front : il
-est devenu la tempête, figée autour de lui.
+### Le géant : le Yak
 
-### L'objet : le moulin à prières
+Aux portes des temples thaïlandais se dressent des **géants gardiens**, de pierre ou couverts
+de faïence et de verre colorés, l'épée plantée devant eux : on les appelle les *yak*. Le plus
+grand d'entre eux garde la porte du temple du plus haut piton. C'est le gardien de ce monde.
+Timide et bon, malgré son visage terrible. Phinaert lui a planté le morceau de cloche au
+front : il a quitté sa porte, et la mousson s'est figée autour de lui.
 
-Un petit cylindre de métal sur un manche, qu'on fait tourner à la main (un vrai objet du
-Tibet). Pema le donne à Camille. **Le faire tourner remet le temps en marche, quelques
+### L'objet : le gong
+
+Nok donne à Camille le petit gong du temple. **Le frapper remet le temps en marche, quelques
 secondes, autour de soi.**
-- **exploration** : la cascade repart et vous porte vers le haut ; un pont effondré en plein
-  vol finit de tomber — ou, en tournant à l'envers, **se reconstruit** ;
-- **énigme** : les flocons suspendus sont des marches tant qu'ils sont figés ; un moine figé
-  qui tient une clé la lâche quand son geste reprend ;
+- **exploration** : la cascade repart et vous porte vers le haut ; un pont de corde effondré
+  en plein vol finit de tomber — ou, frappé sur le bord, **se reconstruit** ;
+- **énigme** : les gouttes de pluie suspendues sont des marches tant qu'elles sont figées ; un
+  moine figé qui tient une clé la lâche quand son geste reprend ;
 - **conversation** : un moine figé **finit sa phrase** ;
-- **combat** : les ennemis de glace figés sont invincibles ; on les ranime pour les frapper.
+- **combat** : les ennemis figés sont invincibles ; on les ranime pour les frapper.
+
+### Les passeurs
+
+Les passeurs sont **les gens à qui l'on parle** dans ce monde, puisque les îles sont figées.
+Ils vivent sur l'eau, au **marché flottant** : barques chargées de fruits, de riz, de fleurs,
+qu'on enjambe d'une à l'autre.
+
+| passeur | il va vers | son prix |
+|---|---|---|
+| **Somsak**, le vieux passeur | l'île du cloître | des écus ; il parle des moines, qu'il conduisait chaque matin |
+| **Mali**, sa petite-fille | l'île de la cascade et les pitons | une course : la battre à la rame autour du marché |
+| **Le passeur muet** | l'île des masques | rien ; il n'emmène que ceux qui lui montrent un masque (le premier se trouve au cloître) |
+| aucun | le grand piton | aucun passeur n'ose y aller ; on s'y rend en tyrolienne depuis une île voisine, puis on monte ses marches |
 
 ### La tyrolienne
 
-Les moines font passer leurs vivres d'un temple à l'autre sur **des câbles tendus entre les
-toits**, avec une poulie. Camille reçoit **la poulie des moines** au cloître (le frère
-cuisinier, ranimé par le moulin, la lui donne : « On ne monte pas ici pour redescendre à
-pied »). Elle s'accroche à un câble et glisse d'un sommet à l'autre.
+Les moines font passer leurs vivres d'une île à l'autre sur **des câbles tendus entre les
+sommets**, avec une poulie. Camille reçoit **la poulie des moines** au cloître (le moine
+cuisinier, ranimé par le gong, la lui donne : « On ne monte pas mille marches pour les
+redescendre à pied »). Elle s'accroche à un câble et glisse d'un sommet à l'autre, au-dessus
+de la mer.
 
 **La règle, la même partout** : **on ne glisse que vers le bas.** Un câble part toujours d'un
 point plus haut que son arrivée. On ne peut donc jamais monter en tyrolienne : on monte à
 pied, au lasso, par la cascade — et on redescend, ou on passe d'un pic à un pic plus bas, en
 glissant.
 
-**Ce que ça donne au Tibet** : la montée est l'énigme, la tyrolienne est la récompense.
-Chaque terrasse atteinte ouvre des câbles vers les terrasses plus basses, qui deviennent
-autant de raccourcis ; du sommet, un grand câble plonge jusqu'à la porte basse, 400 m plus
-bas. Pendant la glisse, on peut tirer à l'arc (des cibles, des ennemis sur les toits) et
-lâcher prise au-dessus d'un toit pour y retomber.
+**Ce que ça donne en Thaïlande** : la montée de chaque île est l'énigme ; la tyrolienne est
+la récompense, et remplace le passeur au retour. Chaque sommet atteint ouvre des câbles vers
+des îles plus basses, qui deviennent autant de raccourcis ; du grand piton, un câble immense
+plonge jusqu'au marché flottant. Pendant la glisse, on peut tirer à l'arc (des cibles, des
+ennemis sur les toits) et lâcher prise au-dessus d'un toit ou de la mer pour y retomber.
 
 **Ailleurs**, la poulie ressert partout où un câble descend :
 - **Lille** (acte VI) : du sommet du beffroi, un câble jusqu'à la grand-place ; des toits du
@@ -732,54 +831,56 @@ lâcher prise au-dessus d'un toit pour y retomber.
 Côté code : un câble, c'est deux points et une pente ; on refuse de le poser si l'arrivée
 n'est pas plus basse que le départ, pour que la règle soit tenue par la machine.
 
-### Les étapes, terrasse par terrasse
+### Les étapes, île par île
 
-| terrasse | ce qui bloque | ce qu'il faut |
+| île | ce qui bloque | ce qu'il faut |
 |---|---|---|
-| **La porte basse** | l'escalier, bloqué par la neige suspendue | **le moulin à prières** (Pema) |
-| **Le cloître** | la porte du temple du milieu ; un moine figé tient la clé, mais lequel ? | le moulin, et l'enquête des phrases coupées |
-| **Le bassin de la cascade** | une statue de pierre qui ferme la montée | **la force** (du Dormeur) |
-| **Les pics** | des ponts de corde coupés | **le lasso** (Aveyron) pour monter ; **la poulie** (le frère cuisinier, au cloître) pour passer d'un pic à un pic plus bas |
-| **La salle des masques** | un mur fendu et une salle noire | **les bombes** et **la lanterne** (Lille) |
-| **La corniche des vents** | les rafales jettent dans le vide | **le masque du vent**, trouvé dans la salle des masques |
-| **Le sommet** | le yéti | le combat |
+| **L'île de la porte** | la porte du Temple débouche dans une grotte-temple au ras de l'eau ; pas de bateau | **le gong** (Nok), puis un passeur au marché flottant |
+| **L'île du cloître** | la porte du temple ; un moine figé tient la clé, mais lequel ? | **Somsak** pour y aller ; le gong, et l'enquête des phrases coupées |
+| **L'île de la cascade** | une statue de pierre qui ferme la montée | **Mali** pour y aller ; **la force** (du Dormeur) |
+| **Les pitons** | des ponts de corde coupés | **le lasso** (Aveyron) pour monter ; **la poulie** (le moine cuisinier, au cloître) pour passer d'un piton à un piton plus bas |
+| **L'île des masques** | un mur fendu et une salle noire | **le passeur muet** ; **les bombes** et **la lanterne** (Lille) |
+| **La corniche des vents** | la mousson jette dans le vide | **le masque de Hanuman**, le roi singe du théâtre thaïlandais, trouvé dans la salle des masques |
+| **Le grand piton** | le Yak | la tyrolienne pour y arriver, mille marches, puis le combat |
 
 **L'enquête : quel moine tient la clé du cloître ?**
 - Le premier moine, ranimé : « …la clé du cloître, c'est **le balayeur** qui l'avait… »
-- Le deuxième : « …Tenzin balaie toujours **la cour du puits**… »
+- Le deuxième : « …Somchai balaie toujours **la cour du puits**… »
 - Le troisième : « …il cache la clé **dans sa manche gauche**… »
 - Dans la cour du puits, trois moines figés tiennent un balai. Un seul a la manche gauche
   pliée. On le ranime : la clé tombe.
 
-### Le combat : le yéti figé
+### Le combat : le Yak figé
 
-Au sommet, dans la tempête arrêtée. Le yéti est **hors du temps** : ses coups arrivent avant
-qu'on les voie. On fait tourner le moulin pour **se mettre à son rythme** quelques secondes,
-et on frappe le morceau planté dans son front. Entre deux, il fige des blocs de neige en
-l'air et les lance.
+Au sommet du grand piton, devant sa porte vide, dans la mousson arrêtée. Le Yak est **hors du
+temps** : ses coups d'épée arrivent avant qu'on les voie. On frappe le gong pour **se mettre
+à son rythme** quelques secondes, et on frappe le morceau planté dans son front. Entre deux,
+il fige des paquets de pluie en l'air et les lance comme des pierres.
 
 ### La fin de l'acte
 
-Libéré, le yéti s'assoit dans la neige. Il donne **son souffle** — ce qui permet de nager dans
-l'eau glacée et profonde, là où personne ne tient — et, en le donnant, **devient neige**, et
-le vent l'emporte. Avant, il dit : **« Tu sonnes pour lui. »** Phinaert n'est pas venu :
-il n'en a plus besoin.
+Libéré, le Yak retourne devant sa porte et plante son épée. Il donne **son souffle** — ce qui
+permet de nager en eau profonde et glacée, et d'île en île sans passeur — et, en le donnant,
+**devient écume**, que la mer emporte. Avant, il dit : **« Tu sonnes pour lui. »** Phinaert
+n'est pas venu : il n'en a plus besoin.
 
-La neige retombe d'un coup, les moines finissent leur geste, le gong sonne. Pema : « Ce que
-tu as commencé… » Elle ne finit pas. La **Cloche des Neiges** descend du toit du sommet, avec
-le troisième morceau de la Grande Cloche, et le troisième morceau de la prophétie gravé
-dessous.
+La pluie tombe d'un coup sur toutes les îles, les moines finissent leur geste, les clochettes
+des toits tintent, le gong sonne. Nok : « Ce que tu as commencé… » Elle ne finit pas. La
+**Cloche des Îles** descend du toit du plus haut temple, avec le troisième morceau de la
+Grande Cloche, et le troisième morceau de la prophétie gravé dessous. Somsak, Mali et le
+passeur muet font une haie de barques jusqu'à la grotte de la porte.
 
 Retour au Temple. On sonne. La porte suivante s'entrouvre : une odeur de mer et d'olivier.
 Le mage ne dit rien. Camille, pour la première fois, hésite devant une porte.
 
-### Les quêtes secondaires du Tibet
+### Les quêtes secondaires de Thaïlande
 
 | quête | quoi | récompense |
 |---|---|---|
-| **Les cent-huit drapeaux** | des drapeaux figés à ranimer sur tout le pic | un morceau de cœur tous les vingt-sept |
-| **Les masques de danse** | cinq masques cachés dans les terrasses | le masque du vent est obligatoire ; les autres donnent une tenue et une danse au sommet |
-| **Le thé de Pema** | de l'eau de la cascade, du beurre, du thé | une gourde qui réchauffe (le froid du haut coûte des cœurs sans elle) |
+| **Les cent-huit clochettes** | des clochettes figées au bord des toits, à faire tinter au gong sur toutes les îles | un morceau de cœur toutes les vingt-sept |
+| **Les masques du théâtre** | cinq masques du théâtre dansé thaïlandais (le *khon*), cachés dans les temples | le masque de Hanuman est obligatoire ; les autres donnent une tenue et une danse au sommet |
+| **Les guirlandes de Nok** | du jasmin, des fleurs de lotus et d'orchidée, à cueillir sur trois îles | une guirlande qui rend des cœurs quand on la porte |
+| **La course des longues barques** | battre Mali, puis tous les passeurs, autour de l'archipel | les passeurs t'emmènent partout gratuitement (un voyage rapide) |
 
 **Durée : ~40 min en allant vite.**
 
@@ -791,9 +892,9 @@ Le mage ne dit rien. Camille, pour la première fois, hésite devant une porte.
 
 **Une côte.** Les Pouilles, dans le talon de la botte de l'Italie : une plaine d'oliviers
 millénaires, des villages de pierre blanche perchés sur des collines, des falaises percées de
-grottes au-dessus d'une mer très bleue, et un château à huit tours seul sur sa colline. C'est
-le seul monde **avec la mer** : on la longe, on plonge dedans, on entre dans les falaises par
-la mer. Un format entre les deux autres : plus petit que l'Aveyron, plus plat que le Tibet,
+grottes au-dessus d'une mer très bleue, et un château à huit tours seul sur sa colline. Après les
+îles de Thaïlande, qu'on traversait en barque, ici **on longe la mer à pied** : on plonge
+dedans, on entre dans les falaises par la mer. Un format entre les deux autres : plus petit que l'Aveyron, plus plat que la Thaïlande,
 et tourné vers l'eau.
 
 ### Le mal du temps : le temps qui s'emballe
@@ -805,7 +906,7 @@ en quelques minutes. Les maisons s'effritent. **Et les gens vieillissent** : un 
 C'est le monde le plus cruel du jeu, parce que chaque minute passée coûte à ceux qu'on aide.
 
 **Ce que ça change au jeu** : la marée. À marée basse, l'entrée des grottes est à sec ; à
-marée haute, elle est sous l'eau, et il faut plonger (le souffle du Tibet). La mer qui monte
+marée haute, elle est sous l'eau, et il faut plonger (le souffle du Yak). La mer qui monte
 et descend toute seule fait partie des énigmes.
 
 ### Le géant : le Colosse
@@ -850,7 +951,7 @@ On ne peut pas brûler les étapes : Nunzia ne sait pas encore ce qu'elle appren
 
 La joueuse de tambourin d'Alberobello le donne à Camille. **En battant le rythme de la
 pizzica, la danse des Pouilles, on ralentit le temps autour de soi** — le contraire du
-moulin du Tibet, qui le relance.
+gong de Thaïlande, qui le relance.
 - **exploration** : tenir la marée basse assez longtemps pour traverser une grotte ; empêcher
   un pont de pierre de s'effriter le temps de passer ;
 - **énigme** : les portes du château s'ouvrent à un rythme, pas à une clé ;
@@ -868,7 +969,7 @@ vivante, pas comme une moquerie.
 | ce qui bloque | ce qu'il faut | qui le donne ou le dit |
 |---|---|---|
 | savoir où est Phinaert | l'enquête des trois âges | Nunzia, à quinze, trente et soixante ans |
-| les grottes des falaises, sous la mer | **le souffle** (Tibet) et la marée | on y trouve la corde du tambourin, volée par les tarentules |
+| les grottes des falaises, sous la mer | **le souffle** (Thaïlande) et la marée | on y trouve la corde du tambourin, volée par les tarentules |
 | le château ne s'ouvre qu'à un rythme | **le tambourin** | la joueuse d'Alberobello, une fois sa corde retrouvée |
 | la tour la plus haute du château | **le lasso** (Aveyron) pour monter, **la poulie** pour passer d'une tour à une tour plus basse | déjà en poche |
 | le Colosse | le combat | — |
@@ -890,7 +991,7 @@ Libéré, le Colosse s'arrête sur le quai, à sa place. Il donne **son élan** 
 fait franchir des vides qu'on ne sautait pas) et **redevient statue** : c'est lui qu'on voit
 encore aujourd'hui, immobile, dans une rue de Barletta.
 
-La **Cloche des Heures** sort de sa poitrine. Camille sait, depuis le yéti, qu'elle sonne pour
+La **Cloche des Heures** sort de sa poitrine. Camille sait, depuis le Yak, qu'elle sonne pour
 Phinaert. Mais si elle ne la sonne pas, le temps des Pouilles reste emballé, et tout un peuple
 continue de vieillir d'un an par heure. **Elle la sonne.** Le temps ralentit, le soleil se
 couche, lentement, sur la mer.
@@ -923,13 +1024,17 @@ pierre mouillée, et le son d'une cloche de mouton. La porte mène de nouveau en
 **Une vallée de moyenne montagne**, en Lozère, autour de **Villefort** : un bourg de pierre
 sombre au fond d'une vallée, un lac de barrage aux bras longs, des pentes couvertes de
 châtaigniers, de vieux chemins de troupeaux, les viaducs de la ligne des Cévennes, et plus
-haut le plateau nu du mont Lozère, avec ses menhirs. Au-dessus du bourg, par un chemin
-raide, **le Pouget**, un petit hameau de quelques maisons de pierre aux toits de lauzes (de
+haut le plateau nu du mont Lozère, avec ses menhirs. À trois kilomètres du bourg, par un
+chemin raide, **le Pouget**, un petit hameau de quelques maisons de pierre aux toits de lauzes (de
 grandes pierres plates).
 
 Le format tient à **l'aller-retour entre le bourg et le hameau** : Villefort, en bas, est
 l'endroit où l'on parle aux gens ; le Pouget, en haut, est le refuge, le seul lieu calme du
 monde. Entre les deux, le chemin est l'aventure.
+
+**Le clin d'œil des deux Pouget** : le berger dit un jour, sans qu'on lui demande rien :
+« Il paraît qu'il y a un autre Pouget, en Aveyron. Une grande maison, chez des Roquette.
+J'y crois pas. Un Pouget, ça suffit. » Réplique de souvenir, jamais en gras.
 
 **À préciser avec Eugène** : ce qu'il y a vraiment au Pouget (les maisons, le chemin qui y
 monte, ce qu'on voit de là-haut), pour que le hameau du jeu lui ressemble.
@@ -1066,7 +1171,7 @@ cloches.
 **La traversée de la Blessure** est un petit donjon à ciel ouvert qui demande tout ce qu'on
 a gagné :
 1. **descendre** la falaise **au lasso** (Aveyron), de corniche en corniche ;
-2. **traverser la rivière du fond**, glacée et rapide, **grâce au souffle du yéti** (Tibet) :
+2. **traverser la rivière du fond**, glacée et rapide, **grâce au souffle du Yak** (Thaïlande) :
    sans lui, l'eau coupe le souffle et renvoie au bord ;
 3. **remonter** de l'autre côté par l'ancien escalier des géants, dont les marches sont des
    blocs à pousser et à hisser **avec la force du Dormeur** (Aveyron).
@@ -1083,7 +1188,7 @@ canyon : la carte de Lille ne pèse pas plus lourd au chargement.
 |---|---|---|
 | **le fondeur de cloches** | la forge, sur l'autre rive | la traversée de la Blessure |
 | **le métal du cœur du Dormeur** | la galerie noyée, au fond de la mine de l'Aveyron | le souffle (nager), puis la force (une porte de pierre sous l'eau) |
-| **les morceaux de la Grande Cloche** | déjà en poche : le pont, le Dormeur, le yéti, le Colosse, le loup | — |
+| **les morceaux de la Grande Cloche** | déjà en poche : le pont, le Dormeur, le Yak, le Colosse, le loup | — |
 
 ### L'enquête : trouver le fondeur
 
@@ -1111,8 +1216,9 @@ canyon : la carte de Lille ne pèse pas plus lourd au chargement.
 
 ### Le moment de la tragédie
 
-Devant la tombe, Camille comprend : pour enfermer Phinaert pour toujours, Eugène devra fermer
-le Temple de l'intérieur, et y rester. Elle comprend aussi que le mage l'a toujours su.
+Devant la tombe, Camille lit le dernier vers et comprend que le sang de Lydéric peut fermer
+la porte. Elle ne comprend pas encore qui restera de l'autre côté : le joueur non plus, et
+c'est voulu (`STORY.md`, acte VI).
 
 Elle peut s'arrêter là. Elle ne s'arrête pas. Elle pose la main sur la tombe et dit, pour la
 première fois elle-même : **« Ce que la garde commence, la garde l'achève. »**
@@ -1126,16 +1232,17 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
 | **Lille** | le souffle | les canaux couverts sous la ville, jusqu’à la cave du maître sonneur ; les fossés profonds sous les bastions (une cachette) |
 | **Lille** | la force | la salle murée des souterrains (le septième billet d’Eugène) ; les cours murées du Vieux-Lille |
 | **Lille** | le lasso | les toits du Vieux-Lille, de cheminée en cheminée, jusqu’au sommet du beffroi ; le clocher de la chapelle (morceaux de cœur, vue sur toute l’île) |
-| **Lille** | le moulin | le vitrail cassé de la chapelle : il se recompose et montre l'ermite enfermant Phinaert |
+| **Lille** | le gong | le vitrail cassé de la chapelle : il se recompose et montre l'ermite enfermant Phinaert |
 | **Lille** | les rênes | la jument d’Émile, les chevaux de l’écurie de la citadelle, ceux de l’autre rive |
 | **Lille** | la poulie | les tyroliennes : du sommet du beffroi à la grand-place, des toits aux quais, du plus haut bastion au pied du glacis |
 | **Lille** | l'élan | sauter d'un toit à l'autre au-dessus des rues du Vieux-Lille ; franchir les fossés de la citadelle d'un bond |
 | **Aveyron** | le souffle | la galerie noyée (obligatoire), la source cachée sous le lac |
-| **Aveyron** | le moulin | le village abandonné : on casse sa boucle, la banque s'ouvre ; le pont des gorges se reconstruit et le train roule à nouveau |
+| **Aveyron** | le gong | le village abandonné : on casse sa boucle, la banque s'ouvre ; le pont des gorges se reconstruit et le train roule à nouveau |
 | **Aveyron** | la force | le canyon caché derrière les éboulis (le repaire du dernier bandit) |
 | **Aveyron** | la poulie, l'élan | le câble au-dessus des gorges ; les causses qu'on n'atteignait pas d'un saut |
-| **Tibet** | l'élan | les pics trop éloignés pour le lasso : le temple caché du yéti (un morceau de cœur, et sa dernière trace) |
-| **Pouilles** | le moulin | un trullo figé dans son passé : on y revoit Nunzia enfant |
+| **Thaïlande** | l'élan | les pitons trop éloignés pour le lasso : le temple caché du Yak (un morceau de cœur, et sa dernière trace) |
+| **Thaïlande** | le souffle | nager d'île en île sans passeur ; les grottes sous les pitons |
+| **Pouilles** | le gong | un trullo figé dans son passé : on y revoit Nunzia enfant |
 | **Pouilles** | la course | la course des pêcheurs, de port en port, contre la marée |
 | **Lille** | la course | rattraper le voleur de la rue de la Clef ; passer les passerelles qui s'effondrent dans les souterrains |
 | **Lille** | la sonnaille | une cour du Vieux-Lille qui revient en 1667 : on y voit Vauban dessiner la citadelle |
@@ -1149,27 +1256,26 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
 1. **Phinaert attend au Temple.** Il fait sonner la Grande Cloche neuve en tenant la main
    d'Eugène sur le métal : la cloche de Lille reconnaît le sang de Lydéric. Toutes les
    cloches sonnent ensemble. Phinaert est dessous. **Le temps s'arrête partout** : par les
-   portes, l'Aveyron figé, le Tibet figé, les Pouilles figées, la Lozère figée, Lille figée.
+   portes, l'Aveyron figé, les îles de Thaïlande figées, les Pouilles figées, la Lozère figée, Lille figée.
 2. Camille bouge encore : c'est elle qui a sonné les cloches des gardiens, leur temps lui
-   obéit un peu. Et elle a le moulin de Pema.
-3. **Le mage avoue.** Il savait que la Grande Cloche se fendait. Il savait qu'Eugène devrait
-   rester. Il s'est tu, parce qu'il voulait mourir, enfin, après mille quatre cents ans, et
-   parce que Camille aurait refusé. Il lui donne **l'épée de Lydéric**, qu'il garde depuis
-   620 : « Elle était à lui. Elle est à toi. »
+   obéit un peu. Et elle a le gong de Nok.
+3. **Le mage donne à Camille l'épée de Lydéric**, qu'il garde depuis 620 : « Elle était à
+   lui. Elle est à toi. » C'est la seule arme qui empêche Phinaert d'effacer ses blessures en
+   remontant le temps.
 4. **Le combat**, en trois temps :
    - dans le Temple : Phinaert efface ses blessures, sauf celles de l'épée de Lydéric ;
    - il ouvre les portes, le combat traverse les mondes figés (un causse brûlé, une
-     corniche du Tibet) ; chaque monde rend son arme (le lasso, le moulin, le tambourin, la sonnaille, la force) ;
+     piton de Thaïlande) ; chaque monde rend son arme (le lasso, le gong, le tambourin, la sonnaille, la force) ;
    - la fin, au pont de Fin, à Lille — là où Lydéric l'a vaincu, en 620.
-5. **Enfermer Phinaert.** Phinaert à terre, Eugène décroche la Grande Cloche et la fait
-   sonner **seule**. Phinaert est aspiré dans la cloche. Puis Eugène entre dans le Temple.
-   « Je te l'avais écrit : si je te le disais, tu voudrais me protéger. » Il ferme la porte
-   de l'intérieur. Camille reste dehors.
-6. **Épilogue.** Le temps repart. La fête des géants reprend là où elle s'était arrêtée.
-   Lydéric n'est plus d'osier. Le mage s'assoit au bord de la fontaine de l'ermite et ne se
-   relève pas. Camille offre à Lydéric la première botte de blé — la fin du rite du
-   prologue. À midi, la Grande Cloche sonne toute seule : c'est Eugène, de l'autre côté.
-   Camille lève les yeux vers le beffroi.
+5. **Enfermer Phinaert.** La dernière phrase de la prophétie prend son vrai sens : le sang
+   de Lydéric ferme la porte, et **c'est Phinaert qui reste de l'autre côté**. Eugène agit
+   lui-même dans cette dernière étape — il n'est pas une victime décidée d'avance : il aide
+   Camille à refermer ce que Phinaert a rouvert. *(La mise en scène exacte reste à écrire.)*
+6. **Épilogue.** Le temps repart. Lille retrouve la fête. Lydéric redevient lui-même. Les
+   habitants reprennent leur vie. Certaines pertes restent des pertes : Nunzia ne rajeunit
+   pas, les géants ne reprennent pas leur ancien état. Camille revient au pont de Fin, pose la
+   première botte de blé devant Lydéric et dit : **« Ce que la garde commence, la garde
+   l'achève. »** Une dernière cloche sonne. Noir.
 
 **Durée : ~15 min.**
 
@@ -1183,17 +1289,17 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
 | **Canne à pêche** | le vieux pêcheur (Lille) | tirer un ennemi hors de l'eau | repêcher ce qui est tombé à l'eau | accrocher et ramener un objet | les puits de l'Aveyron, le Tibet, le canyon |
 | **Lanterne** | Désiré (Lille) | fait voir les fantômes | les lieux noirs | des portes cachées dans l'ombre | la mine, la salle des masques |
 | **Arc** | le coffre dont parle Bastien (Lille) | à distance, ennemis en vol | leviers, cordes, aiguillages | tonneaux de poudre | partout |
-| **Bombes** | l'armurier (Lille) | coquilles, carapaces | murs fendus, éboulis | tonneaux en chaîne | la mine, le Tibet |
+| **Bombes** | l'armurier (Lille) | coquilles, carapaces | murs fendus, éboulis | tonneaux en chaîne | la mine, la Thaïlande |
 | **Les rênes** | le maquignon Roquette (Aveyron) | charger à cheval | **monter n'importe quel cheval, dans tous les mondes** | la course | Lille, l'autre rive |
-| **Lasso** | une Roquette du Bathut (Aveyron) | immobiliser, désarmer | se balancer, descendre les falaises | tirer des blocs | le Tibet, la Blessure |
-| **Moulin à prières** | Pema (Tibet) | ranimer les ennemis figés | relancer le temps autour de soi | faire finir une phrase, reconstruire un objet | le village abandonné, le vitrail, le final |
-| **La force** | le Dormeur (Aveyron) | renverser les grosses bêtes | pousser et soulever la pierre | blocs à placer | le Tibet, la Blessure, la galerie noyée |
-| **La poulie** | le frère cuisinier (Tibet) | tirer à l'arc en glissant | **la tyrolienne**, toujours d'un point haut vers un point plus bas | les raccourcis de descente | Lille, Aveyron, Pouilles |
+| **Lasso** | une Roquette du Batut (Aveyron) | immobiliser, désarmer | se balancer, descendre les falaises | tirer des blocs | la Thaïlande, la Blessure |
+| **Gong** | Nok (Thaïlande) | ranimer les ennemis figés | relancer le temps autour de soi | faire finir une phrase, reconstruire un objet | le village abandonné, le vitrail, le final |
+| **La force** | le Dormeur (Aveyron) | renverser les grosses bêtes | pousser et soulever la pierre | blocs à placer | la Thaïlande, la Blessure, la galerie noyée |
+| **La poulie** | le moine cuisinier (Thaïlande) | tirer à l'arc en glissant | **la tyrolienne**, toujours d'un point haut vers un point plus bas | les raccourcis de descente | Lille, Aveyron, Pouilles |
 | **Tambourin** | la joueuse d'Alberobello (Pouilles) | ralentir les ennemis | tenir la marée basse, retenir un pont qui s'effrite | les portes à rythme | le final |
 | **Sonnaille** | le berger du Pouget (Lozère) | faire fuir les loups ; ramener un ennemi dans le présent, où il est vulnérable | faire revenir un lieu à une autre époque (le lac vide, le pont achevé) | choisir l'époque d'une salle | la Blessure, le final |
 | **La course** | le loup (Lozère) | distancer, charger | courir très vite, passer avant qu'un pont s'effondre | les courses contre la montre | Lille, les Pouilles |
 | **L'élan** | le Colosse (Pouilles) | sauter sur les ennemis | franchir de grands vides | — | les toits de Lille, le canyon, l'Aveyron |
-| **Le souffle** | le yéti (Tibet) | — | nager dans l'eau glacée et profonde | plonger chercher | la Blessure, la galerie noyée, la Deûle |
+| **Le souffle** | le Yak (Thaïlande) | — | nager en eau profonde et glacée, d'île en île | plonger chercher | la Blessure, la galerie noyée, la Deûle |
 | **Épée de Lydéric** | le mage (acte VII) | la seule qui blesse Phinaert pour de bon | — | — | — |
 
 ---
@@ -1203,7 +1309,7 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
 - **Le Japon — la Cloche de la Nuit** : une ville de bois au bord d'un lac, la nuit des
   Nebuta (d'immenses chars de papier illuminés, cousins de nos géants de fête) ; un géant qui
   a creusé les lacs en marchant ; la nuit ne finit jamais ; l'objet : le grappin. Il se
-  place entre l'Aveyron et le Tibet sans rien changer.
+  place entre l'Aveyron et la Thaïlande sans rien changer.
 - **Une suite** : Eugène, gardien du Temple, peut rouvrir une porte. La Grande Cloche sonne un
   jour à la mauvaise heure : c'est lui qui appelle.
 
@@ -1220,7 +1326,7 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
 - **Les étapes** : un drapeau de `state` par objet et par don ; `saveGame()` les sauve seul.
   `KILLS_TO_OPEN` s'en va.
 - **Le canyon** : à creuser au bord de la carte de Lille (`carte.js`) ; l'autre rive, le
-  Temple, l'Aveyron et le Tibet sont des niveaux séparés, comme les souterrains (`cave.html`).
+  Temple, l'Aveyron, la Thaïlande, les Pouilles et la Lozère sont des niveaux séparés, comme les souterrains (`cave.html`).
   **Un seul chargé à la fois** : le temps de chargement de Lille ne bouge pas.
 - **Nager** : `carte.js` connaît déjà l'eau ; nager, c'est y laisser entrer Camille avec une
   autre allure au lieu de la repêcher.
@@ -1233,7 +1339,7 @@ Maître Cornil fond la Grande Cloche dans la forge. Elle est neuve. Elle n'a pas
    par session, chacune vérifiée en rendu.
 4. Le Temple (petit, et il donne la fin de l'acte I).
 5. Une **ébauche jouable de l'Aveyron** : les causses, les grandes maisons, les rênes et le cheval.
-6. Une **ébauche jouable du Tibet** : le pic et le moulin sur trois terrasses.
+6. Une **ébauche jouable de la Thaïlande** : deux îles, un passeur, une tyrolienne, le gong.
 7. Une **ébauche jouable des Pouilles** : la côte, la marée, Nunzia qui vieillit.
 8. Une **ébauche jouable de la Lozère** : Villefort, le chemin du Pouget, une zone qui change d'époque.
 9. Le canyon, la traversée, l'autre rive, avec l'acte VI.

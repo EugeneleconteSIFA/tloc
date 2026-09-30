@@ -22,7 +22,7 @@ récente qui lui en donne une.
 | `bombes` | l'armurier a donné les bombes |
 | `donjon` | les trois cadenas sont ouverts |
 | `temple` | l'acte I est fini (pour qui revient à Lille pendant les actes II et III) |
-| `force`, `souffle` | les dons du Dormeur et du yéti (actes II et III), pour les répliques de l'acte VI |
+| `force`, `souffle` | les dons du Dormeur et du Yak (actes II et III), pour les répliques de l'acte VI |
 
 **Les types de réplique** :
 - **A** — ambiance : jamais de gras ;
