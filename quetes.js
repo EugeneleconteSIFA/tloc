@@ -6,7 +6,7 @@ import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
-} from './engine.js?v=32';
+} from './engine.js?v=33';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,

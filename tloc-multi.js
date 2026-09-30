@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=32';
+} from './engine.js?v=33';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;

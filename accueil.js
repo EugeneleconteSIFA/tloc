@@ -704,3 +704,11 @@ SOCIAL.brancherEnvironnement();       // sur tloc-dev : le rappel « dev », et 
 C.reprendreAncienneSauvegarde();     // sauvegarde d'avant les parties nommées : on la garde
 tout();
 setInterval(() => { if (C.connecte() && !document.hidden) chargerInstances(); }, 15000);
+
+// la pastille « Toutes tes parties » : visible tant qu'on est en haut et que la liste est hors de l'écran
+{
+  const fl = $('flecheParties'), liste = $('parties');
+  const maj = () => fl.classList.toggle('cache', scrollY > 60 || liste.getBoundingClientRect().top < innerHeight - 40);
+  addEventListener('scroll', maj, { passive: true }); addEventListener('resize', maj); maj();
+  document.querySelectorAll('a[href="#parties"]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); liste.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
+}

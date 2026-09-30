@@ -23,12 +23,12 @@ import * as BOURSE from './bourse.js';
 import {
   THREE, Q, SFX, T, TAU, addCap, blocked, burst, capsulesNear, clamp, distSeg, fbm, getH, lerp, mat,
   mergeParts, phMat, player, rand, scene, spawnGaufre, state,
-} from './engine.js?v=32';
+} from './engine.js?v=33';
 import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
   bastionAt, essenceAt, libreNature, margeBatie, margePlate, nearHouse, nearTown, sdEau, sdPent, sdPoly,
-  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN, voieCombattants,
+  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN, voieCombattants, talusDehors,
 } from './carte.js';
 
 export const perf = { leaves: [], grass: null, flowers: [], reeds: null, roots: null, lights: [] };
@@ -705,7 +705,8 @@ export function habillerEaux() {
           const x = bx + rand(-0.6, 0.6) + nx * dedans * rand(-2.2, 3.2);
           const z = bz + rand(-0.6, 0.6) + nz * dedans * rand(-2.2, 3.2);
           const sd = sdPoly(x, z, o.poly);
-          if (sd > -3.6 && sd < 2.6) {
+          // pas sur le talus d'un ouvrage (carte.js) : ils se dressaient sur sa pente, loin de l'eau
+          if (sd > -3.6 && sd < 2.6 && talusDehors(x, z) === null) {
             // dans l'eau, le pied est au fond ; sur la grève, il suit le terrain
             const y = sd < 0 ? Math.min(o.y - 0.25, getH(x, z, 0)) : Math.max(getH(x, z, 0) - 0.1, o.y - 0.5);
             const sc = rand(0.5, 1.3);

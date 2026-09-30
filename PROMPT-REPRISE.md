@@ -1035,11 +1035,24 @@ Depuis, en local (non publié) :
   le bord laissait voir l'escarpe). Marche simulée depuis 11 m dehors : tous les côtés secs
   des 9 demi-lunes et contregardes se gravissent (pas max 0,09 m) ; la lunette du Grand Carré
   touche la limite du monde. Chargement inchangé (≈ 14,4 s de somme d'étapes).
-- **À REPRENDRE le 30 septembre (Eugène, 29 au soir)** : il signale un problème avec ces
-  nouveaux talus des ouvrages autour de la citadelle — le détail n'est pas encore donné. Lui
-  demander ce qu'il a vu (capture), puis regarder en rendu : raccord talus / pré, arbres ou
-  chemins posés sur la pente (`surDehors` ne couvre que le cercle circonscrit), côtés fossé
-  restés à pic, talus dans le couloir du pont, bots (grille de nav) sur les pentes.
+- **Repris le 30 septembre** (Eugène, 29 au soir : « problème avec les nouvelles zones
+  surélevées »). Vu en rendu, au ras du sol, autour des onze ouvrages : le talus décidait
+  point par point s'il était au bord de l'eau (`sdEau`) ; le long d'une rive la réponse
+  alternait, et la crête sortait en dents de scie, avec des pans d'escarpe debout entre deux
+  bouts de pente. Désormais un verdict par CÔTÉ (`cotesSecs`, carte.js : sec si la majorité de
+  neuf points, 3 m dehors, est hors de l'eau), partagé par le sol et le maillage ; une bande
+  du maillage n'est posée qu'entre deux rayons vivants. Les roseaux ne poussent plus sur les
+  talus (nature.js). Marche simulée : tous les côtés secs se gravissent (pas max 0,46 m, coin
+  de la demi-lune Dauphine). *Si Eugène voyait autre chose : lui demander une capture.*
+- **La fosse sans issue** (Eugène, 30 septembre : « entre la rampe et le talus, un espace
+  où l'on tombe sans jamais pouvoir ressortir »). Trouvée par une double inondation aux règles
+  de Camille (pas de 0,5 m ; aller depuis le pré, retour vers le pré — script de session
+  `fosses.mjs`, à reprendre en banc si besoin) puis confirmée par de vraies marches : la
+  berme sèche au pied de la contregarde de Turenne, entre la paroi et l'eau (224 m², ~100 m
+  de long), où l'on descendait par son bout, depuis le pré, sans remonter. Chaque côté mouillé
+  a désormais deux limites invisibles (`terrassesDehors`) : un garde-fou en haut du
+  terre-plein, et la berme elle-même occupée sur 2,4 m. Plus aucune fosse atteignable autour
+  des onze ouvrages ; les montées restent toutes possibles.
 
 ### U. Accueil refait, badges classés, page admin (29 septembre, nuit) — **faits, rien de publié**
 
@@ -1078,6 +1091,10 @@ Depuis, en local (non publié) :
   glissaient au milieu quand le bandeau des testeurs est masqué (grille à trois colonnes) —
   épinglés à droite. *Reste* : la bulle du chat (fixe, en bas à droite) recouvre en partie
   « Rejoindre » à 1000 px de large.
+  Puis : icônes une personne (Solo) / un groupe (Multi), une porte pour « Rejoindre » ;
+  seul l'encadré « Rejoindre » est plein (terracotta), les tuiles gardent leur transparence ;
+  un fléchage vers l'historique — lien « Toutes tes parties ↓ » dans la tuile Solo et
+  pastille fixe en bas à gauche, qui s'efface dès qu'on descend.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

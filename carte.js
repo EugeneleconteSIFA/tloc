@@ -8,7 +8,7 @@
 // z = sud, Porte Royale au sud. Les élévations ne suivent PAS l'échelle du plan —
 // elles étaient déjà réalistes.
 import { THREE, clamp, lerp, rand, TAU, distSeg, pointInPoly, scene, T, mat, pbr, pbrRepeat, phMat, stoneMat,
-  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=32';
+  mesh, boxG, flatMesh, extrudeMesh, world, addCap, getH, fbm, makeCanvas, tex, normalMapFrom, patiner, capsulesNear } from './engine.js?v=33';
 
 // Alias : plusieurs fonctions déclarent un « E » local (un THREE.Euler de travail)
 // qui masquerait le namespace du moteur. On passe donc par un nom qui ne peut pas
@@ -849,14 +849,37 @@ export function dehorsAt(x, z) {
 // terre-plein jusqu'au sol ; côté fossé, l'escarpe reste droite — un talus y mènerait sous
 // l'eau. Le couloir du pont est exclu, comme dans dehorsAt.
 export const TALUS_DEHORS = 7;
+// Sec ou mouillé : un verdict PAR CÔTÉ de l'ouvrage, pas par point. Décidé point à point, le
+// bord d'une rive disait oui, non, oui d'un mètre à l'autre : la crête du talus sortait en
+// dents de scie, et des pans d'escarpe restaient debout entre deux bouts de pente (Eugène,
+// 29 septembre au soir). Un côté est sec si la majorité de ses points, trois mètres dehors,
+// sont hors de l'eau ; il a alors son talus sur toute sa longueur. Calculé à la première
+// demande : l'eau (LILLE) n'est chargée qu'après ce module.
+function cotesSecs(o) {
+  if (o.secs) return o.secs;
+  const P = o.poly, n = P.length;
+  let A = 0;
+  for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+  const sgn = A < 0 ? -1 : 1;
+  o.secs = P.map((a, i) => {
+    const b = P[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const nx = sgn * (b[1] - a[1]) / L, nz = -sgn * (b[0] - a[0]) / L;
+    let sec = 0;
+    for (let k = 1; k <= 9; k++) { const t = k / 10; if (sdEau(a[0] + (b[0] - a[0]) * t + nx * 3, a[1] + (b[1] - a[1]) * t + nz * 3) > 0.5) sec++; }
+    return sec >= 5;
+  });
+  return o.secs;
+}
 export function talusDehors(x, z) {
   if (Math.abs(x) < PONT_HW && z > APO && z < PONT_Z1 + 10) return null;
   for (const o of DEHORS) {
     if (Math.hypot(x - o.c[0], z - o.c[1]) > o.rr + TALUS_DEHORS) continue;
     if (pointInPoly(x, z, o.poly)) return null;              // le terre-plein : dehorsAt
-    let d = Infinity;
-    for (let i = 0; i < o.poly.length; i++) { const a = o.poly[i], b = o.poly[(i + 1) % o.poly.length]; d = Math.min(d, distSeg(x, z, a[0], a[1], b[0], b[1])); }
-    if (d >= TALUS_DEHORS || sdEau(x, z) < 0) continue;
+    // le côté le plus proche décide ; un coin saillant n'a de talus que si ses deux côtés en ont
+    const secs = cotesSecs(o), n = o.poly.length;
+    let d = Infinity, ic = -1;
+    for (let i = 0; i < n; i++) { const a = o.poly[i], b = o.poly[(i + 1) % n], di = distSeg(x, z, a[0], a[1], b[0], b[1]); if (di < d - 1e-6) { d = di; ic = i; } else if (Math.abs(di - d) <= 1e-6 && !secs[i]) ic = i; }
+    if (d >= TALUS_DEHORS || !secs[ic]) continue;
     const sol = solPlaine(x, z);
     if (sol >= o.h) continue;
     const t = d / TALUS_DEHORS;
@@ -2527,6 +2550,28 @@ export function terrassesDehors() {
     }
   }
   g.add(talusMaillage());
+  // LE GARDE-FOU DES CÔTÉS MOUILLÉS. Les talus rendent les terre-pleins accessibles ; du côté
+  // du fossé, l'escarpe tombe de quatre mètres sur une banquette sèche, prise entre la paroi
+  // et l'eau (la berme, cf. terrainNaturel), d'où l'on ne ressortait jamais (Eugène, 30 septembre : 320 m² le long de la
+  // contregarde de Turenne, trouvés par une inondation aux règles de Camille). Une limite
+  // invisible, en retrait de 35 cm du bord et deux mètres plus haut que le terre-plein, qu'on
+  // ne franchit ni en marchant ni en sautant — comme on ne passe pas un parapet.
+  for (const o of DEHORS) {
+    const P = o.poly, n = P.length, secs = cotesSecs(o);
+    let A = 0;
+    for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; A += a[0] * b[1] - b[0] * a[1]; }
+    const sgn = A < 0 ? -1 : 1;
+    for (let i = 0; i < n; i++) {
+      if (secs[i]) continue;
+      const a = P[i], b = P[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const ix = -sgn * (b[1] - a[1]) / L * 0.35, iz = sgn * (b[0] - a[0]) / L * 0.35;   // vers l'intérieur
+      addCap(a[0] + ix, a[1] + iz, b[0] + ix, b[1] + iz, 0.3, o.h + 2);
+      // et la banquette elle-même, au pied de la paroi : on y descendait aussi depuis le pré, par
+      // son bout (une marche de trois mètres, près du coin), sans pouvoir remonter. Occupée sur
+      // 2,4 m, elle n'est plus un lieu où l'on puisse se tenir.
+      addCap(a[0] - ix / 0.35 * 1.2, a[1] - iz / 0.35 * 1.2, b[0] - ix / 0.35 * 1.2, b[1] - iz / 0.35 * 1.2, 1.2, o.h + 2);
+    }
+  }
   return g;
 }
 
@@ -2556,7 +2601,7 @@ function talusMaillage() {
     }
     const debut = pos.length / 3, R = rayons.length, vivant = [];
     for (const [x, z, nx, nz] of rayons) {
-      // un rayon qui part vers l'eau n'a pas de talus
+      // un rayon qui part d'un côté mouillé n'a pas de talus (cotesSecs, le même verdict que le sol)
       vivant.push(talusDehors(x + nx * 1.5, z + nz * 1.5) !== null);
       for (let k = 0; k <= N; k++) {
         const d = TALUS_DEHORS * k / N, px = x + nx * d, pz = z + nz * d;
@@ -2566,7 +2611,7 @@ function talusMaillage() {
     }
     for (let r = 0; r < R; r++) {
       const r2 = (r + 1) % R;
-      if (!vivant[r] && !vivant[r2]) continue;
+      if (!vivant[r] || !vivant[r2]) continue;       // une bande à cheval sur un rayon mort montait en dent
       for (let k = 0; k < N; k++) {
         const a = debut + r * (N + 1) + k, b = debut + r2 * (N + 1) + k;
         // l'ordre suit le sens du polygone : la face regarde toujours le ciel

@@ -1,11 +1,11 @@
 // hud.js — ce que le joueur lit à l'écran.
 //
 // Secteur Quêtes : minimap, compteurs de progression, menu titre.
-import * as E from './engine.js?v=32';
+import * as E from './engine.js?v=33';
 import {
   THREE, TAU, addLieu, enemies, estDecouvert, hasSave, hideMenu, lieux, minimapDots, showMenu,
   startGame, state,
-} from './engine.js?v=32';
+} from './engine.js?v=33';
 import {
   APO, DEHORS, ENCEINTE, HOUSE, LILLE, PLAINE_R, PONTS, PONT_Z1, TRACE, bastions,
 } from './carte.js';
