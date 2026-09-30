@@ -1,4 +1,4 @@
-import * as PNJ_E from './engine.js?v=39';
+import * as PNJ_E from './engine.js?v=40';
 import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 5 : l'intérieur de la chaumière du vieux mage
 // =====================================================================
@@ -13,7 +13,7 @@ import * as PNJ from './pnj.js';
 import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, phMat, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, rboxG, latheG, world, addCap, addBox, addPlatform, makeTorch, makeCorbeau, makeHeartContainer,
   makeHead, makeTorso, makeLeg, makeArm, SKIN, SFX, state, player, burst,
-  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, dialogue } from './engine.js?v=39';
+  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, dialogue } from './engine.js?v=40';
 import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 

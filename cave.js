@@ -1,10 +1,10 @@
-import * as PNJ_E from './engine.js?v=39';
+import * as PNJ_E from './engine.js?v=40';
 import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 2 : les galeries souterraines de la citadelle
 import { THREE, clamp, lerp, rand, TAU, distSeg, scene, camera, G, T, mat, pbr, pbrRepeat, phMat, patiner, uvMeters, makeCanvas, tex, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, getH, blocked, makeChest, makeGrille, makeTorch, makeLever, SFX, state, player, enemies, pickups,
   spawnEnemy, spawnPickup, spawnGaufre, addInteract, showMessage, burst, saveGame, goToLevel, bootLevel, minimapDots, damagePlayer,
-  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey } from './engine.js?v=39';
+  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey } from './engine.js?v=40';
 import * as LOOK from './look.js';
 import * as BOURSE from './bourse.js';
 LOOK.veiller();
@@ -743,7 +743,7 @@ function freePrince() {
   const x = cagePos.x, z = cagePos.z;
   cutscene([
     { cam: [x + 4, 2.5, z + 4], at: [x, 1.6, z], cam2: [x + 3, 2.2, z + 3.5], at2: [x, 1.6, z], dur: 3, text: 'La clé du Rat-Roi tourne dans la serrure de la cage…', fn: () => { SFX.pickup(); cage.userData.opening = true; prince.rotation.y = Math.PI / 4; } },
-    { cam: [x + 3, 2.2, z + 3.5], at: [x, 1.6, z], dur: 2.5, actor: prince, to: [x + 1.8, z + 1.6], speed: 2.5, fn: () => { state.princeFreed = true; state.caveDone = true; SFX.win(); } },
+    { cam: [x + 3, 2.2, z + 3.5], at: [x, 1.6, z], dur: 2.5, actor: prince, to: [x + 1.8, z + 1.6], speed: 2.5, fn: () => { state.princeFreed = true; state.caveDone = true; SFX.win(); SFX.fanfare(); } },
     { say: "« Camille… je savais que tu viendrais. Phinaert m'a traîné ici en riant, il disait que personne ne passerait ses monstres. »", who: 'Eugène', cam: [x + 4, 2.4, z + 4.5], at: [x + 1.2, 1.6, z + 1] },
     { say: "« Sortons d'ici. Reste devant, je te suis : je n'ai pas ton épée… ni ton courage. »", who: 'Eugène' },
   ], () => { saveGame(true); showMessage('Ramène Eugène à la surface : l\'escalier de l\'entrée, puis Lydéric près du pont.', 6); });

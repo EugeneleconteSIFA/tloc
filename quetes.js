@@ -6,7 +6,7 @@ import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
-} from './engine.js?v=39';
+} from './engine.js?v=40';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,
@@ -429,7 +429,7 @@ export function finalScene() {
     { say: "« Eugène ! Vous êtes vivants tous les deux ! Camille, tu as fait ce qu'aucun soldat de la garnison n'aurait osé. »", who: 'Lydéric', cam: [lx + 9, 3, lz + 6], at: [lx + 3, 2.5, lz] },
     { say: "« Sans Camille, je serais encore au fond des galeries à écouter les rats. Lille te doit sa liberté, gardienne de la citadelle. »", who: 'Eugène', cam: [px + 4, 2.4, pz + 4], at: [px, 1.6, pz] },
     { say: "« Ce soir, on fête ça au village. Gaufres pour tout le monde ! »", who: 'Eugène', cam: [px + 4, 2.4, pz + 4], at: [px + 1, 1.6, pz] },
-    { cam: [lx + 14, 6, lz + 14], at: [lx + 3, 3, lz], cam2: [lx + 30, 22, lz + 40], at2: [0, 10, APO], dur: 7, text: 'La herse de la Porte Royale se relève. Les corbeaux ont quitté le ciel de la citadelle, et le beffroi sonne à toute volée.', fn: () => { player.pose = { kind: 'cheer' }; let n = 0; const iv = setInterval(() => { burst(lx + rand(-20, 30), rand(12, 26), lz + rand(-30, 10), [0xff5070, 0xffd070, 0x70c0ff, 0x80ff90][n % 4], 30, 7, 1.6, 2, 1.6); SFX.win(); if (++n > 9) clearInterval(iv); }, 650); } },
+    { cam: [lx + 14, 6, lz + 14], at: [lx + 3, 3, lz], cam2: [lx + 30, 22, lz + 40], at2: [0, 10, APO], dur: 7, text: 'La herse de la Porte Royale se relève. Les corbeaux ont quitté le ciel de la citadelle, et le beffroi sonne à toute volée.', fn: () => { player.pose = { kind: 'cheer' }; SFX.fanfare(0); let n = 0; const iv = setInterval(() => { burst(lx + rand(-20, 30), rand(12, 26), lz + rand(-30, 10), [0xff5070, 0xffd070, 0x70c0ff, 0x80ff90][n % 4], 30, 7, 1.6, 2, 1.6); SFX.win(); if (++n > 9) clearInterval(iv); }, 650); } },
     { cam: [lx + 30, 22, lz + 40], at: [0, 10, APO], cam2: [90, 70, 140], at2: [0, 6, 0], dur: 8, title: 'FIN', sub: 'Eugène est sauvé', fade: 0 },
   ], () => { player.pose = null; endGame(true); });
 }

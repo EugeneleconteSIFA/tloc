@@ -1241,15 +1241,103 @@ export const SFX = (() => {
       s.connect(f).connect(g).connect(c.destination); s.start();
     } catch (e) { /* audio indisponible */ }
   }
-  // musique d'ambiance générative : nappe d'accords + basse, discrète
-  let music = null, musicMode = 'day', muted = false;
-  const CHORDS = { day: [[0, 4, 7, 11], [5, 9, 12, 16], [7, 11, 14, 17], [2, 5, 9, 12]], cave: [[0, 3, 7, 10], [-4, 0, 3, 7], [-2, 1, 5, 8], [-5, -2, 2, 5]] };
-  function startMusic(mode = 'day') {
+  // LA MUSIQUE : des morceaux enregistrés (assets_back/05_audio/musique, découpés le 30
+  // septembre), une liste par ambiance de lieu (ambianceDe, plus bas). Chacun est un <audio>
+  // lu en flux, preload « none » : rien ne se télécharge avant d'entrer dans le lieu, et le
+  // chargement du jeu n'en porte pas un octet. Il passe par le contexte WebAudio pour deux
+  // raisons : suspendre le contexte (veille) le fait taire avec le reste, et le fondu se règle
+  // sur un gain — audio.volume, Safari iOS l'ignore.
+  // La cave garde sa nappe synthétisée : sombre, en mineur, aucun morceau ne la remplace.
+  const MUSIQUE = 'assets_back/05_audio/musique/', VOL = 0.3;
+  const AMBIANCES = {
+    bourg: ['02-tarrey-jour', '10-skyloft'],
+    citadelle: ['05-courage', '04-loftwing-pourpre'],
+    donjon: ['05-courage'],
+    eau: ['13-trou-de-peche'],
+    campagne: ['08-ordon', '11-relais-ecurie'],
+    jardins: ['11-relais-ecurie', '01-kakariko-sauve'],
+    bois: ['04-loftwing-pourpre', '08-ordon'],
+    taverne: ['07-kakariko-bar-a-lait'],
+    chapelle: ['09-berceuse-zelda'],
+    maison: ['12-hateno-nuit'],
+    mage: ['06-moment-calme'],
+  };
+  // La fanfare (« Ralis sauvé ») ne vient d'aucun lieu : elle salue les grandes fins (fanfare,
+  // plus bas) et passe par-dessus l'ambiance, que le gain `lieuG` fait taire le temps qu'elle dure.
+  const FANFARE = '03-ralis-sauve';
+  let muted = false, musMaster = null, lieuG = null, amb = null, voulue = null, attente = 0, nappe = null;
+  let fanfareT = 0, fanfareSansFin = false;
+  const pistes = {}, rang = {};                       // rang : où chaque ambiance en était de sa liste
+  function master() {
+    if (!musMaster) { const c = ac(); musMaster = c.createGain(); musMaster.gain.value = muted ? 0 : 1; musMaster.connect(c.destination); }
+    return musMaster;
+  }
+  function lieu() { if (!lieuG) { lieuG = ac().createGain(); lieuG.connect(master()); } return lieuG; }
+  function piste(nom) {
+    if (pistes[nom]) return pistes[nom];
+    const el = new Audio(MUSIQUE + nom + '.m4a'); el.preload = 'none';
+    const c = ac(), g = c.createGain(); g.gain.value = 0;
+    c.createMediaElementSource(el).connect(g); g.connect(nom === FANFARE ? master() : lieu());
+    const p = pistes[nom] = { el, g };
+    // un morceau fini passe au suivant de la liste (ou reprend, s'il est seul) ; la fanfare
+    // finie rend la parole au lieu
+    el.addEventListener('ended', () => { if (nom === FANFARE) { fanfareSansFin = false; lieu().gain.setTargetAtTime(1, ac().currentTime, 1.2); return; }
+      if (amb && amb.p === p) { rang[amb.nom] = (rang[amb.nom] + 1) % AMBIANCES[amb.nom].length; lancer(amb.nom, 0.05, true); } });
+    return p;
+  }
+  function fondu(p, v, s) { const c = ac(); p.g.gain.cancelScheduledValues(c.currentTime); p.g.gain.setTargetAtTime(v, c.currentTime, s / 3); }
+  function lancer(nom, entree, auDebut) {
+    const avant = amb && amb.p, p = piste(AMBIANCES[nom][rang[nom]]);
+    amb = { nom, p };
+    if (avant && avant !== p) {
+      fondu(avant, 0, 3);
+      // on met en pause après le fondu, et il reprendra là où il en était si l'on revient
+      setTimeout(() => { if (!amb || amb.p !== avant) avant.el.pause(); }, 3500);
+    }
+    if (auDebut) p.el.currentTime = 0;
+    fondu(p, VOL, entree); p.el.play().catch(() => {});
+  }
+  // L'ambiance demandée par le lieu. Elle ne change qu'après trois secondes de suite dans le
+  // nouveau lieu : longer une limite de zone (une rue au bord du bois) ne fait pas alterner
+  // deux morceaux à chaque pas.
+  function musique(nom) {
     try {
-      const c = ac(); musicMode = mode;
-      if (music) return;
-      const master = c.createGain(); master.gain.value = muted ? 0 : 0.055; master.connect(c.destination);
-      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = mode === 'cave' ? 500 : 900; lp.connect(master);
+      // avant le premier geste, le navigateur refuserait de jouer : la touche suivante lancera
+      if (!amb && navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+      if (nom === 'cave') { if (!nappe) nappe = nappeCave(); return; }
+      if (!AMBIANCES[nom]) return;
+      if (rang[nom] === undefined) rang[nom] = 0;
+      voulue = nom; clearTimeout(attente);
+      if (!amb) { lancer(nom, 1.5); return; }
+      if (amb.nom === nom) return;
+      attente = setTimeout(() => { if (voulue === nom) lancer(nom, 3); }, 3000);
+    } catch (e) { /* pas de musique */ }
+  }
+  // Les grandes fins : quête terminée, prince libéré, herse relevée, victoire. L'ambiance se tait,
+  // la fanfare part du début ; au bout de `duree` secondes elle s'efface et le lieu revient.
+  // duree = 0 : jusqu'au bout du morceau (la herse, puis l'écran FIN) — et un second appel sans
+  // fin ne la relance pas : endGame suit la herse de quelques secondes.
+  function fanfare(duree = 22) {
+    try {
+      if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+      if (!duree && fanfareSansFin) return;
+      const c = ac(), p = piste(FANFARE);
+      clearTimeout(fanfareT); fanfareSansFin = !duree;
+      lieu().gain.setTargetAtTime(0, c.currentTime, 0.4);
+      p.el.currentTime = 0; fondu(p, VOL, 0.3); p.el.play().catch(() => {});
+      if (duree) fanfareT = setTimeout(() => {
+        fondu(p, 0, 4); lieu().gain.setTargetAtTime(1, ac().currentTime, 1.2);
+        fanfareT = setTimeout(() => p.el.pause(), 4500);
+      }, duree * 1000);
+    } catch (e) { /* pas de musique */ }
+  }
+  // la nappe de la cave : accords mineurs + basse, discrète
+  const CHORDS = [[0, 3, 7, 10], [-4, 0, 3, 7], [-2, 1, 5, 8], [-5, -2, 2, 5]];
+  function nappeCave() {
+    try {
+      const c = ac();
+      const vol = c.createGain(); vol.gain.value = 0.055; vol.connect(lieu());
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500; lp.connect(vol);
       const voices = [];
       for (let v = 0; v < 4; v++) {
         const o1 = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
@@ -1258,22 +1346,24 @@ export const SFX = (() => {
       }
       const bass = c.createOscillator(), bg = c.createGain(); bass.type = 'sine'; bg.gain.value = 0.5; bass.connect(bg); bg.connect(lp); bass.start();
       let step = 0;
-      const base = mode === 'cave' ? 110 : 164.81; // la2 / mi3
+      const base = 110; // la2
       const tick = () => {
-        const chord = CHORDS[musicMode][step % 4], t = c.currentTime;
+        const chord = CHORDS[step % 4], t = c.currentTime;
         voices.forEach((vc, i) => { const f = base * Math.pow(2, chord[i] / 12) * (i === 3 ? 0.5 : 1); vc.o1.frequency.setTargetAtTime(f, t, 0.4); vc.o2.frequency.setTargetAtTime(f * 2.005, t, 0.4); vc.g.gain.setTargetAtTime(0.22 + (i % 2) * 0.05, t, 1.2); });
         bass.frequency.setTargetAtTime(base * Math.pow(2, chord[0] / 12) / 2, t, 0.3);
         step++;
       };
-      tick(); music = { timer: setInterval(tick, mode === 'cave' ? 5200 : 4200), master };
+      tick(); return setInterval(tick, 5200);
     } catch (e) { /* pas de musique */ }
   }
-  function toggleMute() { muted = !muted; if (music) music.master.gain.setTargetAtTime(muted ? 0 : 0.055, ac().currentTime, 0.2); return muted; }
+  function toggleMute() { muted = !muted; try { master().gain.setTargetAtTime(muted ? 0 : 1, ac().currentTime, 0.2); } catch (e) {} return muted; }
   return {
     unlock: () => { try { ac(); } catch (e) {} },
     // la ville s'endort pendant qu'on est dans un intérieur (cf. ouvrirInterieur) : sa musique aussi
-    veille: (dort) => { try { if (ctx) (dort ? ctx.suspend() : ctx.resume()); } catch (e) {} },
-    music: startMusic, toggleMute,
+    // (le morceau en cours se met en pause : un <audio> continue d'avancer dans un contexte
+    // suspendu, on reviendrait trois minutes plus loin)
+    veille: (dort) => { try { if (ctx) (dort ? ctx.suspend() : ctx.resume()); if (amb) (dort ? amb.p.el.pause() : amb.p.el.play().catch(() => {})); } catch (e) {} },
+    music: musique, fanfare, toggleMute,
     chirp: () => { const f = 1800 + Math.random() * 1500; tone(f, f * (0.7 + Math.random() * 0.6), 0.07, 'sine', 0.05); setTimeout(() => tone(f * 1.1, f * 0.9, 0.06, 'sine', 0.04), 90); },
     step: () => noise(0.05, 0.05, 900),
     swing: () => noise(0.14, 0.25, 1500),
@@ -1294,6 +1384,22 @@ export const SFX = (() => {
     dead: () => [440, 370, 311, 220].forEach((f, i) => setTimeout(() => tone(f, f, 0.35, 'triangle', 0.15), i * 220)),
   };
 })();
+// Quelle ambiance pour quel lieu : les intérieurs d'après leur niveau, la ville d'après le nom
+// de zone qu'affiche le HUD (zoneName, carte.js). Ces noms viennent du relevé réel de Lille —
+// 120 différents, relevés sur toute la carte le 30 septembre —, d'où des motifs plutôt qu'une
+// liste. Tout ce qui n'est ni bois, ni eau, ni citadelle, ni jardin est une rue : le bourg.
+const AMB_NIVEAU = { tavern: 'taverne', chapelle: 'chapelle', house: 'maison', mage: 'mage', cave: 'cave' };
+export function ambianceDe(niveau, zone = '') {
+  if (AMB_NIVEAU[niveau]) return AMB_NIVEAU[niveau];
+  if (/donjon/i.test(zone)) return 'donjon';
+  if (/^(Bastion|Contregarde|Demi-lune|Lunette)|^(Remparts|Galeries|Place d'Armes|Porte Royale|La voie des combattants|Façade de l'Esplanade)$/.test(zone)) return 'citadelle';
+  if (/vieux mage/.test(zone)) return 'mage';
+  if (/Fossé|Canal|Berges|Lavoir|^Pont /.test(zone)) return 'eau';
+  if (/Moulin|Hameau/.test(zone)) return 'campagne';
+  if (/^(Parc|Jardin|Square|Plaine)|jardins/.test(zone)) return 'jardins';
+  if (!zone || /^Bois|Sentier du Bois/.test(zone)) return 'bois';
+  return 'bourg';
+}
 
 // =====================================================================
 
@@ -2226,7 +2332,7 @@ window.addEventListener('keydown', (e) => {
     if (t && state.running && !state.paused && !state.over && !e.repeat) { t(e); return; } }
   if (e.code === 'KeyP') G.postFX = !G.postFX;
   if (e.code === 'KeyM') showMessage(SFX.toggleMute() ? 'Musique coupée' : 'Musique', 1.5);
-  if (state.running) SFX.music(G.level && G.level.name === 'cave' ? 'cave' : 'day');
+  if (state.running) SFX.music(ambianceDe(G.level && G.level.name, curZone));
   if (e.code === 'KeyO') { sun.castShadow = !sun.castShadow; showMessage(sun.castShadow ? 'Ombres activées' : 'Ombres désactivées (plus fluide)', 2); }
   if (e.code === 'Enter') enterPressed = true;
   if (e.code === 'Escape' && state.running && !state.over) pauseGame();
@@ -2387,6 +2493,7 @@ export function pauseGame() {
 export function resumeGame() { state.paused = false; hideMenu(); for (const k in keys) keys[k] = false; pressed.clear(); }
 export function endGame(won) {
   state.over = true; state.won = won;
+  if (won) SFX.fanfare(0);
   const items = won
     ? [{ label: 'Nouvelle partie', fn: newGame }]
     : [{ label: 'Reprendre à la dernière sauvegarde', fn: resumeFromSave }, { label: 'Nouvelle partie', fn: newGame }];
@@ -2564,18 +2671,14 @@ export function updatePlayer(dt) {
   if (state.bow && G.bowOut && wantAttack && p.bowCd <= 0 && p.attackT < 0 && p.rollT < 0) {
     state.fleches = (state.fleches ?? 20) - 1;
     p.bowCd = 0.7; p.bowT = 0; p.yaw = aimYaw;
-    let best = null, bestD = 34;
-    for (const e of enemies) { if (e.dead) continue; const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz);
-      let da = ((Math.atan2(dx, dz) - aimYaw + Math.PI) % TAU + TAU) % TAU - Math.PI;
-      if (d < bestD && Math.abs(da) < 0.6) { best = e; bestD = d; } }
-    const dir = new THREE.Vector3(Math.sin(aimYaw), 0, Math.cos(aimYaw));
-    if (!best && G.mouseLook) dir.y = Math.sin(-G.camPitch * 0.6);
-    if (best) { dir.set(best.pos.x - p.pos.x, (best.pos.y + 0.8) - (p.pos.y + 1.4), best.pos.z - p.pos.z).normalize(); p.yaw = Math.atan2(dir.x, dir.z); }
+    const { dir, best } = viseeArc(p, aimYaw);
+    if (best) p.yaw = Math.atan2(dir.x, dir.z);
     const m = makeArrow(); m.position.set(p.pos.x + dir.x * 0.8, p.pos.y + 1.4, p.pos.z + dir.z * 0.8); m.lookAt(m.position.clone().add(dir)); scene.add(m);
     arrows.push({ mesh: m, vel: dir.multiplyScalar(40), life: 1.5 });
     SFX.swing();
   }
   if (p.bowT >= 0) { p.bowT += dt; if (p.bowT > 0.35) p.bowT = -1; }
+  majViseur(p, aimYaw);
   // épée (Espace)
   if (state.sword && !G.bowOut && wantAttack && p.attackT < 0 && p.attackCd <= 0 && p.rollT < 0 && p.sleeping <= 0) {
     p.attackT = 0; p.hitSet.clear(); SFX.swing();
@@ -2913,6 +3016,47 @@ export function updateEnemy(e, dt) {
     e.bar.quaternion.copy(camera.quaternion);
   }
 }
+// LA VISÉE DE L'ARC, commune au tir et au point rouge : droit dans le regard (et son
+// inclinaison à la souris), sauf un monstre à moins de 34 m et à moins de 0,6 rad de l'axe,
+// sur lequel la flèche s'ajuste.
+function viseeArc(p, aimYaw) {
+  let best = null, bestD = 34;
+  for (const e of enemies) { if (e.dead) continue; const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+    let da = ((Math.atan2(dx, dz) - aimYaw + Math.PI) % TAU + TAU) % TAU - Math.PI;
+    if (d < bestD && Math.abs(da) < 0.6) { best = e; bestD = d; } }
+  const dir = new THREE.Vector3(Math.sin(aimYaw), 0, Math.cos(aimYaw));
+  if (!best && G.mouseLook) dir.y = Math.sin(-G.camPitch * 0.6);
+  if (best) dir.set(best.pos.x - p.pos.x, (best.pos.y + 0.8) - (p.pos.y + 1.4), best.pos.z - p.pos.z).normalize();
+  return { dir, best };
+}
+// LE POINT ROUGE (Eugène, 30 septembre : « quand je tire à l'arc, un point rouge qui indique où
+// je vais tirer »). L'arc sorti, on fait voler une flèche fantôme exactement comme updateArrows
+// — 40 m/s, la même retombée, 1,5 s au plus — jusqu'au sol, à un mur ou à un monstre ; le point
+// se pose là. Taille constante à l'écran et vu à travers l'herbe : c'est un viseur, pas un objet.
+let viseur = null;
+const _vPos = new THREE.Vector3(), _vVel = new THREE.Vector3();
+function majViseur(p, aimYaw) {
+  const actif = state.bow && G.bowOut && state.running && !state.paused && !G.spectateur && p.sleeping <= 0;
+  if (!actif) { if (viseur) viseur.visible = false; return; }
+  if (!viseur) {
+    const [c, x] = makeCanvas(64, 64);
+    x.beginPath(); x.arc(32, 32, 26, 0, TAU); x.fillStyle = 'rgba(20,6,6,.75)'; x.fill();
+    x.beginPath(); x.arc(32, 32, 19, 0, TAU); x.fillStyle = '#ff2a1a'; x.fill();
+    x.beginPath(); x.arc(26, 26, 6, 0, TAU); x.fillStyle = 'rgba(255,190,170,.8)'; x.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    viseur = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, depthWrite: false, sizeAttenuation: false, toneMapped: false, fog: false }));
+    viseur.scale.set(0.034, 0.034, 1); viseur.renderOrder = 999; viseur.userData.dynamic = true; scene.add(viseur);
+  }
+  const { dir, best } = viseeArc(p, aimYaw);
+  _vPos.set(p.pos.x + dir.x * 0.8, p.pos.y + 1.4, p.pos.z + dir.z * 0.8); _vVel.copy(dir).multiplyScalar(40);
+  const h = 1 / 60;
+  for (let t = 0; t < 1.5; t += h) {
+    _vVel.y -= 2.5 * h; _vPos.addScaledVector(_vVel, h);
+    if (best && Math.hypot(best.pos.x - _vPos.x, best.pos.z - _vPos.z) < best.k.r + 0.5) break;
+    if (_vPos.y < getH(_vPos.x, _vPos.z, _vPos.y) - 0.2 || (G.level.arrowBlocked && G.level.arrowBlocked(_vPos)) || blocked(_vPos.x, _vPos.z, 0.05, true, _vPos.y)) break;
+  }
+  viseur.position.copy(_vPos); viseur.visible = true;
+}
 export function updateArrows(dt) {
   for (let i = arrows.length - 1; i >= 0; i--) {
     const a = arrows[i]; a.life -= dt;
@@ -3105,7 +3249,7 @@ export const QUESTS = {
 export function questStep(id) { return state['q_' + id] || 0; }
 export function setQuest(id, step, silent = false) {
   if ((state['q_' + id] || 0) >= step) return;
-  state['q_' + id] = step; if (!silent) { showMessage((step >= 3 ? 'Quête terminée : ' : step === 1 ? 'Nouvelle quête : ' : 'Journal mis à jour : ') + QUESTS[id].title + '  (J : journal)', 4); SFX.pickup(); }
+  state['q_' + id] = step; if (!silent) { showMessage((step >= 3 ? 'Quête terminée : ' : step === 1 ? 'Nouvelle quête : ' : 'Journal mis à jour : ') + QUESTS[id].title + '  (J : journal)', 4); SFX.pickup(); if (step >= 3) SFX.fanfare(); }
   saveGame(true);
 }
 export function openJournal() {
@@ -3329,7 +3473,7 @@ function loop(now) {
     cutTick(dt);
     state.saveT += dt; if (state.saveT > 20) { state.saveT = 0; saveGame(true); }
     const z = world.zoneName(player.pos.x, player.pos.z);
-    if (z !== curZone) { curZone = z; zoneEl.textContent = z; zoneEl.style.opacity = 1; zoneT = 2.5; }
+    if (z !== curZone) { curZone = z; zoneEl.textContent = z; zoneEl.style.opacity = 1; zoneT = 2.5; SFX.music(ambianceDe(L.name, z)); }
     if (zoneT > 0) { zoneT -= dt; if (zoneT <= 0) zoneEl.style.opacity = 0; }
     if (msgT > 0) { msgT -= dt; if (msgT <= 0) msgEl.style.opacity = 0; }
     drawHearts(); drawMinimap(); updateCounts(); majAide();

@@ -1176,6 +1176,16 @@ Eugène : « à part pour le créateur, rends le mode solo inaccessible — en p
   la navigation, consommé à l'arrivée) ou une navigation du jeu (`tloc_auto`, `tloc_arrive`).
   Vérifié sur les quatre cas.
 
+### X. Le point rouge de l'arc (30 septembre, soir)
+
+Eugène : « quand je tire à l'arc, un point rouge / une cible qui indique où je vais tirer ».
+`viseeArc` (engine.js) fait la visée, commune au tir et au viseur (regard + inclinaison à la
+souris, ou ajustement sur un monstre à < 34 m et < 0,6 rad) ; `majViseur` fait voler une flèche
+fantôme exactement comme `updateArrows` (40 m/s, retombée 2,5, 1,5 s) jusqu'au sol, à un mur ou
+à un monstre, et pose là un point rouge (sprite de taille constante, vu à travers l'herbe).
+*Limite* : en multi, il ne s'arrête pas sur les autres joueurs (la flèche, elle, les touche par
+proximité, tloc-multi.js `coupsFleche`).
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js
