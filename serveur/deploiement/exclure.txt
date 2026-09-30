@@ -15,8 +15,9 @@ serveur/.venv/
 serveur/tloc.db*
 serveur/deploiement/vps.conf
 
-# les notes et les briefs : privés
+# les notes et les briefs : privés (docs/ tout entier : les planches d'images aussi)
 *.md
+docs/
 *.jpg
 *.Rhistory
 
