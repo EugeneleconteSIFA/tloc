@@ -1364,7 +1364,7 @@ export const SFX = (() => {
     // (le morceau en cours se met en pause : un <audio> continue d'avancer dans un contexte
     // suspendu, on reviendrait trois minutes plus loin)
     veille: (dort) => { try { if (ctx) (dort ? ctx.suspend() : ctx.resume()); if (amb) (dort ? amb.p.el.pause() : amb.p.el.play().catch(() => {})); } catch (e) {} },
-    music: musique, fanfare, toggleMute,
+    music: musique, fanfare, toggleMute, estMuet: () => muted,
     chirp: () => { const f = 1800 + Math.random() * 1500; tone(f, f * (0.7 + Math.random() * 0.6), 0.07, 'sine', 0.05); setTimeout(() => tone(f * 1.1, f * 0.9, 0.06, 'sine', 0.04), 90); },
     step: () => noise(0.05, 0.05, 900),
     swing: () => noise(0.14, 0.25, 1500),
@@ -2192,7 +2192,7 @@ const heartsC = document.getElementById('hearts').getContext('2d');
 const mmC = document.getElementById('minimap').getContext('2d');
 const zoneEl = document.getElementById('zone'), msgEl = document.getElementById('msg'), countsEl = document.getElementById('counts'), promptEl = document.getElementById('prompt');
 let msgT = 0, zoneT = 0, curZone = '';
-export function showMessage(text, dur = 3.5) { msgEl.textContent = text; msgEl.style.opacity = 1; msgT = dur; }
+export function showMessage(text, dur = 3.5) { msgEl.textContent = pourTactile(text); msgEl.style.opacity = 1; msgT = dur; }
 function heart(g, x, y, s, color) {
   g.fillStyle = color; g.beginPath();
   g.moveTo(x + s / 2, y + s * 0.95);
@@ -2223,7 +2223,7 @@ export function minimapDots(g, P) {
   g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, -6); g.lineTo(4, 4); g.lineTo(-4, 4); g.closePath(); g.fill(); g.restore();
 }
 function updateCounts() {
-  countsEl.innerHTML = G.level && G.level.counts ? G.level.counts() : '';
+  countsEl.innerHTML = pourTactile(G.level && G.level.counts ? G.level.counts() : '');
   const boss = enemies.find(e => e.k.boss);
   // la barre de Phinaert, quand on est près de lui : en instance il est libre dès l'arrivée,
   // et la barre restait en travers de l'écran pendant toute la partie, n'importe où
@@ -2247,6 +2247,22 @@ function renderMenu() {
   document.getElementById('ovgo').innerHTML = menu.items.map((it, i) => `<div class="mitem${i === menu.sel ? ' sel' : ''}">${i === menu.sel ? '▶ ' : ''}${it.label}</div>`).join('');
 }
 export function hideMenu() { ov.classList.add('hidden'); menu.active = false; }
+// Les menus répondent aussi au pointeur — souris ou doigt : survoler une ligne la choisit, un
+// clic (un toucher) l'active, par le même fn() qu'Entrée. C'était greffé par tloc-multi.js sur
+// la seule page de la ville ; les intérieurs n'en avaient pas, et sur téléphone il n'y a pas
+// d'Entrée pour choisir « Reprendre ».
+{
+  const ovgo = document.getElementById('ovgo');
+  const indice = (cible) => { const el = cible && cible.closest ? cible.closest('.mitem') : null; return el ? [...ovgo.children].indexOf(el) : -1; };
+  if (ovgo) {
+    ovgo.addEventListener('mousemove', (e) => { const i = indice(e.target); if (i >= 0 && menu.active && i !== menu.sel) { menu.sel = i; renderMenu(); } });
+    ovgo.addEventListener('click', (e) => {
+      const i = indice(e.target), it = i >= 0 && menu.active ? menu.items[i] : null;
+      if (!it) return;
+      menu.sel = i; renderMenu(); SFX.unlock(); it.fn();
+    });
+  }
+}
 export const down = (...codes) => codes.some(c => keys[c]);
 let enterPressed = false;
 // Les touches des autres modules (B boire, I poche, G gaufre…) : ils s'inscrivent ici au lieu
@@ -2329,7 +2345,7 @@ window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 // souris : clic dans le jeu = capture du pointeur (la souris oriente la caméra) ; clic gauche = épée / flèche ; clic droit = roulade
 export const mouse = { attack: false, roll: false, garde: false };
 const canvasEl = document.getElementById('game');
-canvasEl.addEventListener('click', () => { if (state.running && !menu.active && !G.journal && !state.over && document.pointerLockElement !== canvasEl) { try { canvasEl.requestPointerLock(); } catch (e) {} } });
+canvasEl.addEventListener('click', () => { if (!TACTILE && state.running && !menu.active && !G.journal && !state.over && document.pointerLockElement !== canvasEl) { try { canvasEl.requestPointerLock(); } catch (e) {} } });
 document.addEventListener('pointerlockchange', () => { G.mouseLook = document.pointerLockElement === canvasEl; });
 window.addEventListener('mousemove', (e) => { if (!G.mouseLook || cut.active || menu.active || G.journal) return; if (Math.abs(e.movementX) + Math.abs(e.movementY) > 0) G.mouseT = state.time; G.camYaw -= e.movementX * 0.0022; G.camPitch = clamp(G.camPitch + e.movementY * 0.0016, -0.3, 0.75); });
 // Le clic droit roule ; avec un bouclier ramassé en multi (G.bouclier, tloc-multi.js), il
@@ -2337,6 +2353,214 @@ window.addEventListener('mousemove', (e) => { if (!G.mouseLook || cut.active || 
 window.addEventListener('mousedown', (e) => { if (!G.mouseLook) return; if (e.button === 0) mouse.attack = true; if (e.button === 2) { if (G.bouclier) mouse.garde = true; else mouse.roll = true; } e.preventDefault(); });
 window.addEventListener('mouseup', (e) => { if (e.button === 2) mouse.garde = false; });
 window.addEventListener('contextmenu', (e) => { if (G.mouseLook || state.running) e.preventDefault(); });
+
+// ---------------------------------------------------------------------
+//  LE TACTILE — le jeu sur téléphone (Eugène, 30 septembre : iPhone et Android, solo et multi)
+// ---------------------------------------------------------------------
+// Rien ne change au clavier. Sur un écran tactile, on pose par-dessus le jeu : un joystick à
+// gauche (là où le pouce se pose), la caméra au glisser à droite, quatre boutons sous le pouce
+// droit, et un menu pour le reste. Les boutons ne font rien d'eux-mêmes : ils ENVOIENT LA
+// TOUCHE du clavier (F, Maj, Espace, Entrée, J, I…), qui suit le même chemin que si on
+// l'avait tapée — TOUCHES, menus, cinématiques, chat. Il n'y a qu'une façon de jouer, et deux
+// façons de la commander. `?tactile` dans l'adresse le force sur ordinateur (bancs d'essai) ;
+// il tient pour la session, les intérieurs s'ouvrant sans lui.
+export const TACTILE = (() => {
+  try {
+    if (new URLSearchParams(location.search).has('tactile')) sessionStorage.setItem('tloc_tactile', '1');
+    return sessionStorage.getItem('tloc_tactile') === '1' || matchMedia('(pointer: coarse)').matches;
+  } catch (e) { return false; }
+})();
+// Les consignes des quêtes parlent clavier (« clic gauche ou F », « Entrée », « touche M ») :
+// au doigt, on les traduit à l'affichage — messages, répliques, objectif — plutôt que
+// d'écrire chaque réplique deux fois. Ce qui ne se traduit pas (« les touches sont rappelées
+// à droite ») disparaît.
+const TRADUCTIONS = [
+  [/\s*Les touches sont rappelées à droite\s*;?\s*/gi, ' '],
+  [/\s*\(touches 1 à 4 pour choisir\)/gi, ''],
+  [/clic gauche\s*\(ou F\)|clic gauche ou F|clic gauche · F|Clic G · F/gi, 'le bouton ⚔'],
+  [/\bclic droit\b/gi, 'le bouton « roule »'],
+  [/\bMaj\b/g, '« roule »'],
+  [/\bEspace\b/g, '« saute »'],
+  [/\(Entrée\)|\bEntrée\b/g, '« agir »'],
+  [/touche M\b|\(M\)/g, 'le menu ☰, « Carte »'],
+  [/touche J\b|\(J\s*:\s*journal\)/g, 'le menu ☰, « Journal »'],
+  [/touche I\b/g, 'le menu ☰, « Poche »'],
+  [/touche C\b|\bC pour/g, 'le bouton « arc »'],
+];
+function pourTactile(t) {
+  if (!TACTILE || !t) return t;
+  for (const [re, par] of TRADUCTIONS) t = t.replace(re, par);
+  return t.replace(/\s{2,}/g, ' ').trim();
+}
+function envoyerTouche(code) {
+  window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
+  setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 80);
+}
+if (TACTILE) {
+  document.body.classList.add('tactile');
+  const st = document.createElement('style');
+  st.textContent = `
+    body.tactile #legend { display:none !important; }
+    body.tactile #minimap { width:min(110px,26vmin); height:min(110px,26vmin); }
+    body.tactile #hearts { transform:scale(.75); transform-origin:left top; }
+    body.tactile #zone { font-size:20px; }
+    body.tactile #msg { bottom:auto; top:24vh; max-width:62vw; font-size:15px; }
+    body.tactile #prompt { bottom:auto; top:58vh; }
+    body.tactile #counts { font-size:11px; line-height:1.35; top:52px; max-width:44vw; }
+    body.tactile #bouton-accueil { display:none !important; }   /* sous le pouce gauche : l'accueil est dans la pause */
+    body.tactile #overlay .aide-menu { display:none; }
+    body.tactile #game, body.tactile #tactile { touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+    #tactile { position:fixed; inset:0; z-index:4; pointer-events:none; }
+    #tactile.cache > * { display:none !important; }   /* sinon « #tactile .tb », aussi précis et venu après, l'emporte */
+    #tactile .tb { position:absolute; pointer-events:auto; border-radius:50%; display:flex; align-items:center;
+      justify-content:center; color:#EDE3CC; font:600 3.4vmin/1 system-ui,sans-serif; letter-spacing:.5px;
+      background:rgba(10,14,23,.45); border:2px solid rgba(237,227,204,.35); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+    #tactile .tb.on { background:rgba(226,178,90,.45); border-color:#E2B25A; }
+    #tactile .tb.vif { border-color:#FFE3A1; box-shadow:0 0 0 3px rgba(255,227,161,.35); }
+    #tactile .base { position:absolute; width:26vmin; height:26vmin; margin:-13vmin 0 0 -13vmin; border-radius:50%;
+      border:2px solid rgba(237,227,204,.3); background:rgba(10,14,23,.25); pointer-events:none; }
+    #tactile .pouce { position:absolute; width:11vmin; height:11vmin; margin:-5.5vmin 0 0 -5.5vmin; border-radius:50%;
+      background:rgba(237,227,204,.55); pointer-events:none; }
+    #tactile .pouce.court { background:rgba(255,227,161,.85); box-shadow:0 0 0 4px rgba(226,178,90,.4); }
+    #tactile-menu { position:fixed; inset:0; z-index:7; display:none; align-items:center; justify-content:center;
+      background:rgba(5,8,14,.72); }
+    #tactile-menu.ouvert { display:flex; }
+    #tactile-menu .grille { display:flex; flex-wrap:wrap; justify-content:center; gap:2.5vmin; width:min(92vw,720px); }
+    #tactile-menu .grille button { min-width:26vmin; }
+    #tactile-menu button { font:600 4vmin system-ui,sans-serif; color:#EDE3CC; padding:4vmin 2vmin; border-radius:12px;
+      background:rgba(20,26,40,.9); border:1px solid rgba(237,227,204,.3); }
+    #tourner { position:fixed; inset:0; z-index:2147483600; display:none; align-items:center; justify-content:center;
+      text-align:center; padding:10vw; background:#0a0e17; color:#EDE3CC; font:600 22px/1.4 Georgia,serif; }
+    @media (orientation:portrait) { body.tactile #tourner { display:flex; } }`;
+  document.head.appendChild(st);
+  const tourner = document.createElement('div'); tourner.id = 'tourner';
+  tourner.innerHTML = '<div>↻<br>Tourne ton téléphone<br><small style="opacity:.7;font-size:16px">le jeu se joue à l\'horizontale</small></div>';
+  document.body.appendChild(tourner);
+
+  const couche = document.createElement('div'); couche.id = 'tactile';
+  const bouton = (txt, css, titre) => { const b = document.createElement('div'); b.className = 'tb'; b.textContent = txt; b.style.cssText = css; if (titre) b.title = titre; couche.appendChild(b); return b; };
+  const base = document.createElement('div'); base.className = 'base'; base.style.display = 'none';
+  const pouce = document.createElement('div'); pouce.className = 'pouce'; pouce.style.display = 'none';
+  couche.append(base, pouce);
+  // sous le pouce droit : frapper au plus près, puis rouler, sauter, agir (parler, ouvrir)
+  const bFrapper = bouton('⚔', 'right:5vmin;bottom:7vmin;width:19vmin;height:19vmin;font-size:8vmin', 'frapper');
+  const bRouler = bouton('roule', 'right:27vmin;bottom:4vmin;width:14vmin;height:14vmin');
+  const bSauter = bouton('saute', 'right:7vmin;bottom:29vmin;width:14vmin;height:14vmin');
+  const bAgir = bouton('agir', 'right:25vmin;bottom:21vmin;width:13vmin;height:13vmin');
+  const bGarde = bouton('🛡', 'right:42vmin;bottom:5vmin;width:12vmin;height:12vmin;font-size:5vmin', 'bouclier');
+  const bArc = bouton('arc', 'right:24vmin;bottom:37vmin;width:11vmin;height:11vmin');
+  const bMenu = bouton('☰', 'right:calc(min(110px,26vmin) + 22px);top:2vmin;width:11vmin;height:11vmin;font-size:5vmin;border-radius:12px', 'menu');
+  document.body.appendChild(couche);
+
+  const appui = (el, fn) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); SFX.unlock(); fn(e); });
+  appui(bFrapper, () => envoyerTouche('KeyF'));
+  appui(bRouler, () => envoyerTouche('ShiftLeft'));
+  appui(bSauter, () => envoyerTouche('Space'));
+  appui(bAgir, () => envoyerTouche('Enter'));
+  appui(bArc, () => envoyerTouche('KeyC'));
+  // le bouclier se TIENT levé, comme le clic droit
+  appui(bGarde, () => { mouse.garde = true; bGarde.classList.add('on'); });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bGarde.addEventListener(t, () => { mouse.garde = false; bGarde.classList.remove('on'); });
+
+  // LE MENU : ce que l'aide de droite propose au clavier, en gros boutons — dressé à
+  // l'ouverture, avec les mêmes conditions (l'arc une fois trouvé, la carte une fois achetée…)
+  const menuT = document.createElement('div'); menuT.id = 'tactile-menu';
+  const grille = document.createElement('div'); grille.className = 'grille'; menuT.appendChild(grille);
+  document.body.appendChild(menuT);
+  const fermerMenuT = () => menuT.classList.remove('ouvert');
+  menuT.addEventListener('pointerdown', (e) => { if (e.target === menuT) { e.preventDefault(); fermerMenuT(); } });
+  appui(bMenu, () => {
+    const P = state.poche && Array.isArray(state.poche.objets) ? state.poche.objets : [];
+    const l = [];
+    if (!AIDE.sansJournal) l.push(['KeyJ', 'Journal']);
+    if (state.carteBeffroi) l.push(['KeyM', 'Carte']);
+    if (state.bourse || P.length) l.push(['KeyI', 'Poche']);
+    if (P.some((o) => o && o.id === 'gaufre' && o.n > 0)) l.push(['KeyG', 'Manger une gaufre']);
+    if (Array.isArray(state.fioles) && state.fioles.length) l.push(['KeyB', 'Boire']);
+    for (const [k, t] of AIDE.extra) if (/^[A-Z]$/.test(k)) l.push(['Key' + k, t[0].toUpperCase() + t.slice(1)]);
+    l.push(['musique', SFX.estMuet && SFX.estMuet() ? 'Remettre la musique' : 'Couper la musique']);
+    l.push(['Escape', 'Pause']);
+    grille.innerHTML = '';
+    for (const [code, txt] of l) {
+      const b = document.createElement('button'); b.textContent = txt;
+      // au CLIC, pas au toucher : agir dès le toucher ouvrait la pause sous le doigt, et le clic
+      // qui suit tombait sur « Sauvegarder et quitter » (vu en banc, 30 septembre)
+      b.addEventListener('click', (e) => {
+        e.preventDefault(); fermerMenuT(); SFX.unlock();
+        if (code === 'musique') showMessage(SFX.toggleMute() ? 'Musique coupée' : 'Musique', 1.5);
+        else envoyerTouche(code);
+      });
+      grille.appendChild(b);
+    }
+    menuT.classList.add('ouvert');
+  });
+
+  // LE JOYSTICK ET LA CAMÉRA, sur le jeu lui-même. Moitié gauche : le joystick naît là où le
+  // pouce se pose. Moitié droite : glisser tourne la caméra. Un toucher bref pendant une
+  // cinématique, un dialogue ou le journal fait « Entrée » (la suite), comme au clavier.
+  let doigtStick = null, doigtVue = null, x0 = 0, y0 = 0, vx = 0, vy = 0, tDebut = 0;
+  const R = () => Math.min(innerWidth, innerHeight) * 0.13;
+  canvasEl.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    SFX.unlock();
+    // plein écran et paysage au premier toucher (Android ; l'iPhone l'ignore, le jeu reste dans Safari)
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen)
+      document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (er) {} }).catch(() => {});
+    if (cut.active || G.journal) return;              // la suite : c'est le guetteur de page, plus bas
+    if (!state.running || state.paused || menu.active) return;
+    try { canvasEl.setPointerCapture(e.pointerId); } catch (er) {}
+    if (e.clientX < innerWidth * 0.45 && doigtStick === null) {
+      doigtStick = e.pointerId; x0 = e.clientX; y0 = e.clientY;
+      G.stick = { x: 0, y: 0, basis: G.camYaw };
+      base.style.left = pouce.style.left = x0 + 'px'; base.style.top = pouce.style.top = y0 + 'px';
+      base.style.display = pouce.style.display = '';
+    } else if (doigtVue === null) { doigtVue = e.pointerId; vx = e.clientX; vy = e.clientY; tDebut = performance.now(); }
+  });
+  canvasEl.addEventListener('pointermove', (e) => {
+    if (e.pointerId === doigtStick && G.stick) {
+      let dx = e.clientX - x0, dy = e.clientY - y0; const d = Math.hypot(dx, dy), r = R();
+      // la course : le pouce sort franchement du cercle. Poussé au bord seulement, on marche —
+      // sinon on courrait sans le vouloir, et l'endurance fondrait
+      G.stick.court = d > r * 1.35;
+      if (d > r) { dx *= r / d; dy *= r / d; }
+      G.stick.x = dx / r; G.stick.y = dy / r;
+      pouce.classList.toggle('court', G.stick.court);
+      pouce.style.left = (x0 + dx) + 'px'; pouce.style.top = (y0 + dy) + 'px';
+    } else if (e.pointerId === doigtVue) {
+      // même sensibilité que la souris, un peu plus vive : l'écran est petit
+      G.camYaw -= (e.clientX - vx) * 0.0055; G.camPitch = clamp(G.camPitch + (e.clientY - vy) * 0.004, -0.3, 0.75);
+      vx = e.clientX; vy = e.clientY; G.mouseT = state.time;
+      if (G.stick) G.stick.basis = G.camYaw;          // on pilote la caméra : la marche suit, comme à la souris
+    }
+  });
+  // Un toucher n'importe où pendant une cinématique, un dialogue ou le journal fait « Entrée »
+  // (la suite, fermer) : sur toute la page, parce que le journal et les bulles recouvrent le jeu
+  // et reçoivent le doigt à sa place. Le menu tactile garde ses propres boutons.
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || !(cut.active || G.journal) || menu.active) return;
+    if (e.target.closest && e.target.closest('#tactile-menu, #tactile .tb')) return;
+    SFX.unlock(); envoyerTouche('Enter');
+  }, true);
+  const lacher = (e) => {
+    if (e.pointerId === doigtStick) { doigtStick = null; G.stick = null; base.style.display = pouce.style.display = 'none'; }
+    if (e.pointerId === doigtVue) doigtVue = null;
+  };
+  canvasEl.addEventListener('pointerup', lacher);
+  canvasEl.addEventListener('pointercancel', lacher);
+
+  // ce qu'on montre, et quand : rien pendant un menu, une cinématique ou le journal ; le
+  // bouclier et l'arc seulement quand on les a ; « agir » s'allume quand il y a quelqu'un à qui parler
+  setInterval(() => {
+    const jeu = state.running && !state.paused && !state.over && !menu.active && !cut.active && !G.journal && !G.spectateur;
+    couche.classList.toggle('cache', !jeu);
+    if (!jeu) { if (G.stick) { G.stick = null; doigtStick = null; base.style.display = pouce.style.display = 'none'; } fermerMenuT(); return; }
+    bGarde.style.display = G.bouclier ? '' : 'none';
+    bArc.style.display = state.bow ? '' : 'none';
+    bArc.classList.toggle('on', !!G.bowOut);
+    bAgir.classList.toggle('vif', !!activeInteract);
+    bFrapper.style.display = state.sword || state.bow ? '' : 'none';
+  }, 150);
+}
 export function releaseMouse() { if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} } }
 
 // =====================================================================
@@ -2615,9 +2839,11 @@ export function updatePlayer(dt) {
   // plus : la combinaison avant + S est une intention distincte, pas une contradiction.
   const enAvant = !locked && down('KeyW', 'ArrowUp');
   const enArriere = !locked && down('KeyS', 'ArrowDown');
-  const veutCourir = enAvant && enArriere;
-  const fwd = enAvant ? 1 : (enArriere ? -1 : 0);
-  const sx = locked ? 0 : (down('KeyD') ? 1 : 0) - (down('KeyA') ? 1 : 0);
+  // le joystick tactile (G.stick) : une direction continue, et poussé à fond il fait courir
+  const stick = !locked && G.stick && Math.hypot(G.stick.x, G.stick.y) > 0.18 ? G.stick : null;
+  const veutCourir = (enAvant && enArriere) || (!!stick && !!stick.court);
+  const fwd = stick ? -stick.y : enAvant ? 1 : (enArriere ? -1 : 0);
+  const sx = locked ? 0 : stick ? stick.x : (down('KeyD') ? 1 : 0) - (down('KeyA') ? 1 : 0);
   // la garde : bouclier levé, on avance au pas, face au regard, et on ne frappe pas
   p.garde = !locked && !!G.bouclier && !!mouse.garde && p.rollT < 0 && p.attackT < 0 && p.sleeping <= 0;
   const wantAttack = !locked && !p.garde && (mouse.attack || pressedOnce('KeyF')); const wantRoll = !locked && (mouse.roll || pressedOnce('ShiftLeft', 'ShiftRight')); mouse.attack = mouse.roll = false;
@@ -2626,7 +2852,9 @@ export function updatePlayer(dt) {
   // se replacer derrière Camille pendant un demi-tour sans inverser la direction de marche
   const combo = fwd * 3 + sx; if (combo !== 0 && combo !== p.moveCombo) p.moveBasis = G.camYaw; p.moveCombo = combo;
   if (down('KeyQ', 'KeyE', 'ArrowLeft', 'ArrowRight') || (G.mouseLook && state.time - G.mouseT < 0.7)) p.moveBasis = G.camYaw; // pilotage explicite de la caméra : la direction suit
-  const basis = combo !== 0 && p.moveBasis !== undefined ? p.moveBasis : G.camYaw;
+  // au joystick, le repère est celui de la caméra quand le pouce s'est posé (ou qu'on l'a
+  // tournée) : la caméra qui se replace derrière Camille ne fait pas tourner la marche en rond
+  const basis = stick ? stick.basis : combo !== 0 && p.moveBasis !== undefined ? p.moveBasis : G.camYaw;
   const cf = new THREE.Vector3(Math.sin(basis), 0, Math.cos(basis));
   const cr = new THREE.Vector3(-cf.z, 0, cf.x);
   const move = new THREE.Vector3().addScaledVector(cf, fwd).addScaledVector(cr, sx);
@@ -2839,7 +3067,7 @@ export function updatePlayer(dt) {
       const note = d / it.r + 0.5 * (1 - face);
       if (note < mieux) { mieux = note; activeInteract = it; }
     } }
-  if (activeInteract) { promptEl.textContent = 'Entrée : ' + activeInteract.prompt(); promptEl.style.opacity = 1; }
+  if (activeInteract) { promptEl.textContent = (TACTILE ? 'Agir : ' : 'Entrée : ') + activeInteract.prompt(); promptEl.style.opacity = 1; }
   else promptEl.style.opacity = 0;
   if (enterPressed && activeInteract && p.sleeping <= 0 && !locked) activeInteract.fn();
   if (locked) promptEl.style.opacity = 0;
@@ -3077,9 +3305,9 @@ export function updateCamera(dt) {
   // SPECTATEUR (G.spectateur, posé par tloc-multi.js quand on est éliminé) : la caméra suit
   // une autre position que celle de Camille — un joueur encore en lice
   const p = G.spectateur ? { pos: G.spectateur, kb: player.kb, yaw: G.camYaw, helix: null } : player;
-  const moving = p.kb.lengthSq() < 0.01 && (down('KeyW', 'ArrowUp', 'KeyS', 'ArrowDown', 'KeyD', 'ArrowRight', 'KeyA', 'ArrowLeft'));
+  const moving = p.kb.lengthSq() < 0.01 && (!!G.stick || down('KeyW', 'ArrowUp', 'KeyS', 'ArrowDown', 'KeyD', 'ArrowRight', 'KeyA', 'ArrowLeft'));
   // la caméra se replace derrière Camille quand elle marche (demi-tour compris) ; la souris garde la main pendant 0,7 s après chaque mouvement
-  const mouseRecent = G.mouseLook && state.time - G.mouseT < 0.7;
+  const mouseRecent = (G.mouseLook || TACTILE) && state.time - G.mouseT < 0.7;
   if (moving && !mouseRecent && !down('KeyQ', 'KeyE', 'ArrowLeft', 'ArrowRight')) G.camYaw = lerpAngle(G.camYaw, p.yaw, 1 - Math.exp(-3.2 * dt));
   // dans une cage d'escalier la camera se resserre : 10 m de recul dans un puits de 3,6 m
   // de rayon, c'est une camera qui passe son temps coincee dans la colonne ou dans le mur
@@ -3162,7 +3390,7 @@ export function cutscene(steps, onEnd) {
 }
 function showSub(text, who) {
   if (!text) { cineUI.sub.style.opacity = 0; return; }
-  cineUI.who.textContent = who || ''; cineUI.who.style.display = who ? '' : 'none'; cineUI.txt.textContent = text; cineUI.sub.style.opacity = 1; cut.typed = 0;
+  cineUI.who.textContent = who || ''; cineUI.who.style.display = who ? '' : 'none'; cineUI.txt.textContent = pourTactile(text); cineUI.sub.style.opacity = 1; cut.typed = 0;
 }
 function cutNext() {
   cut.i++; cut.t = 0; cut.cur = cut.steps[cut.i] || null;
@@ -3249,7 +3477,7 @@ export function openJournal() {
     <h2 style="margin:0 0 4px;color:#ffe7a3;letter-spacing:2px">JOURNAL DE CAMILLE</h2><div style="opacity:.75;font-size:14px;margin-bottom:14px">Vie : ${hearts} &nbsp;·&nbsp; Équipement : ${items} &nbsp;·&nbsp; Monstres vaincus : ${state.kills}</div>
     <h3 style="margin:14px 0 6px;color:#ff9fb0;font-size:16px;letter-spacing:1px">QUÊTE PRINCIPALE — Sauver Eugène</h3><div style="padding:10px 14px;border-left:4px solid #ff9fb0;background:rgba(255,255,255,.06);border-radius:6px">${main}</div>
     <h3 style="margin:18px 0 6px;color:#ffe7a3;font-size:16px;letter-spacing:1px">QUÊTES SECONDAIRES</h3>${side}
-    <div style="margin-top:16px;font-size:13px;opacity:.7;text-align:center"><kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">J</kbd> ou <kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">Échap</kbd> pour fermer</div></div>`;
+    <div style="margin-top:16px;font-size:13px;opacity:.7;text-align:center">${TACTILE ? 'Touche l’écran pour fermer' : '<kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">J</kbd> ou <kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">Échap</kbd> pour fermer'}</div></div>`;
   cineUI.journal.style.display = 'flex';
 }
 export function closeJournal() { G.journal = false; state.paused = false; cineUI.journal.style.display = 'none'; for (const k in keys) keys[k] = false; pressed.clear(); }
@@ -4129,7 +4357,9 @@ export async function bootLevel(level, titleMenuFn) {
   // restait affichée à 100 % pendant cinq secondes, ce qui est pire que pas de barre.
   await etape('réglages');
   { let ql = null; try { ql = localStorage.getItem('tloc_qualite'); } catch (e) {}
-    if (ql !== null) Q.choisi = true; Q.apply(parseInt(ql || '0') || 0, true); }
+    // un téléphone part en qualité basse (ombres coupées, 1 pixel par point) : l'automate ne
+    // monte jamais, il ne fait que descendre — autant partir d'où un téléphone tient
+    if (ql !== null) Q.choisi = true; Q.apply(parseInt(ql || (TACTILE ? '3' : '0')) || 0, true); }
   await etape('préparation du rendu');
   await prechaufferRendu();
   finCharge();

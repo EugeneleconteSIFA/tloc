@@ -18,7 +18,15 @@ let moiId = null;
 // reste utile — préparer ses personnages, ouvrir une partie, inviter ses amis, discuter —
 // mais tout ce qui ouvrirait la citadelle affiche ce message à la place. Un ordinateur à
 // écran tactile garde sa souris (hover), il n'est donc pas concerné.
-export const surMobile = matchMedia('(hover: none) and (pointer: coarse)').matches;
+// La bêta mobile (cf. index.html) : ?mobile=1 une fois sur l'appareil, et le téléphone joue.
+export const surMobile = (() => {
+  try {
+    const m = new URLSearchParams(location.search).get('mobile');
+    if (m === '1') localStorage.setItem('tloc_mobile', '1'); else if (m === '0') localStorage.removeItem('tloc_mobile');
+    if (localStorage.getItem('tloc_mobile') === '1') return false;
+  } catch (e) {}
+  return matchMedia('(hover: none) and (pointer: coarse)').matches;
+})();
 document.documentElement.classList.toggle('mobile', surMobile);
 let dialogueOrdi = null;
 export function montrerOrdinateur(precision = '') {

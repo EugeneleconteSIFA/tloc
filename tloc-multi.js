@@ -318,12 +318,10 @@ function botRentre(b) {
 }
 
 // =====================================================================
-//  2. Retour à l'accueil, et des menus qui répondent à la souris
+//  2. Retour à l'accueil depuis les menus
 // =====================================================================
-// Le moteur ne pilote ses menus qu'au clavier : `menu.items` est une liste, les flèches
-// déplacent `menu.sel`, Entrée appelle `fn()`. On ne touche pas à ce code — on se greffe
-// dessus : un clic sur une ligne appelle le même `fn()`, et on ajoute une entrée
-// « Accueil » à la liste, qui devient donc navigable au clavier ET à la souris.
+// Les menus du moteur (`menu.items`, `menu.sel`, Entrée ou un clic appellent `fn()`) : on
+// ajoute une entrée « Accueil » au menu titre et au menu pause, navigable comme les autres.
 
 function allerAccueil() {
   capturer(true);
@@ -357,25 +355,9 @@ function allerAccueil() {
     rendre();
   };
 
-  if (ovgo) {
-    const indice = (cible) => {
-      const el = cible && cible.closest ? cible.closest('.mitem') : null;
-      return el ? [...ovgo.children].indexOf(el) : -1;
-    };
-    ovgo.addEventListener('mousemove', (e) => {
-      const i = indice(e.target);
-      if (i >= 0 && menu.active && i !== menu.sel) { menu.sel = i; rendre(); }
-    });
-    ovgo.addEventListener('click', (e) => {
-      const i = indice(e.target);
-      if (i < 0 || !menu.active) return;
-      const it = menu.items[i];
-      if (!it) return;
-      menu.sel = i; rendre();
-      it.fn();
-    });
-    new MutationObserver(greffer).observe(ovgo, { childList: true });
-  }
+  // survol et clic des lignes : c'est le moteur qui s'en charge désormais (engine.js, après
+  // hideMenu), pour toutes les pages — y compris la ligne « Accueil » ajoutée ici
+  if (ovgo) new MutationObserver(greffer).observe(ovgo, { childList: true });
   if (ov) new MutationObserver(greffer).observe(ov, { attributes: true, attributeFilter: ['class'] });
   setInterval(greffer, 600);      // filet : un menu ouvert sans mutation observée
   greffer();
@@ -383,6 +365,7 @@ function allerAccueil() {
   // bouton de coin, pour sortir sans passer par la pause ; masqué quand la souris est
   // capturée par le jeu, où il ne servirait à rien
   const b = document.createElement('button');
+  b.id = 'bouton-accueil';                 // caché au doigt (engine.js) : il était sous le pouce du joystick
   b.textContent = '← Accueil';
   b.tabIndex = -1;
   b.style.cssText = `position:fixed; left:14px; bottom:12px; z-index:2000; font-family:inherit;

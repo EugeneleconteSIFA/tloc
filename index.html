@@ -5,7 +5,14 @@
 <script>
   // Le jeu se joue au clavier et à la souris : sur un téléphone ou une tablette sans souris,
   // on repart tout de suite vers l'accueil (qui dit pourquoi), avant de charger la citadelle.
-  if (matchMedia('(hover: none) and (pointer: coarse)').matches) location.replace('accueil.html#ordinateur');
+  // SAUF LA BÊTA MOBILE (30 septembre) : les commandes tactiles existent (engine.js, « LE
+  // TACTILE »), mais tant qu'un vrai téléphone n'a pas tenu une partie, on ne les ouvre qu'à
+  // qui les demande — une adresse avec ?mobile=1 (?mobile=0 pour revenir), retenue sur l'appareil.
+  (() => { try {
+    const m = new URLSearchParams(location.search).get('mobile');
+    if (m === '1') localStorage.setItem('tloc_mobile', '1'); else if (m === '0') localStorage.removeItem('tloc_mobile');
+    if (matchMedia('(hover: none) and (pointer: coarse)').matches && localStorage.getItem('tloc_mobile') !== '1') location.replace('accueil.html#ordinateur');
+  } catch (e) {} })();
   // ON ENTRE PAR L'ACCUEIL (Eugène, 30 septembre) : index.html ouvert directement renvoie à
   // l'accueil — sauf un rechargement (F5, rechargement forcé, reprise après une perte de la
   // carte graphique), une arrivée depuis l'accueil (tloc_entree, posé juste avant d'y venir),
