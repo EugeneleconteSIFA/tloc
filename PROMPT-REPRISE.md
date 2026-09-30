@@ -873,6 +873,27 @@ lieux, quatre caps, 1440 × 900 Retina, sans vsync ; `TLOC_ENGINE=f.js` pour un 
   d'arrivée, atlas.js) sur presque tout l'écran — elle n'en occupe qu'un tiers ; (2) les
   drapeaux du mode équipes tirés sur TOUTE la carte, pas seulement dans l'enceinte
   (tloc-multi.js, les 20 emplacements).
+- **Reprise du 30 septembre (autonomie)** — mesures en A/B alterné contre la version publiée
+  (`TLOC_ENGINE`), six lieux, 1440 × 900 Retina :
+  - **Le banc mesurait à côté** : bancs/*.mjs importaient `engine.js?v=29`, un SECOND moteur
+    quand la page est en v33. Ils importent maintenant l'adresse chargée (ressources de la page).
+  - **Le goulot est la carte graphique** (avec ANGLE/Metal, le coût fixe de chaque appel de
+    dessin tombe aussi dans son chrono) : le temps « rendu » du processeur égale celui du GPU,
+    il attend. Enlever 30 % des appels n'a rapporté que +3 %.
+  - **Fait** (engine.js) : petits objets animés (monstres, coffres, torches, oiseaux, rayon
+    < 4 m) sur le calque lointain au-delà de 80 / 130 m (`trierPersonnages`, `vivantsLoin`) —
+    2 655 → 1 517 appels au bourg ; matrices figées des produits de la fusion (`figerMatrices`,
+    1 880 objets) ; troncs d'arbres au-delà de 450 m (`TRONC_LOIN`) ; **plus de MSAA sur le
+    canevas** (il ne lissait rien : la scène passe par les images du post-traitement ; +9 %),
+    FXAA toujours actif (auparavant rien ne lissait à pleine définition).
+  - **Résultat** : qualité auto 26,9 → 29,9 img/s (+11 %), qualité 1 12,8 → 14,1 (+10 %) ;
+    au bourg à réglage figé (q4, ×0,7) 24,6 → 32,4. Chargement inchangé (13,0 s).
+  - **Essayé, abandonné** : feuillages en Lambert (+2,5 %, dans le bruit ; il faut compenser
+    `scene.environment` que le Lambert ne lit pas).
+  - **Ce qui reste pour aller plus loin** : (1) un plancher de définition plus bas (0,6 au lieu
+    de 0,7 : la carte est limitée par les pixels) — à décider avec Eugène, l'image s'adoucit ;
+    (2) fusionner les morceaux IMMOBILES de chaque monstre (un oiseau : 41 appels) ;
+    (3) des niveaux de détail pour la forêt (silhouettes au-delà de ~300 m).
 - **Suite proposée** : niveaux de détail du bâti fusionné et des arbres par distance ;
   chargement à remesurer machine froide (18,8 s en somme des étapes à chaud, « quartier »
   non modifié +35 % : la chaleur) ; `bump.py` avant de publier.

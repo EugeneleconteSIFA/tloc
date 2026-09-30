@@ -10,7 +10,7 @@
 // makeGiant() procédural — le jeu ne casse jamais faute d'un fichier.
 import * as THREE from 'three';
 import * as A from './assets.js';
-import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, G, camera } from './engine.js?v=33';
+import { mesh, mat, boxG, sphG, capG, TAU, rand, CT, creatureMat, GOLD, STEEL, IRON, T, pbrRepeat, G, camera } from './engine.js?v=34';
 
 export const IDS = [
   'corps:Superhero_Male_FullBody',

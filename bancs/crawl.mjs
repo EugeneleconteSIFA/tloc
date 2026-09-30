@@ -34,7 +34,7 @@ await page.waitForTimeout(3000);
 
 const t0 = Date.now();
 const res = await page.evaluate(async ([x0, z0, x1, z1]) => {
-  const E = await import('./engine.js?v=29'), C = await import('./carte.js'), THREE = E.THREE, { world, scene, renderer } = E;
+  const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v='))), C = await import('./carte.js'), THREE = E.THREE, { world, scene, renderer } = E;
   const W = Math.ceil(x1 - x0), H = Math.ceil(z1 - z0), HAUT = 120, BAS = -20;
   // 1. le dessiné : vue de dessus en profondeur, 1 m par pixel. Hors du rendu : ce qui n'est
   //    pas un sol — la végétation semée (instances), les sprites, les transparents, le ciel.
@@ -101,7 +101,7 @@ for (const z of res.zones.slice(0, 40)) console.log(`  ${z.type.padEnd(9)} ${Str
 // photos des 12 plus grandes zones : de biais, à 9 m, à hauteur d'homme et demi
 const photos = [];
 for (const [k, z] of res.zones.slice(0, 12).entries()) {
-  await page.evaluate(async (z) => { const E = await import('./engine.js?v=29');
+  await page.evaluate(async (z) => { const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v=')));
     // un repère rouge sur le point suspect : sur la photo, on sait où regarder
     if (!window.__repere) { window.__repere = new E.THREE.Mesh(new E.THREE.SphereGeometry(0.35, 12, 8), new E.THREE.MeshBasicMaterial({ color: 0xff2020, depthTest: false })); window.__repere.renderOrder = 999; E.scene.add(window.__repere); }
     window.__repere.position.set(z.x, z.y + 0.35, z.z);

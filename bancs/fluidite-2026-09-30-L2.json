@@ -1,0 +1,86 @@
+{
+ "qualite": 1,
+ "pixelRatio": 1,
+ "taille": [
+  1440,
+  900
+ ],
+ "ombres": false,
+ "post": true,
+ "lieux": [
+  {
+   "lieu": "maison",
+   "ips": 26.9,
+   "p95": 48.4,
+   "js": 8,
+   "rendu": 31.4,
+   "gpu": 24.2,
+   "appels": 829,
+   "triangles": 2.23,
+   "ratio": 0.7,
+   "niveau": 4
+  },
+  {
+   "lieu": "village",
+   "ips": 25.6,
+   "p95": 55.1,
+   "js": 9,
+   "rendu": 30.7,
+   "gpu": 25.9,
+   "appels": 887,
+   "triangles": 2.36,
+   "ratio": 0.7,
+   "niveau": 4
+  },
+  {
+   "lieu": "place",
+   "ips": 29.4,
+   "p95": 48.9,
+   "js": 9,
+   "rendu": 27,
+   "gpu": 21.8,
+   "appels": 694,
+   "triangles": 1.93,
+   "ratio": 0.7,
+   "niveau": 4
+  },
+  {
+   "lieu": "donjon",
+   "ips": 30.8,
+   "p95": 52.3,
+   "js": 7.6,
+   "rendu": 30.5,
+   "gpu": 22.4,
+   "appels": 729,
+   "triangles": 1.94,
+   "ratio": 0.7,
+   "niveau": 4
+  },
+  {
+   "lieu": "moulin",
+   "ips": 34.1,
+   "p95": 45.7,
+   "js": 8.2,
+   "rendu": 22.7,
+   "gpu": 19.9,
+   "appels": 659,
+   "triangles": 1.9,
+   "ratio": 0.7,
+   "niveau": 4
+  },
+  {
+   "lieu": "poterne",
+   "ips": 26.4,
+   "p95": 55.4,
+   "js": 10.7,
+   "rendu": 32.1,
+   "gpu": 22.8,
+   "appels": 665,
+   "triangles": 1.88,
+   "ratio": 0.7,
+   "niveau": 4
+  }
+ ],
+ "date": "2026-09-30T10:44:47.129Z",
+ "moyenne": 28.9
+}

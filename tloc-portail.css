@@ -560,7 +560,7 @@ button.code:hover { border-style:solid; }
 
 /* ---------- la bulle de chat ---------- */
 .bulle-chat { position:fixed; right:20px; bottom:20px; z-index:40; width:60px; height:60px; padding:0; border-radius:50%;
-              background:var(--or); color:var(--brique); border:2px solid var(--brique); box-shadow:0 10px 30px rgba(0,0,0,.35); }
+              background:var(--or); color:#1A1208; border:2px solid var(--brique); box-shadow:0 10px 30px rgba(0,0,0,.35); }   /* icône noire (Eugène) */
 /* or et terracotta inversés (Eugène, 30 septembre) : dorée, la bulle se détache des façades rouges */
 .bulle-chat:hover { background:var(--or); filter:brightness(1.08); }
 .bulle-chat .compte-total { position:absolute; top:-4px; right:-4px; background:var(--brique); color:#FFE3A1; }
@@ -747,7 +747,7 @@ button.code:hover { border-style:solid; }
 /* le fléchage vers l'historique des parties (accueil) */
 /* en bas à gauche, sous la tuile Solo : au centre elle couvrait « Rejoindre une partie » */
 .fleche-parties { position:fixed; left:max(16px, calc((100vw - 1240px) / 2)); bottom:16px; z-index:30; display:inline-flex; align-items:center; gap:6px;
-  padding:8px 16px 8px 18px; border-radius:20px; background:var(--or); color:var(--brique); border:2px solid var(--brique); font-weight:700; font-size:14px; text-decoration:none;
+  padding:8px 16px 8px 18px; border-radius:20px; background:var(--or); color:#1A1208; border:2px solid var(--brique); font-weight:700; font-size:14px; text-decoration:none;
   box-shadow:0 6px 18px rgba(0,0,0,.3); animation:invite 2.4s ease-in-out infinite; }
 .fleche-parties:hover { filter:brightness(1.1); }
 .fleche-parties.cache { display:none; }

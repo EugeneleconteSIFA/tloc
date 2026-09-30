@@ -20,6 +20,8 @@
 //
 // Écrit bancs/fluidite-<date>-<étiquette>.json. Comparer avant / après sur la même machine,
 // à froid (la machine chauffe : une série de deux passes, garder la meilleure).
+// Le moteur s'importe à l'adresse EXACTE que la page a chargée (engine.js?v=…) : une autre
+// version en serait un second exemplaire, avec son propre rendu, et le banc mesurerait à côté.
 import { createRequire } from 'module';
 import fs from 'fs';
 const AUTO = process.argv[2] === 'auto';          // l'automate de qualité règle tout, comme chez un joueur
@@ -42,7 +44,7 @@ await page.evaluate(() => { TLOC.state.introSeen = true; TLOC.menu.items[0].fn()
 await page.waitForTimeout(3000);
 
 const res = await page.evaluate(async ([QUAL, AUTO, ECH]) => {
-  const E = await import('./engine.js?v=29'), { renderer, composer, Q, G, player, state } = E;
+  const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v='))), { renderer, composer, Q, G, player, state } = E;
   if (!AUTO) { Q.locked = true; Q.apply(QUAL, true); if (ECH) Q.mettreEchelle(ECH); }
   const gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
   // chronométrer le rendu SANS toucher au moteur : on enveloppe les deux points d'entrée

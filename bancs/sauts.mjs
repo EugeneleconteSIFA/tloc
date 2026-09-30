@@ -38,7 +38,7 @@ await page.evaluate(() => { TLOC.state.introSeen = true; TLOC.menu.items[0].fn()
 await page.waitForTimeout(3000);
 
 const res = await page.evaluate(async ([x0, z0, x1, z1]) => {
-  const E = await import('./engine.js?v=29'), { PARTAGE } = await import('./etat.js'), THREE = E.THREE, { world, scene, renderer } = E;
+  const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v='))), { PARTAGE } = await import('./etat.js'), THREE = E.THREE, { world, scene, renderer } = E;
   const PAS = 0.5, W = Math.ceil((x1 - x0) / PAS), H = Math.ceil((z1 - z0) / PAS), HAUT = 120, BAS = -20;
   // 1. le dessiné, vu d'en haut (les personnages et la végétation semée écartés)
   const caches = [];

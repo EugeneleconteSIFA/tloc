@@ -43,7 +43,11 @@ export function pointInPoly(px, pz, poly) {
 //  Rendu
 // =====================================================================
 const canvas = document.getElementById('game');
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+// Sans multi-échantillonnage du canevas (30 septembre) : la scène est dessinée dans les images
+// du post-traitement, qui n'en ont pas, et le canevas ne reçoit qu'un rectangle plein écran —
+// le MSAA n'y lissait rien, mais la carte payait sa résolution sur 2880 × 1800 à chaque image
+// (+9 % d'images/s au banc, A/B alterné). Le lissage est celui du FXAA (antiCrenelage).
+export const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
 // La vérification des shaders (getProgramInfoLog) force le navigateur à finir chaque
 // compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
 // pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
@@ -271,7 +275,7 @@ function resize() {
   composer.setSize(w, h);
   // netteté modérée : à fond, elle rendait le pavé granuleux (vu au bourg, calcul à ×0,5)
   sortie.uniforms.nettete.value = echelleRendu < 0.99 ? clamp((1 - echelleRendu) * 1.2, 0.2, 0.6) : 0;
-  antiCrenelage.enabled = echelleRendu < 0.99;
+  antiCrenelage.enabled = true;   // toujours : sans MSAA (cf. renderer), c'est le seul lissage, même à pleine définition
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize); resize();
@@ -3221,6 +3225,20 @@ function majPerfUI(dt, js, rendu) {
 // voit de loin, et c'est le but.
 const PERSO_LOIN = 140, CALQUE_LOIN = 30;
 let persosLoin = [], persosT = 0;
+// LES PETITS OBJETS ANIMÉS, même traitement (30 septembre). Monstres, gardes, coffres,
+// torches, oiseaux sont faits de 3 à 54 morceaux chacun, jamais fusionnés (userData.dynamic :
+// du code les anime) : au bourg, près de mille appels de dessin, où qu'ils soient sur la
+// carte — 12 ms d'une image de 41 (banc d'ablation). Au-delà d'une portée qui croît avec leur
+// taille, ils passent sur le calque lointain. Ce qui est grand (ailes du moulin, pont-levis,
+// géants : rayon ≥ VIVANT_GRAND) reste toujours dessiné.
+const VIVANT_GRAND = 4;
+let vivantsLoin = [];
+// Les TRONCS au-delà de TRONC_LOIN : sous la brume et sous les frondaisons, un tronc y fait
+// un pixel ou deux (0,4 m par pixel à 500 m) ; chaque tuile d'essence en coûtait un appel.
+// Les feuillages restent : c'est eux qu'on voit de loin.
+const TRONC_LOIN = 450;
+let troncsTuiles = null;
+const _bbVivant = new THREE.Box3(), _sVivant = new THREE.Sphere();
 function trierPersonnages(dt) {
   persosT -= dt;
   if (persosT <= 0) {                                 // les nouveaux venus (avatars, bots) : toutes les deux secondes
@@ -3232,9 +3250,39 @@ function trierPersonnages(dt) {
         o.userData.geant = g.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > 4; }
       if (!o.userData.geant) persosLoin.push(o);
     });
+    vivantsLoin = [];
+    for (const g of scene.children) {
+      // les groupes seulement : un instancié (le semis de nature.js) se mesurerait instance par
+      // instance, et setFromObject le reparcourait toutes les deux secondes
+      if (!g.userData.dynamic || !g.isGroup || g === player.mesh) continue;
+      let r = g.userData.rayonVivant;
+      if (r === undefined) {                          // mesuré une fois : un monstre ne grandit pas
+        _bbVivant.setFromObject(g); r = _bbVivant.isEmpty() ? Infinity : _bbVivant.getBoundingSphere(_sVivant).radius;
+        g.userData.rayonVivant = r;
+      }
+      if (r >= VIVANT_GRAND) continue;
+      const morceaux = []; g.traverse((o) => { if ((o.isMesh || o.isPoints || o.isSprite) && !o.isSkinnedMesh && !o.isInstancedMesh) morceaux.push(o); });
+      if (morceaux.length) vivantsLoin.push({ g, morceaux, portee: r < 1 ? 80 : 130 });
+    }
   }
   const cx = camera.position.x, cz = camera.position.z, loin = 1 << CALQUE_LOIN;
   for (const m of persosLoin) { const e = m.matrixWorld.elements; m.layers.mask = Math.hypot(e[12] - cx, e[14] - cz) > PERSO_LOIN ? loin : 1; }
+  if (!troncsTuiles && INSTANCES_TUILEES.length) {
+    troncsTuiles = [];
+    for (const im of INSTANCES_TUILEES) {
+      const ph = im.material && im.material.userData && im.material.userData.ph || '';
+      if (!/bark|trunk|tronc|roots/.test(ph)) continue;
+      for (const t of im.userData.tuiles || []) { t.computeBoundingSphere(); troncsTuiles.push({ t, c: t.boundingSphere.center.clone().applyMatrix4(t.matrixWorld), r: t.boundingSphere.radius }); }
+    }
+  }
+  if (troncsTuiles) for (const v of troncsTuiles) {
+    const masque = Math.hypot(v.c.x - cx, v.c.z - cz) - v.r > TRONC_LOIN ? loin : 1;
+    if (v.masque !== masque) { v.masque = masque; v.t.layers.mask = masque; }
+  }
+  for (const v of vivantsLoin) {
+    const p = v.g.position, masque = Math.hypot(p.x - cx, p.z - cz) > v.portee ? loin : 1;
+    if (v.masque !== masque) { v.masque = masque; for (const o of v.morceaux) o.layers.mask = masque; }
+  }
 }
 
 // L'ombre du soleil est redessinée une image sur deux. Sa passe coûtait 25 % du processeur
@@ -3607,6 +3655,25 @@ export function regrouperLots() {
 }
 
 // ---------------------------------------------------------------------
+//  Les matrices figées
+// ---------------------------------------------------------------------
+// three recalcule à chaque image la matrice de chaque objet de la scène (8 % du processeur
+// au bourg, profil du 30 septembre : 6 000 objets). Ce que produit la chaîne de fusion — le
+// bâti fusionné, les lots, les tuiles d'arbres, le terrain en morceaux — ne bouge jamais par
+// construction : on calcule sa matrice une fois et on le sort de la mise à jour. On s'en
+// tient à ces produits-là : une porte, une herse, les ailes du moulin ne sont pas marquées
+// `dynamic` et bougent pourtant (leur code les tourne) — les figer les arrêterait net.
+export function figerMatrices() {
+  const racines = new Set();
+  for (const o of scene.children) if (o.userData.fusionne || o.userData.lot || o.userData.morcele) racines.add(o);
+  for (const im of INSTANCES_TUILEES) for (const t of im.userData.tuiles || []) if (t.parent === scene) racines.add(t);
+  let n = 0;
+  for (const r of racines) r.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; n++; });
+  for (const r of racines) { r.updateMatrixWorld(true); r.matrixWorldAutoUpdate = false; }
+  return { racines: racines.size, objets: n };
+}
+
+// ---------------------------------------------------------------------
 //  Les instances en tuiles
 // ---------------------------------------------------------------------
 // Les arbres de la forêt, les roseaux, les silhouettes du lointain : une InstancedMesh par
@@ -3907,6 +3974,7 @@ export async function bootLevel(level, titleMenuFn) {
   console.log('lots :', regrouperLots());
   console.log('instances en tuiles :', tuilerInstances());
   console.log('géométries séparées :', separerGeometries());
+  console.log('matrices figées :', figerMatrices());
   console.log('lumières :', poolLumieres());
   // Q.apply repasse sur toute la scène (ombres, densités) : sans cette étape la barre
   // restait affichée à 100 % pendant cinq secondes, ce qui est pire que pas de barre.
