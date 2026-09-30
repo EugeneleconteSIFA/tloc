@@ -37,5 +37,8 @@ for (const passe of ['froid', 'relance']) {
   console.log('étapes (ms) : ' + Object.entries(etapes || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' | '));
 }
 console.log('\nles plus lourds :\n  ' + res.froid.lourds.join('\n  '));
-fs.writeFileSync(DIR + `charge-${res.date.slice(0, 10)}.json`, JSON.stringify(res, null, 1));
+// TLOC_ETIQUETTE nomme le relevé (charge-<date>-<étiquette>.json) : sans elle, un second passage
+// le même jour écrase la référence du matin — c'est ce que fait le contrôle de publication.
+const ETIQ = process.env.TLOC_ETIQUETTE ? '-' + process.env.TLOC_ETIQUETTE : '';
+fs.writeFileSync(DIR + `charge-${res.date.slice(0, 10)}${ETIQ}.json`, JSON.stringify(res, null, 1));
 await browser.close();

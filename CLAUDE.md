@@ -21,7 +21,10 @@ langage, palettes, musique, sons, ce qu'il ne faut pas faire).
    reste le seul exemplaire du travail en cours : rien n'y revient jamais de GitHub.
    Trois sessions ont déjà écrasé `carte.js`.
 2. **Demander avant d'écrire dans un fichier qu'Eugène a peut-être ouvert.** La liste des
-   fichiers verrouillés change tous les jours — la demander en début de session.
+   fichiers verrouillés change tous les jours — la demander en début de session. Eugène peut
+   aussi l'écrire dans `.claude/verrous.txt` (un chemin par ligne) : un hook refuse alors
+   toute écriture dans ces fichiers, comme il refuse les commandes git checkout, reset, pull,
+   stash, clean, restore et switch (`.claude/garde.py`, `.claude/settings.json`).
 3. **Pas de système parallèle** : ce qui appartient au jeu s'écrit dans les fichiers du
    jeu, pas dans un module greffé à côté.
 4. **Éditer en place**, jamais réécrire un fichier non lu en entier.
@@ -35,6 +38,15 @@ langage, palettes, musique, sons, ce qu'il ne faut pas faire).
    **17 s** au banc headless (15 à 17 s le 25 septembre), aucune étape nouvelle au-delà de
    300 ms sans le dire, aucun écran figé sans barre qui avance. Ce
    qu'on voit à améliorer se note tout de suite dans `PROMPT-REPRISE.md`, § 4.E.
+
+## Publier sur le dev
+
+`./publier-dev.sh 'message' chemin1 chemin2…` : une session donne TOUJOURS ses chemins, pour
+n'envoyer que son lot. Le script passe d'abord `node bancs/controle.mjs` (syntaxe, démarrage
+des six pages sans erreur, banc à froid en médiane de 3 ≤ 17 s et ≤ 45 Mo) et n'envoie rien
+s'il échoue. Il faut `./lancer.sh`. Réponse « o » à la question : `echo o | ./publier-dev.sh …`.
+**Ne pas se fier à `node --check fichier.js`** : sur un module ES, Node 24 répond 0 même
+cassé ; le contrôle, lui, vérifie pour de vrai. La prod : jamais — c'est Eugène.
 
 ## Repères utiles
 
