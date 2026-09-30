@@ -1,7 +1,7 @@
 // admin.js — la page /admin du créateur : joueurs, parties en ligne, manches, badges, retours.
 // Tout vient de /api/admin/detail, que le serveur ne sert qu'au compte créateur ; la page
 // n'affiche donc rien d'autre qu'un refus à qui n'y a pas droit.
-import * as C from './tloc-compte.js?v=1';
+import * as C from './tloc-compte.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const ECH = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

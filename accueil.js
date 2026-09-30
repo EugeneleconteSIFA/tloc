@@ -1,10 +1,11 @@
 // accueil.js — l'accueil du compte : les parties et les instances.
 // La connexion, elle, se fait sur le portail (connexion.html).
-import * as C from './tloc-compte.js?v=1';
+import * as C from './tloc-compte.js?v=2';
 import * as SOCIAL from './accueil-social.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let partiePrete = null;        // la partie créée qui attend qu'on y entre (cf. montrerPartiePrete)
 
 // Les messages ne s'écrivent plus dans la page : posés sur la vitrine, ils tombaient sur les
 // façades et ne se lisaient plus. Ils surgissent en toast ; `el`, lui, reste vide.
@@ -614,7 +615,7 @@ function majBots() {
     : `${nbBots} bot${nbBots > 1 ? 's' : ''} ${NOM_NIVEAU[niveauChoisi()]}${nbBots > 1 ? 's' : ''} · `
       + (amis ? `${amis} place${amis > 1 ? 's' : ''} pour tes amis` : 'rien que toi et les bots');
   // on entre dans la partie en la lançant, bots ou pas : les amis la rejoignent par son code
-  $('creerInstance').textContent = SOCIAL.surMobile ? 'Créer' : 'Lancer la partie';
+  $('creerInstance').textContent = partiePrete ? 'Entrer dans la partie' : SOCIAL.surMobile ? 'Créer' : 'Lancer la partie';
 }
 $('botsMoins').onclick = () => { nbBots--; majBots(); };
 $('botsPlus').onclick = () => { nbBots++; majBots(); };
@@ -636,7 +637,32 @@ async function copierCode(code, bouton) {
   return true;
 }
 
+// La partie créée attend qu'on y entre (Eugène, 30 septembre : « je dois d'abord envoyer le
+// code à mes amis ») : le code est copié et s'affiche à la place du nom, le bouton devient
+// « Entrer dans la partie ». La croix revient à la création d'une autre partie.
+function montrerPartiePrete(i, copie) {
+  partiePrete = i;
+  let z = $('partiePrete');
+  if (!z) { z = document.createElement('div'); z.id = 'partiePrete'; z.className = 'partie-prete'; $('nomInstance').closest('.champ').after(z); }
+  z.innerHTML = `<span>Code <b>${ECH(i.code)}</b> · « ${ECH(i.nom)} »</span>
+    <button type="button" class="mini" id="recopierCode">${copie ? 'Copié ✓' : 'Copier'}</button>
+    <button type="button" class="fantome mini" id="annulerPartie" aria-label="Créer une autre partie">✕</button>`;
+  z.classList.remove('cache'); $('nomInstance').closest('.champ').classList.add('cache');
+  $('creerInstance').textContent = 'Entrer dans la partie';
+  $('recopierCode').onclick = (e) => copierCode(i.code, e.currentTarget);
+  $('annulerPartie').onclick = () => {
+    partiePrete = null; z.classList.add('cache'); $('nomInstance').closest('.champ').classList.remove('cache');
+    majBots(); $('nomInstance').focus();
+  };
+}
+function entrerDansPartie(i) {
+  const perso = (C.compte() || {}).pseudo || 'Camille';
+  C.activerInstance(i.code);
+  C.poserInstance({ code: i.code, nom: i.nom, perso });
+  location.href = 'index.html';
+}
 $('creerInstance').onclick = async () => {
+  if (partiePrete) return entrerDansPartie(partiePrete);
   if (!C.connecte()) return message($('msgInstances'), 'Il faut un compte pour ouvrir une instance.');
   // Le nom est obligatoire, même pour jouer seul contre des bots : c'est lui que les amis
   // voient quand on leur partage la partie (Eugène, 29 septembre).
@@ -654,14 +680,8 @@ $('creerInstance').onclick = async () => {
     message($('msgInstances'), '');
     // le geste suivant, c'est presque toujours d'envoyer le code aux copains : il est déjà copié
     const copie = await copierCode(i.code, null);
-    if (!SOCIAL.surMobile) {                       // « Lancer la partie » : on y entre (sur ordinateur)
-      const perso = (C.compte() || {}).pseudo || 'Camille';
-      C.activerInstance(i.code);
-      C.poserInstance({ code: i.code, nom: i.nom, perso });
-      location.href = 'index.html';
-      return;
-    }
     await chargerInstances();
+    if (!SOCIAL.surMobile) { montrerPartiePrete(i, copie); return; }   // sur ordinateur : on y entre au clic suivant
     toast(copie ? `Partie créée — code ${i.code} copié, envoie-le à tes amis.` : `Partie créée : code ${i.code}.`, { duree: 6000 });
   } catch (e) { message($('msgInstances'), e.message); }
   finally { $('creerInstance').disabled = false; }

@@ -1,5 +1,5 @@
 // connexion.js — le portail : on entre par ici, on ressort vers l'accueil du compte.
-import * as C from './tloc-compte.js?v=1';
+import * as C from './tloc-compte.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let mode = 'connexion';

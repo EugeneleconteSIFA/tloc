@@ -132,6 +132,9 @@ export function activerInstance(code) {
   try {
     localStorage.removeItem(CLE_ACTIF);              // aucune partie solo n'est ouverte
     if (brut) localStorage.setItem(CLE_MOTEUR, brut); else localStorage.removeItem(CLE_MOTEUR);
+    // on entre dans la partie dès le chargement fini : le menu titre (« Nouvelle partie ») n'y
+    // avait pas de sens (Eugène, 30 septembre) — cf. engine.js, tloc_auto = 'instance'
+    sessionStorage.setItem('tloc_auto', 'instance');
   } catch (e) {}
 }
 

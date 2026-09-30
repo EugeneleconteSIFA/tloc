@@ -1,10 +1,10 @@
-import * as PNJ_E from './engine.js?v=34';
+import * as PNJ_E from './engine.js?v=35';
 import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 2 : les galeries souterraines de la citadelle
 import { THREE, clamp, lerp, rand, TAU, distSeg, scene, camera, G, T, mat, pbr, pbrRepeat, phMat, patiner, uvMeters, makeCanvas, tex, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, getH, blocked, makeChest, makeGrille, makeTorch, makeLever, SFX, state, player, enemies, pickups,
   spawnEnemy, spawnPickup, spawnGaufre, addInteract, showMessage, burst, saveGame, goToLevel, bootLevel, minimapDots, damagePlayer,
-  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey } from './engine.js?v=34';
+  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey } from './engine.js?v=35';
 import * as LOOK from './look.js';
 import * as BOURSE from './bourse.js';
 LOOK.veiller();

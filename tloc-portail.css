@@ -754,3 +754,9 @@ button.code:hover { border-style:solid; }
 @keyframes invite { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .fleche-parties { animation:none; } }
 .vers-parties { font-weight:600; color:var(--or-clair); }
+
+/* la partie créée, qui attend qu'on y entre : son nom et son code à la place du champ */
+.partie-prete { flex:1 1 180px; min-width:0; display:flex; align-items:center; gap:8px; height:44px; padding:0 6px 0 14px;
+  border-radius:8px; border:1px dashed var(--or); background:rgba(226,178,90,.12); font-size:15px; white-space:nowrap; overflow:hidden; }
+.partie-prete > span { overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; }
+.partie-prete b { font-family:var(--mono); letter-spacing:.08em; color:var(--or-clair); }

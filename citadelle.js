@@ -2,7 +2,7 @@
 //
 // Secteur Citadelle : courtines, bastions, Porte Royale, casernes, galeries voûtées,
 // donjon, poterne. Le tracé vient de carte.js, jamais l'inverse.
-import * as E from './engine.js?v=34';
+import * as E from './engine.js?v=35';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   THREE, GOLD, IRON, Q, SFX, T, TAU, addBox, addCap, addHelix, addInteract, addLieu, addPlatform,
@@ -11,7 +11,7 @@ import {
   mergeParts, mesh, mouldingRun, pbr, pbrRepeat, phMat, pickups, pilaster, player, pointInPoly, rand,
   rboxG, saveGame, scene, setQuest, showMessage, sky, spawnGaufre, sphG, state, stoneMat, uvMeters,
   wallBox, world, etape,
-} from './engine.js?v=34';
+} from './engine.js?v=35';
 import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,
@@ -68,10 +68,14 @@ function percerCouloir(b) {
     const g = (dem + c.r + 0.6) / L;
     const u0 = Math.max(0, u - g), u1 = Math.min(1, u + g);
     const A = [c.ax + dx * u0, c.az + dz * u0], B = [c.ax + dx * u1, c.az + dz * u1];
-    const bx = c.bx, bz = c.bz, top = c.top;
+    const bx = c.bx, bz = c.bz, top = c.top, rayon = c.r;
     c.bx = A[0]; c.bz = A[1];
-    addCap(B[0], B[1], bx, bz, c.r, top);
-    if (c.r >= 3) {
+    // un tronçon restant de moins d'un mètre disparaît : quand la rampe touche le BOUT de la
+    // courtine (Dauphin), il restait un segment de longueur nulle mais de 5,5 m de rayon —
+    // un disque invisible de onze mètres en haut de la rampe (30 septembre)
+    if (u0 * L < 1) c.r = 0;
+    if ((1 - u1) * L >= 1) addCap(B[0], B[1], bx, bz, rayon, top);
+    if (rayon >= 3) {
       // COURTINE : la gorge du bastion EST la ligne de courtine, et la courtine fait onze
       // mètres d'épaisseur. La rampe monte donc DANS le mur, comme dans le vrai ouvrage
       // où elle débouche sur le terre-plein. On efface le tronçon sur la largeur de la
@@ -79,7 +83,7 @@ function percerCouloir(b) {
       // du bastion, trois mètres de terre pleine.
       // (Un plafond à BAST_H ne suffisait pas : la rampe traverse les cinq derniers
       // mètres du mur à 2,4 m de haut, sous le plafond, donc toujours bloquée.)
-      addCap(A[0], A[1], B[0], B[1], c.r, 0.35);
+      addCap(A[0], A[1], B[0], B[1], rayon, 0.35);
       bilan.courtines++;
     } else {
       // garde-corps, palissade, chaîne : une brèche franche, comme une entrée de rampe
@@ -218,10 +222,13 @@ export async function buildCitadel() {
         const px = sx * (GATE_HW + 2.6);
         addCap(px, APO - WALL_T / 2 + 0.6, px, APO + WALL_T / 2 - 0.6, 2.4, WALL_H + 1.4);
       }
-    } else {
+    } else if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 1) {
       wallBox(a[0], a[1], b[0], b[1], WALL_H, WALL_T, brickMat, 0, 'church_bricks_03');
       addCap(a[0], a[1], b[0], b[1], WALL_T / 2, WALL_H + 1.4);
     }
+    // (deux bastions qui se touchent n'ont pas de courtine entre eux : sa capsule, de longueur
+    // nulle mais de 5,5 m de rayon, posait un disque invisible de onze mètres en haut de la
+    // rampe du Dauphin — on n'en montait ni n'en descendait, 30 septembre)
     const [nx, nz] = normale(i);
     wallBox(a[0] + nx * 2.2, a[1] + nz * 2.2, b[0] + nx * 2.2, b[1] + nz * 2.2, 1.2, 1.4, stoneMat, WALL_H); // corniche de pierre
     wallBox(a[0], a[1], b[0], b[1], 0.5, WALL_T + 0.6, stoneMat, WALL_H - 0.3); // cordon
@@ -1245,6 +1252,64 @@ export function buildPlaceDArmes() {
 
 export const GAL = { DEPTH: 8.0, ROOF: 6.9, IMPOSTE: 3.4, TRAVEE: 7.4, RAMPE: 18, VOUTE: 4.0 };
 
+// LE MUR DE SOUTÈNEMENT PERCÉ D'UNE ARCHE. Au bastion de Turenne, le mur qui borde la rampe
+// d'une galerie traversait de part en part la rampe du bastion : on s'y cognait en montant
+// comme en descendant, à cheval surtout (Eugène, 30 septembre : « j'aime bien l'idée du mur
+// devant le bastion, mais il faudrait une arche pour quand même pouvoir passer »). Là où le
+// mur croise le couloir d'une rampe de bastion, il s'interrompt ; au-dessus, un tympan de
+// brique percé d'un arc surbaissé laisse 3,4 m sous l'arc au moins — un cavalier y passe.
+// La collision ne suit que les morceaux pleins.
+function rampeBastionEn(x, z) {
+  for (const bb of bastions) {
+    if (bb.tRampe === undefined) continue;
+    const s = (x - bb.V[0]) * bb.u[0] + (z - bb.V[1]) * bb.u[1], t = (x - bb.V[0]) * bb.v[0] + (z - bb.V[1]) * bb.v[1];
+    const s0 = bb.sShoulder - bb.rampLen;
+    if (Math.abs(t - bb.tRampe) < bb.demiRampe + 0.5 && s > s0 - 0.5 && s < (bb.sPalier ?? bb.sShoulder) + 0.5)
+      return BAST_H * Math.min(1, Math.max(0, (s - s0) / bb.rampLen));
+  }
+  return null;
+}
+function murPerce(e0, e1, H) {
+  const L = Math.hypot(e1[0] - e0[0], e1[1] - e0[1]), ux = (e1[0] - e0[0]) / L, uz = (e1[1] - e0[1]) / L;
+  const P = (d) => [e0[0] + ux * d, e0[1] + uz * d];
+  // les ouvertures : les intervalles du mur qui passent dans un couloir de rampe
+  const trous = []; let debut = null, sol = 0;
+  for (let d = 0; d <= L + 1e-6; d += 0.25) {
+    const h = rampeBastionEn(...P(d));
+    if (h !== null) { if (debut === null) { debut = d; sol = h; } sol = Math.max(sol, h); }
+    else if (debut !== null) { trous.push([debut, d, sol]); debut = null; }
+  }
+  if (debut !== null) trous.push([debut, L, sol]);
+  const plein = (a, b) => {
+    if (b - a < 0.3) return;
+    const [ax, az] = P(a), [bx, bz] = P(b);
+    wallBox(ax, az, bx, bz, H, 0.8, brickMat, 0, 'church_bricks_03');
+    wallBox(ax, az, bx, bz, 0.4, 1.3, stoneMat, H, T.stone);                 // le couronnement
+    const r = 0.45, ca = a > 0 ? a + r : a, cb = b < L ? b - r : b;    // la capsule ne déborde pas dans l'arche
+    if (cb > ca) { const [cx0, cz0] = P(ca), [cx1, cz1] = P(cb); addCap(cx0, cz0, cx1, cz1, r, H + 0.4); }
+  };
+  let d0 = 0;
+  for (const [a, b, sol] of trous) {
+    plein(d0, a); d0 = b;
+    // le mur s'arrête dans le couloir : pas d'arche en porte-à-faux, il finit au bord de la rampe
+    if (a < 0.5 || b > L - 0.5) continue;
+    const w = b - a, haut = H - 0.5, pied = Math.min(3.4, Math.max(2.6, haut - sol - 1.2)), fleche = Math.max(0.3, Math.min(1.4, haut - sol - pied));
+    if (sol + pied + fleche > H - 0.2) continue;            // trop bas pour un tympan : l'ouverture seule
+    // le tympan : de la naissance de l'arc au sommet du mur, l'intrados en arc surbaissé
+    const sh = new THREE.Shape();
+    sh.moveTo(0, sol + pied); sh.lineTo(0, H); sh.lineTo(w, H); sh.lineTo(w, sol + pied);
+    sh.quadraticCurveTo(w / 2, sol + pied + 2 * fleche, 0, sol + pied);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.8, bevelEnabled: false, curveSegments: 16 });
+    g.translate(0, 0, -0.4);
+    const m = new THREE.Mesh(g, patinerMat(phMat('church_bricks_03', 1, 1), { echelle: 9, force: 0.34, basY: 0, humide: 2.2 }));
+    const [ax, az] = P(a);
+    m.position.set(ax, 0, az); m.rotation.y = -Math.atan2(uz, ux);
+    m.castShadow = m.receiveShadow = true; scene.add(m);
+    { const [bx, bz] = P(b); wallBox(ax, az, bx, bz, 0.4, 1.3, stoneMat, H, T.stone); }   // le couronnement passe sur l'arche
+  }
+  plein(d0, L);
+}
+
 export function buildGalleries() {
   const G = GAL, OFF0 = WALL_T / 2, MID = OFF0 + G.DEPTH / 2;
   const MATS = {
@@ -1328,9 +1393,7 @@ export function buildGalleries() {
         rm.rotation.x = -Math.atan2(G.ROOF, RL);
         rm.castShadow = rm.receiveShadow = true; scene.add(rm);
         const e0 = pt(sPied, G.DEPTH / 2), e1 = pt(sPied + sens * RL, G.DEPTH / 2);
-        wallBox(e0[0], e0[1], e1[0], e1[1], G.ROOF, 0.8, brickMat, 0, 'church_bricks_03');
-        wallBox(e0[0], e0[1], e1[0], e1[1], 0.4, 1.3, stoneMat, G.ROOF, T.stone);
-        addCap(e0[0], e0[1], e1[0], e1[1], 0.45, G.ROOF + 0.4);
+        murPerce(e0, e1, G.ROOF);                  // couronnement compris : il suit les morceaux pleins
         rampes++;
       }
 

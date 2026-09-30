@@ -1118,6 +1118,27 @@ Depuis, en local (non publié) :
   un fléchage vers l'historique — lien « Toutes tes parties ↓ » dans la tuile Solo et
   pastille fixe en bas à gauche, qui s'efface dès qu'on descend.
 
+### V. Retours d'Eugène du 30 septembre, après la version 34 — **faits en local, rien de publié**
+
+- **Écran blanc en solo** (compteur « appels 0 », jeu qui tourne) : contexte WebGL perdu que
+  le jeu ignorait. `webglcontextlost` (engine.js) : on sauvegarde, on le dit, on recharge sur
+  la partie en cours (`tloc_auto`). Vérifié en provoquant la perte (`WEBGL_lose_context`).
+  Pas de fuite mémoire mesurée (tas 1,5 Go qui redescend à 750 Mo).
+- **Multi** : plus de menu titre après le chargement (`tloc_auto = 'instance'`, posé par
+  `activerInstance`) ; « Lancer la partie » crée la partie, copie le code et attend un second
+  clic, « Entrer dans la partie » (`montrerPartiePrete`, accueil.js).
+- **Trêve d'une minute** au début de toute partie à plusieurs, balade comprise
+  (`MANCHE_OUVERTURE`, app.py) : aucun coup ne porte pendant un compte à rebours, les bots ne
+  voient pas d'ennemi (`treve()`), le bandeau dit « La partie commence dans 0:58 — trêve ».
+- **Descendre de cheval** : on met pied à terre du côté libre, en respectant les collisions,
+  puis sur le vrai sol (`descendre`, tloc-multi.js). *Pas revérifié en jeu (il faut un cheval).*
+- **Rampes des bastions** (banc de session `rampes.mjs`) : à Turenne, le mur de soutènement
+  d'une galerie coupait la rampe à mi-hauteur — `murPerce` (citadelle.js) l'arrête au bord de
+  la rampe, ou le perce d'une arche s'il la traverse de part en part ; au Dauphin, un bout de
+  courtine de longueur nulle (5,5 m de rayon) bouchait le haut de la rampe (`percerCouloir`
+  laisse tomber les tronçons de moins d'un mètre). *Reste* : quelques accrocs en bordure de
+  rampe (Reine, Anjou : chute latérale du palier) — le milieu passe partout.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js

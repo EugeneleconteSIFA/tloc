@@ -1,4 +1,4 @@
-import * as PNJ_E from './engine.js?v=34';
+import * as PNJ_E from './engine.js?v=35';
 import * as PNJ from './pnj.js';
 // The Legend of Camille — niveau 6 : l'intérieur de la chapelle Saint-Roch
 // =====================================================================
@@ -15,7 +15,7 @@ import * as PNJ from './pnj.js';
 import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, phMat, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, rboxG, latheG, corniceAround, pilaster, archWindow, makeCanvas, tex,
   world, addCap, addBox, addPlatform, makeTorch, SFX, state, player,
-  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, dialogue } from './engine.js?v=34';
+  addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, dialogue } from './engine.js?v=35';
 import { TOWN, townWorld } from './carte.js';
 
 const HW = 6.2, HD = 9.95, HM = 9.6, FAITE = 12.4;   // demi-largeur, demi-profondeur, hauteur des murs, faîtage

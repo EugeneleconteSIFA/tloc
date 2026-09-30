@@ -4,7 +4,7 @@
 // Rangé à part d'accueil.js pour que chacun reste lisible ; il n'est chargé que par
 // l'accueil et ne touche pas au jeu. Pas de temps réel : on interroge le serveur toutes
 // les quelques secondes quand la bulle est ouverte, toutes les vingt secondes sinon.
-import * as C from './tloc-compte.js?v=1';
+import * as C from './tloc-compte.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

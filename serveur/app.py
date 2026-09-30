@@ -127,6 +127,10 @@ NOMS_BOTS = ("Baudouin", "Mahaut", "Firmin", "Aldegonde", "Gaspard", "Philippine
 #              plus de drapeaux gagne (cf. DRAPEAU_RAYON).
 REGLES = ("balade", "survie", "temps", "drapeaux")
 MANCHE_COMPTE = int(os.environ.get("TLOC_MANCHE_COMPTE", 10))     # compte à rebours avant une manche
+# L'OUVERTURE d'une partie, tous modes, balade comprise (Eugène, 30 septembre) : une minute de
+# trêve pour que chacun entre, que les bots apparaissent, que les drapeaux se posent et qu'on
+# ramasse de quoi se battre. Aucun coup ne porte pendant un compte à rebours.
+MANCHE_OUVERTURE = int(os.environ.get("TLOC_MANCHE_OUVERTURE", 60))
 MANCHE_DUREE_BANC = os.environ.get("TLOC_MANCHE_DUREE")            # le banc raccourcit le chrono
 MANCHE_PAUSE = int(os.environ.get("TLOC_MANCHE_PAUSE", 30))       # les résultats, avant la suivante
 # (12 s ne laissaient pas lire les résultats ; qui veut enchaîner a le bouton « Rejouer »)
@@ -1180,6 +1184,7 @@ class Salon:
         self.duree = 180
         # la manche en cours (survie, temps) : { etat: compte|cours|fin, fin, stats, elimines, ... }
         self.manche: dict | None = None
+        self.ouverte = False                      # la minute d'ouverture a-t-elle déjà été lancée ?
         # la prise des drapeaux : les points forts proposés par le premier client (id -> lieu),
         # et, pendant une manche, l'état de ceux en jeu : à qui (camp), où en est la prise
         # (jauge 0 → 1, vers un camp), et le temps de tenue cumulé par camp
@@ -1260,12 +1265,15 @@ class Salon:
             await self.annoncer_manche()
 
     async def preparer(self, compte: int = MANCHE_COMPTE):
-        if self.regle == "balade" or (self.manche and self.manche["etat"] in ("compte", "cours", "fin")):
+        balade = self.regle == "balade"
+        if (balade and self.ouverte) or (self.manche and self.manche["etat"] in ("compte", "cours", "fin")):
             return
-        if len(self.joueurs) < 2:                  # seul : on attend un adversaire
+        if not balade and len(self.joueurs) < 2:   # seul : on attend un adversaire
             self.manche = None
             await self.annoncer_manche()
             return
+        if not self.ouverte:                       # la toute première : la minute d'ouverture
+            compte, self.ouverte = MANCHE_OUVERTURE, True
         jeton = object()                           # une tâche d'une manche passée ne touche à rien
         self.manche = {"etat": "compte", "fin": time.time() + compte, "stats": {}, "elimines": set(), "jeton": jeton}
         await self.annoncer_manche()
@@ -1274,7 +1282,10 @@ class Salon:
             await asyncio.sleep(compte)
             m = self.manche
             if m and m["jeton"] is jeton and m["etat"] == "compte":
-                if len(self.joueurs) < 2:
+                if balade:                         # la balade n'a pas de manche : la trêve finie, on se bat
+                    self.manche = None
+                    await self.annoncer_manche()
+                elif len(self.joueurs) < 2:
                     self.manche = None
                     await self.annoncer_manche()
                 else:
@@ -2080,6 +2091,8 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 return                                      # pas de tir ami
             if not salon.en_lice(moi.id) or not salon.en_lice(cible.id):
                 return                                      # éliminé : on regarde, on ne frappe plus
+            if salon.manche and salon.manche["etat"] == "compte":
+                return                                      # la trêve d'avant-manche (MANCHE_OUVERTURE)
             if maintenant - moi.dernier_coup < CADENCE_COUP:
                 return
             if distance_etat(moi.etat, cible.etat) > (PORTEE_FLECHE if m.get("k") == "fleche" else PORTEE_COUP):

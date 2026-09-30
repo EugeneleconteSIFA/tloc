@@ -52,6 +52,20 @@ export const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
 // compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
 // pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
 renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
+// LA CARTE GRAPHIQUE QUI LÂCHE (contexte WebGL perdu : mémoire graphique saturée, pilote
+// relancé, autre onglet gourmand). Le jeu continuait à tourner sans rien dessiner — un écran
+// blanc, le compteur à « appels 0 » (Eugène, 30 septembre, en solo). On sauvegarde, on le dit,
+// et on recharge la page sur la partie en cours.
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  try { if (!G.sansSauvegarde && state.running) saveGame(true); } catch (er) {}
+  try { sessionStorage.setItem('tloc_auto', G.sansSauvegarde ? 'prologue' : state.running ? 'resume' : ''); } catch (er) {}
+  const m = document.createElement('div');
+  m.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:#0b1020;color:#ffe7a3;font:600 18px "Trebuchet MS",sans-serif;text-align:center;padding:24px';
+  m.textContent = 'La carte graphique a interrompu l’affichage. Ta partie est sauvegardée : on la relance…';
+  document.body.appendChild(m);
+  setTimeout(() => location.reload(), 1800);
+}, false);
 brancherKTX2(renderer);          // l'essai KTX2 (?ktx2) a besoin de savoir ce que la carte sait décoder
 // ---------------------------------------------------------------------
 //  L'éclairage allégé au loin (modifie deux morceaux de shader de three, pour tous les
@@ -3990,6 +4004,7 @@ export async function bootLevel(level, titleMenuFn) {
   if (auto === 'new') { hideMenu(); startGame(false); }
   else if (auto === 'resume') { hideMenu(); startGame(true); }
   else if (auto === 'prologue') { hideMenu(); G.sansSauvegarde = true; startGame(false); }
+  else if (auto === 'instance') { hideMenu(); startGame(hasSave()); }   // l'accueil nous envoie droit dans une partie à plusieurs
   else if (titleMenuFn) titleMenuFn();
   else { hideMenu(); startGame(hasSave()); }
   startLoop();

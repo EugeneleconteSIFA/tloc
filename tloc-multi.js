@@ -14,7 +14,7 @@
 // Le monde reste local à chacun : les monstres, les coffres et les quêtes ne sont pas
 // synchronisés. Ce qui circule, ce sont les joueurs et les coups qu'ils se portent.
 
-import * as C from './tloc-compte.js?v=1';
+import * as C from './tloc-compte.js?v=2';
 import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import * as ATLAS from './atlas.js';
@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=34';
+} from './engine.js?v=35';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -1642,7 +1642,18 @@ function descendre() {
   const p = player, dx = Math.cos(p.yaw), dz = -Math.sin(p.yaw);     // on met pied à terre sur la gauche
   const cx = p.pos.x + Math.sin(p.yaw) * SELLE_AV, cz = p.pos.z + Math.cos(p.yaw) * SELLE_AV;     // là où est le cheval
   envoyer({ t: 'objet-poser', o: monte, p: [+cx.toFixed(2), +cz.toFixed(2)], y: +p.pos.y.toFixed(2), pv: chevalPv, yaw: +p.yaw.toFixed(2) });
-  p.pos.x += dx * 1.4; p.pos.z += dz * 1.4;
+  // On mettait pied à terre 1,4 m à gauche SANS regarder : contre un parapet, une caisse, le
+  // bord d'un terre-plein, Camille restait perchée au-dessus du sol (Eugène, 30 septembre, sur
+  // un bastion). On descend du côté libre — gauche, droite, sinon en arrière — par petits pas
+  // qui respectent les collisions et les marches, puis on se pose sur le vrai sol.
+  const y0 = p.pos.y;
+  for (const [ex, ez] of [[dx, dz], [-dx, -dz], [-Math.sin(p.yaw), -Math.cos(p.yaw)]]) {
+    const q = { x: p.pos.x, y: y0, z: p.pos.z };
+    let ok = true;
+    for (let k = 0; k < 7 && ok; k++) { ok = tryMove(q, ex * 0.2, ez * 0.2, 0.4, false); q.y = getH(q.x, q.z, q.y + 0.5); }
+    if (ok && Math.abs(q.y - y0) < 0.6) { p.pos.x = q.x; p.pos.z = q.z; break; }
+  }
+  p.pos.y = getH(p.pos.x, p.pos.z, y0 + 0.5); p.vy = 0;
 }
 // le cheval prend les coups avant son cavalier
 function blesserCheval(degats) {
@@ -2230,7 +2241,8 @@ function penserBot(b, dt, now) {
   b.act = 0;
 
   // voir : on ne réévalue qu'au rythme de ses réflexes — c'est ce qui fait une recrue lente
-  const ennemis = ennemisDe(b);
+  // pendant la trêve d'avant-manche, personne n'est un ennemi : le serveur refuserait le coup
+  const ennemis = treve() ? [] : ennemisDe(b);
   if (b.reflexe <= 0) {
     b.reflexe = P.reflexe * (0.7 + Math.random() * 0.6);
     let proche = null, dmin = Infinity;
@@ -2471,7 +2483,9 @@ function tickBots(dt, now) {
 // Le serveur arbitre (compte à rebours, scores, fin, badges) ; ici on l'affiche, et on
 // applique ce qu'il décide : la remise à zéro au début d'une manche, l'élimination.
 let regle = 'balade', manche = null, elimine = false, recuManche = 0;
-const NOM_REGLE = { survie: 'Match à mort', temps: 'Chrono', drapeaux: 'Prise des drapeaux' };
+const NOM_REGLE = { balade: 'Balade', survie: 'Match à mort', temps: 'Chrono', drapeaux: 'Prise des drapeaux' };
+// la trêve : un compte à rebours d'avant-manche (MANCHE_OUVERTURE, app.py) — aucun coup ne porte
+const treve = () => !!(manche && manche.etat === 'compte');
 const estElimine = (id) => !!(regle === 'survie' && manche && manche.etat === 'cours' && manche.elimines && manche.elimines.includes(id));
 // les vies qui restent (match à mort) ; null hors manche
 const viesDe = (id) => (regle === 'survie' && manche && manche.vies && manche.vies[id] != null ? manche.vies[id] : null);
@@ -2514,7 +2528,8 @@ function debutManche() {
 }
 
 function peindreManche() {
-  if (regle === 'balade' || !manche) { if (bandeauManche) { bandeauManche.remove(); bandeauManche = null; } return; }
+  // la balade n'a de bandeau que pendant sa minute d'ouverture
+  if (!manche || (regle === 'balade' && manche.etat !== 'compte')) { if (bandeauManche) { bandeauManche.remove(); bandeauManche = null; } return; }
   if (!bandeauManche) {
     bandeauManche = document.createElement('div');
     bandeauManche.style.cssText = `position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:5; pointer-events:none;
@@ -2527,7 +2542,9 @@ function peindreManche() {
   const titre = `<b style="color:#ffe7a3; letter-spacing:1px">${NOM_REGLE[regle]}</b>`;
   let ligne = '';
   if (manche.etat === 'attente') ligne = 'En attente d’un adversaire…';
-  else if (manche.etat === 'compte') ligne = `Début dans <b style="font-size:20px">${reste}</b> s`;
+  else if (manche.etat === 'compte') ligne = (reste || 0) > 15
+    ? `La partie commence dans <b style="font-size:20px">${mmss(reste)}</b><br><span style="color:#ffe7a3">Trêve : pas de combat avant le départ. Ramasse armes et équipement !</span>`
+    : `Début dans <b style="font-size:20px">${reste}</b> s`;
   else if (manche.etat === 'cours' && regle === 'drapeaux') {
     const n = (c) => drapeaux.filter((d) => d.camp === c).length;
     const puces = drapeaux.map((d) => `<span style="color:${d.camp ? CAMPS[d.camp].couleur : '#e6dcc0'};${d.conteste ? 'text-shadow:0 0 6px #fff' : ''}">⚑</span>`).join(' ');

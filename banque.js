@@ -2,14 +2,14 @@
 //
 // Un seul endroit décide si la banque d'assets est là, et chaque fabrique retombe sur sa
 // version procédurale quand elle ne l'est pas. Le jeu ne casse jamais faute d'un fichier.
-import * as E from './engine.js?v=34';
+import * as E from './engine.js?v=35';
 import * as A from './assets.js';
 import * as GEANTS from './geants.js';
 import * as PNJ from './pnj.js';
 import { THREE,
   SKIN, boxG, makeArm, makeGiant, makeHead, makeLeg, makeTorso, mat, mesh, setAnimHook, setMaker,
   sphG,
-} from './engine.js?v=34';
+} from './engine.js?v=35';
 
 export const TOWN_PROPS = [
   'megakit:Prop_Wagon', 'megakit:Prop_Crate', 'megakit:Prop_WoodenFence_Single', 'megakit:Prop_Vine1',
