@@ -26,7 +26,7 @@ import { FAUCHE_DEBUG } from './nature.js';
 import {
   AIDE, G, SFX, THREE, TAU, addInteract, phMat, arrows, blocked, burst, camera, cut, enemies, getH, lerpAngle, lieux, makeArrow, makeBow, makeCamille,
   CROCHETS, EPEE_SELLE, hideMenu, menu, perfCreateur, player, saveGame, scene, showMenu, showMessage, sourceLumiere, state, tryMove, world,
-} from './engine.js?v=36';
+} from './engine.js?v=37';
 
 const ENVOIS_PAR_S = 15;
 const PORTEE_EPEE = 2.6;
@@ -1543,7 +1543,8 @@ const modeles = new Map();                                  // fichier -> promes
 
 function chargerCheval(fichier) {
   if (!modeles.has(fichier)) modeles.set(fichier, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')])
-    .then(([L, S, U]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier).then((g) => {
+    // ?v : les .glb restent un jour en cache (nginx) ; le 30 septembre ils ont gagné Gallop_Jump
+    .then(([L, S, U]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier + '?v=2').then((g) => {
       // LISSER LES FACETTES. Le modèle (Quaternius) est ombré à plat, une normale par face :
       // à côté des murs photographiés, il faisait jouet. On soude les sommets que les faces
       // partagent et on recalcule des normales lissées — la silhouette ne bouge pas, c'est
@@ -1699,7 +1700,15 @@ function tickChevaux(now) {
     }
     if (qui) { v.g.position.set(qui.x + Math.sin(qui.yaw) * SELLE_AV, qui.y, qui.z + Math.cos(qui.yaw) * SELLE_AV); v.g.rotation.y = qui.yaw; }
     // les allures : galop, pas, et à l'arrêt il broute — et reprend des forces
-    if (vitesse > 9) v.jouer('Gallop', 0.2);
+    // en l'air, il saute pour de bon (Gallop_Jump, gardé dans cheval.glb depuis le 30 septembre) :
+    // le mien le sait par onGround, celui d'un autre par sa hauteur au-dessus du sol
+    const enLair = qui && (moiLe ? !player.onGround : qui.y - getH(qui.x, qui.z, qui.y + 0.5) > 0.35);
+    if (enLair) {
+      // le clip dure 1,47 s, un saut 0,75 s en l'air : accéléré, la détente tombe sur la réception
+      if (v.actions.Gallop_Jump) v.actions.Gallop_Jump.timeScale = 1.9;
+      v.jouer('Gallop_Jump', 0.1, false);
+    }
+    else if (vitesse > 9) v.jouer('Gallop', 0.2);
     else if (vitesse > 0.8) v.jouer('Walk', 0.25);
     else if (moiLe) {
       arretT += dt;

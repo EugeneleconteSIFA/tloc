@@ -2186,9 +2186,9 @@ function majAide() {
   if (!el) return;
   const P = state.poche && Array.isArray(state.poche.objets) ? state.poche.objets : [];
   const gaufres = P.some((o) => o && o.id === 'gaufre' && o.n > 0);
-  // à cheval (G.monte, tloc-multi.js) : ni saut ni roulade — l'aide ne promet que ce qui marche
+  // à cheval (G.monte, tloc-multi.js) : on saute (le cheval aussi), on ne roule pas — l'aide ne promet que ce qui marche
   const l = [['Z Q S D', G.monte ? 'mener le cheval' : 'se déplacer'], ['Souris', 'regarder'], ['Z + S', G.monte ? 'galoper' : 'courir']];
-  if (!G.monte) l.push(['Espace', 'sauter']);
+  l.push(['Espace', G.monte ? 'sauter l’obstacle' : 'sauter']);
   if (state.sword || (state.bow && G.bowOut)) l.push(['Clic G · F', state.bow && G.bowOut ? 'tirer' : 'frapper, faucher']);
   if (G.bouclier) l.push(['Clic D', 'lever le bouclier']);
   if (G.monte) l.push(['Entrée', 'descendre de cheval']);
@@ -2543,7 +2543,7 @@ export function updatePlayer(dt) {
   p.onGround = p.pos.y <= ground + 0.05;
 
   // roulade
-  // à cheval (G.monte, tloc-multi.js) : ni roulade ni saut, le cheval ne sait pas faire
+  // à cheval (G.monte, tloc-multi.js) : pas de roulade — le cheval saute (plus bas), il ne roule pas
   if (wantRoll && !G.monte && p.rollT < 0 && p.rollCd <= 0 && p.attackT < 0 && p.onGround) {
     p.rollT = 0; p.rollCd = 0.75;
     p.rollDir.copy(moving ? move : new THREE.Vector3(Math.sin(p.yaw), 0, Math.cos(p.yaw)));
@@ -2551,7 +2551,8 @@ export function updatePlayer(dt) {
     SFX.roll();
   }
   // saut (X)
-  if (!locked && !G.monte && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) { p.vy = JUMP_V; p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
+  // à cheval aussi (Eugène, 30 septembre) : le cheval suit la hauteur de la cavalière (tickChevaux)
+  if (!locked && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) { p.vy = JUMP_V; p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
   // arc (C)
   p.bowCd = Math.max(0, p.bowCd - dt);
   // LE CARQUOIS. Les flèches étaient infinies ; elles se comptent (state.fleches, jusqu'à

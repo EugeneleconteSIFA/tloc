@@ -4,7 +4,8 @@
 # clips dont le jeu n'utilise que quelques-uns. On écrit un .glb binaire avec les seuls clips
 # demandés : le cheval passe de 3,6 Mo à 1,5 Mo. Aucune dépendance : le chargement reste court.
 #
-#   python3 glb.py Horse.gltf cheval.glb Walk,Gallop,Idle,Eating,Death,Idle_HitReact1,Attack_Kick,Idle_Headlow
+#   python3 glb.py Horse.gltf cheval.glb Walk,Gallop,Gallop_Jump,Idle,Eating,Death,Idle_HitReact1,Attack_Kick,Idle_Headlow
+#   (idem Horse_White.gltf → cheval_blanc.glb ; Gallop_Jump : le saut à cheval, 30 septembre)
 import base64, json, struct, sys
 src, dst, garder = sys.argv[1], sys.argv[2], set(sys.argv[3].split(','))
 j = json.load(open(src))

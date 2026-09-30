@@ -1152,6 +1152,12 @@ Depuis, en local (non publié) :
     immobile ; clic : le suivant). Vérifié par deux morts via `encaisser` (instance à 2 vies) ;
   - les parapets du toit des galeries (1,05 m) se sautent : collision arrêtée à leur hauteur
     (banc `sauts.mjs` : 30 → 24, le reste voulu).
+  - **on saute à cheval** (engine.js : le saut n'exclut plus `G.monte` ; la roulade si). Le
+    cheval suit la hauteur de la cavalière (tickChevaux). `cheval.glb` et `cheval_blanc.glb`
+    refaits avec `Gallop_Jump` (`glb.py`, +120 Ko chacun) : joué une fois au décollage, accéléré
+    ×1,9 (1,47 s de clip pour 0,75 s en l'air) ; pour le cheval d'un autre, « en l'air » se lit à
+    sa hauteur au-dessus du sol. Clip vu en rendu isolé ; *pas encore vu en partie*. Le clip
+    soulève un peu le corps : à juger en jeu (double hauteur ?).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
