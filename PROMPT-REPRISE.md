@@ -1215,6 +1215,13 @@ proximité, tloc-multi.js `coupsFleche`).
 - **Mémoire, 1er octobre** : les grands lots (`regrouperLots`) rendent leurs tableaux après
   l'envoi à la carte — tas JS 780 → 582 Mo, rayons du ciel et image inchangés. Détail et
   mesures : `PLAN-2026-10-01.md`, § 3.
+- **Prologue, pas 1 (1er octobre)** : Lydéric sur le pont de la Porte Royale, la botte de
+  blé, le serment (`quetes.js`) — `docs/DECOUPAGE-PROLOGUE.md` dit ce qui est fait et la
+  suite. Ce qu'Eugène doit fournir pour toute l'histoire : `docs/BESOINS-HISTOIRE.md`.
+  *À regarder* : de part et d'autre du pont, des touffes de roseaux semblent posées sur
+  l'eau des douves (visibles sur `docs/planches/prologue-v2.jpg`) — pas touché.
+  *Banc* : dans Playwright, `keyboard.press('z')` ou `'w'` ne fait pas marcher Camille ;
+  on la déplace par `TLOC.player.pos`.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

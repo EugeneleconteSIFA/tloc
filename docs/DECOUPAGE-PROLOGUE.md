@@ -2,14 +2,14 @@
 
 Le prologue de `STORY.md` (la fête des géants, § 2), plan par plan, calé sur les vrais lieux
 de la carte. Les répliques viennent de `DIALOGUES-ACTE1.md` (étapes `fete`, `ble`,
-`grille`) ; celles qui manquaient sont marquées **nouveau**. **Rien n'est codé** : ce
-document attend la validation d'Eugène.
+`grille`) ; celles qui manquaient sont marquées **nouveau**. Décisions prises par Eugène le
+1er octobre ; le **pas 1** de la fabrication est codé (voir plus bas), le reste attend.
 
 Planche des cadrages, rendue dans le jeu : `docs/planches/prologue-v1.png`. Elle montre le
 décor tel qu'il est aujourd'hui : ni foule, ni cortège, ni Lydéric au bon endroit, ni
 Phinaert. Elle sert à valider les LIEUX et les ANGLES, pas la mise en scène.
 
-## Trois décisions à prendre d'abord
+## Trois décisions — **prises par Eugène le 1er octobre**
 
 1. **Le pont de Fin, c'est le pont de la Porte Royale.** Aujourd'hui Lydéric attend dans
    un pré boisé, au bout du pont (-11 ; 400) : les arbres bouchent tous les plans (planche
@@ -24,6 +24,7 @@ Phinaert. Elle sert à valider les LIEUX et les ANGLES, pas la mise en scène.
    chargement (règle 8). Proposition : 20 à 30 passants tirés des personnages existants,
    en instances, rangés le long du cortège et du pont — mesurés au banc avant d'aller plus
    loin. Après l'enlèvement, ils rentrent chez eux (volets fermés : `STORY.md`, Acte I).
+   **Validé par Eugène (1er octobre)** : 20 à 30 passants, mesurés au banc.
 
 ## Le découpage
 
@@ -54,6 +55,15 @@ Durée visée : 4 minutes, dont 2 de jeu (se déplacer, la carte, l'épée) et 2
 
 1. **Déplacer Lydéric sur le pont** et y rejouer le prologue actuel (le gâteau devient la
    botte de blé) — le plus petit pas qui rend la planche vraie. Vérifier en rendu.
+   **Fait le 1er octobre** (`quetes.js`), planche `docs/planches/prologue-v2.jpg`. Lydéric
+   sur le tablier (-1,2 ; 251,8), face à la plaine, la Porte Royale dans le dos ; Houtland
+   (en voix : son personnage n'existe pas encore) envoie Camille au moulin ; Émile l'envoie
+   au champ du nord et lui prête l'épée de son grand-père (le mage la donnera quand il
+   descendra au bourg, plan 3) ; la botte (les épis du champ même, liés de paille) se porte
+   à pied jusqu'au pont, le point d'or sur Lydéric ; serment mot pour mot, puis Phinaert
+   (« Le sang de Lydéric… ») et la herse comme avant. Le chemin « Passer » se joue aussi sur
+   le pont. Vérifié en headless : tout le prologue et le chemin court, sans erreur, une
+   capture par plan.
 2. **La botte de blé** (un objet porté, puis posé) et **le morceau de cloche** (un objet
    ramassé, qui reste dans la poche : il servira à l'acte VI).
 3. **Phinaert qui arrive, et la grille qui tombe** : Phinaert existe (donjon), la herse existe

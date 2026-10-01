@@ -18,6 +18,10 @@ import * as PNJ from './pnj.js';
 import * as BOURSE from './bourse.js';
 import { FAUCHE_DEBUG, bleFauche } from './nature.js';
 
+// la place de Lydéric sur le pont : 78 m devant la Porte Royale, au tiers du tablier, là où
+// les plans du découpage (docs/DECOUPAGE-PROLOGUE.md, plans 8 à 10) prennent la porte en fond
+const LYD_X = -1.2, LYD_Z = APO + 78;
+
 export function populate() {
   const fosseAngles = [0.3, 1.4, 2.4, 3.6, 4.6, 5.5];
   fosseAngles.forEach((a, i) => {
@@ -77,16 +81,21 @@ export function populate() {
   // APO + MOAT_OUT ne donne PAS le bout du pont : MOAT_OUT est une distance au polygone,
   // et plein sud le fossé s'étend bien au-delà. Lydéric et Camille se retrouvaient donc
   // au milieu de l'eau. On part du bout du pont, mesuré par carte.js.
-  const LYD_Z = PONT_Z1 + 16;
-  PARTAGE.lyderic = geant('lyderic', 0x2b4fa8, 0xe0b64a, 'sword'); PARTAGE.lyderic.position.set(-11, 0, LYD_Z); PARTAGE.lyderic.rotation.y = Math.PI / 2 + 0.3;
-  scene.add(PARTAGE.lyderic); addCap(-11, LYD_Z, -11, LYD_Z, 2.2); PARTAGE.lyderic.userData.talkCd = 0;
-  addInteract({ pos: PARTAGE.lyderic.position, r: 5.5, prompt: () => 'parler à Lydéric', fn: talkLyderic });
+  // LE PONT DE FIN, C'EST LE PONT DE LA PORTE ROYALE (Eugène, 1er octobre — découpage du
+  // prologue). Au bout du pont, dans le pré, les arbres bouchaient tous les plans ; sur le
+  // tablier, la Porte Royale est dans le dos de Lydéric, et c'est par elle que Phinaert
+  // s'enfuit. Le tablier n'a que 5 m utiles (parapets à ±3 m) : Lydéric se tient à gauche de
+  // l'axe, face à la plaine, et sa capsule ne prend que ses pieds — on passe à côté de lui.
+  PARTAGE.lyderic = geant('lyderic', 0x2b4fa8, 0xe0b64a, 'sword'); PARTAGE.lyderic.position.set(LYD_X, getH(LYD_X, LYD_Z), LYD_Z); PARTAGE.lyderic.rotation.y = 0;
+  scene.add(PARTAGE.lyderic); addCap(LYD_X, LYD_Z, LYD_X, LYD_Z, 1.2); PARTAGE.lyderic.userData.talkCd = 0;
+  // 7 m : un géant de 7,6 m se parle de plus loin qu'un villageois, et Camille se relève à 6,5 m de lui
+  addInteract({ pos: PARTAGE.lyderic.position, r: 7, prompt: () => 'parler à Lydéric', fn: talkLyderic });
   // le PARTAGE.prince Eugène : présent au pont pour l'intro, puis aux côtés de Camille une fois libéré
   // riggé comme les villageois (la version en primitives ne sert plus que de repli), et à
   // la même échelle qu'eux : l'ancien prince, jamais réduit, dépassait Camille d'une tête
   PARTAGE.prince = PNJ.buildRole('prince') || makePrince(); PARTAGE.prince.scale.setScalar(G.echelle);
-  PARTAGE.prince.position.set(4, 0, LYD_Z - 5); PARTAGE.prince.rotation.y = -1.2; PARTAGE.prince.visible = false; scene.add(PARTAGE.prince);
-  player.pos.set(0, 0, LYD_Z + 4); player.yaw = Math.PI; G.camYaw = Math.PI;
+  PARTAGE.prince.position.set(1.5, 0, LYD_Z + 2); PARTAGE.prince.rotation.y = Math.PI; PARTAGE.prince.visible = false; scene.add(PARTAGE.prince);
+  player.pos.set(1, 0, LYD_Z + 9); player.yaw = Math.PI; G.camYaw = Math.PI;
   player.speed = 11.5;   // la citadelle fait 700 m de large : à 7,2 m/s on la traversait en deux minutes
 }
 
@@ -165,10 +174,16 @@ export function inWater(x, z, y) { return sdEau(x, z) < -1.5 && eauVisible(x, z)
 export function update(dt) {
   const p = player;
   if (PRO.etape) suivrePrologue();
-  if (PRO.gateau && !p.pose) {
-    // porté à deux mains devant elle ; tendu vers Lydéric quand elle le lui offre
-    const av = PRO.tend ? 0.75 : 0.45, e = G.echelle;
-    PRO.gateau.position.set(p.pos.x + Math.sin(p.yaw) * av, p.pos.y + (PRO.tend ? 1.2 : 1.0) * e / 0.6, p.pos.z + Math.cos(p.yaw) * av);
+  if (PRO.botte && !PRO.posee && !p.pose) {
+    // portée couchée dans les bras, en travers ; tendue debout vers Lydéric quand elle la lui offre
+    const b = PRO.botte, e = G.echelle / 0.6, av = PRO.tend ? 0.75 : 0.42;
+    if (PRO.tend) { b.rotation.set(0, p.yaw, 0); b.position.set(p.pos.x + Math.sin(p.yaw) * av, p.pos.y + 0.55 * e, p.pos.z + Math.cos(p.yaw) * av); }
+    else {
+      b.rotation.set(0, p.yaw + Math.PI / 2, 1.35);
+      // le lien au creux des bras : on recule l'origine (le pied) le long de la gerbe
+      const ax = new THREE.Vector3(0, 1, 0).applyEuler(b.rotation);
+      b.position.set(p.pos.x + Math.sin(p.yaw) * av - ax.x * LIEN_H, p.pos.y + 0.95 * e - ax.y * LIEN_H, p.pos.z + Math.cos(p.yaw) * av - ax.z * LIEN_H);
+    }
   }
   // ambiance : pépiements d'oiseaux et bruits de pas
   chirpT -= dt; if (chirpT <= 0) { chirpT = rand(2, 7); if (Math.random() < 0.8) SFX.chirp(); }
@@ -230,19 +245,20 @@ export function talkLyderic() {
   else lines = [L(`« Encore ${alive} monstres à vaincre : remparts, bastions… et l'arc du bastion de Turenne pour les fossés. Ta maison est à l'ouest si tu veux dormir. Appuie sur J pour ton journal. »`)];
   dialogue(lines, () => { if (state.metLyderic) saveGame(true); });
 }
-// ---------- le prologue : « Le gâteau de Lydéric » ----------
-// Deux à trois minutes qui apprennent à jouer en racontant : Camille, élève de l'école de
-// cuisine Lequeuche, prépare en secret avec Eugène le gâteau d'anniversaire de Lydéric.
-// Il manque la farine : on court au moulin d'Émile (se déplacer, suivre le point d'or de
-// la minicarte), on fauche une gerbe (l'épée), et au pont, au moment où Camille tend le
-// gâteau, Phinaert surgit — l'intro de toujours s'enchaîne. Rien n'est sauvegardé avant
-// la fin de l'enlèvement : quitter en route, c'est reprendre le prologue au début.
+// ---------- le prologue : « La fête des géants » ----------
+// Le prologue de STORY.md (§ 2), d'après le découpage validé par Eugène le 1er octobre
+// (docs/DECOUPAGE-PROLOGUE.md). Premier pas : les LIEUX et le fil. Le sergent Houtland envoie
+// Camille couper la première botte de l'année au moulin d'Émile (se déplacer, la carte), elle
+// la fauche (l'épée), la porte elle-même jusqu'au pont de Fin (le point d'or), et au serment
+// Phinaert surgit de la Porte Royale. Pas encore là : le mage, la cloche qui se fend, Lydéric
+// d'osier, la foule — les pas suivants du découpage. Rien n'est sauvegardé avant la fin de
+// l'enlèvement : quitter en route, c'est reprendre le prologue au début.
 // Réglages d'avancement : pas dans state, qui part dans la sauvegarde (saveGame).
 const PRO = {
-  etape: null,              // 'moulin' → 'fauche' → null
-  bleDepart: 0, cages: [], emileAvant: null, gateau: null,
-  objectif: () => PRO.etape === 'moulin' ? "Cours au moulin d'Émile chercher de la farine (le point d'or de la carte)"
-    : PRO.etape === 'fin' ? 'Porte le gâteau à Lydéric' : "Fauche le blé du champ d'Émile (clic gauche ou F)",
+  etape: null,              // 'moulin' → 'fauche' → 'pont' → null
+  bleDepart: 0, cages: [], emileAvant: null, botte: null, tend: false, posee: false,
+  objectif: () => PRO.etape === 'moulin' ? "Cours au moulin d'Émile, au nord-est du bourg (le point d'or de la carte)"
+    : PRO.etape === 'pont' || PRO.etape === 'botte' || PRO.etape === 'serment' ? 'Porte la botte à Lydéric, au pont de Fin (le point d’or)' : "Coupe le blé du champ du nord, chez Émile (clic gauche ou F)",
 };
 const GERBE = 18;           // épis à faucher : trois ou quatre coups d'épée dans le blé
 
@@ -250,36 +266,44 @@ const GERBE = 18;           // épis à faucher : trois ou quatre coups d'épée
 // Rejoué depuis l'accueil (G.sansSauvegarde), il part directement.
 export function debut() {
   if (G.sansSauvegarde) { prologue(); return; }
-  showMenu('PROLOGUE', 'Le gâteau de Lydéric',
-    'Trois minutes pour apprendre à jouer, avant que l’aventure commence.', [
+  showMenu('PROLOGUE', 'La fête des géants',
+    'Quatre minutes pour apprendre à jouer, avant que l’aventure commence.', [
       { label: 'Jouer le prologue', fn: () => { hideMenu(); prologue(); } },
       { label: 'Passer', fn: () => { hideMenu(); introScene(); } },
     ]);
 }
 
-// le gâteau : trois étages de crème, des fraises, des bougies — et il ne survivra pas
-function faireGateau() {
-  const g = new THREE.Group();
-  // le glaçage et le biscuit : le RELIEF et la rugosité de matières photographiées, sans
-  // leur couleur — une crème unie faisait plastique, et les fissures de la chaux, crasse
-  const sansDessin = (m, c) => { m.map = null; m.color.setHex(c); m.needsUpdate = true; return m; };
-  const creme = sansDessin(phMat('chaux_craquelee', 0.3, 0.3, { roughness: 0.55 }), 0xfff3e0);
-  const biscuit = sansDessin(phMat('terre_battue', 0.3, 0.3), 0xc98f4e);
-  const fraise = new THREE.MeshStandardMaterial({ color: 0xc81e2a, roughness: 0.35 });
-  const cire = new THREE.MeshStandardMaterial({ color: 0xfff4e0, roughness: 0.6 });
-  const flamme = new THREE.MeshBasicMaterial({ color: 0xffc040 });
-  const plat = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 20), new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.7, roughness: 0.3 }));
-  g.add(plat);
-  let y = 0.015;
-  for (const [r, h] of [[0.28, 0.12], [0.2, 0.1], [0.13, 0.09]]) {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), [creme, creme, creme]); t.position.y = y + h / 2; g.add(t);
-    const bande = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.004, r + 0.004, h * 0.3, 20, 1, true), biscuit); bande.position.y = y + h * 0.45; g.add(bande);
-    for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; const f = new THREE.Mesh(new THREE.SphereGeometry(0.026, 7, 5), fraise); f.position.set(Math.cos(a) * (r - 0.03), y + h + 0.012, Math.sin(a) * (r - 0.03)); g.add(f); }
-    y += h;
+// le champ du nord d'Émile (« Coupe les épis du champ du nord ») : celui des quatre qui est le
+// plus au nord du moulin — l'ordre de CHAMPS (carte.js) ne le dit pas, la position si
+function champDuNord() {
+  let n = null; for (const ch of FAUCHE_DEBUG.CHAMPS_BLE) if (!n || ch.cz < n.cz) n = ch;
+  return n;
+}
+
+// La botte : des épis du champ d'Émile — le même maillage et la même matière que le blé
+// qu'on vient de couper, pas un objet peint à part — serrés en gerbe et liés de paille
+// tordue. Chaque épi part d'un côté du lien et passe de l'autre : la gerbe est pincée au
+// lien, évasée aux pieds et aux épis, comme une vraie. L'origine est au pied.
+const LIEN_H = 0.34;
+function faireBotte() {
+  const g = new THREE.Group(), ch = FAUCHE_DEBUG.CHAMPS_BLE[0];
+  const geo = ch ? ch.im.geometry : (() => { const a = new THREE.PlaneGeometry(0.42, 1.15); a.translate(0, 0.575, 0); return a; })();
+  const N = 28, epis = new THREE.InstancedMesh(geo, ch ? ch.im.material : phMat('withered_grass', 0.4, 1), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(0, 0, 0, 'YXZ'), p = new THREE.Vector3(), s = new THREE.Vector3(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    const phi = i * 2.39996, r = 0.025 + 0.05 * Math.sqrt((i + 0.5) / N);        // en tournesol : la gerbe est pleine
+    const pench = Math.atan2(r, LIEN_H);                                           // croise l'axe au lien
+    p.set(-Math.sin(phi) * r, 0, -Math.cos(phi) * r);
+    q.setFromEuler(e.set(pench, phi, rand(-0.05, 0.05)));
+    const k = rand(0.68, 0.8); s.set(k * 0.5, k, k * 0.5);
+    epis.setMatrixAt(i, m.compose(p, q, s));
+    epis.setColorAt(i, c.setHSL(0.115 + rand(-0.02, 0.02), rand(0.3, 0.45), rand(0.52, 0.64)));
   }
-  for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; const c = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.07, 5), cire); c.position.set(Math.cos(a) * 0.07, y + 0.035, Math.sin(a) * 0.07); g.add(c);
-    const fl = new THREE.Mesh(new THREE.SphereGeometry(0.011, 5, 4), flamme); fl.scale.y = 1.8; fl.position.set(c.position.x, y + 0.085, c.position.z); g.add(fl); }
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  epis.castShadow = true; g.add(epis);
+  const lien = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.016, 6, 16), phMat('withered_grass', 0.15, 0.15, { color: 0xb8975a }));
+  lien.rotation.x = Math.PI / 2; lien.position.y = LIEN_H; lien.castShadow = true; g.add(lien);
+  g.rotation.order = 'YXZ';
+  g.traverse((o) => { o.userData.dynamic = true; });
   return g;
 }
 
@@ -297,8 +321,8 @@ function prologue() {
   // les monstres ne sont pas encore là : Phinaert ne les lâche qu'avec l'enlèvement
   PRO.cages = enemies.filter((e) => !e.dead && !e.k.boss && !e.caged); for (const e of PRO.cages) e.caged = true;
   player.pos.set(E_.x, getH(E_.x, E_.z) + 0.1, E_.z); player.yaw = E_.yaw; G.camYaw = E_.yaw;
-  eu.visible = true; eu.position.set(E_.eugene[0], getH(E_.eugene[0], E_.eugene[1]), E_.eugene[1]);
-  eu.rotation.y = Math.atan2(E_.x - eu.position.x, E_.z - eu.position.z);
+  // Eugène n'est pas à la salle de la garde : il attend au pont, la corde de la cloche en tête
+  eu.visible = false;
   // Émile attend à son moulin, face au bourg d'où arrive Camille
   const em = PARTAGE.emile;
   if (em) { PRO.emileAvant = [em.position.x, em.position.y, em.position.z, em.rotation.y];
@@ -308,101 +332,106 @@ function prologue() {
   const vx = E_.x - Math.sin(E_.yaw) * 5, vz = E_.z - Math.cos(E_.yaw) * 5;
   G.fade = 1; G.fadeTarget = 1; document.getElementById('fade').style.opacity = 1;
   cutscene([
-    { cam: [vx + 30, cy + 26, vz + 30], at: [E_.x, cy + 4, E_.z], cam2: [vx + 8, cy + 7, vz + 8], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — Le gâteau de Lydéric', skippable: false },
-    { cam: [vx, cy + 3.2, vz], at: E_.enseigne, cam2: [vx + 0.6, cy + 2.2, vz + 0.6], at2: [cx, cy + 1.3, cz], dur: 6, text: 'Au bourg, à l’école de cuisine Lequeuche, Camille et son ami Eugène préparent une surprise.' },
-    { say: '« Chut ! Demain, c’est l’anniversaire de Lydéric, et il ne se doute de rien. Un gâteau pour un géant, ça demande de la farine… »', who: 'Eugène' },
-    { say: '« …et le sac est vide ! Cours au moulin d’Émile, de l’autre côté des champs. Je te l’ai marqué d’un point d’or, sur la carte en haut à droite. »', who: 'Eugène' },
+    { cam: [vx + 30, cy + 26, vz + 30], at: [E_.x, cy + 4, E_.z], cam2: [vx + 8, cy + 7, vz + 8], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — La fête des géants', skippable: false },
+    { cam: [vx, cy + 3.2, vz], at: E_.enseigne, cam2: [vx + 0.6, cy + 2.2, vz + 0.6], at2: [cx, cy + 1.3, cz], dur: 6, text: 'Lille est en fête : à midi, Lydéric le géant sort sur le pont de Fin. À la salle de la garde, le sergent Houtland cherche son apprentie.' },
+    { say: '« Camille ! Lydéric sort à midi, et la garde n’a pas son blé. C’est l’apprentie qui coupe la première botte de l’année, c’est la règle. File au moulin d’Émile, au nord-est du bourg. »', who: 'Houtland' },
+    { say: '« Tu ne sais plus où est le moulin ? La carte du beffroi (M). Une apprentie de la garde qui se perd dans son propre bourg, on aura tout vu. »', who: 'Houtland' },
+    { say: '« Et ce soir, tu prêteras serment. Ça ne se reprend pas, un serment de la garde. Réfléchis-y en coupant ton blé. »', who: 'Houtland' },
   ], () => {
     PRO.etape = 'moulin'; PARTAGE.repere = { x: FERME.x, z: FERME.z };
-    player.yaw = G.camYaw = Math.atan2(FERME.x - player.pos.x, FERME.z - player.pos.z);   // dos à l'école, face au chemin
+    player.yaw = G.camYaw = Math.atan2(FERME.x - player.pos.x, FERME.z - player.pos.z);   // dos à la salle, face au chemin
     showMessage('Suis le point d’or de la carte jusqu’au moulin d’Émile. Les touches sont rappelées à droite ; Espace pour sauter.', 7);
   });
 }
 
 // l'avancement du prologue, appelé par update() tant qu'il dure
 function suivrePrologue() {
-  const p = player, em = PARTAGE.emile;
+  const p = player, em = PARTAGE.emile, lyd = PARTAGE.lyderic;
   if (cut.active) return;
   if (PRO.etape === 'moulin' && em && Math.hypot(em.position.x - p.pos.x, em.position.z - p.pos.z) < 5) {
     PRO.etape = 'fauche-dialogue'; em.rotation.y = Math.atan2(p.pos.x - em.position.x, p.pos.z - em.position.z);
-    const ch = FAUCHE_DEBUG.CHAMPS_BLE[0];
+    const ch = champDuNord();
     // par-dessus l'épaule de Camille, Émile de face
     const dx = em.position.x - p.pos.x, dz = em.position.z - p.pos.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
     const y = p.pos.y, cam = [p.pos.x - ux * 2.6 + uz * 1.2, y + 2.1, p.pos.z - uz * 2.6 - ux * 1.2], at = [em.position.x, em.position.y + 1.4, em.position.z];
     cutscene([
-      { who: 'Émile', say: '« Camille ! De la farine, pour un gâteau ? Mon grenier est vide depuis hier… »', cam, at },
-      { who: 'Émile', say: '« Fauche-moi une belle gerbe de blé, dans mon champ, et je te la mouds tout de suite. »' },
-      { who: 'Émile', say: '« Tiens, prends la vieille épée de mon grand-père, un soldat de Vauban : elle coupe encore très bien le blé. »', fn: () => { state.sword = true; SFX.pickup(); } },
+      { who: 'Émile', say: '« La première botte de l’année ! Coupe les épis du champ du nord, une dizaine suffit. Tiens la lame à plat. »', cam, at },
+      // l'épée d'apprentie viendra du vieux mage (découpage, plan 3) quand il descendra au
+      // bourg ; d'ici là, c'est Émile qui la prête — Lydéric s'en souvient (talkLyderic)
+      { who: 'Émile', say: '« Pas de lame ? Prends la vieille épée de mon grand-père, un soldat de Vauban. Et ne coupe rien d’autre que du blé. »', fn: () => { state.sword = true; SFX.pickup(); } },
     ], () => {
       PRO.etape = 'fauche'; PRO.bleDepart = bleFauche;
       PARTAGE.repere = ch ? { x: ch.cx, z: ch.cz } : null;
-      showMessage('Clic gauche (ou F) pour frapper : fauche le blé du champ d’Émile.', 6);
+      showMessage('Clic gauche (ou F) pour frapper : coupe le blé du champ du nord.', 6);
     });
   } else if (PRO.etape === 'fauche' && bleFauche - PRO.bleDepart >= GERBE) {
-    PRO.etape = 'fin'; PARTAGE.repere = null;
+    PRO.etape = 'botte'; PARTAGE.repere = null;
     dialogue([
-      { who: 'Émile', text: '« Voilà une belle gerbe ! Donne, je la passe sous la meule… »' },
-      { who: 'Émile', text: '« …et voici ta farine. Bon anniversaire à Lydéric, et garde l’épée : on ne sait jamais, avec ce Phinaert qui rôde. »' },
-    ], () => introScene(true));
+      { who: 'Émile', text: '« La plus belle depuis des années. Au pont de Fin, et que Lydéric la voie de loin. »', fn: () => { PRO.botte = faireBotte(); scene.add(PRO.botte); SFX.pickup(); } },
+    ], () => {
+      PRO.etape = 'pont'; PARTAGE.repere = { x: LYD_X, z: LYD_Z };
+      showMessage('Porte la botte à Lydéric : le pont de Fin, devant la Porte Royale (le point d’or).', 7);
+    });
+  } else if (PRO.etape === 'pont' && lyd && Math.hypot(lyd.position.x - p.pos.x, lyd.position.z - p.pos.z) < 11) {
+    PRO.etape = 'serment'; PARTAGE.repere = null;
+    introScene(true);
   }
 }
 
 // ---------- situation initiale : la cinématique d'introduction ----------
-// gateau : on vient du prologue. Au pont, Camille et Eugène tendent le gâteau à Lydéric
-// quand Phinaert surgit ; sans prologue, Eugène vient saluer Camille, comme avant.
-export function introScene(gateau = false) {
-  const bz = PONT_Z1 + 6; // pied du pont, côté plaine (et non 33 m après la porte : le pont fait 206 m)
-  const villain = geant('phinaert', 0x7a1f1f, 0x333333, 'club'); villain.position.set(0, 0, APO - 12); villain.rotation.y = 0; villain.userData.dynamic = true; villain.visible = false; scene.add(villain);
-  PARTAGE.prince.visible = true; PARTAGE.prince.position.set(2.5, 0, bz); PARTAGE.prince.rotation.y = -1.9;
-  player.pos.set(-0.5, 0, bz + 1.5); player.yaw = 2.0; G.camYaw = Math.PI;
-  const lyd = PARTAGE.lyderic;
-  if (gateau) {
-    // Lydéric tout près, face à eux ; le gâteau dans les mains de Camille (update le porte)
-    lyd.position.set(-6.5, 0, bz + 4.5); lyd.rotation.y = Math.atan2(-0.5 - -6.5, bz + 1.5 - (bz + 4.5));
-    player.yaw = Math.atan2(-6.5 - -0.5, bz + 4.5 - (bz + 1.5)); G.camYaw = player.yaw;
-    PARTAGE.prince.position.set(-1.2, 0, bz + 0.1); PARTAGE.prince.rotation.y = player.yaw;   // côte à côte, face au géant
-    PRO.gateau = faireGateau(); scene.add(PRO.gateau);
-  } else { lyd.position.set(-30, 0, APO + 50); lyd.rotation.y = 1.2; }
+// serment : on vient du prologue. Sur le pont de Fin, Camille offre la botte à Lydéric et
+// prête serment ; Phinaert surgit de la Porte Royale. Sans prologue, Eugène vient saluer
+// Camille, comme avant. Tout se joue autour de la place de Lydéric (LYD_X, LYD_Z), la Porte
+// Royale au fond : Camille arrive de la plaine (z croissant), face au nord.
+export function introScene(serment = false) {
+  const lx = LYD_X, lz = LYD_Z, hy = getH(0, lz);
+  const villain = geant('phinaert', 0x7a1f1f, 0x333333, 'club'); villain.position.set(0, hy, APO - 12); villain.rotation.y = 0; villain.userData.dynamic = true; villain.visible = false; scene.add(villain);
+  const lyd = PARTAGE.lyderic, eu = PARTAGE.prince;
+  lyd.position.set(lx, getH(lx, lz), lz); lyd.rotation.y = 0;
+  // Camille à 5 m devant Lydéric, Eugène à sa droite ; tous deux face au géant
+  const cx = 0.6, cz = lz + 5;
+  player.pos.set(cx, hy, cz); player.yaw = Math.atan2(lx - cx, lz - cz); G.camYaw = player.yaw + Math.PI;
+  eu.visible = true; eu.position.set(2.1, hy, lz + 3.6); eu.rotation.y = Math.atan2(lx - 2.1, lz - (lz + 3.6));
   G.fade = 1; G.fadeTarget = 1; document.getElementById('fade').style.opacity = 1;
-  const ouverture = gateau ? [
-    // Lydéric mesure 7,5 m : les plans le prennent en entier, ou en contre-plongée
-    { cam: [9, 6, bz + 14], at: [-3.5, 3.5, bz + 2.5], cam2: [6, 4.5, bz + 11], at2: [-3.5, 3.2, bz + 2.5], dur: 5, fade: 0, text: 'Le lendemain, au pied du pont. Lydéric regarde passer les nuages : il ne se doute de rien.' },
-    { say: '« Joyeux anniversaire, Lydéric ! »', who: 'Eugène', cam: [-4.4, 2, bz + 2.6], at: [-0.85, 1.3, bz + 0.8] },
-    { say: '« Pour moi ? Un gâteau… Vous êtes fous, tous les deux ! Personne n’y avait pensé depuis des années. »', who: 'Lydéric', cam: [2.2, 1.6, bz - 0.8], at: [-6.5, 6.2, bz + 4.5] },
-    { say: '« Émile a moulu la farine, et c’est moi qui ai fauché le blé ! Tiens, souffle les bougies… »', who: 'Camille', cam: [0.5, 3.4, bz + 11], at: [-3.5, 3.2, bz + 3], fn: () => { PRO.tend = true; } },
+  // la botte posée aux pieds de Lydéric
+  const poser = () => { const b = PRO.botte; if (!b) return; PRO.tend = false; PRO.posee = true;
+    b.position.set(lx + 0.9, hy, lz + 2.2); b.rotation.set(0, 0.4, 0); SFX.pickup(); };
+  const ouverture = serment ? [
+    // Lydéric mesure 7,6 m : les plans le prennent en entier, ou en contre-plongée (découpage, plans 8 à 10)
+    { cam: [16, 8, lz + 88], at: [0, 6, lz - 42], cam2: [10, 6, lz + 40], at2: [0, 5, lz - 20], dur: 5, fade: 0, text: 'Le pont de Fin. Lydéric attend la première botte de l’année, la Porte Royale dans le dos.' },
+    { say: '« Quand tu auras prêté serment, je sonne la Grande Cloche. Désiré m’a laissé la corde, pour la première fois ! »', who: 'Eugène', cam: [2.8, 1.8, lz + 0.8], at: [1.3, 1.4, lz + 4.6] },   // entre eux et le géant : leurs visages, la plaine au fond
+    { say: '« Camille, de la garde. La première botte de l’année… Comme au temps de l’ermite. »', who: 'Lydéric', cam: [4, 2.3, lz + 16], at: [lx, 4, lz], fn: () => { PRO.tend = true; } },
+    { say: '« Répète après moi, et n’en change pas un mot. »', who: 'Lydéric', cam: [0.5, 1.3, lz + 10], at: [lx + 0.6, 8, lz - 4], fn: poser },
+    { say: '« Ce que la garde commence… »', who: 'Lydéric' },
+    { say: '« … la garde l’achève. »', who: 'Camille', cam: [-0.6, 1.7, lz + 2.4], at: [cx, hy + 1.45, cz] },   // de face, vue d'où se tient Lydéric
+    { say: '« Tu ne pourras plus le reprendre. »', who: 'Lydéric', cam: [0.5, 1.3, lz + 10], at: [lx + 0.6, 8, lz - 4] },
   ] : [
     { cam: [90, 70, 140], at: [0, 6, 0], cam2: [40, 34, 96], at2: [0, 8, 10], dur: 7, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'La Citadelle de Lille', skippable: false },
-    { cam: [40, 34, 96], at: [0, 8, 10], cam2: [14, 12, APO + 46], at2: [0, 4, APO + 20], dur: 6, text: 'La citadelle de Vauban veille sur Lille depuis des siècles. Ses cinq bastions, ses fossés et son donjon n\'ont jamais été pris.' },
-    { cam: [6, 2.2, bz + 6], at: [1, 1.6, bz], cam2: [4, 2, bz + 4], at2: [1, 1.5, bz], dur: 5, text: 'Ce matin-là, Eugène est venu saluer son amie Camille, la jeune gardienne de la citadelle, au pied du pont.' },
-    { say: "« Camille ! Regarde ce ciel : une journée parfaite pour une promenade sur les remparts. Lydéric nous attend… »", who: 'Eugène', cam: [4, 2, bz + 4], at: [1, 1.5, bz] },
+    { cam: [40, 34, 96], at: [0, 8, 10], cam2: [16, 8, lz + 88], at2: [0, 6, lz - 42], dur: 6, text: 'La citadelle de Vauban veille sur Lille depuis des siècles. Ses cinq bastions, ses fossés et son donjon n\'ont jamais été pris.' },
+    { cam: [4, 2.2, lz + 12], at: [1.2, 1.6, lz + 4], cam2: [3.2, 2, lz + 10], at2: [1.2, 1.5, lz + 4], dur: 5, text: 'Ce matin-là, Eugène est venu saluer son amie Camille, la jeune gardienne de la citadelle, sur le pont de Fin.' },
+    { say: "« Camille ! Regarde ce ciel : une journée parfaite pour une promenade sur les remparts. Lydéric nous attend… »", who: 'Eugène', cam: [3.2, 2, lz + 10], at: [1.2, 1.5, lz + 4] },
   ];
-  // le gâteau tombe avec Camille : il s'écrase au sol, et n'en bougera plus
-  const ecraser = () => { const g = PRO.gateau; if (!g) return; PRO.gateau = null; PRO.tend = false;
-    g.position.set(-1.6, 0.02, bz + 2.6); g.rotation.set(0.25, 0.4, 0.1); g.scale.set(1.25, 0.35, 1.25);
-    burst(-1.6, 0.3, bz + 2.6, 0xf6ead0, 26, 3, 0.7, 4, 1.1); burst(-1.6, 0.3, bz + 2.6, 0xc81e2a, 10, 2.5, 0.6, 4, 1); };
+  // la botte tombe avec Camille : renversée sur le tablier, les épis éparpillés
+  const renverser = () => { const b = PRO.botte; if (!b) return; PRO.botte = null; PRO.tend = false; PRO.posee = false;
+    b.position.set(lx + 1.3, hy + 0.06, lz + 2.6); b.rotation.set(0, 0.9, 1.45);
+    burst(lx + 1.3, hy + 0.3, lz + 2.6, 0xd8b860, 26, 3, 0.7, 4, 1.1); };
   cutscene([
     ...ouverture,
-    { cam: [-8, 3, bz - 6], at: [0, 4, APO + 4], cam2: [-6, 4, bz - 2], at2: [0, 5, APO + 14], dur: 4.5, text: 'Soudain, la terre tremble. La herse de la Porte Royale se lève dans un fracas de chaînes…', shake: 1.2, fn: () => { SFX.roar(); villain.visible = true; }, actor: villain, to: [0, APO + 18], speed: 7 },
-    { cam: [-6, 4, bz - 2], at: [0, 5, bz - 30], cam2: [-6, 4.5, bz], at2: [0.5, 5, bz - 12], dur: 4, actor: villain, to: [1, bz - 5], speed: 9, text: 'PHINAERT, le géant brigand, fond sur le pont.', fn: () => { villain.position.set(0.5, 0, bz - 40); G.shake = 0.8; SFX.stomp(); } },
-    { say: gateau ? "« Un anniversaire ? Comme c'est touchant. Le cadeau, je le prends… pas le gâteau : le petit ! Eugène vaudra une belle rançon en or. »"
-      : "« Eugène, l'ami de la gardienne ! Tu vaudras une rançon en or… Et toi, la gardienne, ôte-toi de mon chemin ! »", who: 'Phinaert', cam: [4, 6, bz + 5], at: [0.5, 5, bz - 4] },
-    { cam: [5, 3, bz + 6], at: [0, 1.5, bz], dur: 1.6, shake: 1.5, fn: () => { SFX.stomp(); SFX.hit(); burst(player.pos.x, 1.2, player.pos.z, 0xc8b898, 20, 4, 0.8, 6, 1.2); ecraser(); player.pose = { kind: 'lie', pos: [-2.5, 0.35, bz + 3], yaw: 2.4 }; } },
-    { cam: [5, 3, bz + 6], at: [0.5, 2, bz - 2], dur: 2.5, text: gateau ? 'D\'un revers de massue, le géant envoie Camille au sol. Le gâteau s\'écrase dans la poussière.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { PARTAGE.prince.visible = false; burst(PARTAGE.prince.position.x, 2, PARTAGE.prince.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } },
-    { cam: [-9, 5, bz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, bz - 14], at2: [0, 6, APO], dur: 5, actor: villain, to: [0, APO - 2], speed: 6, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.', fn: () => { setTimeout(() => { SFX.stomp(); G.shake = 1; scene.remove(villain); }, 4200); } },
+    { cam: [2.4, 2.6, lz + 14], at: [0, 5, APO + 4], cam2: [2.8, 3.2, lz + 10], at2: [0, 6, APO + 14], dur: 4.5, text: 'Soudain, la terre tremble. La herse de la Porte Royale se lève dans un fracas de chaînes…', shake: 1.2, fn: () => { SFX.roar(); villain.visible = true; }, actor: villain, to: [0, APO + 18], speed: 7 },
+    { cam: [-6, 4, lz + 2], at: [0.5, 5, lz - 30], cam2: [-6, 4.5, lz + 4], at2: [0.5, 5, lz - 12], dur: 4, actor: villain, to: [1.8, lz - 1], speed: 9, text: 'PHINAERT, le géant brigand, fond sur le pont.', fn: () => { villain.position.set(0.5, hy, lz - 40); G.shake = 0.8; SFX.stomp(); } },
+    { say: serment ? '« Le sang de Lydéric… »'
+      : "« Eugène, l'ami de la gardienne ! Tu vaudras une rançon en or… Et toi, la gardienne, ôte-toi de mon chemin ! »", who: 'Phinaert', cam: [4, 6, lz + 9], at: [1.8, 5, lz - 1] },
+    { cam: [5, 3, lz + 10], at: [0, 1.5, lz + 4], dur: 1.6, shake: 1.5, fn: () => { SFX.stomp(); SFX.hit(); burst(player.pos.x, hy + 1.2, player.pos.z, 0xc8b898, 20, 4, 0.8, 6, 1.2); renverser(); player.pose = { kind: 'lie', pos: [-0.6, hy + 0.35, lz + 6.5], yaw: 2.4 }; } },
+    { cam: [5, 3, lz + 10], at: [1.5, 2, lz + 2], dur: 2.5, text: serment ? 'D\'un revers de massue, le géant envoie Camille au sol. La botte roule sur les planches.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { eu.visible = false; burst(eu.position.x, hy + 2, eu.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } },
+    { cam: [-9, 5, lz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, lz - 14], at2: [0, 6, APO], dur: 5, actor: villain, to: [0, APO - 2], speed: 6, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.', fn: () => { setTimeout(() => { SFX.stomp(); G.shake = 1; scene.remove(villain); }, 4200); } },
     { fade: 1, dur: 2, skippable: false },
-    ...(gateau ? [
-      { cam: [-4, 2.2, bz + 7], at: [-2.5, 0.8, bz + 3], cam2: [-3, 2.5, bz + 6], at2: [-2.5, 1.2, bz + 3], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…' },
-      { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [3, 3.4, bz + 13], at: [-4.5, 3.4, bz + 3.5],
-        fn: () => { player.pose = null; player.pos.set(-2.5, 0, bz + 3); player.yaw = Math.atan2(-6.5 - -2.5, 1.5); } },
-    ] : [
-      { cam: [-4, 2.2, bz + 7], at: [-2.5, 0.8, bz + 3], cam2: [-3, 2.5, bz + 6], at2: [-2.5, 1.2, bz + 3], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…', actor: lyd, to: [-9, APO + 38], speed: 4 },
-      { cam: [-4, 3, bz + 8], at: [-4, 3, bz - 1], dur: 3, text: 'Lydéric, le bon géant, accourt de la plaine.', fn: () => { player.pose = null; player.pos.set(-2.5, 0, bz + 3); player.yaw = -0.8; } },
-      { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [-4, 3, bz + 8], at: [-6, 3, bz + 2] },
-    ]),
+    { cam: [-3, 2.2, lz + 11], at: [-0.6, 0.8, lz + 6.5], cam2: [-2.4, 2.5, lz + 10], at2: [-0.6, 1.2, lz + 6.5], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…' },
+    { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz],
+      fn: () => { player.pose = null; player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5); } },
   ], () => {
-    if (gateau) finPrologue();
+    if (serment) finPrologue();
     if (G.sansSauvegarde) return;                   // rejoué depuis l'accueil : finPrologue a pris la main
-    state.introSeen = true; if (!gateau) lyd.position.set(-9, 0, APO + 38); lyd.userData.walkTo = null;
+    state.introSeen = true; lyd.userData.walkTo = null;
     G.camYaw = Math.atan2(player.pos.x - lyd.position.x, player.pos.z - lyd.position.z) + Math.PI; saveGame(true); showMessage('Va parler à Lydéric (Entrée). Journal : J.', 6);
   });
 }
@@ -413,7 +442,7 @@ function finPrologue() {
   const em = PARTAGE.emile, a = PRO.emileAvant;
   if (em && a) { em.position.set(a[0], a[1], a[2]); em.rotation.y = a[3]; }
   PRO.etape = null; PARTAGE.repere = null; state.prologueFait = true;
-  if (G.sansSauvegarde) showMenu('FIN DU PROLOGUE', 'Le gâteau de Lydéric', 'Eugène est enlevé. La suite de l’histoire se joue avec ton personnage.', [
+  if (G.sansSauvegarde) showMenu('FIN DU PROLOGUE', 'La fête des géants', 'Eugène est enlevé. La suite de l’histoire se joue avec ton personnage.', [
     { label: 'Retour à l’accueil', fn: () => { naviguer('accueil.html'); } },
   ]);
 }
