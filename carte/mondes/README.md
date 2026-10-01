@@ -97,8 +97,8 @@ système parallèle » : chaque monde a sa chaîne, lisible seule).
 | fichier | rôle |
 |---|---|
 | `repere_aveyron.py` | LA projection (WGS84, échelle est-ouest à la latitude de chaque point), importée par l'extraction et le relief |
-| `extraire-aveyron.py` | OSM → `aveyron.json`, puis lance l'aperçu. Bibliothèque standard seule. Les **propositions** (ci-dessous) y sont écrites en clair, dans `PROPOSES` |
-| `apercu-aveyron.py` | `aveyron.json` → `aveyron-apercu.svg` et `.png` : le monde en haut, le lac et le bourg dessous ; les propositions en orange |
+| `extraire-aveyron.py` | OSM → `aveyron.json`, puis lance l'aperçu. Bibliothèque standard seule. Les lieux **posés à la main** (ci-dessous) y sont écrits en clair, dans `POSES` |
+| `apercu-aveyron.py` | `aveyron.json` → `aveyron-apercu.svg` et `.png` : le monde en haut, le lac et le bourg dessous ; les lieux posés à la main en orange |
 | `recolter-relief-aveyron.py` | le relief IGN (RGE ALTI), aux nœuds de la grille du jeu — lancé à la suite de celui de Lozère |
 
 `aveyron.json` (≈ 47 Ko) :
@@ -107,19 +107,20 @@ système parallèle » : chaque monde a sa chaîne, lisible seule).
 |---|---|
 | `cadres` | les deux emprises ; **un trou de 2,1 km** les sépare (le lac s'arrête à x = 1 476, le bourg commence à x = 3 620). Rien n'y est cartographié ; le relief le couvre |
 | `cadrages` | `lac` (1 104 × 1 206 m : le lac, le barrage, 250 m de rive) et `bourg` (Saint-Symphorien, 600 × 600 m autour de l'église) |
-| `lieux` | 38 points : Saint-Gervais et son église, Perpignau, Perpignou, la Jordie, Fariboules, Prat del Mas ; Saint-Symphorien, son église, la mairie, l'école, la place du Marronnier, les Cazelles, la Mauve ; croix, fontaines, monuments aux morts, cimetières, le barrage — **et 6 propositions** (`propose: true`) |
+| `lieux` | 38 points : Saint-Gervais et son église, Perpignau, Perpignou, la Jordie, Fariboules, Prat del Mas ; Saint-Symphorien, son église, la mairie, l'école, la place du Marronnier, les Cazelles, la Mauve ; croix, fontaines, monuments aux morts, cimetières, le barrage — **et 6 lieux posés à la main** (`pose: 'Eugène'`) |
 | `batiments` | 159 emprises (0,4 m) |
 | `routes`, `chemins`, `ponts` (le ponton de la baignade) | comme en Lozère |
 | `eau` | `plans` : le lac (**17,4 ha**), le bord du réservoir de Montézic (à l'ouest du barrage, découpé au cadre), une mare ; `cours` : le ruisseau des Vergnes, qui **entre par le sud-est et sort au barrage** ; `barrages` ; `baignade` (la plage surveillée, rive nord) |
 | `verdure` | bois, prés, cimetières |
 
-### Les propositions, à valider par Eugène
+### Les lieux posés à la main (validés par Eugène le 1er octobre)
 
-OSM ne connaît ni les Roquette, ni le duel, ni le Dormeur. Rien n'est posé en silence : ces
-six points portent `propose: true` et une `note` qui dit pourquoi ; ils sont **en orange sur
-l'aperçu**. Le jeu ne doit pas les tenir pour acquis.
+OSM ne connaît ni les Roquette, ni le duel, ni le Dormeur. Ces six points ont été proposés
+sur le plan, puis **validés par Eugène le 1er octobre** — « on déplacera plus tard si
+besoin ». Ils portent `pose: 'Eugène'` et une `note` qui dit pourquoi là ; ils restent **en
+orange sur l'aperçu**, pour qu'on sache toujours qu'ils ne viennent pas d'OSM.
 
-| proposition | x, z | pourquoi là |
+| lieu | x, z | pourquoi là |
 |---|---|---|
 | **Le Batut** | -135, 170 | rive ouest, dans le bois entre la route et l'eau, à 300 m du barrage : il tient le côté de la retenue — ce dont Beauregard l'accuse |
 | **Beauregard** | 400, 150 | rive est, sur la pente au-dessus du bras sud-est : il « regarde » le lac et le Batut en face |
@@ -160,7 +161,7 @@ z = sud, sans pivot.
 | `repere_pouilles.py` | les trois origines et `jeu(ville, lat, lon)` / `latlon(ville, x, z)` (WGS84) |
 | `extraire-pouilles.py` | les trois OSM → `matera.json`, `alberobello.json`, `gallipoli.json` ; `python3 extraire-pouilles.py gallipoli` pour une seule |
 | `apercu-pouilles.py` | `pouilles-apercu.svg` et `.png` : les trois villes l'une sous l'autre, **à la même échelle** (1,12 px/m) |
-| `recolter-relief-pouilles.py` | le relief Copernicus — **pas lancé**, voir plus bas |
+| `recolter-relief-pouilles.py` | le relief Copernicus, voir plus bas |
 
 | ville | origine (+) | cadre | contenu | la gare |
 |---|---|---|---|---|
@@ -182,7 +183,7 @@ z = sud, sans pivot.
 - À Alberobello, le **Rione Monti** et l'**Aia Piccola** n'existent pas comme lieux dans OSM ;
   le Rione Monti est posé à l'origine, `propose: true`.
 
-### Le relief (proposé, en attente de l'accord d'Eugène)
+### Le relief (Copernicus GLO-30, récolté le 1er octobre)
 
 L'IGN ne couvre pas l'Italie. Ce Mac lit le GeoTIFF sans rien installer : le Python
 d'anaconda (`python3`) a `tifffile`, `imagecodecs` et `numpy` (pas de GDAL). Deux sources :
@@ -200,3 +201,16 @@ maison au mètre près, TINITALY serait meilleur.
 `copernicus/` (ignoré par git), puis écrit `relief-pouilles-<ville>.json` au pas de 10 m,
 aux nœuds de la grille de chaque ville (interpolation bilinéaire, même format que la
 Lozère). Sans `--telecharger`, il ne télécharge rien et dit ce qui manque.
+
+Eugène a donné son accord le 1er octobre ; les deux tuiles sont dans `copernicus/`, et le
+résultat est le suivant :
+
+| fichier | nœuds (pas de 10 m) | altitudes |
+|---|---|---|
+| `relief-pouilles-matera.json` | 211 × 144 | 243 à 448 m — la Gravina, 200 m sous la Murgia |
+| `relief-pouilles-alberobello.json` | 210 × 143 | 376 à 446 m |
+| `relief-pouilles-gallipoli.json` | 212 × 145 | -1 à 26 m |
+
+Vérifié sur l'aperçu : à Matera, le versant sombre de la Gravina court au pied des Sassi,
+juste à l'ouest du torrent d'OSM ; à Gallipoli, la bosse de l'île tombe sur l'île. Le plan
+et le relief sont dans le même repère.

@@ -156,7 +156,7 @@ out = {
     'note': "Aveyron (acte II, la Cloche du Midi) — coordonnées de JEU : 1 unité = 1 m, origine au "
             "centre du lac de Saint-Gervais, x = est, z = sud (nord en -z), pas de pivot. "
             "Repère : repere_aveyron.py. Source : OpenStreetMap (ODbL, © OpenStreetMap et contributeurs). "
-            "Les lieux marqués propose: true ne viennent PAS d'OSM : ce sont des propositions à valider par Eugène.",
+            "Les lieux marqués pose: 'Eugène' ne viennent PAS d'OSM : posés à la main, validés par Eugène le 1er octobre, déplaçables.",
     'origine': {'lat': LAT0, 'lon': LON0, 'lieu': 'centre du lac de Saint-Gervais (Saint-Amans-des-Cots)'},
     'cadres': CADRES,
     'lieux': [],
@@ -320,12 +320,13 @@ for wid, (refs, d) in W.items():
     elif d.get('waterway') == 'dam':
         out['lieux'].append({'k': 'barrage', 'nom': d.get('name') or 'Barrage du lac de Saint-Gervais', 'x': x, 'z': z})
 
-# ---- ce qu'OSM ne donne pas : des PROPOSITIONS, à valider par Eugène ----------------
+# ---- ce qu'OSM ne donne pas : posé à la main, validé par Eugène (1er octobre) -------
 # README (« les trois maisons autour du lac ») et STORY.md (acte II) posent les maisons
 # Roquette, le duel du lac, les sources et le Dormeur ; aucun n'est dans OSM. On les propose
 # ici, à des endroits choisis sur le plan et dits dans la note — rien n'est posé en silence.
-# Le jeu ne doit pas les prendre pour acquis tant que « propose » est là.
-PROPOSES = [
+# Eugène les a validés le 1er octobre (« on déplacera plus tard si besoin ») : ils restent
+# marqués pose = 'Eugène', pour qu'on sache toujours qu'ils ne viennent pas d'OSM.
+POSES = [
     # Les deux branches rivales sur les deux rives opposées, l'aïeule entre elles au nord :
     # la géographie dit la querelle avant le premier dialogue.
     {'k': 'maison', 'nom': 'Le Batut', 'x': -135.0, 'z': 170.0,
@@ -348,8 +349,8 @@ PROPOSES = [
      'note': "aucune falaise dans OSM : le géant couché se cherche sur le relief (pas encore récolté), "
              "dans les 2 km sans plan entre le lac et le bourg — rien n'y gêne un géant de 300 m"},
 ]
-for e in PROPOSES:
-    out['lieux'].append(dict(e, propose=True))
+for e in POSES:
+    out['lieux'].append(dict(e, pose='Eugène'))
 
 # ---- les cadrages proposés : le jeu ne chargera pas 5 km d'un coup ----
 def boite(pts, m):

@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """Le relief des Pouilles — Copernicus GLO-30 — aux nœuds de la grille de JEU de chaque ville.
 
-PAS ENCORE LANCÉ : l'IGN ne couvre pas l'Italie, et rien ne se télécharge sans l'accord
-d'Eugène. La source proposée : Copernicus GLO-30 (30 m, tuiles publiques sans compte, sur
+Lancé le 1er octobre, avec l'accord d'Eugène (l'IGN ne couvre pas l'Italie). La source :
+Copernicus GLO-30 (30 m, tuiles publiques sans compte, sur
 le seau AWS ouvert de l'ESA). Il en faut DEUX (taille relevée le 1er octobre par HEAD) :
 
     Copernicus_DSM_COG_10_N40_00_E016_00_DEM.tif   37,6 Mo   Matera

@@ -6,8 +6,8 @@ Copie d'apercu-lozere.py : le plan est dessiné UNE fois, en mètres du jeu, et 
 l'appelle par <use> dans son viewBox. Le monde fait 5 km sur 1,3 : il prend toute la largeur
 en haut ; dessous, les deux cadrages (le lac, le bourg de Saint-Symphorien) à leur échelle.
 
-Les lieux PROPOSÉS (les maisons Roquette, le duel, les sources, le Dormeur — absents d'OSM)
-sont dessinés en orange, cerclés, pour qu'Eugène les voie et les corrige.
+Les lieux posés à la main (les maisons Roquette, le duel, la source, le Dormeur — absents
+d'OSM, validés par Eugène le 1er octobre) sont dessinés en orange, pour qu'on les voie et les déplace.
 
     python3 apercu-aveyron.py
 """
@@ -139,14 +139,14 @@ def vue(box, x, y, w, h, titre, lieux_k, taille_txt, cadrages=False, grille=0, r
     o.append('<g stroke="#c0392b" stroke-width="%.2f"><path d="M%.1f 0H%.1fM0 %.1fV%.1f"/></g>' % (1.5 / s, -8 / s, 8 / s, -8 / s, 8 / s))
     for l in L['lieux']:
         if not (box['x0'] <= l['x'] <= box['x1'] and box['z0'] <= l['z'] <= box['z1']): continue
-        if l.get('propose'):
-            # une proposition : gros, orange, impossible à confondre avec un lieu d'OSM
+        if l.get('pose'):
+            # posé à la main : gros, orange, impossible à confondre avec un lieu d'OSM
             if l.get('zone'):
                 zz = l['zone']
                 o.append('<path d="%s" fill="#e67e22" fill-opacity="0.18" stroke="#e67e22" stroke-width="%.2f" stroke-dasharray="%.1f %.1f"/>'
                          % (d_poly(zz), 2 / s, 6 / s, 4 / s))
             o.append('<circle cx="%.1f" cy="%.1f" r="%.2f" fill="#e67e22" stroke="#7a3d00" stroke-width="%.2f"/>' % (l['x'], l['z'], 7 / s, 1.5 / s))
-            o.append('<text x="%.1f" y="%.1f" font-size="%.1f" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="%.2f" paint-order="stroke">%s ?</text>'
+            o.append('<text x="%.1f" y="%.1f" font-size="%.1f" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="%.2f" paint-order="stroke">%s</text>'
                      % (l['x'] + 10 / s, l['z'] + 5 / s, fs * 1.25, 3.5 / s, html.escape(l['nom'])))
             continue
         if l['k'] not in lieux_k: continue
@@ -184,7 +184,7 @@ v, _ = vue(c, 1300, y, W_TOT - 1320, h, '%s — %d × %d m' % (c['nom'], c['x1']
 corps.append(v)
 
 legende = [('#8c6f5a', 'bâti'), ('#a9cfe9', 'eau'), ('#b9cf9c', 'bois'), ('#e3ebc4', 'prés'),
-           ('#f7d58a', 'route principale'), ('#9b7b52', 'chemin, sentier'), ('#e67e22', 'PROPOSÉ (pas dans OSM) : à valider')]
+           ('#f7d58a', 'route principale'), ('#9b7b52', 'chemin, sentier'), ('#e67e22', 'posé à la main (pas dans OSM), validé')]
 leg = ''.join('<rect x="%d" y="18" width="18" height="12" fill="%s"/><text x="%d" y="29" font-size="14" fill="#333">%s</text>'
               % (20 + i * 250, col, 44 + i * 250, html.escape(t)) for i, (col, t) in enumerate(legende))
 
