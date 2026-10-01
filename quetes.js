@@ -251,9 +251,12 @@ export function update(dt) {
   G.camBack = inKeep ? 4.5 : 10.5; G.camUp = inKeep ? 2.6 : 6.5;
   // Lydéric respire ; le prince suit Camille une fois libéré ; fin de l'histoire quand ils rejoignent Lydéric
   if (PARTAGE.lyderic) {
-    const an = PARTAGE.lyderic.userData.anim;
-    if (an) { an.jouer(PARTAGE.lyderic.userData.walkTo ? 'Walk_Loop' : 'Idle_FoldArms_Loop', 0.4); an.update(dt); }
-    else if (!PARTAGE.lyderic.userData.walkTo) { PARTAGE.lyderic.position.y = Math.sin(state.time * 1.5) * 0.08; PARTAGE.lyderic.userData.arms[0].rotation.x = Math.sin(state.time * 1.5) * 0.1; }
+    const L = PARTAGE.lyderic, an = L.userData.anim;
+    // l'osier suit la sauvegarde : posé par le serment, ôté par la fin (finalScene)
+    if (!!state.lydericOsier !== !!L.userData.osier) osier(L, !!state.lydericOsier);
+    if (L.userData.osier) { /* figé : ni souffle ni animation */ }
+    else if (an) { an.jouer(L.userData.walkTo ? 'Walk_Loop' : 'Idle_FoldArms_Loop', 0.4); an.update(dt); }
+    else if (!L.userData.walkTo) { PARTAGE.lyderic.position.y = Math.sin(state.time * 1.5) * 0.08; PARTAGE.lyderic.userData.arms[0].rotation.x = Math.sin(state.time * 1.5) * 0.1; }
   }
   if (PARTAGE.prince && state.princeFreed && !state.ending && !cut.active) {
     PARTAGE.prince.visible = true; followActor(PARTAGE.prince, dt, p.pos, 2.6, 5.5);
@@ -263,11 +266,29 @@ export function update(dt) {
   if (PARTAGE.prince && PARTAGE.prince.visible) PNJ.animeVillageois(PARTAGE.prince, dt, !!PARTAGE.prince.userData.walkTo);
   if (PARTAGE.pralin && !cut.active) { PARTAGE.pralin.userData.tail.rotation.z = -0.8 + Math.sin(state.time * 1.7) * 0.4; }
 }
+// LYDÉRIC D'OSIER (STORY.md § 2 ; GAME_DESIGN_BRIEF § 25 : « Lydéric = géant d'osier pendant
+// la crise »). Une matière, pas un modèle : la même silhouette, chaque maillage passé aux
+// branches sèches photographiées (`dry_branches_01`), et l'animation arrêtée là où le sort
+// l'a pris. Il parle encore (SCENARIO.md) ; il ne tourne plus la tête (talkLyderic). Les
+// matières d'origine restent sur chaque maillage, pour la fin.
+let matOsier = null;
+function osier(L, oui) {
+  // répétée ~10 fois sur l'atlas du personnage (qui tient tout le corps dans un seul carré) :
+  // moins, les brins s'étiraient et Lydéric lisait comme une statue de bronze
+  matOsier = matOsier || phMat('dry_branches_01', 15, 15, { color: 0xdcc296, roughness: 0.95 });
+  L.traverse((o) => {
+    if (!o.isMesh) return;
+    if (oui) { if (!o.userData.matAvant) o.userData.matAvant = o.material; o.material = Array.isArray(o.material) ? o.material.map(() => matOsier) : matOsier; }
+    else if (o.userData.matAvant) { o.material = o.userData.matAvant; delete o.userData.matAvant; }
+  });
+  L.userData.osier = oui;
+}
+
 // dialogue avec Lydéric selon l'avancement (Entrée)
 
 export function talkLyderic() {
   const alive = killsLeft(); const L = (t, fn) => ({ who: 'Lydéric', text: t, fn });
-  PARTAGE.lyderic.rotation.y = Math.atan2(player.pos.x - PARTAGE.lyderic.position.x, player.pos.z - PARTAGE.lyderic.position.z);
+  if (!PARTAGE.lyderic.userData.osier) PARTAGE.lyderic.rotation.y = Math.atan2(player.pos.x - PARTAGE.lyderic.position.x, player.pos.z - PARTAGE.lyderic.position.z);
   let lines;
   if (!state.metLyderic) lines = [
     L("« Camille ! Tu n'as rien ? Phinaert… je n'ai rien pu faire, ce brigand m'a pris de vitesse. Il a emporté Eugène dans la citadelle et fait tomber la herse. »"),
@@ -577,6 +598,14 @@ export function introScene(serment = false) {
     // en retrait : de près, le géant remplissait l'image
     { cam: [-6, 3.5, lz + 12], at: [0.5, 2, lz + 5], dur: 1.6, shake: 1.5, fn: () => { SFX.stomp(); SFX.hit(); burst(player.pos.x, hy + 1.2, player.pos.z, 0xc8b898, 20, 4, 0.8, 6, 1.2); renverser(); player.pose = { kind: 'lie', pos: [-0.6, hy + 0.35, lz + 6.5], yaw: 2.4 }; } },
     { cam: [-6, 3.5, lz + 12], at: [0.5, 2, lz + 5], dur: 2.5, text: serment ? 'D\'un revers de massue, le géant envoie Camille au sol. La botte roule sur les planches.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { if (eu.visible) { eu.visible = false; burst(eu.position.x, hy + 2, eu.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } } },
+    // avec le serment : Lydéric lui barre la route de la citadelle, et Phinaert le change en osier
+    ...(serment ? [
+      { cam: [9, 4.5, lz + 4], at: [0, 4.5, lz + 2], dur: 2.4, actor: villain, to: [1.8, lz + 3.2], speed: 4, text: 'Lydéric se dresse devant lui.' },
+      // de l'ouest, côté Lydéric : de l'est, on ne voyait que le dos de Phinaert
+      { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 3.6, shake: 0.6, text: 'Phinaert pose la main sur son torse.',
+        fn: () => setTimeout(() => { state.lydericOsier = true; SFX.cloche(true); burst(lx + 0.3, hy + 5, lz + 0.6, 0x8a1410, 30, 2.5, 1.2, -1, 2.5); }, 900) },
+      { say: '« Reste debout, vieux frère. En osier, tu dureras plus longtemps. »', who: 'Phinaert', cam: [-3, 3.5, lz - 8], at: [1.2, 5, lz + 3] },   // du nord : son visage, le dos d'osier
+    ] : []),
     { cam: [-9, 5, lz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, lz - 14], at2: [0, 6, APO], dur: 6, actor: villain, to: [0, APO - 2], speed: 20, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.' },
     // un plan à elle : celui qui suit un acteur s'achève quand il arrive (cutTick), la herse
     // tombait donc dans le noir. Phinaert est passé ; elle tombe derrière lui.
@@ -611,7 +640,7 @@ function finPrologue() {
 // ---------- situation finale ----------
 
 export function finalScene() {
-  state.ending = true; saveGame(true);
+  state.ending = true; state.lydericOsier = false; saveGame(true);    // Phinaert vaincu, le sort tombe
   const lx = PARTAGE.lyderic.position.x, lz = PARTAGE.lyderic.position.z;
   PARTAGE.lyderic.rotation.y = Math.atan2(player.pos.x - lx, player.pos.z - lz);
   const px = lx + 5.5, pz = lz + 1.5;

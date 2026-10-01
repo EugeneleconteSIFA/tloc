@@ -87,9 +87,13 @@ prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une b
    pour de bon, c'est la « grande grille » que dix hommes poussent. Le chemin « Passer »
    garde l'ancienne arrivée par la porte.
 4. **Lydéric d'osier** : une matière, pas un modèle — la même silhouette, en branches sèches.
-   **Pas fait, exprès** : après l'enlèvement, c'est encore Lydéric qui donne toutes les
-   consignes de la partie d'aujourd'hui (`talkLyderic`). Le figer en osier demande de passer
-   ces consignes à Houtland — c'est le début de l'acte I, à faire avec lui.
+   **Fait le 1er octobre**, après avoir lu dans `SCENARIO.md` qu'en osier « il parle encore » :
+   il garde donc ses consignes. Phinaert, après avoir renversé Camille, le trouve dressé sur
+   la route de la citadelle, lui pose la main sur le torse (fumée rouge, bronze fêlé) :
+   chaque maillage passe aux branches sèches (`dry_branches_01`, répétées ~10 fois sur
+   l'atlas), l'animation s'arrête, il ne tourne plus la tête ; réplique « Reste debout, vieux
+   frère… ». `state.lydericOsier`, sauvegardé ; la fin (`finalScene`) le rend à lui-même.
+   Planche : `docs/planches/prologue-v5-osier.jpg`.
 5. **La cloche qui se fend** : une entaille qui s'ouvre sur le modèle du beffroi, une fumée
    rouge (les particules du jeu), un son de cloche qui casse (`SFX`).
    **Fait le 1er octobre.** La cloche du beffroi est refaite (profil tourné de vraie cloche,
