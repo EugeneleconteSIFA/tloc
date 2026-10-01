@@ -1215,9 +1215,11 @@ proximité, tloc-multi.js `coupsFleche`).
 - **Mémoire, 1er octobre** : les grands lots (`regrouperLots`) rendent leurs tableaux après
   l'envoi à la carte — tas JS 780 → 582 Mo, rayons du ciel et image inchangés. Détail et
   mesures : `PLAN-2026-10-01.md`, § 3.
-- **Prologue, pas 1 (1er octobre)** : Lydéric sur le pont de la Porte Royale, la botte de
-  blé, le serment (`quetes.js`) — `docs/DECOUPAGE-PROLOGUE.md` dit ce qui est fait et la
-  suite. Ce qu'Eugène doit fournir pour toute l'histoire : `docs/BESOINS-HISTOIRE.md`.
+- **Le prologue (1er octobre)** : joué de bout en bout d'après `STORY.md` (`quetes.js` pour
+  presque tout ; la cloche dans `village.js`, ses sons dans `engine.js`, Houtland dans
+  `pnj.js`). `docs/DECOUPAGE-PROLOGUE.md` dit ce qui est fait, plan par plan, et ce qui
+  reste ; `PLAN-2026-10-01.md` ce qu'Eugène doit trancher. *Code mort* : la branche
+  « sans serment » d'`introScene` (l'ancienne intro) ne sert plus, « Passer » joue `rappel()`. Ce qu'Eugène doit fournir pour toute l'histoire : `docs/BESOINS-HISTOIRE.md`.
   *À regarder* : de part et d'autre du pont, des touffes de roseaux semblent posées sur
   l'eau des douves (visibles sur `docs/planches/prologue-v2.jpg`) — pas touché.
   *Banc* : dans Playwright, `keyboard.press('z')` ou `'w'` ne fait pas marcher Camille ;
@@ -1226,6 +1228,12 @@ proximité, tloc-multi.js `coupsFleche`).
   relevé alors que Lydéric le portait à l'écran). Juger le poids sur plusieurs passes.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
+
+- **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
+  (`cutTick`), pas à `dur`. Un `setTimeout` lancé dans son `fn` peut donc tomber dans le plan
+  suivant, ou dans le noir : donner à l'événement un plan à lui (la herse du prologue).
+- **Un `addCap` en cours de partie fait réindexer toute la grille** au test suivant : en
+  ajouter plusieurs, c'est d'un coup (la foule du prologue).
 
 - **Libérer un tableau de géométrie après l'envoi** (`attribute.onUpload`) : y mettre un
   tableau VIDE du même type, jamais `null` — `BatchedMesh.onBeforeRender` (three r160) relit

@@ -94,6 +94,8 @@ prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une b
    l'atlas), l'animation s'arrête, il ne tourne plus la tête ; réplique « Reste debout, vieux
    frère… ». `state.lydericOsier`, sauvegardé ; la fin (`finalScene`) le rend à lui-même.
    Planche : `docs/planches/prologue-v5-osier.jpg`.
+   **« Passer »** (le menu du prologue) ne rejoue plus l'ancienne intro : un rappel en trois
+   plans (la cloche fendue, Lydéric d'osier, la grille), puis la main au joueur sur le pont.
 5. **La cloche qui se fend** : une entaille qui s'ouvre sur le modèle du beffroi, une fumée
    rouge (les particules du jeu), un son de cloche qui casse (`SFX`).
    **Fait le 1er octobre.** La cloche du beffroi est refaite (profil tourné de vraie cloche,

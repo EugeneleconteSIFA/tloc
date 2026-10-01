@@ -333,7 +333,7 @@ export function debut() {
   showMenu('PROLOGUE', 'La fête des géants',
     'Quatre minutes pour apprendre à jouer, avant que l’aventure commence.', [
       { label: 'Jouer le prologue', fn: () => { hideMenu(); prologue(); } },
-      { label: 'Passer', fn: () => { hideMenu(); introScene(); } },
+      { label: 'Passer', fn: () => { hideMenu(); rappel(); } },
     ]);
 }
 
@@ -600,7 +600,7 @@ export function introScene(serment = false) {
     { cam: [-6, 3.5, lz + 12], at: [0.5, 2, lz + 5], dur: 2.5, text: serment ? 'D\'un revers de massue, le géant envoie Camille au sol. La botte roule sur les planches.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { if (eu.visible) { eu.visible = false; burst(eu.position.x, hy + 2, eu.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } } },
     // avec le serment : Lydéric lui barre la route de la citadelle, et Phinaert le change en osier
     ...(serment ? [
-      { cam: [9, 4.5, lz + 4], at: [0, 4.5, lz + 2], dur: 2.4, actor: villain, to: [1.8, lz + 3.2], speed: 4, text: 'Lydéric se dresse devant lui.' },
+      { cam: [9, 4.5, lz + 4], at: [0, 4.5, lz + 2], dur: 2.4, actor: villain, to: [1.8, lz + 3.2], speed: 1.8, text: 'Lydéric se dresse devant lui.' },   // lent : le plan s'achève à l'arrivée (cutTick), il faut le temps de lire
       // de l'ouest, côté Lydéric : de l'est, on ne voyait que le dos de Phinaert
       { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 3.6, shake: 0.6, text: 'Phinaert pose la main sur son torse.',
         fn: () => setTimeout(() => { state.lydericOsier = true; SFX.cloche(true); burst(lx + 0.3, hy + 5, lz + 0.6, 0x8a1410, 30, 2.5, 1.2, -1, 2.5); }, 900) },
@@ -622,6 +622,34 @@ export function introScene(serment = false) {
     if (serment) finPrologue();
     if (G.sansSauvegarde) return;                   // rejoué depuis l'accueil : finPrologue a pris la main
     state.introSeen = true; lyd.userData.walkTo = null;
+    G.camYaw = Math.atan2(player.pos.x - lyd.position.x, player.pos.z - lyd.position.z) + Math.PI; saveGame(true); showMessage('Va parler à Lydéric (Entrée). Journal : J.', 6);
+  });
+}
+
+// « PASSER » LE PROLOGUE : un rappel de ce qui s'est passé, pas l'ancienne intro (Phinaert
+// sortant de la Porte Royale, sans cloche ni osier) qui racontait une autre histoire. Trois
+// plans — la cloche fendue, Lydéric d'osier, la grille — et la main au joueur, sur le pont,
+// au même point que le prologue joué.
+function rappel() {
+  const lx = LYD_X, lz = LYD_Z, hy = getH(0, lz), cl = PARTAGE.cloche, lyd = PARTAGE.lyderic;
+  PRO.fendue = true; state.lydericOsier = true;
+  lyd.position.set(lx, getH(lx, lz), lz); lyd.rotation.y = 0;
+  player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5);
+  const V = (x, y, z) => cl.joug.localToWorld(new THREE.Vector3(x, y, z)).toArray();
+  if (cl) cl.joug.updateWorldMatrix(true, false);
+  G.fade = 1; G.fadeTarget = 1; document.getElementById('fade').style.opacity = 1;
+  cutscene([
+    { cam: [90, 70, 140], at: [0, 6, 0], cam2: [40, 34, 96], at2: [0, 8, 10], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'La fête des géants', skippable: false },
+    ...(cl ? [{ cam: V(2.0, -0.45, 0.7), at: V(0, -0.7, 0), dur: 4.5, text: 'Le jour de la fête des géants, la Grande Cloche s’est fendue au deuxième coup. Une fumée rouge en est sortie : Phinaert.' }] : []),
+    { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 4.5, text: 'Il a changé Lydéric en géant d’osier et enlevé Eugène, le sonneur.' },
+    { cam: [-9, 6, lz - 14], at: [0, 6, APO], dur: 4, text: 'Puis il est entré dans la citadelle, et la grande grille est retombée derrière lui.',
+      fn: () => { if (PARTAGE.herse) PARTAGE.herse.userData.poser(1); } },
+    // relevée dans le noir du fondu, comme au prologue joué (la partie d'aujourd'hui passe par là)
+    { fade: 1, dur: 1.2, skippable: false, fn: () => { if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); } },
+    { cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz], dur: 1.2, fade: 0 },
+    { say: '« Camille ! Tu es vivante ! Viens, viens me parler, vite… »', who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz] },
+  ], () => {
+    state.introSeen = true; finPrologue();
     G.camYaw = Math.atan2(player.pos.x - lyd.position.x, player.pos.z - lyd.position.z) + Math.PI; saveGame(true); showMessage('Va parler à Lydéric (Entrée). Journal : J.', 6);
   });
 }
