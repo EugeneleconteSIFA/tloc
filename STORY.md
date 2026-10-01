@@ -409,6 +409,10 @@ Elle continue.
 
 Côte méditerranéenne, villages blancs, oliviers, falaises, grottes et château à huit tours.
 
+Trois villes fortifiées des Pouilles — **Matera**, le cœur de **Gallipoli**, **Alberobello** — et,
+pour passer de l'une à l'autre, **un petit train** (Eugène, 1er octobre ; plans OSM dans
+`carte/mondes/`).
+
 Ici, le temps va trop vite.
 
 Les journées passent rapidement.
@@ -478,6 +482,10 @@ Nunzia reste vieille.
 ### Le monde
 
 Villefort, le lac, le Pouget, les vieux chemins, les menhirs et la Garde-Guérin.
+
+Le Pouget, d'après les photos d'Eugène (`docs/references/pouget-photos.webp`) : un hameau de
+granit accroché à une pente boisée de châtaigniers, toits de lauzes, portes en arc de granit,
+murets de pierre sèche, la vue sur les crêtes des Cévennes.
 
 Le temps est mélangé.
 
