@@ -15,9 +15,10 @@ de page.
   Lozère, pas les Pouilles ni la Thaïlande.
 - **Une texture manque** : `mage.js:73` appelle `phMat('dirt_floor')`, absente de la banque.
   Le sol de la chaumière du mage retombe sur sa teinte de repli.
-- **La musique pose une question de droits** : les 13 morceaux de
-  `assets_back/05_audio/musique/` portent des noms de thèmes Zelda (kakariko, skyloft,
-  berceuse-zelda…). Aucune licence à côté. Bien pour jouer entre nous ; pas pour publier.
+- **La musique** : les 13 morceaux de `assets_back/05_audio/musique/` portaient des noms
+  de thèmes Zelda ; renommés le 1er octobre à la demande d'Eugène (village-sauve, bourg-jour,
+  fanfare, envol, estaminet, campagne, berceuse, ciel, relais, nuit, bord-de-l-eau). Les
+  droits sur les morceaux eux-mêmes restent à voir avant une sortie publique.
 
 ## Prologue et acte I — d'abord
 

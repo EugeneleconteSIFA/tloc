@@ -1251,21 +1251,22 @@ export const SFX = (() => {
   // La cave garde sa nappe synthétisée : sombre, en mineur, aucun morceau ne la remplace.
   const MUSIQUE = 'assets_back/05_audio/musique/', VOL = 0.3;
   const AMBIANCES = {
-    bourg: ['02-tarrey-jour', '10-skyloft'],
-    citadelle: ['05-courage', '04-loftwing-pourpre'],
+    bourg: ['02-bourg-jour', '10-ciel'],
+    citadelle: ['05-courage', '04-envol'],
     donjon: ['05-courage'],
-    eau: ['13-trou-de-peche'],
-    campagne: ['08-ordon', '11-relais-ecurie'],
-    jardins: ['11-relais-ecurie', '01-kakariko-sauve'],
-    bois: ['04-loftwing-pourpre', '08-ordon'],
-    taverne: ['07-kakariko-bar-a-lait'],
-    chapelle: ['09-berceuse-zelda'],
-    maison: ['12-hateno-nuit'],
+    eau: ['13-bord-de-l-eau'],
+    campagne: ['08-campagne', '11-relais'],
+    jardins: ['11-relais', '01-village-sauve'],
+    bois: ['04-envol', '08-campagne'],
+    taverne: ['07-estaminet'],
+    chapelle: ['09-berceuse'],
+    maison: ['12-nuit'],
     mage: ['06-moment-calme'],
   };
-  // La fanfare (« Ralis sauvé ») ne vient d'aucun lieu : elle salue les grandes fins (fanfare,
+  // Les fichiers ont été renommés le 1er octobre (Eugène) : plus aucun nom de thème Zelda.
+  // La fanfare ne vient d'aucun lieu : elle salue les grandes fins (fanfare,
   // plus bas) et passe par-dessus l'ambiance, que le gain `lieuG` fait taire le temps qu'elle dure.
-  const FANFARE = '03-ralis-sauve';
+  const FANFARE = '03-fanfare';
   let muted = false, musMaster = null, lieuG = null, amb = null, voulue = null, attente = 0, nappe = null;
   let fanfareT = 0, fanfareSansFin = false;
   const pistes = {}, rang = {};                       // rang : où chaque ambiance en était de sa liste
