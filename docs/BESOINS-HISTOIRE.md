@@ -38,14 +38,31 @@ de page.
   44,42–44,48 / lon 3,88–3,96 (≈ 6 km : une copie des scripts de récolte, pas ceux de Lille).
   **Pointer le hameau du Pouget** sur une carte, et des photos : les maisons, le chemin qui
   y monte, la vue d'en haut.
-- **Aveyron (acte II)** : les communes et coordonnées réelles de Beauregard, du Batut, de
-  la grande maison du Pouget, du « lac de Saint-Gervais ». **Une photo ou un dessin de
-  Beauregard.**
-- **Pouilles (acte IV)** : le port de Barletta et le Colosse (lat 41,312–41,325 / lon
-  16,270–16,295), Castel del Monte (41,080–41,090 / 16,263–16,278), Alberobello, Rione Monti
-  (40,778–40,786 / 17,230–17,240). Extraits OSM ; relief TINITALY ou Copernicus GLO-30.
-- **Thaïlande (acte III)** : la baie de Phang Nga (lat 8,15–8,35 / lon 98,45–98,60).
-  **Décision** : relevé réel, ou archipel composé ?
+- **Aveyron (acte II)** — fait le 1er octobre (`carte/mondes/aveyron.json`, relief IGN en
+  cours) : le lac de Saint-Gervais et Saint-Symphorien ; le Batut, Beauregard, le Pouget,
+  le duel, la source et le Dormeur posés à la main autour du lac, validés par Eugène.
+  Reste : **une photo ou un dessin de Beauregard.**
+- **Pouilles (acte IV)** — Matera, Alberobello et Gallipoli faits le 1er octobre
+  (`carte/mondes/*.json`, relief Copernicus GLO-30 récolté). À exporter sur openstreetmap.org,
+  comme pour la Thaïlande :
+  - **Barletta**, le port et le **Colosse** (41,312–41,325 N ; 16,270–16,295 E) — le gardien
+    de l'acte, dans aucun extrait ;
+  - **Castel del Monte**, le château à huit tours (41,080–41,090 N ; 16,263–16,278 E) — dans
+    aucun extrait ;
+  - **Matera, plus au nord** : refaire l'export jusqu'à 40,672 N — le premier s'arrête au
+    pied de la cathédrale et laisse dehors presque tout le **Sasso Barisano** ;
+  - **Gallipoli, plus à l'est** : jusqu'à 17,990 E — la gare est à 221 m hors du cadre.
+  Le relief de Barletta et de Castel del Monte : une seule tuile Copernicus de plus
+  (N41 E016, les deux y tombent), à prendre quand les extraits seront là.
+- **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
+  couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
+  zone choisie à la main ; Overpass si c'est trop gros) :
+  - **Ko Panyi** et les pitons autour (8,33 N ; 98,50 E) — les îles et les passeurs ;
+  - **Wat Tham Suea**, le temple de la grotte du Tigre, Krabi (8,13 N ; 98,92 E) — le temple du Yak ;
+  - en plus, si besoin : Khao Phing Kan / Ko Tapu (8,27 N ; 98,50 E), Railay (8,01 N ; 98,84 E),
+    Ko Phi Phi Don (7,74 N ; 98,77 E).
+  Le relief des pitons viendra de Copernicus GLO-30 (OSM ne le donne pas) — à télécharger
+  avec l'accord d'Eugène.
 - **La Blessure et l'autre rive (acte VI)** : **décision** sur le bord de Lille où passe le
   canyon ; des références pour la forêt du Buc, les ruines, la forge, la tombe.
 
