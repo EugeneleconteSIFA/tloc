@@ -17,6 +17,7 @@ d'ailleurs : l'IGN (RGE ALTI) pour la France, comme à Lille ; un modèle numér
 | `pouilles-matera.osm` | **Matera**, les Sassi | 40,655–40,667 ; 16,598–16,622 | La Cloche des Heures (acte IV) | Casalnuovo, Malve, Pianelle, la Murgia ; 1 353 bâtiments |
 | `pouilles-alberobello.osm` | **Alberobello**, les trulli | 40,778–40,790 ; 17,227–17,250 | La Cloche des Heures (acte IV) | la voie Bari–Tarente ; 2 934 bâtiments |
 | `pouilles-gallipoli.osm` | **Gallipoli**, la vieille ville sur son île | 40,050–40,062 ; 17,962–17,986 | La Cloche des Heures (acte IV) | le pont, le seno del Canneto, la voie Lecce–Gallipoli |
+| `lozere-garde-guerin.osm` | **La Garde-Guérin** : la tour, l'église Saint-Michel, la Régordane | 44,476–44,479 ; 3,932–3,938 | La Cloche des Troupeaux (acte V) | 46 bâtiments, le village fortifié entier |
 | `iles-nicobar.osm` | **îles Nicobar** (Inde) : Nancowry, Kamorta, Katchall, Trinkat | 7,912–8,158 ; 93,421–93,795 | La Cloche des Îles (acte III) ? | ⚠ pas la Thaïlande : à confirmer avec Eugène |
 
 ## Les Pouilles : trois villes et un petit train (Eugène, 1er octobre)
@@ -35,9 +36,7 @@ le lac l'emporte, parce qu'il relie les trois maisons par l'eau et la rive.
 **Saint-Symphorien-de-Thénières** (`aveyron-saint-symphorien.osm`, à 4 km à l'est) est le
 bourg voisin : l'église, le four, la place du Marronnier.
 
-## La Garde-Guérin : extrait à refaire
+## La Garde-Guérin
 
-Le « map (8).osm » envoyé pour la Garde-Guérin couvre en fait « Chez Guérin », à
-Montlieu-la-Garde (Charente-Maritime, 45,20 N ; 0,26 O). La Garde-Guérin est en Lozère,
-vers 44,48 N ; 3,94 E, au nord-est de Villefort — hors de l'extrait de Villefort (qui
-s'arrête à 44,471 N). Il faut un export autour de 44,470–44,490 ; 3,925–3,960.
+Le premier envoi (« map (8) ») tombait sur « Chez Guérin », à Montlieu-la-Garde (Charente-
+Maritime) ; le bon extrait est arrivé juste après : `lozere-garde-guerin.osm`.
