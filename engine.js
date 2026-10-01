@@ -4026,10 +4026,30 @@ export function regrouperLots() {
       const id = b.addGeometry(o.geometry); b.setMatrixAt(id, o.matrixWorld);
       o.parent.remove(o); o.geometry.dispose();
     }
+    // LA COPIE PROCESSEUR (1er octobre) : une fois envoyés à la carte graphique, les sommets
+    // d'un lot ne servent plus qu'à un rayon — et aCielOuvert (bourse.js) écarte déjà tout
+    // ce qui dépasse 400 m de rayon. Ces grands lots pesaient 263 Mo de tableaux sur les
+    // 366 Mo de géométrie gardés en double : de quoi faire fermer l'onglet d'un iPhone. On
+    // les rend donc au ramasse-miettes dès l'envoi. Rien ne les renvoie ensuite : un lot ne
+    // bouge pas, et la perte du contexte WebGL recharge la page. Les petits lots restent
+    // entiers, un coffre ne doit pas naître sous leur toit.
+    // le même critère que l'index du ciel : la sphère de la GÉOMÉTRIE (le lot est à l'origine)
+    b.geometry.computeBoundingSphere();
+    if (b.geometry.boundingSphere.radius > CIEL_MAX) {
+      b.userData.sansTableaux = true;
+      for (const a of Object.values(b.geometry.attributes)) a.onUpload(rendreTableau);
+      if (b.geometry.index) b.geometry.index.onUpload(rendreTableau);
+    }
     scene.add(b); lots++; maillages += liste.length;
   }
   return { lots, maillages };
 }
+// au-delà de ce rayon, un maillage n'entre pas dans l'index du ciel (bourse.js) : c'est le
+// sol ou un lot à l'échelle de la carte, pas un toit
+export const CIEL_MAX = 400;
+// un tableau VIDE du même type, pas null : BatchedMesh relit à chaque image la taille d'un
+// élément de l'index (index.array.BYTES_PER_ELEMENT) ; `count`, lui, est gardé à part
+function rendreTableau() { this.array = new this.array.constructor(0); }
 
 // ---------------------------------------------------------------------
 //  Les matrices figées

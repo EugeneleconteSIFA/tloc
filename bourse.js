@@ -21,7 +21,7 @@
 // touchent jamais aux clés directement.
 
 import {
-  CROCHETS, SFX, THREE, TOUCHES, addCap, addInteract, burst, camera, cut, hideMenu, makeChest, menu, player,
+  CIEL_MAX, CROCHETS, SFX, THREE, TOUCHES, addCap, addInteract, burst, camera, cut, hideMenu, makeChest, menu, player,
   resumeGame, saveGame, scene, showMenu, showMessage, spawnGaufre, state,
 } from './engine.js?v=41';
 
@@ -452,11 +452,12 @@ function casesCiel() {
   scene.updateMatrixWorld();
   const g = new Map(), sph = new THREE.Sphere();
   scene.traverse((o) => {
-    if (!o.isMesh || o.isInstancedMesh || o.isSprite || !o.visible || !o.geometry) return;
+    // sansTableaux : un grand lot a rendu ses sommets après l'envoi à la carte (regrouperLots)
+    if (!o.isMesh || o.isInstancedMesh || o.isSprite || !o.visible || !o.geometry || o.userData.sansTableaux) return;
     if (o.material && o.material.transparent) return;
     if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
     sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
-    if (!Number.isFinite(sph.radius) || sph.radius > 400) return;      // le ciel, pas un toit
+    if (!Number.isFinite(sph.radius) || sph.radius > CIEL_MAX) return;      // le ciel, pas un toit
     const i0 = Math.floor((sph.center.x - sph.radius) / CASE_CIEL), i1 = Math.floor((sph.center.x + sph.radius) / CASE_CIEL);
     const j0 = Math.floor((sph.center.z - sph.radius) / CASE_CIEL), j1 = Math.floor((sph.center.z + sph.radius) / CASE_CIEL);
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {

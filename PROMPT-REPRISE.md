@@ -1212,8 +1212,16 @@ proximité, tloc-multi.js `coupsFleche`).
   **`node --check x.js` ne voit pas les erreurs d'un module ES** (Node 24) : `--input-type=module`.
 - **Mobile en bêta** (`?mobile=1`) : tout est dans `PLAN-2026-10-01.md`, § 3, avec l'essai à
   faire sur un vrai téléphone et le risque mémoire mesuré.
+- **Mémoire, 1er octobre** : les grands lots (`regrouperLots`) rendent leurs tableaux après
+  l'envoi à la carte — tas JS 780 → 582 Mo, rayons du ciel et image inchangés. Détail et
+  mesures : `PLAN-2026-10-01.md`, § 3.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
+
+- **Libérer un tableau de géométrie après l'envoi** (`attribute.onUpload`) : y mettre un
+  tableau VIDE du même type, jamais `null` — `BatchedMesh.onBeforeRender` (three r160) relit
+  `index.array.BYTES_PER_ELEMENT` à chaque image. Et seulement pour ce qu'aucun rayon ne vise :
+  `Mesh.raycast` relit positions, UV et normales.
 
 - **Un écran figé juste après un geste, c'est souvent des shaders recompilés.** three.js
   compile une variante par matériau selon : le NOMBRE de lumières de la scène (ajouter une
