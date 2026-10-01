@@ -473,8 +473,9 @@ function prologue() {
   const vx = E_.x - Math.sin(E_.yaw) * 5, vz = E_.z - Math.cos(E_.yaw) * 5;
   G.fade = 1; G.fadeTarget = 1; document.getElementById('fade').style.opacity = 1;
   cutscene([
-    // le survol finit AU-DESSUS DE LA RUE, devant la façade : il finissait à (+8 ; +8), dans le mur d'une maison
-    { cam: [vx + 30, cy + 26, vz + 30], at: [E_.x, cy + 4, E_.z], cam2: [vx - Math.sin(E_.yaw) * 2, cy + 9, vz - Math.cos(E_.yaw) * 2], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — La fête des géants', skippable: false },
+    // le survol descend DANS L'AXE DE LA RUE et finit au-dessus d'elle, devant la façade : en
+    // diagonale, il traversait les toits (et finissait dans le mur d'une maison)
+    { cam: [vx + Math.cos(E_.yaw) * 30, cy + 24, vz - Math.sin(E_.yaw) * 30], at: [E_.x, cy + 4, E_.z], cam2: [vx - Math.sin(E_.yaw) * 2, cy + 9, vz - Math.cos(E_.yaw) * 2], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — La fête des géants', skippable: false },
     { cam: [vx, cy + 3.2, vz], at: E_.enseigne, cam2: [vx + 0.6, cy + 2.2, vz + 0.6], at2: [cx, cy + 1.3, cz], dur: 6, text: 'Lille est en fête : à midi, Lydéric le géant sort sur le pont de Fin. À la salle de la garde, le sergent Houtland cherche son apprentie.' },
     { say: '« Camille ! Lydéric sort à midi, et la garde n’a pas son blé. C’est l’apprentie qui coupe la première botte de l’année, c’est la règle. File au moulin d’Émile, au nord-est du bourg. »', who: 'Houtland' },
     { say: '« Tu ne sais plus où est le moulin ? La carte du beffroi (M). Une apprentie de la garde qui se perd dans son propre bourg, on aura tout vu. »', who: 'Houtland' },

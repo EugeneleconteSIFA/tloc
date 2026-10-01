@@ -348,6 +348,15 @@ function dessinEmbleme(x, cx, cy, s, type) {
     x.beginPath(); x.moveTo(cx - s * 0.3, cy - s * 0.3); x.lineTo(cx + s * 0.18, cy + s * 0.18); x.stroke();
     x.fillStyle = OR; x.save(); x.translate(cx + s * 0.24, cy + s * 0.24); x.rotate(Math.PI / 4);
     x.fillRect(-s * 0.11, -s * 0.07, s * 0.22, s * 0.14); x.restore();
+  } else if (type === 'ecu') {                            // écu de la garde, deux hallebardes en sautoir
+    x.lineWidth = s * 0.05;
+    for (const sx of [-1, 1]) { x.beginPath(); x.moveTo(cx - sx * s * 0.36, cy + s * 0.36); x.lineTo(cx + sx * s * 0.3, cy - s * 0.32); x.stroke();
+      x.beginPath(); x.moveTo(cx + sx * s * 0.3, cy - s * 0.32); x.lineTo(cx + sx * s * 0.2, cy - s * 0.4); x.lineTo(cx + sx * s * 0.36, cy - s * 0.2); x.closePath(); x.fill(); }
+    x.fillStyle = '#2f4466'; x.lineWidth = s * 0.045;
+    x.beginPath(); x.moveTo(cx - s * 0.2, cy - s * 0.24); x.lineTo(cx + s * 0.2, cy - s * 0.24); x.lineTo(cx + s * 0.2, cy + s * 0.02);
+    x.quadraticCurveTo(cx + s * 0.18, cy + s * 0.24, cx, cy + s * 0.34); x.quadraticCurveTo(cx - s * 0.18, cy + s * 0.24, cx - s * 0.2, cy + s * 0.02); x.closePath();
+    x.fill(); x.stroke();
+    x.fillStyle = OR; x.fillRect(cx - s * 0.025, cy - s * 0.16, s * 0.05, s * 0.36); x.fillRect(cx - s * 0.12, cy - s * 0.04, s * 0.24, s * 0.05);
   } else if (type === 'chope') {                          // chope à couvercle et faux-col
     x.lineWidth = s * 0.055;
     x.strokeRect(cx - s * 0.22, cy - s * 0.16, s * 0.36, s * 0.46);
@@ -435,6 +444,8 @@ function emblemeObjet(type) {
   } else if (type === 'fer') {
     o.add(mesh(new THREE.TorusGeometry(0.28, 0.055, 7, 14, Math.PI * 1.45), UNI(0x3a3a40, { metalness: 0.85, roughness: 0.38 }), 0, -0.34, 0)
       .rotateY(Math.PI / 2).rotateZ(-Math.PI * 0.72));
+  } else if (type === 'ecu') {                           // la rondache de la garde, de face pour la rue
+    const r = PNJ.faireRondache(); r.scale.setScalar(1.9); r.position.set(0, -0.5, 0); r.rotation.y = Math.PI / 2; o.add(r);
   } else if (type === 'chope') {
     o.add(mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.36, 12), UNI(0xb9913f, { metalness: 0.8, roughness: 0.35 }), 0, -0.5, 0));
     o.add(mesh(new THREE.TorusGeometry(0.12, 0.025, 5, 10, Math.PI), UNI(0xb9913f, { metalness: 0.8, roughness: 0.35 }), 0.16, -0.5, 0).rotateZ(-Math.PI / 2));
@@ -572,10 +583,13 @@ function tasTuiles(ctx, x, z, yaw) {
 // bac à tremper chez le forgeron.
 const METIERS = {
   // la boulangerie est aussi l'école de cuisine où Camille apprend son métier (le prologue)
-  // l'ancienne école Lequeuche, devenue la salle de la garde (DIALOGUES-ACTE1.md, le prologue)
-  boulanger: { texte: 'SALLE DE LA GARDE',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
+  boulanger: { texte: 'ÉCOLE LEQUEUCHE',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
   brasseur:  { texte: 'LA CERVOISE',      embleme: 'tonneau', objet: 'tonneau',  bois: 0x3c5c42, nom: 'IN DEN HOP — 1658' },
   drapier:   { texte: 'AU DRAP D’OR',     embleme: 'drap',    objet: 'navette',  bois: 0x7c2f36, nom: 'DE GOUDEN LEEUW — 1651' },
+  // l'ancienne école Lequeuche, devenue la salle de la garde des géants (DIALOGUES-ACTE1.md,
+  // le prologue) : le bleu de la garde, un écu pendu, des armes à l'étal au lieu du pain.
+  // « De Wacht » : la garde, en flamand ; 1667, l'année où Lille devient française.
+  garde:     { texte: 'SALLE DE LA GARDE', embleme: 'ecu',     objet: 'ecu',      bois: 0x2f4466, nom: 'DE WACHT — 1667' },
   forgeron:  { texte: 'À L’ENCLUME',      embleme: 'fer',     objet: 'fer',      bois: 0x43404a, nom: 'T YSER — 1669' },
 };
 
@@ -659,6 +673,20 @@ function garnirBaie(b, metier, Wb, boisF) {
       po.needsUpdate = true; pan.geometry.computeVertexNormals();
       pan.position.set(j * Wb * 0.33, 2.65, 0.92); pan.castShadow = true; b.add(pan);
     }
+  } else if (metier === 'garde') {
+    // l'étal de la salle de la garde : des morions sur la table, des rondaches sur l'étagère,
+    // un rouleau de corde en haut, et trois hallebardes au râtelier dans le fond
+    const fer = FERN(), hampe = CHENE(0.05, 1.7, { color: 0x6a4a2e });
+    rang(2, 1.12, 0.44, (x) => {
+      b.add(mesh(new THREE.SphereGeometry(0.15, 14, 7, 0, TAU, 0, Math.PI / 2), fer, x, 1.08, 0.44));
+      b.add(mesh(new THREE.TorusGeometry(0.17, 0.035, 5, 16), fer, x, 1.09, 0.44).rotateX(Math.PI / 2));
+      b.add(mesh(boxG(0.03, 0.08, 0.2), fer, x, 1.25, 0.44)); });                                 // la crête
+    rang(2, 1.5, 0.14, (x) => { const r = PNJ.faireRondache(); r.scale.setScalar(1.15); r.position.set(x, 1.7, 0.18); r.rotation.x = -0.22; b.add(r); });
+    b.add(mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 14), phMat('withered_grass', 0.2, 0.2, { color: 0x9a7e55 }), -Wb * 0.22, 2.03, 0.14).rotateX(Math.PI / 2));
+    for (let k = 0; k < 3; k++) { const x = Wb * 0.12 + k * 0.17;
+      b.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.45, 6), hampe, x, 1.75, 0.05));
+      b.add(mesh(boxG(0.16, 0.12, 0.018), fer, x + 0.07, 2.36, 0.05));                              // le fer de hache
+      b.add(mesh(new THREE.ConeGeometry(0.025, 0.2, 5), fer, x, 2.56, 0.05)); }                       // la pointe
   } else if (metier === 'forgeron') {
     const fer = FERN();
     rang(5, 1.13, 0.44, (x) => b.add(mesh(new THREE.TorusGeometry(0.1, 0.022, 5, 10, Math.PI * 1.45), fer, x, 1.13, 0.44).rotateX(-Math.PI / 2)));
@@ -992,8 +1020,13 @@ function kitBoulanger(ctx, hx, hz) {
   { const c = new THREE.Group(); c.position.set(hx + 0.9, 0, hz - 0.92); scene.add(c);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) c.add(mesh(boxG(0.07, 0.95, 0.07), CHENE(0.1, 0.95, { color: 0x6a5238 }), sx * 0.62, 0.47, sz * 0.2));
     c.add(mesh(boxG(1.5, 0.06, 0.58), BOIS(1.5, 0.58, { color: 0xa9885e }), 0, 0.97, 0));
-    for (let k = 0; k < 4; k++) { const p = mesh(sphG(0.16, 8), UNI(0xb07a3c, { roughness: 0.85 }), -0.52 + k * 0.35, 1.08, rand(-0.09, 0.09));
-      p.scale.set(1.35, 0.6, 0.9); p.rotation.y = rand(0, 1); c.add(p); }
+    // la salle de la garde a remplacé l'école (le prologue) : sur la claie, plus de pain qui
+    // refroidit, deux morions qu'on vient de fourbir et une lanterne de ronde
+    const fer = FERN();
+    for (const x of [-0.42, 0.05]) { c.add(mesh(new THREE.SphereGeometry(0.15, 14, 7, 0, TAU, 0, Math.PI / 2), fer, x, 1.0, 0));
+      c.add(mesh(new THREE.TorusGeometry(0.17, 0.035, 5, 16), fer, x, 1.01, 0).rotateX(Math.PI / 2)); }
+    c.add(mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.26, 6), UNI(0x2a2a2e, { metalness: 0.6, roughness: 0.5 }), 0.5, 1.13, 0));
+    c.add(mesh(new THREE.ConeGeometry(0.11, 0.12, 6), UNI(0x2a2a2e, { metalness: 0.6, roughness: 0.5 }), 0.5, 1.32, 0));
     addCap(hx + 0.3, hz - 0.92, hx + 1.5, hz - 0.92, 0.3, 1.05); }
   grattoir(ctx, hx - 1.2, hz - 0.45, Math.PI);
   anneauMur(ctx, hx + 2.6, 1.45, hz - 0.04, Math.PI);
@@ -1108,7 +1141,7 @@ function divers(ctx, RUE) {
 // Le point d'entrée du secteur. Appelé en fin de buildTown.
 export function buildVie(ctx) {
   const RUE = ctx.RUE;
-  devanture(ctx, { hx: -11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6, d: 7, metier: 'boulanger' });
+  devanture(ctx, { hx: -11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6, d: 7, metier: 'garde' });
   // l'école Lequeuche : là où commence le prologue, Camille face à l'étal (quetes.js)
   { const [x, z] = townWorld(-11, RUE - 1.6), [ex, ez] = townWorld(-8.6, RUE - 1.2);
     const [sx, sz] = townWorld(-13.2, RUE - 0.4);        // l'enseigne, au bout de la façade

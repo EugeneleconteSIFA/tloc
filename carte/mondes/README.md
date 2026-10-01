@@ -25,3 +25,19 @@ Trois villes fortifiées — Matera, le cœur de Gallipoli, Alberobello — et, 
 l'une à l'autre, **un petit train**. Les trois extraits ont chacun leur bout de voie ferrée
 (Bari–Tarente à Alberobello, Lecce–Gallipoli, la ligne de Matera) : de quoi poser les gares
 au bon endroit.
+
+## L'Aveyron : les trois maisons autour du lac (Eugène, 1er octobre)
+
+Les maisons du **Batut**, du **Pouget** (la grande maison de l'Aveyron, à ne pas confondre avec
+le hameau de Lozère) et de **Beauregard** se posent autour du **lac de Saint-Gervais**
+(`aveyron-saint-gervais.osm`) — Eugène laissait le choix entre le lac et Saint-Symphorien ;
+le lac l'emporte, parce qu'il relie les trois maisons par l'eau et la rive.
+**Saint-Symphorien-de-Thénières** (`aveyron-saint-symphorien.osm`, à 4 km à l'est) est le
+bourg voisin : l'église, le four, la place du Marronnier.
+
+## La Garde-Guérin : extrait à refaire
+
+Le « map (8).osm » envoyé pour la Garde-Guérin couvre en fait « Chez Guérin », à
+Montlieu-la-Garde (Charente-Maritime, 45,20 N ; 0,26 O). La Garde-Guérin est en Lozère,
+vers 44,48 N ; 3,94 E, au nord-est de Villefort — hors de l'extrait de Villefort (qui
+s'arrête à 44,471 N). Il faut un export autour de 44,470–44,490 ; 3,925–3,960.
