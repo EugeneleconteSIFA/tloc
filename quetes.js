@@ -11,6 +11,7 @@ import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
   onBridge, sdPent,
 } from './carte.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PARTAGE } from './etat.js';
 import { POTERNE_JEU } from './citadelle.js';
 import { geant } from './banque.js';
@@ -391,7 +392,36 @@ function grossirFoule() {
     scene.add(v); FOULE.gens.push(v);
   }
 }
+// LES FANIONS DE LA FÊTE (découpage, plan 1) : des guirlandes en travers de la rue de la
+// salle de la garde, aux couleurs de Lille (rouge et blanc) et du jaune des Flandres. Une
+// étoffe photographiée teintée, pas des aplats ; trois maillages en tout, un par couleur.
+// Elles sont de la fête, comme la foule : nées avec le prologue, décrochées après.
+const RUE_L = 4.4;                       // demi-largeur de la chaussée du bourg (village.js)
+function tendreFanions() {
+  const parCouleur = [[], [], []], cordes = [], H = 5.6;
+  for (const lx of [-17, -12.5, -8, -3.5, 1, 5.5, 10]) {
+    const [ax, az] = townWorld(lx - 0.6, -RUE_L - 0.3), [bx, bz] = townWorld(lx + 0.6, RUE_L + 0.3);
+    const L = Math.hypot(bx - ax, bz - az), n = Math.floor(L / 0.5), ux = (bx - ax) / L, uz = (bz - az) / L;
+    const y0 = TOWN.y + H * TOWN.s, fleche = 0.06 * L;
+    // la cordelette, sur la même chaînette que les fanions
+    const pts = []; for (let k = 0; k <= 12; k++) { const u = k / 12; pts.push(new THREE.Vector3(ax + (bx - ax) * u, y0 - fleche * 4 * u * (1 - u), az + (bz - az) * u)); }
+    cordes.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.02, 4, false));
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) / n, y = y0 - fleche * 4 * u * (1 - u);
+      const g = new THREE.BufferGeometry(), x = ax + (bx - ax) * u, z = az + (bz - az) * u, w = 0.17;
+      g.setAttribute('position', new THREE.Float32BufferAttribute([x - ux * w, y, z - uz * w, x + ux * w, y, z + uz * w, x + rand(-0.03, 0.03), y - 0.42, z + rand(-0.03, 0.03)], 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0.5, 0], 2));
+      g.computeVertexNormals(); parCouleur[k % 3].push(g);
+    }
+  }
+  const etoffe = (c) => phMat('fabric_pattern_07', 0.4, 0.4, { color: c, side: THREE.DoubleSide, roughness: 0.9 });
+  FOULE.fanions = parCouleur.map((gs, i) => { const m = new THREE.Mesh(mergeGeometries(gs), etoffe([0xb8282a, 0xf2ece0, 0xe0b440][i]));
+    m.castShadow = true; m.userData.dynamic = true; scene.add(m); return m; });
+  const c = new THREE.Mesh(mergeGeometries(cordes), phMat('withered_grass', 0.3, 0.3, { color: 0x4a3a2a })); c.userData.dynamic = true; scene.add(c); FOULE.fanions.push(c);
+}
 function disperserFoule() {
+  for (const m of FOULE.fanions || []) scene.remove(m);
+  FOULE.fanions = [];
   for (const v of FOULE.gens) scene.remove(v);
   for (const c of FOULE.caps) c.r = 0;
   FOULE.gens = []; FOULE.caps = []; FOULE.aFaire = [];
@@ -404,7 +434,7 @@ function prologue() {
   player.pos.set(E_.x, getH(E_.x, E_.z) + 0.1, E_.z); player.yaw = E_.yaw; G.camYaw = E_.yaw;
   // Eugène n'est pas à la salle de la garde : il attend au pont, la corde de la cloche en tête
   eu.visible = false;
-  preparerFoule();
+  preparerFoule(); tendreFanions();
   // Houtland à la porte (là où se tenait Eugène), le mage dans la rue, face à Camille
   const ho = PARTAGE.houtland, mg = PARTAGE.mageBourg;
   if (ho) { ho.visible = true; ho.position.set(E_.eugene[0], getH(E_.eugene[0], E_.eugene[1]), E_.eugene[1]); ho.rotation.y = Math.atan2(E_.x - ho.position.x, E_.z - ho.position.z); }

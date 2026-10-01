@@ -108,7 +108,11 @@ prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une b
    le noir après l'enlèvement. Mesuré sur le pont (headless, qualité max, 6 s) : 30,2 ms par
    image sans eux, 37 ms animés à pleine cadence, **~33,5 ms** une fois animés à une image
    sur deux au-delà de 20 m de la caméra (et plus du tout au-delà de 90 m). Planche :
-   `docs/planches/prologue-v4-foule.jpg`. Reste : fanions et géants de procession (plan 1),
-   la ville qui se vide (volets qui se ferment, plan 18).
+   `docs/planches/prologue-v4-foule.jpg`. **Les fanions** aussi (même jour) : sept guirlandes
+   en travers de la rue de la salle de la garde, rouge et blanc de Lille, jaune des Flandres,
+   l'étoffe `fabric_pattern_07` teintée, une cordelette ; nées et décrochées avec la foule.
+   Reste : **les géants de procession** (plan 1) — un choix d'apparence pour Eugène : le
+   squelette de Lydéric réduit, en longue robe qui cache les porteurs, qui se balance en
+   avançant ? — et la ville qui se vide (volets qui se ferment, plan 18).
 
 Chaque pas : planche rendue → Eugène valide → on code le suivant.
