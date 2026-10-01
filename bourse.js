@@ -446,7 +446,7 @@ export function fermerPoche() {
 // rayon ne teste plus que les quelques objets au-dessus du point.
 const _rayon = new THREE.Raycaster(), _haut = new THREE.Vector3(), _bas = new THREE.Vector3(0, -1, 0);
 const CASE_CIEL = 16;
-let indexCiel = null, indexCielT = -1e9;
+let indexCiel = null, indexCielT = -1e9, oubliCiel = 0;
 function casesCiel() {
   // l'index vaut pour une salve de requêtes (le peuplement d'un niveau) ; au-delà de trois
   // secondes on le refait, la scène a pu changer
@@ -467,6 +467,11 @@ function casesCiel() {
     }
   });
   indexCiel = g; indexCielT = performance.now();
+  // L'OUBLI (1er octobre) : le peuplement bâtit l'index AVANT la fusion des décors, qui retire
+  // ensuite ces maillages de la scène. Gardé, l'index les tenait en vie avec tous leurs
+  // sommets : 203 Mo du tas pour rien, mesurés à l'instantané. Passé ses trois secondes, il
+  // ne sert plus — on le lâche, la prochaine salve le refait sur la scène du moment.
+  clearTimeout(oubliCiel); oubliCiel = setTimeout(() => { indexCiel = null; }, 3000);
   return g;
 }
 export function aCielOuvert(x, y, z) {
