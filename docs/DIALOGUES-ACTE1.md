@@ -40,7 +40,7 @@ Camille parle peu, comme Link : elle agit plus qu'elle ne parle.
 
 | étape | type | réplique | besoin |
 |---|---|---|---|
-| `fete` | I | « Camille ! Lydéric sort à midi, et la garde n'a pas son blé. C'est l'apprentie qui coupe la première botte de l'année, c'est la règle. **File au moulin d'Émile, à l'ouest du bourg.** » | — |
+| `fete` | I | « Camille ! Lydéric sort à midi, et la garde n'a pas son blé. C'est l'apprentie qui coupe la première botte de l'année, c'est la règle. **File au moulin d'Émile, au nord-est du bourg.** » | — |
 | `fete` | I | « Tu ne sais plus où est le moulin ? **La carte du beffroi (M).** Une apprentie de la garde qui se perd dans son propre bourg, on aura tout vu. » | — |
 | `fete` | S | « Et ce soir, tu prêteras serment. Ça ne se reprend pas, un serment de la garde. Réfléchis-y en coupant ton blé. » | — |
 | `ble` | I | « Belle botte. **Au pont de Fin**, vite : Lydéric n'attend jamais longtemps. » | — |

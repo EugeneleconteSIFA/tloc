@@ -1623,8 +1623,8 @@ export function buildTown() {
     ['Émile', () => { const q = questStep('crows'), left = enemies.filter(e => !e.dead && e.zone === 'champ').length;
       if (q >= 3) return [{ who: 'Émile', text: "« Le blé pousse tranquille. Le moulin tourne encore grâce au vent des Flandres ! »" }];
       if (q >= 1 && left === 0) return [{ who: 'Émile', text: "« Plus un corbeau sur mon champ ! Tu es une sacrée gardienne. »", fn: () => setQuest('crows', 2, true) }, giveHeart('Émile', "« Tiens : une gaufre de force, cuite avec la farine du moulin. Un cœur de plus pour toi. »"), { who: 'Émile', text: "« Reviens quand tu veux, la porte du moulin est ouverte. »", fn: () => setQuest('crows', 3) }];
-      if (q >= 1) return [{ who: 'Émile', text: `« Encore ${left} corbeau${left > 1 ? 'x' : ''} sur mon champ, près du moulin, à l'ouest du pont. Ils se moquent de moi ! »` }];
-      return [{ who: 'Émile', text: "« Je suis le meunier. Mon champ, près du moulin à l'ouest du pont, est pillé par quatre corbeaux de Phinaert. »" }, { who: 'Émile', text: "« Chasse-les et je te donnerai de quoi reprendre des forces. »", fn: () => setQuest('crows', 1) }]; }],
+      if (q >= 1) return [{ who: 'Émile', text: `« Encore ${left} corbeau${left > 1 ? 'x' : ''} sur mon champ, près du moulin, à l'est du pont. Ils se moquent de moi ! »` }];
+      return [{ who: 'Émile', text: "« Je suis le meunier. Mon champ, près du moulin à l'est du pont, est pillé par quatre corbeaux de Phinaert. »" }, { who: 'Émile', text: "« Chasse-les et je te donnerai de quoi reprendre des forces. »", fn: () => setQuest('crows', 1) }]; }],
     ['Fernande', () => [{ who: 'Fernande', text: state.bow ? "« Avec ton arc, tu peux viser les moules des fossés depuis la berge. De mon temps, on les mangeait avec des frites… »" : "« Tu as vu les moules mutantes des fossés ? Impossible de les atteindre à pied. Il paraît qu'un arc est caché sur le bastion de Turenne, à gauche de la porte. »" }]],
   ];
   const spots = [[-3, 2.5, 0.8], [6.5, -1.5, -1.2], [-9.5, -2.2, 0.2], [2, -8.5, 2.8], [-6, 9, -2.4], [11, 1.8, -0.9]];

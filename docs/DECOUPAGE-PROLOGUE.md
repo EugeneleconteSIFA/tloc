@@ -17,8 +17,9 @@ Phinaert. Elle sert à valider les LIEUX et les ANGLES, pas la mise en scène.
    plan, et Phinaert s'enfuit par CETTE porte en faisant tomber la grille : le lieu du
    serment devient celui de la catastrophe, et le joueur le retrouve fermé ensuite.
    *Recommandé.*
-2. **Le moulin d'Émile est au nord-est du bourg**, pas à l'ouest (`DIALOGUES-ACTE1.md`,
-   Houtland, étape `fete`). Bourg (200 ; 660), moulin (525 ; 80). Réplique à corriger.
+2. ~~Le moulin d'Émile est au nord-est du bourg~~ — **corrigé le 30** : la réplique de
+   Houtland disait « à l'ouest du bourg », et Émile comme le journal « à l'ouest du pont » ;
+   le moulin (525 ; 80) est à l'est du pont et au nord-est du bourg (200 ; 660).
 3. **La foule** : la fête doit paraître pleine (`STORY.md` § 2). Une foule coûte au
    chargement (règle 8). Proposition : 20 à 30 passants tirés des personnages existants,
    en instances, rangés le long du cortège et du pont — mesurés au banc avant d'aller plus

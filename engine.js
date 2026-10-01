@@ -3459,7 +3459,7 @@ export function dialogue(lines, onEnd) { cutscene(lines.map(l => (typeof l === '
 // ---------- quêtes ----------
 export const QUESTS = {
   cat: { title: 'Le chat de Cornélie', steps: ['Cornélie, au village, a perdu son chat Pralin. Il adore grimper sur les toits et les remparts…', 'Pralin est retrouvé ! Va rassurer Cornélie au village.', 'Terminée — Cornélie t\'a offert un réceptacle de cœur.'] },
-  crows: { title: 'Le champ d\'Émile', steps: ['Émile, le meunier, veut que tu chasses les 4 corbeaux qui pillent son champ, près du moulin (à l\'ouest du pont).', 'Les corbeaux sont partis. Retourne voir Émile au village.', 'Terminée — Émile t\'a donné une gaufre de force (un cœur de plus).'] },
+  crows: { title: 'Le champ d\'Émile', steps: ['Émile, le meunier, veut que tu chasses les 4 corbeaux qui pillent son champ, près du moulin (à l\'est du pont).', 'Les corbeaux sont partis. Retourne voir Émile au village.', 'Terminée — Émile t\'a donné une gaufre de force (un cœur de plus).'] },
   ghosts: { title: 'La ronde de Désiré', steps: ['Désiré, l\'ancien guetteur, n\'ose plus monter au beffroi tant que les 5 fantômes des remparts rôdent. Chasse-les.', 'Les remparts sont calmes. Va le dire à Désiré.', 'Terminée — Désiré t\'a confié le cœur de la garnison.'] },
 };
 export function questStep(id) { return state['q_' + id] || 0; }
