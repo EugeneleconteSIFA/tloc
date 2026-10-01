@@ -117,8 +117,13 @@ prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une b
    `docs/planches/prologue-v4-foule.jpg`. **Les fanions** aussi (même jour) : sept guirlandes
    en travers de la rue de la salle de la garde, rouge et blanc de Lille, jaune des Flandres,
    l'étoffe `fabric_pattern_07` teintée, une cordelette ; nées et décrochées avec la foule.
-   Reste : **les géants de procession** (plan 1) — un choix d'apparence pour Eugène : le
-   squelette de Lydéric réduit, en longue robe qui cache les porteurs, qui se balance en
-   avançant ? — et la ville qui se vide (volets qui se ferment, plan 18).
+   **Les géants de procession** (validés par Eugène, faits le même jour) : deux, le squelette
+   de Lydéric réduit à ~4 m, tenue teintée rouge ou verte, une longue robe d'étoffe jusqu'aux
+   pavés, ceinture dorée ; chacun cherche le plus long tronçon droit libre (étals, fontaine,
+   foule) — l'un dans la rue, l'autre dans la rue perpendiculaire — et y fait l'aller et retour
+   en roulant comme porté. Un par image à la construction (18 à 59 ms chacun) ; animés comme
+   la foule (demi-cadence au-delà de 20 m). Fluidité non mesurable le 1er (Mac à 70–190 de
+   charge, d'autres sessions) : **à remesurer au calme**. Reste : la ville qui se vide (volets
+   qui se ferment, plan 18).
 
 Chaque pas : planche rendue → Eugène valide → on code le suivant.

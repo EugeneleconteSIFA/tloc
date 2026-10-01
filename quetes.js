@@ -194,6 +194,7 @@ export function update(dt) {
   const p = player;
   if (PRO.etape) suivrePrologue();
   if (FOULE.aFaire.length) grossirFoule();
+  if (FOULE.geants && FOULE.geants.length) avancerProcession(dt);
   for (const v of [PARTAGE.houtland, PARTAGE.mageBourg]) if (v && v.visible) PNJ.animeVillageois(v, dt, false);
   // LA FOULE COÛTE : seize passants animés sur le pont, c'était 7 ms de plus par image (banc
   // du 1er octobre, 30 → 37 ms). Au-delà de 90 m on ne les anime plus ; entre 20 et 90 m,
@@ -440,7 +441,87 @@ function tendreFanions() {
     m.castShadow = true; m.userData.dynamic = true; scene.add(m); return m; });
   const c = new THREE.Mesh(mergeGeometries(cordes), phMat('withered_grass', 0.3, 0.3, { color: 0x4a3a2a })); c.userData.dynamic = true; scene.add(c); FOULE.fanions.push(c);
 }
+// LES GÉANTS DE PROCESSION (découpage, plan 1 ; STORY.md § 2 « Les géants passent » ; validés
+// par Eugène le 1er octobre). Pas de nouveau modèle : le géant riggé de Lydéric, réduit à
+// quatre mètres, la tenue teintée (rouge, vert) pour qu'on ne le prenne pas pour Lydéric, et
+// une LONGUE ROBE d'étoffe jusqu'aux pavés — c'est elle qui fait le géant de procession :
+// on ne voit pas de jambes, on devine les porteurs. Il remonte la rue en se balançant, comme
+// porté à bras d'hommes. Nés avec la fête, partis avec elle.
+const PEAU = /skin|body|head|hand/i;
+// Leur chemin : la rue passe par la place et sa fontaine, et un géant en robe ne se faufile
+// pas. On cherche donc, dans le repère du bourg, le plus long tronçon droit où sa robe (1 m de
+// rayon) ne touche rien — étals, fontaine, foule déjà posée : un dans le sens de la rue, un
+// dans la rue perpendiculaire. Il y fait l'aller et retour.
+function tronconLibre(lignes) {
+  let mieux = null;
+  for (const [ax, az, bx, bz] of lignes) {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.floor(L / 0.5); let debut = -1;
+    for (let i = 0; i <= n + 1; i++) {
+      const u = Math.min(i, n) / n, [x, z] = townWorld(ax + (bx - ax) * u, az + (bz - az) * u);
+      const libre = i <= n && !blocked(x, z, 1.05, false, getH(x, z) + 0.5);
+      if (libre && debut < 0) debut = i;
+      if ((!libre || i > n) && debut >= 0) { const l = (i - 1 - debut) * 0.5;
+        if (!mieux || l > mieux.l) { const u0 = debut / n, u1 = (i - 1) / n;
+          mieux = { l, a: [ax + (bx - ax) * u0, az + (bz - az) * u0], b: [ax + (bx - ax) * u1, az + (bz - az) * u1] }; }
+        debut = -1; }
+    }
+  }
+  return mieux && mieux.l >= 8 ? mieux : null;
+}
+function geantsDeProcession() {
+  FOULE.geants = [];
+  const rangs = [], travers = [];
+  for (let c = -3.9; c <= 3.91; c += 0.3) rangs.push([-22, c, 18, c]);
+  for (let c = -3; c <= 3.01; c += 0.3) travers.push([c, 4.5, c, 22], [c, -4.5, c, -22]);
+  const chemins = [tronconLibre(rangs), tronconLibre(travers)];
+  // un géant par image : chacun se construit avec son squelette et ses foulées mesurées, et
+  // les deux d'un coup figeaient le survol du titre
+  const faire = (k) => {
+    if (k > 1) return;
+    requestAnimationFrame(() => { faireGeant(k, chemins[k]); faire(k + 1); });
+  };
+  faire(0);
+}
+function faireGeant(k, ch) {
+  if (!ch || !FOULE.geants) return;
+  {
+    const [teinte, robeC] = [[0xd0603e, 0xb03a32], [0x6fa070, 0x4a8a52]][k];   // étoffes vives : la robe sombre se perdait dans l'ombre des façades
+    const g = geant('lyderic', teinte, 0xe0b64a, 'sword'); if (!g || !g.userData.anim) return;
+    g.traverse((o) => { if (!o.isMesh || Array.isArray(o.material) || PEAU.test(o.material.name || '')) return;
+      o.material = o.material.clone(); o.material.color.set(teinte); });
+    // la robe : un cône évasé de la taille aux pavés, plissé, dans le repère du géant (6,6 de haut)
+    const prof = []; for (let i = 0; i <= 10; i++) { const t = i / 10; prof.push(new THREE.Vector2(0.62 + t * t * 1.05, 3.55 - t * 3.55)); }
+    const gr = new THREE.LatheGeometry(prof, 36), po = gr.attributes.position;
+    for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i), a = Math.atan2(z, x), f = 1 + 0.045 * Math.sin(a * 14) * (1 - po.getY(i) / 3.55);
+      po.setX(i, x * f); po.setZ(i, z * f); }
+    gr.computeVertexNormals();
+    const robe = new THREE.Mesh(gr, phMat('fabric_pattern_07', 1.2, 1.4, { color: robeC, side: THREE.DoubleSide, roughness: 0.9 }));
+    robe.castShadow = true; g.add(robe);
+    { const c = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.07, 6, 28), phMat('metal_plate_02', 0.3, 0.3, { color: 0xc9a03a, roughness: 0.4 }));
+      c.position.y = 3.5; c.rotation.x = Math.PI / 2; g.add(c); }   // la ceinture dorée
+    g.scale.setScalar(0.62); g.userData.dynamic = true;
+    g.userData.proc = { ch, u: k ? 0.7 : 0.2, sens: 1, t: k * 1.7 };
+    scene.add(g); FOULE.geants.push(g);
+  }
+}
+// le long de la rue de la salle de la garde, d'un bout à l'autre, au pas des porteurs
+function avancerProcession(dt) {
+  for (const g of FOULE.geants || []) {
+    const P = g.userData.proc, { a, b, l } = P.ch; P.t += dt; P.u += P.sens * 0.55 * dt / l;
+    if (P.u > 1) { P.u = 1; P.sens = -1; } else if (P.u < 0) { P.u = 0; P.sens = 1; }
+    const lx = a[0] + (b[0] - a[0]) * P.u, lz = a[1] + (b[1] - a[1]) * P.u;
+    const [x, z] = townWorld(lx, lz), [x2, z2] = townWorld(lx + (b[0] - a[0]) * P.sens, lz + (b[1] - a[1]) * P.sens);
+    g.position.set(x, getH(x, z) + Math.abs(Math.sin(P.t * 1.7)) * 0.07, z);
+    g.rotation.set(0, Math.atan2(x2 - x, z2 - z), Math.sin(P.t * 1.7) * 0.045);   // le roulis des porteurs
+    // comme la foule : à pleine cadence de près, une image sur deux plus loin, pas du tout au-delà de 90 m
+    const c = camera.position, d = Math.abs(x - c.x) + Math.abs(z - c.z), an = g.userData.anim;
+    if (d < 20) { an.jouer('Idle_FoldArms_Loop', 0.4); an.update(dt); }
+    else if (d < 90 && (P.tic = !P.tic)) { an.jouer('Idle_FoldArms_Loop', 0.4); an.update(2 * dt); }
+  }
+}
 function disperserFoule() {
+  for (const g of FOULE.geants || []) scene.remove(g);
+  FOULE.geants = [];
   for (const m of FOULE.fanions || []) scene.remove(m);
   FOULE.fanions = [];
   for (const v of FOULE.gens) scene.remove(v);
@@ -455,7 +536,7 @@ function prologue() {
   player.pos.set(E_.x, getH(E_.x, E_.z) + 0.1, E_.z); player.yaw = E_.yaw; G.camYaw = E_.yaw;
   // Eugène n'est pas à la salle de la garde : il attend au pont, la corde de la cloche en tête
   eu.visible = false;
-  preparerFoule(); tendreFanions();
+  preparerFoule(); tendreFanions(); geantsDeProcession();
   // Houtland à la porte (là où se tenait Eugène), le mage dans la rue, face à Camille
   const ho = PARTAGE.houtland, mg = PARTAGE.mageBourg;
   if (ho) { ho.visible = true; ho.position.set(E_.eugene[0], getH(E_.eugene[0], E_.eugene[1]), E_.eugene[1]); ho.rotation.y = Math.atan2(E_.x - ho.position.x, E_.z - ho.position.z); }
