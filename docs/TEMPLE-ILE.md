@@ -55,5 +55,13 @@ loup qui hurle, et pour la rive oubliée une fêlure. Un vrai relief en géomét
 le grain d'une pierre photographiée sans sa couleur : une carte de normales seule, ou une
 pierre à joints ou tachée, ne laissaient rien lire sous la lumière rasante. Les noms gravés,
 au-dessus des arcs.
+**v3, les mondes qui débordent** (`docs/planches/ile-du-temps-v3-mondes.jpg`, vue avec
+`temple.html?mondes=tous`) : sur la rive en face de sa porte, chaque monde ouvert passe un peu
+de lui-même — Lille ses pavés et un réverbère allumé ; le Midi la terre rouge craquelée et
+l'herbe brûlée ; les Îles la mousse et la pluie de la mousson arrêtée en l'air ; les Heures
+le sable mouillé et une marée figée en pleine montée ; les Troupeaux un muret de pierre
+sèche, une sonnaille au piquet, la brume. Et au large, sa silhouette sort de la brume
+(le causse et le Dormeur, les pitons, la ville blanche, la montagne et la tour de la
+Garde-Guérin). Sans l'aperçu, seul Lille est ouvert.
 À faire ensuite : les
 débordements de chaque monde sur la rive, la barque du passeur, et relier l'île au donjon.

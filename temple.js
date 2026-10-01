@@ -240,13 +240,96 @@ function build() {
     for (const s of [-1, 1]) { const x = g.position.x + Math.cos(a) * s * 2.35, z = g.position.z - Math.sin(a) * s * 2.35; addCap(x, z, x, z, 0.85); }
   });
 
-  // ---------- au loin, dans la brume : Lille, le seul monde ouvert ----------
-  { const d = 430, a = 0.12, g = new THREE.Group(); g.position.set(Math.sin(a) * d, MER, Math.cos(a) * d); scene.add(g);
-    const sil = mat(0x6a6070, { roughness: 1 });
+  // ---------- les mondes ouverts : leur rive, et leur silhouette au loin ----------
+  for (const [i, P] of PORTES.entries()) if (P.geant !== 'fissure' && ouverts().has(P.geant)) { deborder(i, P.geant); silhouette(i, P.geant); }
+}
+
+// Quels mondes sont ouverts : Lille seul pour l'instant (le prologue joué). L'aperçu
+// `temple.html?mondes=tous` les ouvre tous, pour juger l'île telle qu'elle sera.
+function ouverts() {
+  if (/[?&]mondes=tous\b/.test(location.search)) return new Set(PORTES.map((p) => p.geant));
+  return new Set(['lyderic']);
+}
+let FONDU = null;
+// un point de la rive, en face de la porte i : à r mètres du centre, décalé de da radians
+const rive = (i, r, da = 0) => { const a = angPorte(i) + da; return [Math.sin(a) * r, Math.cos(a) * r]; };
+
+// LE DÉBORDEMENT : chaque monde ouvert passe un peu de lui-même sur la rive d'en face (docs/TEMPLE-ILE.md)
+function deborder(i, monde) {
+  // une plaque de sol posée sur le plateau, dans l'axe de la porte, entre deux rayons ; ses
+  // bords se FONDENT dans l'herbe (un dégradé d'opacité) : une plaque à bord net faisait un
+  // aplat posé là, pas un sol qui déborde
+  const tache = (m, r0, r1, da, y = 0.05) => {
+    const g = new THREE.PlaneGeometry(1, 1, 24, 10), p = g.attributes.position, uv = g.attributes.uv;
+    for (let k = 0; k < p.count; k++) { const u = uv.getX(k), v = uv.getY(k), r = r0 + (r1 - r0) * v, [x, z] = rive(i, r, (u - 0.5) * 2 * da);
+      p.setXYZ(k, x, hauteur(x, z) + y, z); }
+    g.computeVertexNormals();
+    if (!FONDU) { const [c, x] = makeCanvas(128, 128), gr = x.createRadialGradient(64, 64, 18, 64, 64, 64);
+      gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.7, '#b0b0b0'); gr.addColorStop(1, '#000000'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); FONDU = tex(c, 1, false); }
+    m.alphaMap = FONDU; m.transparent = true; m.depthWrite = false; m.polygonOffset = true; m.polygonOffsetFactor = -2; m.side = THREE.DoubleSide;
+    const t = new THREE.Mesh(g, m); t.receiveShadow = true; t.renderOrder = 1; scene.add(t); return t; };
+  if (monde === 'lyderic') {
+    // Lille : des pavés de grès et un réverbère, au bout du chemin de la porte
+    tache(phMat('worn_tile_floor', 4, 6, { color: 0xc8beb0 }), 31, 40, 0.13);
+    const [x, z] = rive(i, 38, 0.1), fer = mat(0x22252a, { metalness: 0.7, roughness: 0.5 });
+    scene.add(mesh(new THREE.CylinderGeometry(0.07, 0.1, 3.4, 8), fer, x, hauteur(x, z) + 1.7, z));
+    scene.add(mesh(boxG(0.36, 0.5, 0.36), new THREE.MeshStandardMaterial({ color: 0xffd28a, emissive: 0xffb860, emissiveIntensity: 1.4 }), x, hauteur(x, z) + 3.6, z));
+  } else if (monde === 'dormeur') {
+    // le Midi : la terre rouge craquelée de la sécheresse, des touffes d'herbe brûlée
+    tache(phMat('terre_battue', 8, 10, { color: 0xd07a52 }), 30, 47, 0.2);
+    for (let k = 0; k < 18; k++) { const [x, z] = rive(i, 33 + (k * 7) % 13, -0.17 + (k % 9) * 0.04);
+      const t = mesh(new THREE.ConeGeometry(0.35, 0.5, 6), phMat('withered_grass', 0.5, 0.5, { color: 0xc8a860 }), x, hauteur(x, z) + 0.2, z); scene.add(t); }
+  } else if (monde === 'yak') {
+    // les Îles : la pluie de la mousson, arrêtée en l'air — des gouttes qui ne tombent plus
+    tache(phMat('mousse', 6, 8, { color: 0x8aa874 }), 31, 46, 0.17);
+    const n = 900, gt = new THREE.CylinderGeometry(0.012, 0.012, 0.28, 4), im = new THREE.InstancedMesh(gt,
+      new THREE.MeshStandardMaterial({ color: 0xc8d8e8, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.2 }), n);
+    const m4 = new THREE.Matrix4();
+    for (let k = 0; k < n; k++) { const [x, z] = rive(i, 31 + Math.random() * 15, (Math.random() - 0.5) * 0.34);
+      im.setMatrixAt(k, m4.makeRotationZ(0.08).setPosition(x, hauteur(x, z) + 0.4 + Math.random() * 9, z)); }
+    scene.add(im);
+  } else if (monde === 'colosse') {
+    // les Heures : le sable mouillé d'une marée qui monte trop vite, figée en pleine montée
+    tache(phMat('gravier', 6, 8, { color: 0xe0cca0 }), 33, 49, 0.17);
+    const vague = tache(new THREE.MeshStandardMaterial({ color: 0x6a8aa8, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.6 }), 43, 49, 0.17, 0.25);
+    vague.renderOrder = 2;
+  } else if (monde === 'loup') {
+    // les Troupeaux : un muret de pierre sèche, une sonnaille au piquet, la brume des Cévennes
+    tache(phMat('rocky_trail', 6, 8, { color: 0xb8b4a4 }), 32, 46, 0.15);
+    for (let k = 0; k < 14; k++) { const [x, z] = rive(i, 41, -0.12 + k * 0.018);
+      const b = mesh(boxG(0.7, 0.35 + (k % 3) * 0.12, 0.5), phMat('old_stone_wall_02', 0.7, 0.4, { color: 0x9a948a }), x, hauteur(x, z) + 0.3, z); b.rotation.y = angPorte(i) + Math.PI / 2 + (k % 2) * 0.1; b.castShadow = true; scene.add(b); }
+    const [x, z] = rive(i, 37, 0.08);
+    scene.add(mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.4, 6), phMat('wood_cabinet_worn_long', 0.2, 1.4, { color: 0x5a4430 }), x, hauteur(x, z) + 0.7, z));
+    scene.add(mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.24, 4), mat(0x8a6a3a, { metalness: 0.7, roughness: 0.5 }), x, hauteur(x, z) + 1.2, z + 0.12));
+    for (let k = 0; k < 5; k++) { const [bx, bz] = rive(i, 34 + k * 3, (k - 2) * 0.06);
+      const br = new THREE.Mesh(new THREE.PlaneGeometry(9, 3), new THREE.MeshBasicMaterial({ color: 0xe8e4f0, transparent: true, opacity: 0.18, depthWrite: false }));
+      br.position.set(bx, hauteur(bx, bz) + 1.2 + k * 0.3, bz); br.rotation.y = angPorte(i); scene.add(br); }
+  }
+}
+
+// LA SILHOUETTE : le monde ouvert sort de la brume, au large, dans l'axe de sa porte
+function silhouette(i, monde) {
+  const d = 430, a = angPorte(i) + 0.12, g = new THREE.Group(); g.position.set(Math.sin(a) * d, MER, Math.cos(a) * d); g.rotation.y = a; scene.add(g);
+  const sil = mat(0x6a6070, { roughness: 1 });
+  if (monde === 'lyderic') {                      // Lille et son beffroi
     g.add(mesh(new THREE.CylinderGeometry(40, 55, 8, 12), sil, 0, 2, 0));
     for (let k = 0; k < 9; k++) g.add(mesh(boxG(8 + (k % 3) * 3, 10 + (k * 7) % 9, 9), sil, -26 + k * 6.5, 10, (k % 2 ? -6 : 4)));
     g.add(mesh(boxG(7, 42, 7), sil, 4, 27, 0)); g.add(mesh(new THREE.SphereGeometry(5, 12, 6, 0, TAU, 0, Math.PI / 2), sil, 4, 48, 0));
-    g.add(mesh(new THREE.ConeGeometry(1.5, 9, 8), sil, 4, 57, 0)); }
+    g.add(mesh(new THREE.ConeGeometry(1.5, 9, 8), sil, 4, 57, 0));
+  } else if (monde === 'dormeur') {               // le causse, et le Dormeur couché sur l'horizon
+    g.add(mesh(new THREE.CylinderGeometry(90, 110, 22, 16), sil, 0, 10, 0));
+    const c = mesh(new THREE.SphereGeometry(30, 16, 8), sil, -20, 22, 0); c.scale.set(2.2, 0.5, 1); g.add(c);
+    g.add(mesh(new THREE.SphereGeometry(12, 12, 8), sil, 45, 28, 0));
+  } else if (monde === 'yak') {                   // les pitons de calcaire
+    for (let k = 0; k < 7; k++) { const h = 40 + (k * 17) % 45; g.add(mesh(new THREE.CylinderGeometry(6 + k % 3 * 2, 12 + k % 2 * 4, h, 9), sil, -60 + k * 20, h / 2, (k % 2 ? 15 : -10))); }
+  } else if (monde === 'colosse') {               // la ville blanche et ses remparts
+    g.add(mesh(new THREE.CylinderGeometry(55, 60, 10, 14), sil, 0, 4, 0));
+    for (let k = 0; k < 12; k++) g.add(mesh(boxG(7, 8 + (k * 5) % 9, 7), sil, -36 + k * 6.5, 12, (k % 3) * 5 - 5));
+    g.add(mesh(boxG(9, 30, 9), sil, 10, 22, 0));
+  } else if (monde === 'loup') {                  // la montagne, et la tour de la Garde-Guérin
+    const m = mesh(new THREE.ConeGeometry(110, 70, 10), sil, 0, 35, 0); m.scale.z = 0.6; g.add(m);
+    g.add(mesh(boxG(6, 22, 6), sil, 30, 52, 0));
+  }
 }
 
 function populate() {
