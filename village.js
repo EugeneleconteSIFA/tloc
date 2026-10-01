@@ -1344,7 +1344,12 @@ export function buildTown() {
         .map(([r, y]) => new THREE.Vector2(r, -y));
       // une copie du bronze en double face : on voit l'intérieur de la robe par en dessous, et
       // BRONZE() est partagé avec le reste du bourg
-      const robe = mesh(new THREE.LatheGeometry(prof, 28), Object.assign(BRONZE().clone(), { side: THREE.DoubleSide }), 0, -0.05, 0); joug.add(robe);
+      // moins métallique que le bronze des statues, et une lueur chaude qui tient lieu de la
+      // lumière renvoyée par les pierres : sous le dôme, un métal pur ne renvoyait que l'ombre
+      // de la chambre, et la cloche paraissait noire (planche du 1er octobre)
+      const robe = mesh(new THREE.LatheGeometry(prof, 28), Object.assign(BRONZE().clone(), { side: THREE.DoubleSide, metalness: 0.5, roughness: 0.38, color: new THREE.Color(0xc8945a), emissive: new THREE.Color(0x3a2210), emissiveIntensity: 0.5 }), 0, -0.05, 0);
+      if (robe.material.metalnessMap) robe.material.metalnessMap = null;
+      joug.add(robe);
       joug.add(mesh(new THREE.TorusGeometry(0.12, 0.045, 6, 12), BRONZE(), 0, 0.02, 0));          // l'anse
       joug.add(mesh(sphG(0.13, 10), IRON(), 0, -1.22, 0));                                       // le battant
       // la fente : une ligne brisée qui descend de l'épaule à la pince, sur la face est

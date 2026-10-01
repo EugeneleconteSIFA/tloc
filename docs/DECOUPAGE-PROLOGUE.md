@@ -98,8 +98,8 @@ prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une b
    `SFX.cloche(fendue)` (partiels de cloche, battement du bronze fêlé, craquement),
    `SFX.herse()`. Plans : Eugène court au beffroi ; le beffroi depuis la rue ; la chambre des
    cloches en gros plan ; la fumée qui traverse le ciel jusqu'au pont. Planche :
-   `docs/planches/prologue-v3-cloche.jpg`. *Défaut connu* : dans la chambre, la cloche est
-   presque noire (bronze métallique, peu de lumière) — à éclairer si Eugène le trouve.
+   `docs/planches/prologue-v3-cloche.jpg` (la cloche y est encore noire : corrigé le même
+   jour, un bronze moins métallique avec une lueur chaude de lumière renvoyée).
 6. **La foule, puis la ville qui se vide** — seulement après une mesure au banc.
    **La foule : faite le 1er octobre** (`quetes.js`, `FOULE`). Vingt-six villageois riggés
    du jeu, en poses de spectateurs : seize le long des parapets du pont, tournés vers
