@@ -94,5 +94,14 @@ Durée visée : 4 minutes, dont 2 de jeu (se déplacer, la carte, l'épée) et 2
    `docs/planches/prologue-v3-cloche.jpg`. *Défaut connu* : dans la chambre, la cloche est
    presque noire (bronze métallique, peu de lumière) — à éclairer si Eugène le trouve.
 6. **La foule, puis la ville qui se vide** — seulement après une mesure au banc.
+   **La foule : faite le 1er octobre** (`quetes.js`, `FOULE`). Vingt-six villageois riggés
+   du jeu, en poses de spectateurs : seize le long des parapets du pont, tournés vers
+   Lydéric, dix devant la salle de la garde. Ils ne naissent qu'avec le prologue (deux par
+   image, pendant le survol du titre) : **le chargement n'en paie rien**. Ils s'enfuient dans
+   le noir après l'enlèvement. Mesuré sur le pont (headless, qualité max, 6 s) : 30,2 ms par
+   image sans eux, 37 ms animés à pleine cadence, **~33,5 ms** une fois animés à une image
+   sur deux au-delà de 20 m de la caméra (et plus du tout au-delà de 90 m). Planche :
+   `docs/planches/prologue-v4-foule.jpg`. Reste : fanions et géants de procession (plan 1),
+   la ville qui se vide (volets qui se ferment, plan 18).
 
 Chaque pas : planche rendue → Eugène valide → on code le suivant.

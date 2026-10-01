@@ -3,7 +3,7 @@
 // Secteur Quêtes : peuplement du niveau, dialogues, journal, objectifs, cinématiques,
 // et la boucle de jeu propre au niveau (update). Le décor lui est donné tout bâti.
 import {
-  THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, cut, cutscene, dialogue, endGame, enemies,
+  THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, camera, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
 } from './engine.js?v=41';
@@ -187,6 +187,16 @@ export function inWater(x, z, y) { return sdEau(x, z) < -1.5 && eauVisible(x, z)
 export function update(dt) {
   const p = player;
   if (PRO.etape) suivrePrologue();
+  if (FOULE.aFaire.length) grossirFoule();
+  // LA FOULE COÛTE : seize passants animés sur le pont, c'était 7 ms de plus par image (banc
+  // du 1er octobre, 30 → 37 ms). Au-delà de 90 m on ne les anime plus ; entre 20 et 90 m,
+  // une image sur deux, avec le double du temps (le surcoût tombe à ~3 ms) ; de près, à
+  // pleine cadence, là où l'œil verrait la saccade. Leurs ombres restent : sans elles, ils
+  // flottaient, pour 2 ms seulement.
+  { const c = camera.position;
+    for (const v of FOULE.gens) { const d = Math.abs(v.position.x - c.x) + Math.abs(v.position.z - c.z);
+      if (d < 20) PNJ.animeVillageois(v, dt, false);
+      else if (d < 90 && (v.userData.tic = !v.userData.tic)) PNJ.animeVillageois(v, 2 * dt, false); } }
   if (PRO.botte && !PRO.posee && !p.pose) {
     // portée couchée dans les bras, en travers ; tendue debout vers Lydéric quand elle la lui offre
     const b = PRO.botte, e = G.echelle / 0.6, av = PRO.tend ? 0.75 : 0.42;
@@ -342,6 +352,45 @@ function placeLibre(x0, z0, vx, vz) {
   return [x0, z0];
 }
 
+// LA FOULE DE LA FÊTE (STORY.md § 2 : « Lille est pleine de monde » ; validée par Eugène le
+// 1er octobre : 20 à 30 passants, mesurés). Des villageois riggés du jeu (PNJ.buildVillageois),
+// pas un système à part, tirés dans d'autres poses : le bûcheron ne coupe pas de bois sur
+// le pont un jour de fête. Ils ne naissent QU'AVEC LE PROLOGUE — au chargement, vingt-six
+// personnages auraient coûté près d'une seconde (règle 8) à tous ceux qui ne le jouent pas —
+// et deux par image, pendant le survol du titre. Ils s'enfuient avec l'enlèvement.
+const FOULE = { gens: [], caps: [], aFaire: [] };
+const POSES_FOULE = () => [PNJ.CLIP.parle, 'Idle_FoldArms_Loop', PNJ.CLIP.repos, PNJ.CLIP.parle, PNJ.CLIP.repos];
+function preparerFoule() {
+  const P = [], E_ = PARTAGE.ecole;
+  // seize sur le pont, le long des deux parapets, de Lydéric à 35 m vers la plaine, tournés
+  // vers lui : le milieu du tablier reste libre pour Camille (± 1,9 m)
+  for (let k = 0; k < 16; k++) { const cote = k % 2 ? 1 : -1, x = cote * 2.25, z = LYD_Z + (cote < 0 ? 7 : 9) + Math.floor(k / 2) * 4 + rand(-0.8, 0.8);
+    P.push([x, z, Math.atan2(LYD_X - x, LYD_Z - z) + rand(-0.4, 0.4)]); }
+  // dix devant la salle de la garde, là où le prologue commence
+  for (let k = 0, essais = 0; k < 10 && essais < 200; essais++) {
+    const a = rand(0, TAU), r = rand(7, 16), x = E_.x + Math.sin(a) * r, z = E_.z + Math.cos(a) * r;
+    if (blocked(x, z, 0.8, false, getH(x, z) + 0.5) || P.some(([px, pz]) => Math.hypot(px - x, pz - z) < 1.6)) continue;
+    P.push([x, z, rand(0, TAU)]); k++;
+  }
+  // toutes les collisions d'un coup : chaque addCap fait réindexer la grille au prochain test
+  FOULE.caps = P.map(([x, z]) => addCap(x, z, x, z, 0.35));
+  FOULE.aFaire = P.map((p, i) => [...p, i]);
+}
+function grossirFoule() {
+  for (let n = 0; n < 2 && FOULE.aFaire.length; n++) {
+    const [x, z, yaw, i] = FOULE.aFaire.shift(), v = PNJ.buildVillageois(i);
+    if (!v) { FOULE.aFaire.length = 0; return; }            // pas de banque riggée : pas de foule
+    v.position.set(x, getH(x, z), z); v.rotation.y = yaw; v.scale.setScalar(G.echelle);
+    v.userData.idle = POSES_FOULE()[i % 5] || v.userData.idle;
+    scene.add(v); FOULE.gens.push(v);
+  }
+}
+function disperserFoule() {
+  for (const v of FOULE.gens) scene.remove(v);
+  for (const c of FOULE.caps) c.r = 0;
+  FOULE.gens = []; FOULE.caps = []; FOULE.aFaire = [];
+}
+
 function prologue() {
   const E_ = PARTAGE.ecole, eu = PARTAGE.prince;
   // les monstres ne sont pas encore là : Phinaert ne les lâche qu'avec l'enlèvement
@@ -349,6 +398,7 @@ function prologue() {
   player.pos.set(E_.x, getH(E_.x, E_.z) + 0.1, E_.z); player.yaw = E_.yaw; G.camYaw = E_.yaw;
   // Eugène n'est pas à la salle de la garde : il attend au pont, la corde de la cloche en tête
   eu.visible = false;
+  preparerFoule();
   // Émile attend à son moulin, face au bourg d'où arrive Camille
   const em = PARTAGE.emile;
   if (em) { PRO.emileAvant = [em.position.x, em.position.y, em.position.z, em.rotation.y];
@@ -358,7 +408,8 @@ function prologue() {
   const vx = E_.x - Math.sin(E_.yaw) * 5, vz = E_.z - Math.cos(E_.yaw) * 5;
   G.fade = 1; G.fadeTarget = 1; document.getElementById('fade').style.opacity = 1;
   cutscene([
-    { cam: [vx + 30, cy + 26, vz + 30], at: [E_.x, cy + 4, E_.z], cam2: [vx + 8, cy + 7, vz + 8], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — La fête des géants', skippable: false },
+    // le survol finit AU-DESSUS DE LA RUE, devant la façade : il finissait à (+8 ; +8), dans le mur d'une maison
+    { cam: [vx + 30, cy + 26, vz + 30], at: [E_.x, cy + 4, E_.z], cam2: [vx - Math.sin(E_.yaw) * 2, cy + 9, vz - Math.cos(E_.yaw) * 2], at2: [E_.x, cy + 2, E_.z], dur: 6, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'Prologue — La fête des géants', skippable: false },
     { cam: [vx, cy + 3.2, vz], at: E_.enseigne, cam2: [vx + 0.6, cy + 2.2, vz + 0.6], at2: [cx, cy + 1.3, cz], dur: 6, text: 'Lille est en fête : à midi, Lydéric le géant sort sur le pont de Fin. À la salle de la garde, le sergent Houtland cherche son apprentie.' },
     { say: '« Camille ! Lydéric sort à midi, et la garde n’a pas son blé. C’est l’apprentie qui coupe la première botte de l’année, c’est la règle. File au moulin d’Émile, au nord-est du bourg. »', who: 'Houtland' },
     { say: '« Tu ne sais plus où est le moulin ? La carte du beffroi (M). Une apprentie de la garde qui se perd dans son propre bourg, on aura tout vu. »', who: 'Houtland' },
@@ -488,7 +539,8 @@ export function introScene(serment = false) {
     // LA HERSE SE RELÈVE dans le noir : la partie d'aujourd'hui entre dans la citadelle par la
     // Porte Royale. Qu'elle reste baissée — la « grande grille » que dix hommes poussent à
     // l'acte I — se décidera avec l'acte I (docs/DECOUPAGE-PROLOGUE.md).
-    { fade: 1, dur: 2, skippable: false, fn: () => { PRO.herseT = -1; if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); } },
+    // dans le noir aussi, la foule s'enfuit (découpage, plan 17 : « La foule s'est enfuie »)
+    { fade: 1, dur: 2, skippable: false, fn: () => { PRO.herseT = -1; if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); disperserFoule(); } },
     { cam: [-3, 2.2, lz + 11], at: [-0.6, 0.8, lz + 6.5], cam2: [-2.4, 2.5, lz + 10], at2: [-0.6, 1.2, lz + 6.5], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…' },
     { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz],
       fn: () => { player.pose = null; player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5); } },

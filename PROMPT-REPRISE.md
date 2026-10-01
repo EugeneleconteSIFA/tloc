@@ -1221,7 +1221,9 @@ proximité, tloc-multi.js `coupsFleche`).
   *À regarder* : de part et d'autre du pont, des touffes de roseaux semblent posées sur
   l'eau des douves (visibles sur `docs/planches/prologue-v2.jpg`) — pas touché.
   *Banc* : dans Playwright, `keyboard.press('z')` ou `'w'` ne fait pas marcher Camille ;
-  on la déplace par `TLOC.player.pos`.
+  on la déplace par `TLOC.player.pos`. Le poids réseau du banc varie de 35 à 42 Mo pour le
+  même code : `response.body()` échoue parfois (le 1er, `Male_Ranger.bin` manquait au
+  relevé alors que Lydéric le portait à l'écran). Juger le poids sur plusieurs passes.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
