@@ -16,7 +16,7 @@ import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,
   cobbles, cuireRelief, maillagePlaine, nearHouse, normale, normals, offsetPoly, patinerMat,
-  disqueTrace, pentShape, placerButtes, polyShape, sdPent, solPlaine, tapisForestier,
+  disqueTrace, pentShape, placerButtes, polyShape, sdPent, solPlaine, tapisForestier, nappeProche, LILLE,
 } from './carte.js';
 import { makeDoor } from './menuiserie.js';
 import { carteForet } from './foret.js';
@@ -1636,14 +1636,36 @@ export function buildDetails() {
   const reedMat = mat(0x6a8a3a, { roughness: 1 });
   const REEDS = 1800;
   const reeds = new THREE.InstancedMesh(reedGeo, reedMat, REEDS); let rn = 0;
-  for (let i = 0; i < REEDS; i++) {
-    const a = rand(0, TAU), edge = Math.random() < 0.5 ? MOAT_IN - rand(0.3, 1.4) : MOAT_OUT + rand(0.3, 1.4);
-    const rr = rayonPour(a, edge);
-    const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
-    if (Math.abs(x) < 9 && z > 0) continue;
-    if (bastionAt(x, z)) continue;
-    P.set(x, getH(x, z, 0) > 0.1 ? 3 : (sdPent(x, z) > MOAT_IN && sdPent(x, z) < MOAT_OUT ? -1.3 : 0), z); Q.setFromEuler(E.set(rand(-0.15, 0.15), rand(0, TAU), rand(-0.15, 0.15))); S.set(1, rand(0.6, 1.3), 1);
-    reeds.setMatrixAt(rn++, M.compose(P, Q, S));
+  // MOAT_IN et MOAT_OUT sont le fossé THÉORIQUE ; l'eau, elle, suit le relevé, qui s'en
+  // écarte de plusieurs dizaines de mètres. Devant la Porte Royale, la rive est à z ≈ 250
+  // quand MOAT_OUT tombe à z ≈ 205 : les tiges plantées sur le pentagone se dressaient à
+  // quarante-cinq mètres du bord, en plein milieu des douves, de part et d'autre du pont.
+  // On les tire donc sur le contour des nappes du fossé, et on ne garde que ce qui est
+  // encore une berge pour l'union des eaux (nappeProche, carte.js) : là où deux relevés se
+  // chevauchent, un contour court sous l'eau. Chercher la berge au hasard dans la largeur
+  // du fossé coûtait 400 ms ; le contour, lui, est déjà la berge.
+  const bords = []; let cumul = 0;
+  for (const o of LILLE.eau) {
+    if (o.sdMin > MOAT_OUT + 60) continue;
+    for (let k = 0; k < o.poly.length; k++) {
+      const p = o.poly[k], q = o.poly[(k + 1) % o.poly.length];
+      cumul += Math.hypot(q[0] - p[0], q[1] - p[1]); bords.push([cumul, p, q]);
+    }
+  }
+  for (let i = 0; i < REEDS && bords.length; i++) {
+    for (let essai = 0; essai < 3; essai++) {
+      const u = rand(0, cumul); let lo = 0, hi = bords.length - 1;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (bords[m][0] < u) lo = m + 1; else hi = m; }
+      const [, p, q] = bords[lo], t = Math.random();
+      const x = p[0] + (q[0] - p[0]) * t + rand(-1.4, 1.4), z = p[1] + (q[1] - p[1]) * t + rand(-1.4, 1.4);
+      if (Math.abs(x) < 9 && z > 0) continue;
+      const e = nappeProche(x, z);
+      if (!e || e.sd < -1.6 || e.sd > 1.2 || bastionAt(x, z)) continue;
+      // le pied au fond près du bord, sur le terrain côté grève — jamais plus haut que l'eau
+      P.set(x, Math.min(getH(x, z, 0), e.o.y) - 0.05, z); Q.setFromEuler(E.set(rand(-0.15, 0.15), rand(0, TAU), rand(-0.15, 0.15))); S.set(1, rand(0.6, 1.3), 1);
+      reeds.setMatrixAt(rn++, M.compose(P, Q, S));
+      break;
+    }
   }
   reeds.count = rn; scene.add(reeds); perf.reeds = reeds; perf.reedsFull = rn;
   // nénuphars

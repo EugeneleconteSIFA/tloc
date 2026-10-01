@@ -28,7 +28,7 @@ import { PARTAGE } from './etat.js';
 import {
   ECH, FOSSE_IN, LILLE, LISIERE_R0, LISIERE_R1, MARCHE_R, MOAT_IN, MOAT_OUT, PLAINE_R,
   bastionAt, essenceAt, libreNature, margeBatie, margePlate, nearHouse, nearTown, sdEau, sdPent, sdPoly,
-  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN, voieCombattants, talusDehors,
+  solPlaine, sousBois, boisDuParc, surPont, LARGEUR_ROUTE, LARGEUR_CHEMIN, voieCombattants, talusDehors, nappeProche,
 } from './carte.js';
 
 export const perf = { leaves: [], grass: null, flowers: [], reeds: null, roots: null, lights: [] };
@@ -701,14 +701,19 @@ export function habillerEaux() {
         // ce chevauchement qui masque la couture entre la nappe et la berge creusée.
         const nx = uz, nz = -ux;                       // normale au bord, signe inconnu
         const dedans = sdPoly(bx + nx * 3, bz + nz * 3, o.poly) < 0 ? 1 : -1;
-        if (rn < RMAXI && Math.random() < 0.8) {
+        // UN BORD DE RELEVÉ N'EST PAS UNE BERGE. Les nappes OSM se chevauchent : au fossé,
+        // à l'est de la Porte Royale, le contour d'une nappe court à dix mètres DANS
+        // l'anneau voisin. Mesurés à leur seul polygone, ses roseaux se croyaient sur la
+        // grève et flottaient au milieu des douves. On juge donc sur l'union des eaux
+        // (nappeProche, carte.js) : un tronçon de bord déjà sous l'eau ne porte rien.
+        if (rn < RMAXI && Math.random() < 0.8 && sdEau(bx, bz) > -1.2) {
           const x = bx + rand(-0.6, 0.6) + nx * dedans * rand(-2.2, 3.2);
           const z = bz + rand(-0.6, 0.6) + nz * dedans * rand(-2.2, 3.2);
-          const sd = sdPoly(x, z, o.poly);
+          const e = nappeProche(x, z), sd = e ? e.sd : Infinity, ny = e ? e.o.y : o.y;
           // pas sur le talus d'un ouvrage (carte.js) : ils se dressaient sur sa pente, loin de l'eau
           if (sd > -3.6 && sd < 2.6 && talusDehors(x, z) === null) {
             // dans l'eau, le pied est au fond ; sur la grève, il suit le terrain
-            const y = sd < 0 ? Math.min(o.y - 0.25, getH(x, z, 0)) : Math.max(getH(x, z, 0) - 0.1, o.y - 0.5);
+            const y = sd < 0 ? Math.min(ny - 0.25, getH(x, z, 0)) : Math.max(getH(x, z, 0) - 0.1, ny - 0.5);
             const sc = rand(0.5, 1.3);
             P.set(x, y, z);
             QT.setFromEuler(EU.set(rand(-0.13, 0.13), rand(0, TAU), rand(-0.13, 0.13)));
