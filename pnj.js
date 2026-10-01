@@ -577,6 +577,15 @@ export const ROLES = {
     haut: POURPRE, valeur: 0.9, bas: ECRU, valeurBas: 1.25, idle: 'Idle_Loop',
     // Eugène n'est plus « le prince » (26 septembre) : ni couronne ni cape, un ami de Camille
   },
+  // le sergent Houtland, de la garde des géants (le prologue) : carré, moustachu, le bleu
+  // de la garde comme Camille, les bras croisés de celui qui attend son apprentie
+  houtland: {
+    metier: 'sergent', gabarit: 'trapu', h: enUnites(1.82),
+    tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular',
+    barbe: 'coiffures_r:Hair_Beard', cheveuxC: 0x4a3420,
+    haut: GUEDE, valeur: 0.85, bas: NOIX, valeurBas: 0.8, idle: 'Idle_FoldArms_Loop',
+  },
   mage: {
     metier: 'mage', gabarit: 'sec', h: enUnites(1.62),
     tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',

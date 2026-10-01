@@ -51,6 +51,13 @@ Durée visée : 4 minutes, dont 2 de jeu (se déplacer, la carte, l'épée) et 2
 | 17 | le pont, au sol (1,6 ; 1,3 ; 259 → 0 ; 0 ; 255) | plan serré | un **morceau de la Grande Cloche** fume sur les planches. Camille le ramasse. La foule s'est enfuie | morceau **non** |
 | 18 | le bourg | plans courts | les volets se ferment, la rue se vide. Houtland : « J'ai envoyé dix hommes soulever la grande grille. Ils poussent encore. » → l'acte I commence (étape `grille`) | volets oui (menuiserie.js) ; les fermer **non** |
 
+**1er octobre, après-midi — la salle de la garde.** L'enseigne dit « Salle de la garde » (le
+lieu aussi, sur la carte) ; **Houtland** est un personnage (rôle `houtland`, `pnj.js` : trapu,
+moustachu, le bleu de la garde), à la porte ; **le vieux mage** est dans la rue et donne
+l'épée d'apprentie (plan 3), Émile ne la prête plus. Tous deux ne sont là que le temps du
+prologue. *Reste à voir avec Eugène* : la devanture est toujours celle d'une boulangerie
+(pains sur l'étal) ; une salle de garde voudrait autre chose.
+
 ## Ce qu'il faut fabriquer, dans l'ordre
 
 1. **Déplacer Lydéric sur le pont** et y rejouer le prologue actuel (le gâteau devient la

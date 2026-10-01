@@ -108,6 +108,11 @@ export function populate() {
   // la même échelle qu'eux : l'ancien prince, jamais réduit, dépassait Camille d'une tête
   PARTAGE.prince = PNJ.buildRole('prince') || makePrince(); PARTAGE.prince.scale.setScalar(G.echelle);
   PARTAGE.prince.position.set(1.5, 0, LYD_Z + 2); PARTAGE.prince.rotation.y = Math.PI; PARTAGE.prince.visible = false; scene.add(PARTAGE.prince);
+  // Houtland et le vieux mage, devant la salle de la garde le temps du prologue seulement :
+  // leurs répliques d'après (« dix hommes poussent la grande grille ») attendent l'acte I
+  for (const [cle, role] of [['houtland', 'houtland'], ['mageBourg', 'mage']]) {
+    const v = PNJ.buildRole(role); if (!v) continue;
+    v.scale.setScalar(G.echelle); v.visible = false; scene.add(v); PARTAGE[cle] = v; }
   player.pos.set(1, 0, LYD_Z + 9); player.yaw = Math.PI; G.camYaw = Math.PI;
   player.speed = 11.5;   // la citadelle fait 700 m de large : à 7,2 m/s on la traversait en deux minutes
 }
@@ -188,6 +193,7 @@ export function update(dt) {
   const p = player;
   if (PRO.etape) suivrePrologue();
   if (FOULE.aFaire.length) grossirFoule();
+  for (const v of [PARTAGE.houtland, PARTAGE.mageBourg]) if (v && v.visible) PNJ.animeVillageois(v, dt, false);
   // LA FOULE COÛTE : seize passants animés sur le pont, c'était 7 ms de plus par image (banc
   // du 1er octobre, 30 → 37 ms). Au-delà de 90 m on ne les anime plus ; entre 20 et 90 m,
   // une image sur deux, avec le double du temps (le surcoût tombe à ~3 ms) ; de près, à
@@ -266,7 +272,7 @@ export function talkLyderic() {
     L("« Camille ! Tu n'as rien ? Phinaert… je n'ai rien pu faire, ce brigand m'a pris de vitesse. Il a emporté Eugène dans la citadelle et fait tomber la herse. »"),
     L("« Écoute-moi bien. Phinaert s'est enfermé dans l'enclos du donjon, au centre de la place d'Armes. Sa grille est ensorcelée : elle ne s'ouvrira que lorsque dix de ses monstres auront été vaincus. »"),
     L("« Eugène, lui, est sûrement dans les galeries que Vauban a creusées sous les remparts. On y entre par la poterne, à l'est de la place… mais il faut la clé, que Phinaert garde au sommet du donjon. »"),
-    L(state.sword ? "« Tu as encore la vieille épée du grand-père d'Émile ? Garde-la, elle coupera autre chose que du blé. Et prends mon bouclier. »"
+    L(state.sword ? "« Tu as encore l'épée d'apprentie du vieux mage ? Garde-la, elle coupera autre chose que du blé. Et prends mon bouclier. »"
       : "« Tu n'es pas armée. Prends mon épée, celle de la garnison : elle est lourde pour toi, mais tu es plus vive que moi. Et prends le bouclier. »", () => { state.sword = true; state.metLyderic = true; SFX.win(); burst(player.pos.x, player.pos.y + 1.5, player.pos.z, 0xffe070, 30, 3, 1.2, 2, 1.4); }),
     L("« Clic gauche ou F pour frapper, Maj pour rouler. Sur le bastion de Turenne, à gauche de la porte, un coffre cache un arc : tu en auras besoin pour les moules des fossés. »"),
     L("« Les gens du village, au sud-est, ont aussi besoin d'aide : parle-leur, ils te rendront plus forte. Va, Camille, et ramène-nous Eugène. »"),
@@ -399,6 +405,14 @@ function prologue() {
   // Eugène n'est pas à la salle de la garde : il attend au pont, la corde de la cloche en tête
   eu.visible = false;
   preparerFoule();
+  // Houtland à la porte (là où se tenait Eugène), le mage dans la rue, face à Camille
+  const ho = PARTAGE.houtland, mg = PARTAGE.mageBourg;
+  if (ho) { ho.visible = true; ho.position.set(E_.eugene[0], getH(E_.eugene[0], E_.eugene[1]), E_.eugene[1]); ho.rotation.y = Math.atan2(E_.x - ho.position.x, E_.z - ho.position.z); }
+  const [mx, mz] = placeLibre(E_.x - Math.sin(E_.yaw) * 3 + Math.cos(E_.yaw) * 1.6, E_.z - Math.cos(E_.yaw) * 3 - Math.sin(E_.yaw) * 1.6, -Math.sin(E_.yaw), -Math.cos(E_.yaw));
+  if (mg) { mg.visible = true; mg.position.set(mx, getH(mx, mz), mz); mg.rotation.y = Math.atan2(E_.x - mx, E_.z - mz); }
+  // le champ-contrechamp du mage : par-dessus l'épaule de Camille, le mage de face
+  const mdx = mx - E_.x, mdz = mz - E_.z, md = Math.hypot(mdx, mdz) || 1, mux = mdx / md, muz = mdz / md;
+  const py = player.pos.y, camMage = [E_.x - mux * 2.4 + muz * 1.1, py + 2.0, E_.z - muz * 2.4 - mux * 1.1], atMage = [mx, py + 1.4, mz];
   // Émile attend à son moulin, face au bourg d'où arrive Camille
   const em = PARTAGE.emile;
   if (em) { PRO.emileAvant = [em.position.x, em.position.y, em.position.z, em.rotation.y];
@@ -414,6 +428,9 @@ function prologue() {
     { say: '« Camille ! Lydéric sort à midi, et la garde n’a pas son blé. C’est l’apprentie qui coupe la première botte de l’année, c’est la règle. File au moulin d’Émile, au nord-est du bourg. »', who: 'Houtland' },
     { say: '« Tu ne sais plus où est le moulin ? La carte du beffroi (M). Une apprentie de la garde qui se perd dans son propre bourg, on aura tout vu. »', who: 'Houtland' },
     { say: '« Et ce soir, tu prêteras serment. Ça ne se reprend pas, un serment de la garde. Réfléchis-y en coupant ton blé. »', who: 'Houtland' },
+    { say: '« Le blé se coupe avec une lame, pas avec les dents. Voici l’épée d’apprentie. Ne coupe rien d’autre que du blé. »', who: 'Le vieux mage', cam: camMage, at: atMage,
+      fn: () => { state.sword = true; SFX.pickup(); } },
+    { say: '« La Grande Cloche sonnera pour Lydéric, aujourd’hui. Il y a longtemps qu’elle n’a pas sonné si fort… »', who: 'Le vieux mage' },
   ], () => {
     PRO.etape = 'moulin'; PARTAGE.repere = { x: FERME.x, z: FERME.z };
     player.yaw = G.camYaw = Math.atan2(FERME.x - player.pos.x, FERME.z - player.pos.z);   // dos à la salle, face au chemin
@@ -432,10 +449,8 @@ function suivrePrologue() {
     const dx = em.position.x - p.pos.x, dz = em.position.z - p.pos.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
     const y = p.pos.y, cam = [p.pos.x - ux * 2.6 + uz * 1.2, y + 2.1, p.pos.z - uz * 2.6 - ux * 1.2], at = [em.position.x, em.position.y + 1.4, em.position.z];
     cutscene([
+      // l'épée, Camille la tient du vieux mage, à la salle de la garde (découpage, plan 3)
       { who: 'Émile', say: '« La première botte de l’année ! Coupe les épis du champ du nord, une dizaine suffit. Tiens la lame à plat. »', cam, at },
-      // l'épée d'apprentie viendra du vieux mage (découpage, plan 3) quand il descendra au
-      // bourg ; d'ici là, c'est Émile qui la prête — Lydéric s'en souvient (talkLyderic)
-      { who: 'Émile', say: '« Pas de lame ? Prends la vieille épée de mon grand-père, un soldat de Vauban. Et ne coupe rien d’autre que du blé. »', fn: () => { state.sword = true; SFX.pickup(); } },
     ], () => {
       PRO.etape = 'fauche'; PRO.bleDepart = bleFauche;
       PARTAGE.repere = ch ? { x: ch.cx, z: ch.cz } : null;
@@ -558,6 +573,7 @@ function finPrologue() {
   const em = PARTAGE.emile, a = PRO.emileAvant;
   if (em && a) { em.position.set(a[0], a[1], a[2]); em.rotation.y = a[3]; }
   PRO.etape = null; PARTAGE.repere = null; state.prologueFait = true;
+  for (const v of [PARTAGE.houtland, PARTAGE.mageBourg]) if (v) v.visible = false;
   if (G.sansSauvegarde) showMenu('FIN DU PROLOGUE', 'La fête des géants', 'Eugène est enlevé. La suite de l’histoire se joue avec ton personnage.', [
     { label: 'Retour à l’accueil', fn: () => { naviguer('accueil.html'); } },
   ]);

@@ -572,7 +572,8 @@ function tasTuiles(ctx, x, z, yaw) {
 // bac à tremper chez le forgeron.
 const METIERS = {
   // la boulangerie est aussi l'école de cuisine où Camille apprend son métier (le prologue)
-  boulanger: { texte: 'ÉCOLE LEQUEUCHE',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
+  // l'ancienne école Lequeuche, devenue la salle de la garde (DIALOGUES-ACTE1.md, le prologue)
+  boulanger: { texte: 'SALLE DE LA GARDE',      embleme: 'pain',    objet: 'couronne', bois: 0x9a6a2e, nom: 'DE GOUDEN AER — 1662' },
   brasseur:  { texte: 'LA CERVOISE',      embleme: 'tonneau', objet: 'tonneau',  bois: 0x3c5c42, nom: 'IN DEN HOP — 1658' },
   drapier:   { texte: 'AU DRAP D’OR',     embleme: 'drap',    objet: 'navette',  bois: 0x7c2f36, nom: 'DE GOUDEN LEEUW — 1651' },
   forgeron:  { texte: 'À L’ENCLUME',      embleme: 'fer',     objet: 'fer',      bois: 0x43404a, nom: 'T YSER — 1669' },
@@ -1112,7 +1113,7 @@ export function buildVie(ctx) {
   { const [x, z] = townWorld(-11, RUE - 1.6), [ex, ez] = townWorld(-8.6, RUE - 1.2);
     const [sx, sz] = townWorld(-13.2, RUE - 0.4);        // l'enseigne, au bout de la façade
     PARTAGE.ecole = { x, z, yaw: TOWN.a, eugene: [ex, ez], enseigne: [sx, TOWN.y + 4.2 * TOWN.s, sz] };
-    const [lx, lz] = townWorld(-11, RUE + 3.9); E.addLieu({ id: 'ecole', nom: 'l’école Lequeuche', x: lx, z: lz, r: 12 }); }
+    const [lx, lz] = townWorld(-11, RUE + 3.9); E.addLieu({ id: 'ecole', nom: 'la salle de la garde', x: lx, z: lz, r: 12 }); }
   devanture(ctx, { hx: 11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6.5, d: 7, metier: 'drapier' });
   devanture(ctx, { hx: 10.5, hz: -RUE - 3.5 - 0.4, yaw: 0, w: 5, d: 7, metier: 'brasseur' });
   devanture(ctx, { hx: 9.6, hz: 14, yaw: -Math.PI / 2, w: 6, d: 7, metier: 'forgeron', cotes: [1], objetY: 4.15, sansPlaque: true });
