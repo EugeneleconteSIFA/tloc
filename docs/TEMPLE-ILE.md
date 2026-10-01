@@ -47,5 +47,13 @@ relié au jeu : on l'ouvre par son adresse pour le voir (`https://tloc-dev.kerns
 
 **Planche v1** : `docs/planches/ile-du-temps-v1.jpg` (les six plans ci-dessus, dans l'ordre).
 Vérifié en headless : chargement 2,5 à 9,5 s selon la charge du Mac, aucune erreur.
-À faire ensuite, après l'avis d'Eugène : sculpter les portes (le géant de chaque monde), les
+**v2, les portes sculptées** (`docs/planches/ile-du-temps-v2-portes.jpg`) — Eugène a aimé la
+v1 (« la teinte un peu violette pastel, j'adore »). Chaque tympan porte en bas-relief le
+géant de son monde : Lydéric (le chevalier, l'épée levée), le Dormeur (couché comme une
+falaise), le Yak (la couronne en flèche, la massue), le Colosse (le bras levé, la croix), le
+loup qui hurle, et pour la rive oubliée une fêlure. Un vrai relief en géométrie (30 cm), sur
+le grain d'une pierre photographiée sans sa couleur : une carte de normales seule, ou une
+pierre à joints ou tachée, ne laissaient rien lire sous la lumière rasante. Les noms gravés,
+au-dessus des arcs.
+À faire ensuite : les
 débordements de chaque monde sur la rive, la barque du passeur, et relier l'île au donjon.

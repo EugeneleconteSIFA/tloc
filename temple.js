@@ -20,12 +20,12 @@ const R_ILE = 50, R_COUR = 26, R_TOUR = 10, EP_TOUR = 1.4, H_TOUR = 72;
 const MER = -1.3;                                    // la mer figée, sous le bord de l'île
 // les six portes, en cercle : Lille au sud (+z), là où l'on arrive
 const PORTES = [
-  { nom: 'LILLE', sous: 'la Grande Cloche', ouverte: true },
-  { nom: 'LE MIDI', sous: 'l’Aveyron' },
-  { nom: 'LES ÎLES', sous: 'la mousson' },
-  { nom: 'LES HEURES', sous: 'les Pouilles' },
-  { nom: 'LES TROUPEAUX', sous: 'la Lozère' },
-  { nom: '', sous: '' },                              // la rive oubliée : pas encore de nom
+  { nom: 'LILLE', sous: 'la Grande Cloche', ouverte: true, geant: 'lyderic' },
+  { nom: 'LE MIDI', sous: 'l’Aveyron', geant: 'dormeur' },
+  { nom: 'LES ÎLES', sous: 'la mousson', geant: 'yak' },
+  { nom: 'LES HEURES', sous: 'les Pouilles', geant: 'colosse' },
+  { nom: 'LES TROUPEAUX', sous: 'la Lozère', geant: 'loup' },
+  { nom: '', sous: '', geant: 'fissure' },            // la rive oubliée : pas encore de nom, une fêlure
 ];
 const angPorte = (i) => i * TAU / PORTES.length;      // 0 = sud (+z), puis dans le sens trigonométrique vu d'en haut
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -47,11 +47,94 @@ function plaqueGravee(lignes, w, h, taille) {
   x.textAlign = 'center'; x.textBaseline = 'middle';
   lignes.forEach((l, i) => {
     const y = H * (i + 1) / (lignes.length + 1), t = l.taille || taille;
-    x.font = `${l.italique ? 'italic ' : ''}bold ${t}px Georgia, serif`;
+    // la ligne tient dans la plaque, avec une marge : on réduit la police tant qu'elle déborde
+    let tt = t; do { x.font = `${l.italique ? 'italic ' : ''}bold ${tt}px Georgia, serif`; tt -= 4; } while (x.measureText(l.t).width > W * 0.88 && tt > 12);
     x.fillStyle = 'rgba(255,250,235,0.55)'; x.fillText(l.t, W / 2 + 2, y + 2);     // l'arête éclairée
     x.fillStyle = l.couleur || 'rgba(40,32,24,0.92)'; x.fillText(l.t, W / 2, y);   // le creux
   });
   return new THREE.MeshStandardMaterial({ map: tex(c, 1), roughness: 0.9 });
+}
+
+// ---------------------------------------------------------------------
+//  Les tympans sculptés : le géant de chaque monde, en bas-relief
+// ---------------------------------------------------------------------
+// Pas une image peinte : un RELIEF. On dessine la figure en niveaux de gris (le blanc sort de
+// la pierre), on l'adoucit, on en tire une carte de normales, et on la pose sur la pierre
+// photographiée — c'est la lumière qui creuse la figure, comme sur un vrai tympan.
+// Le demi-disque : (256 ; 256) en bas au milieu, 256 de rayon.
+const FIGURES = {
+  lyderic(x) {        // le chevalier debout, l'épée levée, le bouclier au bras
+    x.beginPath(); x.arc(256, 74, 26, 0, TAU); x.fill();                              // le heaume
+    x.beginPath(); x.moveTo(214, 104); x.lineTo(298, 104); x.lineTo(312, 256); x.lineTo(200, 256); x.closePath(); x.fill();
+    x.lineWidth = 16; x.lineCap = 'round'; x.beginPath(); x.moveTo(300, 120); x.lineTo(338, 160); x.stroke();   // le bras
+    x.lineWidth = 9; x.beginPath(); x.moveTo(336, 168); x.lineTo(410, 20); x.stroke();                        // l'épée
+    x.lineWidth = 6; x.beginPath(); x.moveTo(318, 150); x.lineTo(356, 172); x.stroke();                       // la garde
+    x.beginPath(); x.ellipse(196, 170, 34, 46, 0, 0, TAU); x.fill();                                         // le bouclier
+  },
+  dormeur(x) {        // couché comme une falaise : une longue colline qui a un visage
+    x.beginPath(); x.moveTo(40, 256); x.bezierCurveTo(90, 180, 170, 200, 230, 186); x.bezierCurveTo(290, 172, 330, 196, 372, 176);
+    x.bezierCurveTo(400, 150, 440, 150, 458, 180); x.lineTo(476, 256); x.closePath(); x.fill();
+    x.beginPath(); x.arc(424, 156, 26, 0, TAU); x.fill();                                                    // la tête, renversée
+    x.beginPath(); x.ellipse(300, 182, 40, 14, -0.15, 0, TAU); x.fill();                                    // le bras replié
+  },
+  yak(x) {            // le gardien de temple : la couronne en flèche, la massue droite devant lui
+    x.beginPath(); x.moveTo(256, 6); x.lineTo(280, 62); x.lineTo(232, 62); x.closePath(); x.fill();          // la couronne
+    for (let k = 0; k < 3; k++) { x.beginPath(); x.ellipse(256, 66 + k * 10, 30 - k * 3, 6, 0, 0, TAU); x.fill(); }
+    x.beginPath(); x.arc(256, 104, 26, 0, TAU); x.fill();
+    x.beginPath(); x.moveTo(176, 140); x.lineTo(336, 140); x.lineTo(306, 256); x.lineTo(206, 256); x.closePath(); x.fill();
+    x.fillStyle = '#ffffff'; x.fillRect(248, 120, 16, 136); x.beginPath(); x.arc(256, 122, 18, 0, TAU); x.fill();   // la massue
+  },
+  colosse(x) {        // la statue de bronze en robe, le bras levé qui tient la croix
+    x.beginPath(); x.arc(250, 70, 24, 0, TAU); x.fill();
+    x.beginPath(); x.moveTo(222, 98); x.lineTo(280, 98); x.lineTo(320, 256); x.lineTo(184, 256); x.closePath(); x.fill();
+    x.lineWidth = 15; x.lineCap = 'round'; x.beginPath(); x.moveTo(278, 110); x.lineTo(330, 60); x.stroke();
+    x.lineWidth = 8; x.beginPath(); x.moveTo(334, 18); x.lineTo(334, 100); x.stroke(); x.beginPath(); x.moveTo(316, 38); x.lineTo(352, 38); x.stroke();
+    x.beginPath(); x.arc(206, 168, 16, 0, TAU); x.fill();                                                    // le globe
+  },
+  loup(x) {           // la tête du loup qui hurle, le cou tendu vers le ciel
+    x.beginPath(); x.moveTo(150, 256); x.lineTo(196, 150); x.lineTo(262, 70); x.lineTo(300, 22); x.lineTo(312, 40);
+    x.lineTo(296, 74); x.lineTo(326, 96); x.lineTo(318, 118); x.lineTo(286, 120); x.lineTo(300, 150); x.lineTo(332, 256); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(256, 92); x.lineTo(244, 54); x.lineTo(272, 80); x.closePath(); x.fill();          // l'oreille
+  },
+  fissure(x) {        // la rive oubliée : pas de figure, une fêlure qui traverse la pierre
+    x.strokeStyle = '#000000'; x.lineWidth = 10; x.lineJoin = 'miter'; x.beginPath(); x.moveTo(250, 256);
+    for (const [px, py] of [[270, 210], [236, 170], [262, 120], [228, 80], [250, 30]]) x.lineTo(px, py); x.stroke();
+  },
+};
+function tympan(nom) {
+  const W = 512, H = 256, [c, x] = makeCanvas(W, H);
+  x.fillStyle = '#808080'; x.fillRect(0, 0, W, H);                                     // le fond du tympan, à mi-hauteur
+  x.filter = 'blur(6px)'; x.fillStyle = '#ffffff'; x.strokeStyle = '#ffffff';   // adouci : des formes bombées, pas des plateaux
+  FIGURES[nom](x); x.filter = 'none';
+  // une bordure creusée qui suit l'arc : le tympan est encadré
+  x.strokeStyle = '#3a3a3a'; x.lineWidth = 10; x.beginPath(); x.arc(256, 256, 244, Math.PI, TAU); x.stroke();
+  const h = x.getImageData(0, 0, W, H).data;
+  const at = (u, v) => { const i = Math.min(W - 1, Math.max(0, Math.round(u * (W - 1)))), j = Math.min(H - 1, Math.max(0, Math.round((1 - v) * (H - 1))));
+    return h[(j * W + i) * 4] / 255; };
+  // UN VRAI RELIEF, en géométrie : une carte de normales ne creusait presque rien sous la
+  // lumière rasante du crépuscule. Une grille fine, chaque point poussé selon la hauteur
+  // dessinée (18 cm au plus), et les points hors du demi-disque ramenés sur l'arc.
+  const R = 1.8, g = new THREE.PlaneGeometry(2 * R, R, 150, 75); g.translate(0, R / 2, 0);
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let k = 0; k < p.count; k++) {
+    let px = p.getX(k), py = p.getY(k); const r = Math.hypot(px, py);
+    if (r > R) { px *= R / r; py *= R / r; p.setX(k, px); p.setY(k, py); }
+    p.setZ(k, (at(px / (2 * R) + 0.5, py / R) - 0.5) * 0.6);
+    uv.setXY(k, px / (2 * R) + 0.5, py / R);
+  }
+  g.computeVertexNormals();
+  // la pierre photographiée ; le fond en retrait un peu plus sombre que la figure (l'ombre
+  // du ciel y entre moins)
+  // le grain et la rugosité d'une pierre photographiée, SANS sa couleur : les joints de la
+  // pierre de taille rayaient la figure, les taches de la chaux la brouillaient — sur une
+  // teinte unie de grès, c'est le relief seul qui dessine
+  const m = phMat('marble_rock_02', 1.2, 0.6, { color: 0xcdbf9f });
+  m.map = null; m.needsUpdate = true;
+  const ao = x.createImageData(W, H);
+  for (let k = 0; k < W * H; k++) { const o = 255 * (0.42 + 0.58 * Math.max(0, Math.min(1, (h[k * 4] / 255 - 0.5) * 2 + 0.5)));
+    ao.data[k * 4] = ao.data[k * 4 + 1] = ao.data[k * 4 + 2] = o; ao.data[k * 4 + 3] = 255; }
+  { const [c4, x4] = makeCanvas(W, H); x4.putImageData(ao, 0, 0); m.aoMap = tex(c4, 1, false); m.aoMapIntensity = 1; }
+  return new THREE.Mesh(g, m);
 }
 
 let mer = null;
@@ -144,11 +227,15 @@ function build() {
       ? new THREE.MeshStandardMaterial({ color: 0xffe2b0, emissive: 0xffc878, emissiveIntensity: 1.1, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
       : phMat('wood_cabinet_worn_long', 3.6, 5.2, { color: 0x4a3828, side: THREE.DoubleSide }));
     fond.position.set(0, 2.6, 0); g.add(fond);
-    const haut = new THREE.Mesh(new THREE.CircleGeometry(1.8, 24, 0, Math.PI), fond.material); haut.position.set(0, 5.2, 0); g.add(haut);
+    // le tympan : côté cour, le géant du monde en bas-relief ; côté large, la pierre nue
+    { const t = tympan(P.geant); t.position.set(0, 5.2, -0.08); t.rotation.y = Math.PI; g.add(t);
+      const dos = new THREE.Mesh(new THREE.CircleGeometry(1.8, 32, 0, Math.PI), taille); dos.position.set(0, 5.2, 0.08); g.add(dos); }
     if (!P.ouverte) for (const y of [1.2, 3.6]) g.add(mesh(boxG(3.5, 0.14, 0.12), mat(0x2a2a2e, { metalness: 0.7, roughness: 0.5 }), 0, y, 0.08));
     // le nom du monde, gravé sur le linteau, côté cour
     if (P.nom) { const n = new THREE.Mesh(boxG(4.2, 0.9, 0.2), [taille, taille, taille, taille, taille, plaqueGravee([{ t: P.nom }, { t: P.sous, italique: true, taille: 70 }], 4.2, 0.9, 120)]);
-      n.position.set(0, 7.75, -0.6); n.rotation.y = Math.PI; g.add(n); }
+      // devant l'arc et au-dessus : à 7,75 m, la plaque était noyée dans l'épaisseur de l'arc
+      // la face gravée est la face −z de la boîte : celle qui regarde la cour, sans la retourner
+      n.position.set(0, 8.75, -1.0); g.add(n); }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     for (const s of [-1, 1]) { const x = g.position.x + Math.cos(a) * s * 2.35, z = g.position.z - Math.sin(a) * s * 2.35; addCap(x, z, x, z, 0.85); }
   });
