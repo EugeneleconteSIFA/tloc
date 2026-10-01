@@ -63,5 +63,11 @@ le sable mouillé et une marée figée en pleine montée ; les Troupeaux un mure
 sèche, une sonnaille au piquet, la brume. Et au large, sa silhouette sort de la brume
 (le causse et le Dormeur, les pitons, la ville blanche, la montagne et la tour de la
 Garde-Guérin). Sans l'aperçu, seul Lille est ouvert.
+**Le passage provisoire** (Eugène, 1er octobre) : une dalle gravée, sur la place d'Armes
+devant la grille de l'enclos du donjon, luit du violet de l'île ; Entrée l'ouvre par-dessus
+la ville (comme les intérieurs, sans recharger). Sur l'île, la porte de Lille ramène à la
+dalle. Vérifié en jouant (headless) : aller, arrivée par la porte de Lille, retour, aucune
+erreur. Il cèdera la place à la vraie fin de l'acte I (Phinaert ouvre le Temple avec le sang
+d'Eugène, depuis la dalle du donjon).
 À faire ensuite : les
 débordements de chaque monde sur la rive, la barque du passeur, et relier l'île au donjon.

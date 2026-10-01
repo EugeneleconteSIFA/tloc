@@ -2639,7 +2639,7 @@ export function newGame() {
   // pendant le prologue rejoué, « Nouvelle partie » le recommence : la partie du personnage n'y est pour rien
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
-export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html' };
+export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
 
 // ---------------------------------------------------------------------

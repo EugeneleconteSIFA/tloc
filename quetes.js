@@ -4,7 +4,7 @@
 // et la boucle de jeu propre au niveau (update). Le décor lui est donné tout bâti.
 import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, camera, cut, cutscene, dialogue, endGame, enemies,
-  followActor, getH, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
+  followActor, getH, goToLevel, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
 } from './engine.js?v=41';
 import {
@@ -109,6 +109,18 @@ export function populate() {
   // la même échelle qu'eux : l'ancien prince, jamais réduit, dépassait Camille d'une tête
   PARTAGE.prince = PNJ.buildRole('prince') || makePrince(); PARTAGE.prince.scale.setScalar(G.echelle);
   PARTAGE.prince.position.set(1.5, 0, LYD_Z + 2); PARTAGE.prince.rotation.y = Math.PI; PARTAGE.prince.visible = false; scene.add(PARTAGE.prince);
+  // LE PASSAGE VERS L'ÎLE DU TEMPS — provisoire (Eugène, 1er octobre). Dans STORY.md, Phinaert
+  // ouvre le Temple depuis la dalle du donjon, avec le sang d'Eugène, à la fin de l'acte I ;
+  // tant que l'acte I n'est pas écrit, une dalle gravée devant la grille de l'enclos y mène
+  // librement, pour qu'on puisse s'y promener. Elle luit du violet de l'île.
+  { const x = DONJON.x + 7, z = DONJON.gateZ + 6, y = getH(x, z);
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 0.18, 8), phMat('old_stone_wall_02', 3, 3, { color: 0xc8beac }));
+    d.position.set(x, y + 0.09, z); d.receiveShadow = true; d.userData.dynamic = true; scene.add(d);
+    const lueur = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.95, 8), new THREE.MeshBasicMaterial({ color: 0xb8a0e0, transparent: true, opacity: 0.55 }));
+    lueur.rotation.x = -Math.PI / 2; lueur.rotation.z = Math.PI / 8; lueur.position.set(x, y + 0.19, z); lueur.userData.dynamic = true; scene.add(lueur);
+    PARTAGE.dalleTemple = lueur;
+    addInteract({ pos: d.position, r: 2.2, prompt: () => 'poser la main sur la dalle gravée',
+      fn: () => goToLevel('temple', [0, 0, 23.5], Math.PI, 'La pierre s’ouvre sur une lumière violette…') }); }
   // Houtland et le vieux mage, devant la salle de la garde le temps du prologue seulement :
   // leurs répliques d'après (« dix hommes poussent la grande grille ») attendent l'acte I
   for (const [cle, role] of [['houtland', 'houtland'], ['mageBourg', 'mage']]) {
@@ -226,6 +238,8 @@ export function update(dt) {
   // le morceau de cloche : sur le pont dès l'enlèvement joué, tant qu'on ne l'a pas ramassé ; il fume
   if (PARTAGE.morceau) { const m = PARTAGE.morceau; m.visible = !!state.introSeen && !state.morceauCloche && !cut.active;
     if (m.visible && (PRO.fumeT = (PRO.fumeT || 0) - dt) <= 0) { PRO.fumeT = 0.45; burst(m.position.x, m.position.y + 0.2, m.position.z, 0x5a4a44, 3, 0.5, 1.8, -1.4, 1.6); } }
+  // la dalle de l'île respire, doucement
+  if (PARTAGE.dalleTemple) PARTAGE.dalleTemple.material.opacity = 0.4 + Math.sin(state.time * 1.3) * 0.18;
   // la herse de la Porte Royale qui retombe derrière Phinaert, le temps de la cinématique
   if (PRO.herseT >= 0 && PARTAGE.herse) { PRO.herseT += dt; const f = Math.min(1, PRO.herseT / 0.9); PARTAGE.herse.userData.poser(f * f); }
   // ambiance : pépiements d'oiseaux et bruits de pas

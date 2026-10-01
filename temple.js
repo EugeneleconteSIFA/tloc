@@ -14,7 +14,8 @@ import * as PNJ from './pnj.js';
 // En mètres, comme la carte (1 unité = 1 m) : Camille y a l'échelle de la ville (0,6).
 // =====================================================================
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
-  addCap, showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
+  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
+import { DONJON } from './carte.js';
 
 const R_ILE = 50, R_COUR = 26, R_TOUR = 10, EP_TOUR = 1.4, H_TOUR = 72;
 const MER = -1.3;                                    // la mer figée, sous le bord de l'île
@@ -238,6 +239,9 @@ function build() {
       n.position.set(0, 8.75, -1.0); g.add(n); }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     for (const s of [-1, 1]) { const x = g.position.x + Math.cos(a) * s * 2.35, z = g.position.z - Math.sin(a) * s * 2.35; addCap(x, z, x, z, 0.85); }
+    // la porte de Lille ramène à la dalle du donjon (le passage provisoire, quetes.js)
+    if (P.ouverte) addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'repasser la porte de Lille',
+      fn: () => goToLevel('citadel', [DONJON.x + 7, 0, DONJON.gateZ + 8.5], 0, 'Retour à Lille…') });
   });
 
   // ---------- les mondes ouverts : leur rive, et leur silhouette au loin ----------
