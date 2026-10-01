@@ -1222,6 +1222,9 @@ proximité, tloc-multi.js `coupsFleche`).
   « sans serment » d'`introScene` (l'ancienne intro) ne sert plus, « Passer » joue `rappel()`. Ce qu'Eugène doit fournir pour toute l'histoire : `docs/BESOINS-HISTOIRE.md`.
   *À regarder* : de part et d'autre du pont, des touffes de roseaux semblent posées sur
   l'eau des douves (visibles sur `docs/planches/prologue-v2.jpg`) — pas touché.
+- **L'île du temps (1er octobre)** : le Temple des Géants, `temple.html` / `temple.js`,
+  passage provisoire par la dalle de la place d'Armes. Tout dans `docs/TEMPLE-ILE.md`.
+  `temple.html?mondes=tous` ouvre tous les mondes pour l'aperçu.
   *Banc* : dans Playwright, `keyboard.press('z')` ou `'w'` ne fait pas marcher Camille ;
   on la déplace par `TLOC.player.pos`. Le poids réseau du banc varie de 35 à 42 Mo pour le
   même code : `response.body()` échoue parfois (le 1er, `Male_Ranger.bin` manquait au
