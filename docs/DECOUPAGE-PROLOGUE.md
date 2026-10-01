@@ -66,11 +66,33 @@ Durée visée : 4 minutes, dont 2 de jeu (se déplacer, la carte, l'épée) et 2
    capture par plan.
 2. **La botte de blé** (un objet porté, puis posé) et **le morceau de cloche** (un objet
    ramassé, qui reste dans la poche : il servira à l'acte VI).
+   **Fait le 1er octobre.** La botte avec le pas 1. Le morceau : un éclat de la robe de la
+   cloche, tiède (une lueur sourde) et qui fume, sur les planches devant Lydéric dès
+   l'enlèvement joué ; Entrée le ramasse (« Un morceau de la Grande Cloche. Il est chaud. »),
+   `state.morceauCloche`, rangé dans la poche (« ARMES, OUTILS, SOUVENIRS »).
 3. **Phinaert qui arrive, et la grille qui tombe** : Phinaert existe (donjon), la herse existe
    (fin actuelle) ; il faut les jouer à l'envers, au début.
+   **Fait le 1er octobre** (avec le 5). Phinaert prend forme sur le pont, côté plaine, au bout
+   de la fumée ; il parle (« Mille ans dans une cloche… »), saisit Eugène qui revient du
+   beffroi en courant, renverse Camille, file à la Porte Royale ; la herse tombe derrière lui
+   (un plan à elle, son de chaînes). **À décider avec l'acte I** : la herse se relève dans le
+   noir, parce que la partie d'aujourd'hui entre dans la citadelle par cette porte ; baissée
+   pour de bon, c'est la « grande grille » que dix hommes poussent. Le chemin « Passer »
+   garde l'ancienne arrivée par la porte.
 4. **Lydéric d'osier** : une matière, pas un modèle — la même silhouette, en branches sèches.
+   **Pas fait, exprès** : après l'enlèvement, c'est encore Lydéric qui donne toutes les
+   consignes de la partie d'aujourd'hui (`talkLyderic`). Le figer en osier demande de passer
+   ces consignes à Houtland — c'est le début de l'acte I, à faire avec lui.
 5. **La cloche qui se fend** : une entaille qui s'ouvre sur le modèle du beffroi, une fumée
    rouge (les particules du jeu), un son de cloche qui casse (`SFX`).
+   **Fait le 1er octobre.** La cloche du beffroi est refaite (profil tourné de vraie cloche,
+   pendue à son mouton, mobile) ; elle se balance ; au deuxième coup une fente sombre à
+   lueur rouge court de l'épaule à la pince et reste ensuite (`state.introSeen`) ;
+   `SFX.cloche(fendue)` (partiels de cloche, battement du bronze fêlé, craquement),
+   `SFX.herse()`. Plans : Eugène court au beffroi ; le beffroi depuis la rue ; la chambre des
+   cloches en gros plan ; la fumée qui traverse le ciel jusqu'au pont. Planche :
+   `docs/planches/prologue-v3-cloche.jpg`. *Défaut connu* : dans la chambre, la cloche est
+   presque noire (bronze métallique, peu de lumière) — à éclairer si Eugène le trouve.
 6. **La foule, puis la ville qui se vide** — seulement après une mesure au banc.
 
 Chaque pas : planche rendue → Eugène valide → on code le suivant.

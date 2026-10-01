@@ -90,6 +90,19 @@ export function populate() {
   scene.add(PARTAGE.lyderic); addCap(LYD_X, LYD_Z, LYD_X, LYD_Z, 1.2); PARTAGE.lyderic.userData.talkCd = 0;
   // 7 m : un géant de 7,6 m se parle de plus loin qu'un villageois, et Camille se relève à 6,5 m de lui
   addInteract({ pos: PARTAGE.lyderic.position, r: 7, prompt: () => 'parler à Lydéric', fn: talkLyderic });
+  // LE MORCEAU DE CLOCHE (STORY.md § 2 ; découpage, plan 17) : après l'enlèvement, un éclat de
+  // la Grande Cloche fume sur les planches. Camille le garde ; personne n'en parle avant
+  // l'acte VI. Un éclat de la robe — le même profil que la cloche du beffroi, un huitième de
+  // tour, réduit — en bronze photographié.
+  { const prof = [[0.53, 0.5], [0.58, 0.75], [0.68, 0.98], [0.86, 1.18], [0.95, 1.26]].map(([r, y]) => new THREE.Vector2(r * 0.45, -y * 0.45));
+    const g = new THREE.LatheGeometry(prof, 4, 0, 0.75); g.center();
+    const m = new THREE.Mesh(g, phMat('metal_plate_02', 0.3, 0.3, { color: 0xd09a58, roughness: 0.4, side: THREE.DoubleSide, emissive: 0x5a1a04, emissiveIntensity: 0.6 }));
+    const x = 0.2, z = LYD_Z + 3.2; m.position.set(x, getH(x, z) + 0.05, z); m.rotation.set(0.55, 0.6, 0.35);   // calé sur sa tranche : à plat, il se perdait dans les planches m.castShadow = true; m.userData.dynamic = true;
+    m.visible = false; scene.add(m); PARTAGE.morceau = m;
+    // portée 3 m : à 3 m de lui, Lydéric (portée 7) gagnait le choix d'engine.js, qui rapporte la distance à la portée
+    addInteract({ pos: m.position, r: 3, enabled: () => m.visible, prompt: () => 'ramasser le morceau de métal', fn: () => {
+      state.morceauCloche = true; m.visible = false; SFX.pickup(); saveGame(true);
+      showMessage('Un morceau de la Grande Cloche. Il est chaud.', 5); } }); }
   // le PARTAGE.prince Eugène : présent au pont pour l'intro, puis aux côtés de Camille une fois libéré
   // riggé comme les villageois (la version en primitives ne sert plus que de repli), et à
   // la même échelle qu'eux : l'ancien prince, jamais réduit, dépassait Camille d'une tête
@@ -185,6 +198,18 @@ export function update(dt) {
       b.position.set(p.pos.x + Math.sin(p.yaw) * av - ax.x * LIEN_H, p.pos.y + 0.95 * e - ax.y * LIEN_H, p.pos.z + Math.cos(p.yaw) * av - ax.z * LIEN_H);
     }
   }
+  // la Grande Cloche : elle se balance quand Eugène la sonne, et reste fendue après l'enlèvement
+  const cl = PARTAGE.cloche;
+  if (cl) {
+    cl.fente.visible = PRO.fendue || !!state.introSeen;
+    if (PRO.sonneT >= 0) { PRO.sonneT += dt; cl.joug.rotation.z = Math.sin(PRO.sonneT * 2.4) * 0.38 * Math.exp(-PRO.sonneT * 0.12);
+      if (PRO.sonneT > 30) { PRO.sonneT = -1; cl.joug.rotation.z = 0; } }
+  }
+  // le morceau de cloche : sur le pont dès l'enlèvement joué, tant qu'on ne l'a pas ramassé ; il fume
+  if (PARTAGE.morceau) { const m = PARTAGE.morceau; m.visible = !!state.introSeen && !state.morceauCloche && !cut.active;
+    if (m.visible && (PRO.fumeT = (PRO.fumeT || 0) - dt) <= 0) { PRO.fumeT = 0.45; burst(m.position.x, m.position.y + 0.2, m.position.z, 0x5a4a44, 3, 0.5, 1.8, -1.4, 1.6); } }
+  // la herse de la Porte Royale qui retombe derrière Phinaert, le temps de la cinématique
+  if (PRO.herseT >= 0 && PARTAGE.herse) { PRO.herseT += dt; const f = Math.min(1, PRO.herseT / 0.9); PARTAGE.herse.userData.poser(f * f); }
   // ambiance : pépiements d'oiseaux et bruits de pas
   chirpT -= dt; if (chirpT <= 0) { chirpT = rand(2, 7); if (Math.random() < 0.8) SFX.chirp(); }
   // douves : si Camille tombe à l'eau, elle est repêchée au dernier endroit sûr
@@ -257,6 +282,7 @@ export function talkLyderic() {
 const PRO = {
   etape: null,              // 'moulin' → 'fauche' → 'pont' → null
   bleDepart: 0, cages: [], emileAvant: null, botte: null, tend: false, posee: false,
+  sonneT: -1, herseT: -1, fendue: false,   // la cloche qui se balance, la herse qui tombe (update)
   objectif: () => PRO.etape === 'moulin' ? "Cours au moulin d'Émile, au nord-est du bourg (le point d'or de la carte)"
     : PRO.etape === 'pont' || PRO.etape === 'botte' || PRO.etape === 'serment' ? 'Porte la botte à Lydéric, au pont de Fin (le point d’or)' : "Coupe le blé du champ du nord, chez Émile (clic gauche ou F)",
 };
@@ -385,7 +411,10 @@ function suivrePrologue() {
 // Royale au fond : Camille arrive de la plaine (z croissant), face au nord.
 export function introScene(serment = false) {
   const lx = LYD_X, lz = LYD_Z, hy = getH(0, lz);
-  const villain = geant('phinaert', 0x7a1f1f, 0x333333, 'club'); villain.position.set(0, hy, APO - 12); villain.rotation.y = 0; villain.userData.dynamic = true; villain.visible = false; scene.add(villain);
+  // avec le serment, Phinaert naît de la fumée de la cloche, sur le pont, côté plaine ;
+  // sans, il sort de la Porte Royale comme avant
+  const villain = geant('phinaert', 0x7a1f1f, 0x333333, 'club'); villain.userData.dynamic = true; villain.visible = false; scene.add(villain);
+  if (serment) { villain.position.set(1.5, hy, lz + 16); villain.rotation.y = Math.PI; }   // face au serment qu'il vient interrompre else { villain.position.set(0, hy, APO - 12); villain.rotation.y = 0; }
   const lyd = PARTAGE.lyderic, eu = PARTAGE.prince;
   lyd.position.set(lx, getH(lx, lz), lz); lyd.rotation.y = 0;
   // Camille à 5 m devant Lydéric, Eugène à sa droite ; tous deux face au géant
@@ -405,6 +434,8 @@ export function introScene(serment = false) {
     { say: '« Ce que la garde commence… »', who: 'Lydéric' },
     { say: '« … la garde l’achève. »', who: 'Camille', cam: [-0.6, 1.7, lz + 2.4], at: [cx, hy + 1.45, cz] },   // de face, vue d'où se tient Lydéric
     { say: '« Tu ne pourras plus le reprendre. »', who: 'Lydéric', cam: [0.5, 1.3, lz + 10], at: [lx + 0.6, 8, lz - 4] },
+    { say: '« Si je rate le premier coup, tu diras que c’était voulu. »', who: 'Eugène', cam: [2.8, 1.8, lz + 0.8], at: [1.3, 1.4, lz + 4.6] },
+    { cam: [3.5, 2.4, lz + 2], at: [2, 1.4, lz + 12], dur: 2.6, actor: eu, to: [2.1, lz + 40], speed: 6, text: 'Eugène court au beffroi.' },
   ] : [
     { cam: [90, 70, 140], at: [0, 6, 0], cam2: [40, 34, 96], at2: [0, 8, 10], dur: 7, fade: 0, title: 'THE LEGEND OF CAMILLE', sub: 'La Citadelle de Lille', skippable: false },
     { cam: [40, 34, 96], at: [0, 8, 10], cam2: [16, 8, lz + 88], at2: [0, 6, lz - 42], dur: 6, text: 'La citadelle de Vauban veille sur Lille depuis des siècles. Ses cinq bastions, ses fossés et son donjon n\'ont jamais été pris.' },
@@ -415,16 +446,49 @@ export function introScene(serment = false) {
   const renverser = () => { const b = PRO.botte; if (!b) return; PRO.botte = null; PRO.tend = false; PRO.posee = false;
     b.position.set(lx + 1.3, hy + 0.06, lz + 2.6); b.rotation.set(0, 0.9, 1.45);
     burst(lx + 1.3, hy + 0.3, lz + 2.6, 0xd8b860, 26, 3, 0.7, 4, 1.1); };
-  cutscene([
-    ...ouverture,
+  // LA GRANDE CLOCHE (STORY.md § 2 ; découpage, plans 11 à 15). Les plans du beffroi se
+  // calculent sur la cloche elle-même : le beffroi est bâti dans le repère du bourg puis replacé.
+  const cl = PARTAGE.cloche, B = new THREE.Vector3(), V = (x, y, z) => cl.joug.localToWorld(new THREE.Vector3(x, y, z)).toArray();
+  if (cl) { cl.joug.updateWorldMatrix(true, false); cl.joug.getWorldPosition(B); }
+  const sonner = (fendue) => { PRO.sonneT = 0; SFX.cloche(fendue);
+    if (fendue) { PRO.fendue = true; const f = cl.fente.getWorldPosition(new THREE.Vector3()); for (let k = 0; k < 6; k++) setTimeout(() => burst(f.x, f.y, f.z, 0x8a1410, 10, 1.2, 1.6, -1.5, 2.2), k * 160); } };
+  // la fumée : une traînée de bouffées rouges du beffroi jusqu'au pont, en arc au-dessus des toits
+  const fumee = () => { const D = new THREE.Vector3(1.5, hy + 6, lz + 16), C = B.clone().lerp(D, 0.5).setY(70), P = new THREE.Vector3(); let t = 0;
+    const iv = setInterval(() => { t += 0.035; const u = Math.min(1, t);
+      P.copy(B).multiplyScalar((1 - u) * (1 - u)).addScaledVector(C, 2 * u * (1 - u)).addScaledVector(D, u * u);
+      burst(P.x, P.y, P.z, 0x8a1410, 5, 1.6, 1.8, -0.6, 3.5);
+      if (u >= 1) { clearInterval(iv); villain.visible = true; burst(D.x, hy + 4, D.z, 0x8a1410, 40, 4, 1.4, -1, 4); SFX.roar(); G.shake = 1.2; } }, 80); };
+  const attaque = serment && cl ? [
+    { cam: [B.x + 28, B.y - 39, B.z - 29], at: [B.x, B.y + 1, B.z], cam2: [B.x + 24, B.y - 38, B.z - 25], at2: [B.x, B.y + 1.5, B.z], dur: 4.5,
+      text: 'Au beffroi, Eugène tire la corde. La Grande Cloche sonne pour Lydéric.', fn: () => sonner(false) },
+    { cam: V(2.0, -0.45, 0.7), at: V(0, -0.7, 0), dur: 4.5, text: 'Au deuxième coup, un craquement. Une fente court sur le métal.', shake: 0.5,
+      fn: () => setTimeout(() => sonner(true), 400) },
+    { cam: [2.6, hy + 2.2, lz - 3], at: [40, 35, lz + 90], cam2: [2.6, hy + 2.2, lz - 3], at2: [1.5, hy + 5, lz + 16], dur: 5.5,   // à droite de Lydéric : sa jambe bouchait le ciel
+      text: 'Une fumée rouge sort du métal, traverse le ciel… et prend forme sur le pont.', fn: fumee },
+    { say: '« Mille ans dans une cloche. Et le premier son que j’entends… c’est le sang de Lydéric qui tire la corde. »', who: 'Phinaert', cam: [-1.5, hy + 2, lz + 6], at: [1.5, hy + 5.5, lz + 16] },
+    { cam: [6, 3, lz + 20], at: [1.8, 2, lz + 30], dur: 3.2, actor: eu, to: [2, lz + 23], speed: 7, text: 'Eugène redescend du beffroi en courant…',
+      fn: () => { eu.visible = true; eu.position.set(2, hy, lz + 45); villain.rotation.y = 0; } },
+    { cam: [9, 5, lz + 33], at: [1.8, 4, lz + 20], dur: 2, shake: 0.8, text: '…et Phinaert le saisit.', fn: () => { SFX.stomp(); eu.visible = false; burst(2, hy + 2, lz + 23, 0xffd070, 20, 3, 0.8, 3, 1.2); } },
+    { cam: [7, 3.5, lz + 1], at: [1.5, 3.5, lz + 12], dur: 2.2, actor: villain, to: [1.8, lz + 7], speed: 6, text: 'Camille se jette devant lui.' },
+  ] : [
     { cam: [2.4, 2.6, lz + 14], at: [0, 5, APO + 4], cam2: [2.8, 3.2, lz + 10], at2: [0, 6, APO + 14], dur: 4.5, text: 'Soudain, la terre tremble. La herse de la Porte Royale se lève dans un fracas de chaînes…', shake: 1.2, fn: () => { SFX.roar(); villain.visible = true; }, actor: villain, to: [0, APO + 18], speed: 7 },
     { cam: [-6, 4, lz + 2], at: [0.5, 5, lz - 30], cam2: [-6, 4.5, lz + 4], at2: [0.5, 5, lz - 12], dur: 4, actor: villain, to: [1.8, lz - 1], speed: 9, text: 'PHINAERT, le géant brigand, fond sur le pont.', fn: () => { villain.position.set(0.5, hy, lz - 40); G.shake = 0.8; SFX.stomp(); } },
-    { say: serment ? '« Le sang de Lydéric… »'
-      : "« Eugène, l'ami de la gardienne ! Tu vaudras une rançon en or… Et toi, la gardienne, ôte-toi de mon chemin ! »", who: 'Phinaert', cam: [4, 6, lz + 9], at: [1.8, 5, lz - 1] },
-    { cam: [5, 3, lz + 10], at: [0, 1.5, lz + 4], dur: 1.6, shake: 1.5, fn: () => { SFX.stomp(); SFX.hit(); burst(player.pos.x, hy + 1.2, player.pos.z, 0xc8b898, 20, 4, 0.8, 6, 1.2); renverser(); player.pose = { kind: 'lie', pos: [-0.6, hy + 0.35, lz + 6.5], yaw: 2.4 }; } },
-    { cam: [5, 3, lz + 10], at: [1.5, 2, lz + 2], dur: 2.5, text: serment ? 'D\'un revers de massue, le géant envoie Camille au sol. La botte roule sur les planches.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { eu.visible = false; burst(eu.position.x, hy + 2, eu.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } },
-    { cam: [-9, 5, lz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, lz - 14], at2: [0, 6, APO], dur: 5, actor: villain, to: [0, APO - 2], speed: 6, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.', fn: () => { setTimeout(() => { SFX.stomp(); G.shake = 1; scene.remove(villain); }, 4200); } },
-    { fade: 1, dur: 2, skippable: false },
+    { say: "« Eugène, l'ami de la gardienne ! Tu vaudras une rançon en or… Et toi, la gardienne, ôte-toi de mon chemin ! »", who: 'Phinaert', cam: [4, 6, lz + 9], at: [1.8, 5, lz - 1] },
+  ];
+  cutscene([
+    ...ouverture,
+    ...attaque,
+    // en retrait : de près, le géant remplissait l'image
+    { cam: [-6, 3.5, lz + 12], at: [0.5, 2, lz + 5], dur: 1.6, shake: 1.5, fn: () => { SFX.stomp(); SFX.hit(); burst(player.pos.x, hy + 1.2, player.pos.z, 0xc8b898, 20, 4, 0.8, 6, 1.2); renverser(); player.pose = { kind: 'lie', pos: [-0.6, hy + 0.35, lz + 6.5], yaw: 2.4 }; } },
+    { cam: [-6, 3.5, lz + 12], at: [0.5, 2, lz + 5], dur: 2.5, text: serment ? 'D\'un revers de massue, le géant envoie Camille au sol. La botte roule sur les planches.' : 'D\'un revers de massue, le géant envoie Camille au sol et saisit Eugène.', fn: () => { if (eu.visible) { eu.visible = false; burst(eu.position.x, hy + 2, eu.position.z, 0xffd070, 20, 3, 0.8, 3, 1.2); } } },
+    { cam: [-9, 5, lz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, lz - 14], at2: [0, 6, APO], dur: 6, actor: villain, to: [0, APO - 2], speed: 20, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.' },
+    // un plan à elle : celui qui suit un acteur s'achève quand il arrive (cutTick), la herse
+    // tombait donc dans le noir. Phinaert est passé ; elle tombe derrière lui.
+    { cam: [-9, 6, lz - 14], at: [0, 6, APO], dur: 2.4, fn: () => { PRO.herseT = 0; SFX.herse(); setTimeout(() => { G.shake = 1; scene.remove(villain); }, 650); } },
+    // LA HERSE SE RELÈVE dans le noir : la partie d'aujourd'hui entre dans la citadelle par la
+    // Porte Royale. Qu'elle reste baissée — la « grande grille » que dix hommes poussent à
+    // l'acte I — se décidera avec l'acte I (docs/DECOUPAGE-PROLOGUE.md).
+    { fade: 1, dur: 2, skippable: false, fn: () => { PRO.herseT = -1; if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); } },
     { cam: [-3, 2.2, lz + 11], at: [-0.6, 0.8, lz + 6.5], cam2: [-2.4, 2.5, lz + 10], at2: [-0.6, 1.2, lz + 6.5], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…' },
     { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz],
       fn: () => { player.pose = null; player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5); } },

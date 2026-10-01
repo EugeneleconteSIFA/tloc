@@ -1332,7 +1332,32 @@ export function buildTown() {
       const dalle = new THREE.Mesh(gs, stoneB); dalle.position.y = BH; dalle.castShadow = dalle.receiveShadow = true; bf.add(dalle); }
     for (let i = 0; i < 8; i++) { const a = i * TAU / 8; const pl = pilaster(4.2, 0.24, stoneB); pl.position.set(Math.sin(a) * 2.35, BH + 0.5, Math.cos(a) * 2.35); bf.add(pl);
       const ar = mesh(new THREE.TorusGeometry(0.85, 0.12, 6, 14, Math.PI), stoneB, Math.sin(a + Math.PI / 8) * 2.2, BH + 3.9, Math.cos(a + Math.PI / 8) * 2.2); ar.rotation.y = a + Math.PI / 8; bf.add(ar); }
-    const bell = mesh(new THREE.CylinderGeometry(0.6, 0.9, 1.3, 12), BRONZE(), 0, BH + 2.4, 0); bf.add(bell);
+    // LA GRANDE CLOCHE (prologue de STORY.md : elle sonne pour Lydéric et se fend). C'était un
+    // cylindre fondu avec le reste du beffroi ; elle est maintenant tournée sur un profil de
+    // vraie cloche (cerveau, robe, faussure, pince évasée), PENDUE par son mouton pour se
+    // balancer, et mobile — la fusion des décors la laisse donc à part. Sa fente est dessinée
+    // dès maintenant, cachée jusqu'au deuxième coup (quetes.js).
+    { const joug = new THREE.Group(); joug.position.set(0, BH + 3.15, 0); bf.add(joug);
+      joug.add(mesh(boxG(4.4, 0.28, 0.32), CHENE(4.4, 0.32, { color: 0x6a5038 }), 0, 0.2, 0));    // le mouton, de mur à mur
+      const prof = [[0, 0], [0.32, 0.02], [0.44, 0.1], [0.5, 0.25], [0.53, 0.5], [0.58, 0.75], [0.68, 0.98], [0.86, 1.18], [0.95, 1.26], [0.93, 1.3], [0.82, 1.3]]
+        .map(([r, y]) => new THREE.Vector2(r, -y));
+      // une copie du bronze en double face : on voit l'intérieur de la robe par en dessous, et
+      // BRONZE() est partagé avec le reste du bourg
+      const robe = mesh(new THREE.LatheGeometry(prof, 28), Object.assign(BRONZE().clone(), { side: THREE.DoubleSide }), 0, -0.05, 0); joug.add(robe);
+      joug.add(mesh(new THREE.TorusGeometry(0.12, 0.045, 6, 12), BRONZE(), 0, 0.02, 0));          // l'anse
+      joug.add(mesh(sphG(0.13, 10), IRON(), 0, -1.22, 0));                                       // le battant
+      // la fente : une ligne brisée qui descend de l'épaule à la pince, sur la face est
+      const pts = [], n = 9; for (let k = 0; k <= n; k++) { const t = k / n, y = -0.32 - t * 0.9;
+        const r = prof.reduce((a, p, i) => (i && -p.y >= -y && -prof[i - 1].y <= -y ? prof[i - 1].x + (p.x - prof[i - 1].x) * ((-y + prof[i - 1].y) / (-p.y + prof[i - 1].y)) : a), 0.55) + 0.012;
+        // un trait irrégulier, pas un zigzag de dessin : des écarts tirés au hasard, de plus en plus
+        // larges vers la pince où le métal a cédé
+        const ang = rand(-0.025, 0.025) * (1 + 2 * t) + t * 0.1; pts.push(new THREE.Vector3(Math.cos(ang) * r, y - 0.05, Math.sin(ang) * r)); }
+      // une lueur sourde au fond de la fente, pas un néon : la fumée rouge vient de là
+      const fente = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1), 48, 0.007, 4, false),
+        new THREE.MeshStandardMaterial({ color: 0x0c0403, emissive: 0x8a1808, emissiveIntensity: 0.7, roughness: 0.9 }));
+      fente.visible = false; joug.add(fente);
+      joug.traverse((o) => { o.castShadow = true; o.userData.dynamic = true; });
+      PARTAGE.cloche = { joug, fente }; }
     corniceAround(bf, 0, BH + 4.5, 0, 2.5, 2.5, stoneB, 0.4, 0.35, 'cyma');
     // dôme et lanternon couverts de plomb : la tôle photographiée, teinte gris-bleu
     const domeM = phMat('metal_plate_02', 3 * S, 3 * S, { color: 0x8a9aae, roughness: 0.6 });

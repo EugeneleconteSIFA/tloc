@@ -1381,6 +1381,20 @@ export const SFX = (() => {
     // chaque dizaine d'écus : trois notes qui montent, qu'on reconnaît sans regarder le compteur
     dizaine: () => [988, 1319, 1760].forEach((f, i) => setTimeout(() => tone(f, f, 0.12, 'triangle', 0.11), i * 70)),
     stomp: () => { tone(60, 30, 0.5, 'sine', 0.4); noise(0.3, 0.3, 200); },
+    // la Grande Cloche (prologue) : les partiels d'une cloche d'église — bourdon, fondamentale,
+    // tierce mineure, quinte, nominal — chacun s'éteint plus vite que le plus grave. Fendue,
+    // chaque partiel se double d'un voisin désaccordé (le battement d'un bronze fêlé), le
+    // son meurt trois fois plus vite et un craquement passe dessus.
+    cloche: (fendue = false) => {
+      const f = 147, k = fendue ? 0.33 : 1;
+      [[0.5, 6, 0.10], [1, 5, 0.12], [1.19, 3.5, 0.07], [1.5, 3, 0.05], [2, 2.6, 0.06], [2.52, 1.8, 0.03], [3.01, 1.4, 0.02]].forEach(([r, d, v]) => {
+        tone(f * r, f * r, d * k, 'sine', v);
+        if (fendue) tone(f * r * 1.035, f * r * 1.03, d * k, 'sine', v * 0.8);
+      });
+      if (fendue) { noise(0.5, 0.35, 2600); setTimeout(() => noise(0.35, 0.25, 900), 120); }
+    },
+    // une herse qui retombe : les chaînes qui filent, puis le choc
+    herse: () => { for (let i = 0; i < 6; i++) setTimeout(() => noise(0.07, 0.12, 3200 + Math.random() * 1200), i * 90); setTimeout(() => { tone(70, 28, 0.7, 'sine', 0.45); noise(0.5, 0.35, 260); }, 620); },
     win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, f, 0.28, 'square', 0.12), i * 150)),
     dead: () => [440, 370, 311, 220].forEach((f, i) => setTimeout(() => tone(f, f, 0.35, 'triangle', 0.15), i * 220)),
   };

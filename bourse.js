@@ -352,6 +352,8 @@ function peindrePoche() {
     state.sword ? case_('<b style="font-size:22px">⚔</b>Épée', false, 'épée de Lydéric') : '',
     state.bow ? case_(`<b style="font-size:22px">➶</b>Arc<small>${fleches()}/${carquois()} flèches</small>`, false, 'arc de la garnison') : '',
     state.faux ? case_('<b style="font-size:22px">⚒</b>Faux<small>d’Émile</small>', false, 'faux d’Émile : on fauche plus large') : '',
+    // ramassé sur le pont après l'enlèvement (quetes.js) ; il ne sert qu'à l'acte VI
+    state.morceauCloche ? case_('<b style="font-size:22px;color:#c08a48">◆</b>Métal<small>de la cloche</small>', false, 'un morceau de la Grande Cloche — il est encore chaud') : '',
   ].filter(Boolean).join('') || '<div style="opacity:.6;font-size:13px">Rien encore.</div>';
   let k = 0;
   const objets = C.filter((c) => c.zone === 'objets').map((c) => {
@@ -371,7 +373,7 @@ function peindrePoche() {
     <div style="font-size:22px;letter-spacing:3px;color:#ffe7a3;font-weight:bold">LA POCHE DE CAMILLE</div>
     <div style="font-size:13px;color:#9aa4bd;margin:4px 0 16px">Flèches pour choisir · Entrée utiliser · Suppr jeter · I ou Échap refermer
       &nbsp;·&nbsp; Écus <b style="color:#ffe7a3">${aBourse() ? solde() : '—'}</b></div>
-    <div style="font-size:12px;letter-spacing:1.5px;color:#9aa4bd;margin-bottom:6px">ARMES ET OUTIL</div>
+    <div style="font-size:12px;letter-spacing:1.5px;color:#9aa4bd;margin-bottom:6px">ARMES, OUTILS, SOUVENIRS</div>
     <div style="display:flex;gap:8px;margin-bottom:16px">${armes}</div>
     <div style="font-size:12px;letter-spacing:1.5px;color:#9aa4bd;margin-bottom:6px">OBJETS (${P.objets.length}/${P.places})</div>
     <div style="display:grid;grid-template-columns:repeat(6,74px);gap:8px;margin-bottom:16px">${objets}</div>
