@@ -175,6 +175,7 @@ function build() {
     const sol = new THREE.Mesh(g, herbe); sol.receiveShadow = true; scene.add(sol);
     // la rive : une couronne de rochers à demi noyés
     for (let k = 0; k < 70; k++) { const a = k / 70 * TAU + Math.sin(k * 7.3) * 0.04, r = R_ILE + 1 + Math.sin(k * 3.1) * 2.5;
+      if (Math.abs(Math.atan2(Math.sin(a - A_PONTON), Math.cos(a - A_PONTON))) < 0.13) continue;   // le ponton du passeur passe là
       const s = 1.6 + Math.abs(Math.sin(k * 5.7)) * 2.6;
       const b = mesh(new THREE.DodecahedronGeometry(s, 1), roche, Math.sin(a) * r, MER - s * 0.25, Math.cos(a) * r);
       b.scale.set(1, 0.55 + Math.abs(Math.sin(k)) * 0.35, 1.2); b.rotation.set(k, k * 2.1, 0); b.castShadow = b.receiveShadow = true; scene.add(b); } }
@@ -246,6 +247,68 @@ function build() {
 
   // ---------- les mondes ouverts : leur rive, et leur silhouette au loin ----------
   for (const [i, P] of PORTES.entries()) if (P.geant !== 'fissure' && ouverts().has(P.geant)) { deborder(i, P.geant); silhouette(i, P.geant); }
+  for (const [i, P] of PORTES.entries()) if (i > 0 && P.geant !== 'fissure' && ouverts().has(P.geant)) pendreCloche(i, P.geant);
+  if (ouverts().has('colosse')) cadran();
+  barque();
+}
+
+// ---------------------------------------------------------------------
+//  Le temps qui repart (docs/DECISIONS-RECIT.md § 2 et 3)
+// ---------------------------------------------------------------------
+// Chaque monde ouvert pend sa cloche à son étage de la tour — une silhouette par monde, qu'on
+// reconnaît pendues ensemble — et remet une chose en marche. Lille seul ouvert : rien ne
+// bouge encore. La Grande Cloche, elle, n'a que son crochet vide, tout en haut.
+const BOUGE = { cloches: [], aiguille: null };
+function pendreCloche(i, monde) {
+  const y = 14 + (i - 1) * 11, g = new THREE.Group(); g.position.set(0, y - 0.2, 0); scene.add(g);
+  const tourne = (prof, m) => { const l = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, -h)), 32), m); l.material.side = THREE.DoubleSide; l.castShadow = true; return l; };
+  if (monde === 'dormeur') {                     // le Midi : une cloche de ferme trapue, en fer rouillé
+    g.add(tourne([[0, 0], [0.3, 0.02], [0.42, 0.15], [0.45, 0.6], [0.5, 0.95], [0.56, 1.0]], phMat('metal_plate_02', 0.8, 0.8, { color: 0x9a5a36, roughness: 0.75 })));
+  } else if (monde === 'yak') {                  // les Îles : haute et fine, bronze clair et feuilles d'or, frappée de l'extérieur
+    g.add(tourne([[0, 0], [0.18, 0.02], [0.3, 0.2], [0.34, 0.8], [0.4, 1.35], [0.44, 1.45]], mat(0xd8b04a, { metalness: 0.85, roughness: 0.3 })));
+  } else if (monde === 'colosse') {              // les Heures : une cloche d'horloge plate et large, vert-de-gris
+    g.add(tourne([[0, 0], [0.4, 0.02], [0.62, 0.15], [0.68, 0.4], [0.72, 0.55]], phMat('metal_plate_02', 0.8, 0.8, { color: 0x6a9a84, metalness: 0.5, roughness: 0.55 })));
+  } else if (monde === 'loup') {                 // les Troupeaux : une sonnaille géante, tôle rivée en tronc de pyramide
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.5, 1.1, 4, 1, true), phMat('metal_plate_02', 0.8, 0.8, { color: 0x8a6a3a, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide }));
+    s.rotation.y = Math.PI / 4; s.position.y = -0.55; s.castShadow = true; g.add(s);
+  }
+  BOUGE.cloches.push({ g, ph: i * 1.7 });
+}
+// les Heures : un grand cadran sur la tour, au-dessus de la porte, dont l'aiguille va trop vite
+function cadran() {
+  const a = 0, r = R_TOUR + 0.65, y = 24, x = Math.sin(a) * r, z = Math.cos(a) * r;
+  const fond = new THREE.Mesh(new THREE.CircleGeometry(3, 48), plaqueGravee([{ t: 'XII', taille: 90 }, { t: ' ' }, { t: 'VI', taille: 90 }], 3, 3, 90));
+  fond.position.set(x, y, z); scene.add(fond);
+  const cercle = new THREE.Mesh(new THREE.TorusGeometry(3.05, 0.14, 8, 48), mat(0x6a9a84, { metalness: 0.5, roughness: 0.55 })); cercle.position.set(x, y, z + 0.02); scene.add(cercle);
+  const ai = new THREE.Group(); ai.position.set(x, y, z + 0.08); scene.add(ai);
+  ai.add(mesh(boxG(0.14, 2.5, 0.05), mat(0x2a2a2e, { metalness: 0.7, roughness: 0.4 }), 0, 1.15, 0)); BOUGE.aiguille = ai;
+}
+// LA BARQUE DU PASSEUR : un ponton de bois sur la mer-miroir, au nord-est, et le passeur qui
+// attend, sa lanterne à la main. Il ne parle pas encore — il ne regarde que le large.
+// le ponton : un couloir de 2 m sur l'eau, qu'on peut arpenter jusqu'à la barque
+const A_PONTON = 2.6;
+function surPonton(x, z) {
+  const r = x * Math.sin(A_PONTON) + z * Math.cos(A_PONTON), d = x * Math.cos(A_PONTON) - z * Math.sin(A_PONTON);
+  return Math.abs(d) < 1.0 && r > R_ILE - 7 && r < R_ILE + 9.5;
+}
+function barque() {
+  const a = A_PONTON, bois = phMat('wood_planks', 1.2, 6, { color: 0x7a6248 }), poteau = phMat('tree_trunk', 0.3, 2, { color: 0x5a4a38 });
+  const pt = (r, d = 0) => [Math.sin(a) * r + Math.cos(a) * d, Math.cos(a) * r - Math.sin(a) * d];
+  for (let k = 0; k < 7; k++) { const r = R_ILE - 6 + k * 2.2, [x, z] = pt(r);
+    const pl = mesh(boxG(2.2, 0.12, 2.1), bois, x, 0.45, z); pl.rotation.y = a; pl.castShadow = pl.receiveShadow = true; scene.add(pl);
+    if (k % 2 === 0) for (const d of [-1.05, 1.05]) { const [px, pz] = pt(r, d); scene.add(mesh(new THREE.CylinderGeometry(0.11, 0.13, 2.4, 7), poteau, px, -0.5, pz)); } }
+  // la barque, amarrée au bout : une coque tournée, aplatie, posée sur l'eau qui ne bouge pas
+  // le bord de la coque à 45 cm au-dessus de l'eau : posée au ras de la mer, elle était noyée
+  const [bx, bz] = pt(R_ILE + 5.5, 2.3), g = new THREE.Group(); g.position.set(bx, MER + 0.5, bz); g.rotation.y = a; scene.add(g);
+  const coque = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, TAU, Math.PI / 2, Math.PI / 2), phMat('wood_planks', 2, 1, { color: 0x5a4632, side: THREE.DoubleSide }));
+  coque.scale.set(0.95, 0.55, 2.6); coque.castShadow = true; g.add(coque);
+  g.add(mesh(boxG(1.6, 0.06, 0.3), bois, 0, -0.08, 0.6)); g.add(mesh(boxG(1.6, 0.06, 0.3), bois, 0, -0.08, -0.9));
+  const rame = mesh(new THREE.CylinderGeometry(0.03, 0.03, 3, 5), poteau, 0.9, 0.05, 0); rame.rotation.set(0.2, 0, 1.25); g.add(rame);
+  const pas = PNJ.buildVillageois(3);
+  if (pas) { pas.scale.setScalar(0.6); pas.position.set(0, -0.42, -0.9); pas.rotation.y = 0; g.add(pas); BOUGE.passeur = pas; }   // à la poupe, tourné vers le large
+  const [ix, iz] = pt(R_ILE + 7.5);
+  addInteract({ pos: new THREE.Vector3(ix, 0.5, iz), r: 3.2, prompt: () => 'parler au passeur',
+    fn: () => showMessage('Le passeur ne se retourne pas. Il regarde le large, la lanterne à la main. « Pas encore. »', 5) });
 }
 
 // Quels mondes sont ouverts : Lille seul pour l'instant (le prologue joué). L'aperçu
@@ -340,7 +403,13 @@ function populate() {
   // Camille passe la porte de Lille : dans la cour, face à la tour
   player.pos.set(0, 0, R_COUR - 2.5); player.yaw = Math.PI; G.camYaw = 0;
 }
-function animate() { /* rien ne bouge sur l'île : c'est ce qui changera, retour après retour */ }
+// rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
+function animate(now, dt) {
+  const t = now / 1000, troupeaux = ouverts().has('loup');
+  for (const c of BOUGE.cloches) c.g.rotation.z = troupeaux ? Math.sin(t * 0.9 + c.ph) * 0.05 : 0;   // les cloches se balancent seules, très peu
+  if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite
+  if (BOUGE.passeur) PNJ.animeVillageois(BOUGE.passeur, dt, false);
+}
 function minimap(g, W2) {
   const sc = 1.45, P = (x, z) => [W2 / 2 + x * sc, W2 / 2 + z * sc];
   g.fillStyle = '#4a5878'; g.fillRect(0, 0, W2, W2);
@@ -351,9 +420,9 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'temple', echelle: 0.6, musique: 'mage', getH: (x, z) => hauteur(x, z), zoneName: () => 'L’île du temps',
-  // la rive : on ne marche pas sur la mer
-  blocked: (x, z) => Math.hypot(x, z) > R_ILE - 3,
+  name: 'temple', echelle: 0.6, musique: 'mage', getH: (x, z) => surPonton(x, z) ? Math.max(0.51, hauteur(x, z)) : hauteur(x, z), zoneName: () => 'L’île du temps',
+  // la rive : on ne marche pas sur la mer, sauf sur le ponton du passeur
+  blocked: (x, z) => Math.hypot(x, z) > R_ILE - 3 && !surPonton(x, z),
   build, populate, animate, minimap,
   counts: () => '<small>L’île du temps — le Temple des Géants. Six portes, une seule ouverte.</small>',
   start: () => showMessage('Rien ne bouge. Ni la mer, ni les nuages. Même le vent s’est arrêté.', 6),

@@ -69,5 +69,13 @@ la ville (comme les intérieurs, sans recharger). Sur l'île, la porte de Lille 
 dalle. Vérifié en jouant (headless) : aller, arrivée par la porte de Lille, retour, aucune
 erreur. Il cèdera la place à la vraie fin de l'acte I (Phinaert ouvre le Temple avec le sang
 d'Eugène, depuis la dalle du donjon).
+**v4, le temps qui repart et la barque** (`docs/planches/ile-du-temps-v4-temps-barque.jpg`) :
+chaque monde ouvert pend sa cloche à son étage de la tour (le Midi, cloche de ferme en fer
+rouillé ; les Îles, haute et dorée ; les Heures, plate et vert-de-gris ; les Troupeaux, une
+sonnaille géante — `docs/DECISIONS-RECIT.md` § 2) ; les Heures ajoutent un grand cadran
+au-dessus de la porte de la tour, dont l'aiguille tourne trop vite ; les Troupeaux font
+balancer toutes les cloches, très peu. **La barque du passeur** : un ponton de bois praticable
+sur la mer-miroir, au nord-ouest, une barque amarrée, et le passeur, lanterne à la main, qui ne
+regarde que le large (« Pas encore. »). Lille seul ouvert : la tour est vide, rien ne bouge.
 À faire ensuite : les
 débordements de chaque monde sur la rive, la barque du passeur, et relier l'île au donjon.
