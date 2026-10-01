@@ -72,19 +72,37 @@ z = sud** (nord en -z, comme Lille), sans pivot.
 Ce qu'OSM n'a pas : **les menhirs** (aucun nœud), le détail des châtaigneraies du Pouget,
 les murets de pierre sèche hors du bourg. À poser à la main ou à prendre à la BD TOPO.
 
-### Le relief (proposé, en attente de l'accord d'Eugène)
+### Le relief (récolté le 1er octobre)
 
-`recolter-relief-lozere.py` demande au RGE ALTI de l'IGN l'altitude **aux nœuds de la grille
-du jeu** — pas de ré-échantillonnage comme à Lille. Altitudes NGF absolues.
+`recolter-relief-lozere.py` demande à l'IGN l'altitude **aux nœuds de la grille du jeu** —
+pas de ré-échantillonnage comme à Lille. Altitudes NGF absolues.
+
+⚠ La ressource `ign_rge_alti_wld` (celle de Lille) rend le point le plus proche d'une grille
+d'environ **5 m** : en dessous de ce pas, les valeurs vont par paires et l'ombrage fait des
+marches. Les zones fines prennent donc le **LiDAR HD** (`ign_lidar_hd_mnt_mono_wld`, interpolé,
+sans trou) ; `ign_rge_alti_par_territoires` (RGE ALTI 1 m) donne la même chose à 10 cm près.
 
 | zone | pas | points | requêtes |
 |---|---|---|---|
 | `monde` | 10 m | 335 000 | ~1 670 |
-| `pouget` | 2 m | 91 000 | ~450 |
-| `garde` | 2 m | 82 000 | ~410 |
+| `pouget` | 2 m, LiDAR HD | 91 000 | ~450 |
+| `garde` | 2 m, LiDAR HD | 82 000 | ~410 |
 | `lac` (facultatif) | 5 m | 418 000 | ~2 090 |
 
 `python3 recolter-relief-lozere.py monde pouget garde` : ~2 500 requêtes, 15 à 25 minutes.
+
+Récolté le 1er octobre, 0 trou : `relief-lozere-monde.json` (496 → 1 437 m),
+`relief-lozere-pouget.json` et `relief-lozere-garde.json` (LiDAR HD ; la première récolte à
+2 m sur la grille de 5 m est dans `_mauvais/`).
+L'ombrage de l'aperçu tombe sous l'Altier et dans la cuvette du lac : relief et plan sont
+dans le même repère. Le relief couvre aussi le trou entre les deux extraits OSM.
+
+**Le lac attend** (Eugène, 1er octobre) : arrêté à 1 % — `relief-lozere-lac.json.part`
+garde ce qui est fait, et `python3 recolter-relief-lozere.py lac` reprend là (~35 min).
+Pour plus tard : le barrage a englouti un village, que la sonnaille (« la vallée avant le
+barrage », STORY.md) pourrait faire revenir. Le RGE ALTI donne la surface de l'eau, pas le
+fond de la vallée noyée : il faudra une autre source (cartes d'avant la mise en eau) pour
+le dessiner.
 
 ## L'Aveyron : la chaîne de préparation (1er octobre)
 
@@ -136,14 +154,19 @@ Lavoir et le chemin des Lavandières, à Saint-Gervais.
 ### Le relief
 
 `recolter-relief-aveyron.py`, copie de celui de Lozère (RGE ALTI, altitudes NGF absolues,
-requêtes de 200 points). Eugène l'autorise ; une seule récolte à la fois sur data.geopf.fr,
-donc elle attend que celle de Lozère soit finie, puis reprend où elle s'arrête si on la coupe.
+requêtes de 200 points). Eugène l'autorise ; une seule récolte à la fois sur data.geopf.fr.
+Récoltée le 1er octobre, après celle de Lozère ; reprend où elle s'arrête si on la coupe.
 
-| zone | pas | points | requêtes |
+| zone | pas, ressource | points | requêtes |
 |---|---|---|---|
-| `monde` (le lac, le trou, le bourg : 5,1 × 1,4 km) | 10 m | 73 660 | 369 |
-| `lac` | 5 m | 53 482 | 268 |
-| `bourg` | 2 m | 90 601 | 454 |
+| `monde` (le lac, le trou, le bourg : 5,1 × 1,4 km) | 10 m, `ign_rge_alti_wld` | 73 660 | 369 |
+| `lac` | 5 m, LiDAR HD | 53 482 | 268 |
+| `bourg` | 2 m, LiDAR HD | 90 601 | 454 |
+
+⚠ Le piège trouvé par la session Lozère : `ign_rge_alti_wld` rend le point le plus proche
+d'une grille d'environ 5 m. La première récolte du lac et du bourg l'a pris (12 % et 42 % de
+voisins égaux, des marches dans l'ombrage) : refaite au LiDAR HD (`ign_lidar_hd_mnt_mono_wld`),
+l'ancienne est dans `_mauvais/`. Le monde, au pas de 10 m, n'est pas touché.
 
 `python3 recolter-relief-aveyron.py monde lac bourg` : 1 091 requêtes. Ensuite,
 `python3 apercu-aveyron.py` pose l'ombrage : il doit tomber dans le vallon des Vergnes et

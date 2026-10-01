@@ -37,10 +37,14 @@ def zones():
     L = json.load(open(os.path.join(ICI, 'aveyron.json')))
     # les cadrages débordent des extraits (250 m de rive autour du lac) : le monde les englobe
     B = L['cadres'] + list(L['cadrages'].values())
+    # « ign_rge_alti_wld » rend le point le plus proche d'une grille d'environ 5 m (trouvé par
+    # la session Lozère le 1er octobre) : au bourg (2 m), 42 % des voisins étaient égaux, et
+    # 12 % encore au lac (5 m) — des marches dans l'ombrage. Il suffit au pas de 10 m ;
+    # en dessous, le LiDAR HD (interpolé, sans trou). Les mauvais fichiers sont dans _mauvais/.
     z = {'monde': dict(x0=min(c['x0'] for c in B), x1=max(c['x1'] for c in B),
-                       z0=min(c['z0'] for c in B), z1=max(c['z1'] for c in B), pas=10.0)}
-    z['lac'] = dict(L['cadrages']['lac'], pas=5.0)      # 1,1 × 1,2 km : 2 m ferait 1 700 requêtes
-    z['bourg'] = dict(L['cadrages']['bourg'], pas=2.0)
+                       z0=min(c['z0'] for c in B), z1=max(c['z1'] for c in B), pas=10.0, res='ign_rge_alti_wld')}
+    z['lac'] = dict(L['cadrages']['lac'], pas=5.0, res='ign_lidar_hd_mnt_mono_wld')   # 2 m ferait 1 700 requêtes
+    z['bourg'] = dict(L['cadrages']['bourg'], pas=2.0, res='ign_lidar_hd_mnt_mono_wld')
     return z
 
 def get(url, essais=4):
@@ -79,7 +83,7 @@ def recolter(nom, Z):
         pts = [latlon(x0 + (i % nx) * pas, z0 + (i // nx) * pas) for i in range(i0, min(i0 + LOTS, total))]
         d = json.loads(get(API + urllib.parse.urlencode({
             'lon': '|'.join('%.7f' % p[1] for p in pts), 'lat': '|'.join('%.7f' % p[0] for p in pts),
-            'resource': 'ign_rge_alti_wld', 'delimiter': '|', 'zonly': 'true', 'indent': 'false'})))
+            'resource': Z['res'], 'delimiter': '|', 'zonly': 'true', 'indent': 'false'})))
         lot = d.get('elevations') or d.get('altitudes') or []
         if lot and isinstance(lot[0], dict):
             lot = [e.get('z', e.get('altitude', -99999)) for e in lot]
@@ -95,8 +99,8 @@ def recolter(nom, Z):
     med = bons[len(bons) // 2]
     trous = sum(1 for v in h if v <= -1000)
     h = [med if v <= -1000 else v for v in h]
-    json.dump({'note': "RGE ALTI (IGN), altitudes NGF absolues, grille en coordonnées de JEU "
-                       "(repere_aveyron.py) : h[j*nx+i] est l'altitude en x0+i*pas, z0+j*pas",
+    json.dump({'note': "IGN (%s), altitudes NGF absolues, grille en coordonnées de JEU "
+                       "(repere_aveyron.py) : h[j*nx+i] est l'altitude en x0+i*pas, z0+j*pas" % Z['res'],
                'pas': pas, 'x0': x0, 'z0': z0, 'nx': nx, 'nz': nz,
                'min': min(h), 'max': max(h), 'trous': trous, 'h': h}, open(sortie, 'w'))
     os.remove(part)
