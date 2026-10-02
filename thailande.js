@@ -47,6 +47,7 @@ function pilotis({ hauteur, scene, PLAN, inscrire }) {
       const w = rand(5, 7), d = rand(5, 8), off = 1.6 + d / 2;
       const x = a[0] + ux * s - uz * off * cote, z = a[1] + uz * s + ux * off * cote;
       if (hauteur(x, z) > 3 || poses.some(([px, pz]) => Math.hypot(px - x, pz - z) < 6.5)) continue;   // pas sur le rocher, pas l'une dans l'autre
+      if (x > 84 && x < 109 && z > 10 && z < 58) continue;      // le marché flottant et ses deux abords restent libres
       if (ile && !dansP(x, z, ile.pts) && Math.random() < 0.35) continue;
       poses.push([x, z]);
       const ang = Math.atan2(uz, ux), hm = rand(2.6, 3.4), y0 = 1.3;
@@ -202,6 +203,65 @@ function templesThai({ scene }) {
   if (autres.length) scene.add(new THREE.Mesh(fondre(autres), or));
   if (TEMPLE.blanc.length) { const x = new THREE.Mesh(fondre(TEMPLE.blanc), phMat('chaux_craquelee', 3, 3, { color: 0xf2eee4 })); x.castShadow = true; scene.add(x); }
 }
+
+// ---------- le marché flottant de Ko Panyi ----------
+// SCENARIO.md § 12 : les passeurs vivent sur l'eau, « au marché flottant : barques chargées
+// de fruits, de riz, de fleurs, qu'on enjambe d'une à l'autre ». Il remplit le bassin abrité
+// que les passerelles de Ko Panyi enferment au sud du ponton (x 75–125, z 22–60) : deux files
+// de barques bord à bord, qui relient la passerelle du nord à celle du sud. On y marche
+// (solLieu) ; la mer, elle, bouge encore — les barques tanguent un peu.
+const MARCHE = [];        // { x, z, rot, L, W }
+let HAUT = null;
+function solMarche(x, z) {
+  for (const b of MARCHE) {
+    const dx = x - b.x, dz = z - b.z, c = Math.cos(b.rot), s = Math.sin(b.rot);
+    const long = dx * s + dz * c, trav = dx * c - dz * s;          // la barque a sa longueur sur son z local
+    if (Math.abs(long) < b.L / 2 && Math.abs(trav) < b.W / 2) return Math.max(0.55, HAUT ? HAUT(x, z) : 0);
+  }
+  return null;
+}
+function marche({ hauteur }) {
+  HAUT = hauteur;
+  const bois = phMat('wood_planks', 1.2, 1.2, { color: 0x8a6a48 }), coques = [], fruits = { jaune: [], orange: [], rose: [], vert: [], blanc: [] }, paniers = [], baches = [], perches = [];
+  const COUL = { jaune: 0xe8c040, orange: 0xe07820, rose: 0xd84878, vert: 0x6aa040, blanc: 0xf2eee0 };
+  for (const x of [92, 100.4]) for (let k = 0; k < 20; k++) {
+    const z = 21.5 + k * 2.0 + rand(-0.08, 0.08), rot = Math.PI / 2 + rand(-0.04, 0.04);
+    // le rectangle où l’on marche déborde un peu la coque : entre deux barques bord à bord, pas de fente où tomber
+    const b = { x, z, rot, L: 8.7, W: 2.3 }; MARCHE.push(b);
+    // la coque : un fuseau de bois, le pont à 0,5 m au-dessus de l'eau
+    const h = new THREE.LatheGeometry([[0, -0.35], [0.7, -0.3], [0.95, 0.15], [1.0, 0.5]].map(([r, y]) => new THREE.Vector2(r, y)), 10);
+    h.scale(1, 1, 4.2); h.rotateY(rot); h.translate(x, 0, z); coques.push(h.toNonIndexed());
+    // le plancher : sans lui, la coque ouverte montrait la mer à l'intérieur, comme une barque coulée
+    const pl = new THREE.BoxGeometry(1.75, 0.08, 7.4); pl.rotateY(rot); pl.translate(x, 0.47, z); coques.push(pl.toNonIndexed());
+    // le chargement : deux paniers d'osier pleins de fruits ou de fleurs, posés aux bouts
+    for (const bout of [-2.2, 2.2]) { if (Math.random() < 0.25) continue;
+      const px = x + Math.sin(rot) * bout, pz = z + Math.cos(rot) * bout;
+      const p = new THREE.CylinderGeometry(0.42, 0.32, 0.32, 10, 1, true); p.translate(px, 0.7, pz); paniers.push(p.toNonIndexed());
+      const sorte = ['jaune', 'orange', 'rose', 'vert', 'blanc'][Math.floor(Math.random() * 5)];
+      for (let f = 0; f < 7; f++) { const g = new THREE.SphereGeometry(sorte === 'blanc' ? 0.07 : 0.11, 6, 4); g.translate(px + rand(-0.25, 0.25), 0.86 + rand(0, 0.08), pz + rand(-0.25, 0.25)); fruits[sorte].push(g.toNonIndexed()); } }
+    // une barque sur trois a sa bâche contre la pluie (arrêtée, elle aussi, au-dessus)
+    if (k % 3 === 1) { const t = new THREE.PlaneGeometry(2.6, 2.2); t.rotateX(-Math.PI / 2 + 0.12); t.rotateY(rot); t.translate(x, 2.3, z); baches.push(t);
+      for (const [a, c] of [[-1.1, -0.9], [1.1, -0.9], [-1.1, 0.9], [1.1, 0.9]]) { const p = new THREE.CylinderGeometry(0.03, 0.03, 1.9, 5); p.translate(x + c * Math.cos(rot) + a * Math.sin(rot), 1.4, z - c * Math.sin(rot) + a * Math.cos(rot)); perches.push(p.toNonIndexed()); } }
+  }
+  const ajoute = (l, m, ombre = true) => { if (!l.length) return null; const g = mergeGeometries(l.map((x) => { for (const k of Object.keys(x.attributes)) if (!['position', 'normal'].includes(k)) x.deleteAttribute(k); x.computeVertexNormals(); return x; }));
+    const p = g.attributes.position, uv = []; for (let k = 0; k < p.count; k++) uv.push(p.getX(k) + p.getZ(k), p.getY(k) * 2); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const o = new THREE.Mesh(g, m); o.castShadow = ombre; o.receiveShadow = true; scene.add(o); return o; };
+  MARCHE.coques = ajoute(coques, bois);
+  ajoute(paniers, phMat('dry_branches_01', 1, 1, { color: 0xc8a060, side: THREE.DoubleSide }));
+  for (const [k, l] of Object.entries(fruits)) ajoute(l, new THREE.MeshStandardMaterial({ color: COUL[k], roughness: 0.55 }), false);
+  ajoute(baches, phMat('fabric_pattern_07', 2, 2, { color: 0x3a6aa0, side: THREE.DoubleSide }));
+  ajoute(perches, bois);
+  // les marchandes et les passeurs du marché, assis dans leurs barques : eux ne sont pas
+  // figés — ils vivent sur l'eau, où le temps passe encore
+  const chapeau = () => { const g = new THREE.Group(); g.add(mesh(new THREE.ConeGeometry(0.26, 0.13, 14, 1, true), phMat('dry_branches_01', 1, 1, { color: 0xd8c08a, side: THREE.DoubleSide }), 0, 0, 0)); return g; };
+  [[0, 2], [1, 5], [0, 8], [1, 11], [0, 12]].forEach(([col, k], i) => {
+    const b = MARCHE[col * 20 + k], v = PNJ.buildVillageois(i + 2); if (!v) return;
+    v.position.set(b.x + rand(-1.5, 1.5), 0.5, b.z); v.rotation.y = rand(0, TAU); scene.add(v);
+    PNJ.socket(v, v.userData.perso, 'Head', chapeau(), [0.027, 0.2, -0.055]);
+    VENDEURS.push(v);
+  });
+}
+const VENDEURS = [];
 
 // ---------- Nok, le gong, les moines figés ----------
 // SCENARIO.md § 12 : sur les îles, tout s'est arrêté au milieu d'un geste et d'une phrase ;
@@ -360,16 +420,18 @@ monde({
   counts: 'La baie des pitons : Ko Panyi et son village sur pilotis, Khao Phing Kan, Railay, Phi Phi, et le grand piton du temple. Les passeurs attendent aux pontons.',
   start: 'La pluie ne tombe pas. Elle est là, en l’air, goutte par goutte. Seule la mer bouge encore.',
   entry: { title: 'La baie des pitons', sub: 'La Cloche des Îles — Thaïlande', cam: [700, 260, 900], at: [0, 20, 0], cam2: [180, 30, 80], at2: [40, 10, -40], dur: 6 },
-  toitSur: toitThai,
+  toitSur: toitThai, solLieu: solMarche,
   plus(ctx) {
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
     // sans ça, les parois tournées au nord sont noires
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
-    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx);
+    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx); marche(ctx);
   },
   anime(now) {
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
     animeHabitants(dt);
+    for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
+    if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
     if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
     if (PLUIE.tuiles.length && (t * 4 | 0) % 2 === 0) placerPluie();

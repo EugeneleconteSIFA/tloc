@@ -43,6 +43,7 @@ function densifier(pts, pas = 2) {
  *   arbres: { espece, bois, isoles, h: [min, max] } | null, mer: altitude NGF de la mer | null,
  *   depart: { x, z, yaw }, portes: [{ x, z, prompt, vers: [lieu, pos, yaw], label }],
  *   gare: { x, z, lignes: [[nom, lieu, pos, yaw]] } | null, plus(ctx) pour ce qui est propre au lieu,
+ *   toitSur(b, geo) pour coiffer soi-même un bâtiment, anime(now), solLieu(x, z) → un sol à soi (ou null),
  *   musique, counts, start, entry
  */
 export async function monde(f) {
@@ -121,7 +122,8 @@ export async function monde(f) {
   }
   function bloque(x, z, r = 0.4) {
     if (x < CADRE.x0 || x > CADRE.x1 || z < CADRE.z0 || z > CADRE.z1) return true;
-    if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2) return true;            // la mer
+    // la mer — sauf là où le lieu pose un sol à lui (les barques du marché flottant de Ko Panyi)
+    if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2 && !(f.solLieu && f.solLieu(x, z) != null)) return true;
     for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
       const l = GRILLE.get(Math.floor((x + dx) / 20) + ',' + Math.floor((z + dz) / 20)); if (!l) continue;
       for (const i of l) if (dansPoly(x + dx, z + dz, B[i].pts)) return true;
@@ -254,7 +256,7 @@ export async function monde(f) {
     minimapDots(g, P);
   }
   const level = {
-    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: () => f.titre,
+    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: () => f.titre,
     build, populate, animate, minimap,
     counts: () => `<small>${f.counts}</small>`,
     start: () => showMessage(f.start, 6), arriveMessage: () => f.titre + '.',
