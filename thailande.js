@@ -9,9 +9,10 @@
 // l'autre.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun } from './engine.js?v=41';
+import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { especeGeo } from './foret.js';
+import * as PNJ from './pnj.js';
 
 // Les embarcadères des passeurs : un par île (les pontons d'OSM ; le grand piton n'en a pas,
 // on accoste sur sa grève sud). `ici` : où Camille pose le pied (le relief y est à 1–3 m) ;
@@ -202,10 +203,102 @@ function templesThai({ scene }) {
   if (TEMPLE.blanc.length) { const x = new THREE.Mesh(fondre(TEMPLE.blanc), phMat('chaux_craquelee', 3, 3, { color: 0xf2eee4 })); x.castShadow = true; scene.add(x); }
 }
 
+// ---------- Nok, le gong, les moines figés ----------
+// SCENARIO.md § 12 : sur les îles, tout s'est arrêté au milieu d'un geste et d'une phrase ;
+// seule Nok bouge encore — elle frappait le gong du temple quand le temps s'est arrêté. Elle
+// donne le gong : K le frappe, et le temps repart six secondes autour de Camille (la pluie
+// tombe, les moines finissent leur geste et leur phrase). L'enquête du cloître est celle du
+// scénario : trois moines, chacun un bout de phrase, puis trois balayeurs dans la cour du
+// puits — un seul a quelque chose dans la manche gauche. Le cloître, provisoirement, est le
+// grand piton, faute d'avoir encore bâti l'île du cloître.
+const GONG = { fin: -1, r: 16 };
+const FIGES = [];        // { g, x, z, texte, fini, cle, mauvais }
+let NOK = null;
+const gongActif = () => performance.now() < GONG.fin;
+function frapperGong() {
+  if (!state.gongThai || gongActif()) return;
+  SFX.gong(); GONG.fin = performance.now() + 6000; GONG.x = player.pos.x; GONG.z = player.pos.z;
+  showMessage('Le gong résonne. Autour de toi, le temps repart.', 3);
+}
+function poserLibre(bloque, hauteur, x0, z0) {
+  for (let r = 0; r < 30; r += 1) for (let k = 0; k < 12; k++) { const a = k / 12 * TAU, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
+    if (!bloque(x, z, 0.8) && hauteur(x, z) > 1) return [x, z]; }
+  return [x0, z0];
+}
+function balai() {
+  const g = new THREE.Group(), bois = new THREE.MeshStandardMaterial({ color: 0x8a6a40, roughness: 0.9 });
+  g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.4, 6), bois, 0, -0.5, 0));
+  g.add(mesh(new THREE.ConeGeometry(0.14, 0.4, 8, 1, true), new THREE.MeshStandardMaterial({ color: 0xb89a5a, roughness: 1, side: THREE.DoubleSide }), 0, -1.25, 0));
+  return g;
+}
+function cle() { const g = new THREE.Group(), or = new THREE.MeshStandardMaterial({ color: 0xd8b050, metalness: 0.9, roughness: 0.25, emissive: 0x3a2a08 });
+  g.add(mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), or, 0, 0.05, 0)); g.add(mesh(boxG(0.012, 0.1, 0.012), or, 0, -0.02, 0)); return g; }
+function figer(role, x, z, yaw, texte, extra = {}) {
+  const g = PNJ.buildRole(role); if (!g) return null;
+  g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(g);
+  const F = { g, x, z, texte, t0: rand(0.3, 2.5), pose: false, ...extra };
+  if (role === 'balayeur') PNJ.socket(g, g.userData.perso, 'hand_r', balai(), [0, 0.05, 0.02], [0.3, 0, 0]);
+  if (extra.cle) { F.objetCle = cle(); PNJ.socket(g, g.userData.perso, 'hand_l', F.objetCle, [0, 0.12, 0.03], [0, 0, 0]); }
+  FIGES.push(F); return F;
+}
+function habitants({ hauteur, bloque, addInteract }) {
+  // Nok, devant la grotte de la porte, au pied du rocher de Ko Panyi
+  { const [x, z] = poserLibre(bloque, hauteur, 70, -62);
+    NOK = PNJ.buildRole('nok');
+    if (NOK) { NOK.position.set(x, hauteur(x, z), z); NOK.rotation.y = Math.atan2(104 - x, 10 - z); scene.add(NOK);
+      addInteract({ pos: new THREE.Vector3(x, hauteur(x, z), z), r: 3.5, prompt: () => 'parler à Nok', fn: parlerNok }); } }
+  // les trois moines de l'enquête, devant le Wat Tham Suea, et les balayeurs de la cour
+  const M = [
+    [952, 280, '« …la clé du cloître, c’est le balayeur qui l’avait… »'],
+    [930, 292, '« …Somchai balaie toujours la cour du puits… »'],
+    [968, 300, '« …il cache la clé dans sa manche gauche… »'],
+  ];
+  for (const [ax, az, texte] of M) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('moine', x, z, rand(0, TAU), texte); }
+  const B = [[905, 335, false], [915, 345, true], [898, 350, false]];
+  for (const [ax, az, bon] of B) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('balayeur', x, z, rand(0, TAU), null, { cle: bon && !state.cleCloitre, balayeur: true, bon }); }
+  for (const F of FIGES) { F.g.position.y = hauteur(F.x, F.z);
+    addInteract({ pos: F.g.position, r: 3, prompt: () => F.balayeur ? 'regarder le balayeur' : 'écouter le moine', fn: () => parlerFige(F) }); }
+  if (state.gongThai) AIDE.extra.push(['K', 'frapper le gong']);
+  TOUCHES.KeyK = frapperGong;
+}
+function parlerNok() {
+  if (!state.gongThai) dialogue([
+    { who: 'Nok', text: 'Tu bouges ! Toi aussi, tu bouges !' },
+    { who: 'Nok', text: 'Je frappais le gong du temple quand tout s’est arrêté. La pluie, les moines, les clochettes. Moi, je suis restée.' },
+    { who: 'Nok', text: 'Les passeurs ont peur d’accoster. Ils disent que les îles mangent le temps.' },
+    { who: 'Nok', text: 'Prends le petit gong. Frappe-le près de ce qui est figé : ça repart, un peu. Pas longtemps.' },
+    { text: 'Nok te donne le petit gong du temple. (K : frapper le gong)', fn: () => { state.gongThai = true; AIDE.extra.push(['K', 'frapper le gong']); SFX.gong(); } },
+    { who: 'Nok', text: 'Les moines du grand piton parlaient de la clé du cloître. Ils ne finissent plus leurs phrases.' },
+  ]);
+  else dialogue([{ who: 'Nok', text: state.cleCloitre ? 'La clé du cloître ! Ce que tu as commencé…' : 'Frappe le gong près des moines. Ils finiront leurs phrases.' }]);
+}
+function parlerFige(F) {
+  const vivant = gongActif() && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r;
+  if (!F.balayeur) {
+    if (!vivant) return showMessage('Le moine est figé, la bouche ouverte, au milieu d’un mot.' + (state.gongThai ? ' (K : le gong)' : ''), 3.5);
+    F.fini = true; return showMessage('Le moine finit sa phrase : ' + F.texte, 6);
+  }
+  if (!vivant) return showMessage('Un moine figé, le balai levé. Sa manche ' + (F.bon && !state.cleCloitre ? 'gauche est pliée bizarrement.' : 'pend, toute droite.'), 3.5);
+  if (F.bon && !state.cleCloitre) {
+    state.cleCloitre = true; if (F.objetCle) F.objetCle.visible = false; SFX.dizaine();
+    return showMessage('Le balai repart, la manche se déplie : une clé tombe sur les dalles. La clé du cloître !', 6);
+  }
+  showMessage('Le balai repart, deux coups sur les dalles… rien ne tombe de ses manches.', 4);
+}
+function animeHabitants(dt) {
+  if (NOK && NOK.userData.ctrl) PNJ.animeVillageois(NOK, dt, false);
+  const actif = gongActif();
+  for (const F of FIGES) { const c = F.g.userData.ctrl; if (!c) continue;
+    // figé : la pose d'un instant choisi au hasard, une fois pour toutes ; le gong le relance
+    if (!F.pose) { c.jouer(F.g.userData.idle, 0); c.update(F.t0); F.pose = true; }
+    else if (actif && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r) c.update(dt); }
+  if (actif) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
+}
+
 // ---------- la pluie suspendue ----------
 // Des gouttes immobiles autour de Camille : un pavé de 40 m répété en 3 × 3 × 2, recalé tous
 // les 40 m — la même goutte reste au même endroit du monde, elle ne suit pas Camille.
-const PLUIE = { tuiles: [], pas: 40 };
+const PLUIE = { tuiles: [], pas: 40, chute: 0 };
 function pluie({ scene }) {
   const v = [], N = 900;
   for (let k = 0; k < N; k++) { const x = Math.random() * 40, y = Math.random() * 40, z = Math.random() * 40, l = rand(0.25, 0.5); v.push(x, y, z, x, y - l, z); }
@@ -215,11 +308,11 @@ function pluie({ scene }) {
 }
 function placerPluie() {
   const P = PLUIE.pas, bx = Math.floor(player.pos.x / P), by = Math.floor(player.pos.y / P), bz = Math.floor(player.pos.z / P);
-  let k = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let e = 0; e <= 1; e++) PLUIE.tuiles[k++].position.set((bx + i) * P, (by + e - 0.5) * P, (bz + j) * P);
+  let k = 0; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let e = 0; e <= 1; e++) PLUIE.tuiles[k++].position.set((bx + i) * P, (by + e - 0.5) * P - PLUIE.chute, (bz + j) * P);
 }
 
 // ---------- les passeurs ----------
-const BARQUES = [];
+const BARQUES = [], ANIME = {};
 function barque(x, z, rot) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
   const bois = phMat('wood_planks', 1.5, 1.5, { color: 0x7a5a3a });
@@ -272,10 +365,12 @@ monde({
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
     // sans ça, les parois tournées au nord sont noires
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
-    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie();
+    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx);
   },
   anime(now) {
-    const t = now / 1000;
+    const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
+    animeHabitants(dt);
+    if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
     if (PLUIE.tuiles.length && (t * 4 | 0) % 2 === 0) placerPluie();
     // vue de loin (le plan d'arrivée), la pluie ne serait qu'un pavé blanc posé sur la baie

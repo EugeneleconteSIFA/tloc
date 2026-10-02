@@ -1426,6 +1426,9 @@ export const SFX = (() => {
       });
       if (fendue) { noise(0.5, 0.35, 2600); setTimeout(() => noise(0.35, 0.25, 900), 120); }
     },
+    // le gong de Nok (Thaïlande) : un coup sourd, puis un bourdonnement qui ondule — les
+    // partiels d'un gong ne sont pas harmoniques, et le grave remonte un peu en s'éteignant
+    gong: () => { noise(0.06, 0.25, 500); [[1, 4.5, 0.16], [1.48, 3.2, 0.06], [2.31, 2.4, 0.05], [3.17, 1.6, 0.03]].forEach(([r, d, v]) => tone(98 * r, 98 * r * 1.03, d, 'sine', v)); },
     // une herse qui retombe : les chaînes qui filent, puis le choc
     herse: () => { for (let i = 0; i < 6; i++) setTimeout(() => noise(0.07, 0.12, 3200 + Math.random() * 1200), i * 90); setTimeout(() => { tone(70, 28, 0.7, 'sine', 0.45); noise(0.5, 0.35, 260); }, 620); },
     win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, f, 0.28, 'square', 0.12), i * 150)),

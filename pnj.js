@@ -586,6 +586,27 @@ export const ROLES = {
     barbe: 'coiffures_r:Hair_Beard', cheveuxC: 0x4a3420,
     haut: GUEDE, valeur: 0.85, bas: NOIX, valeurBas: 0.8, idle: 'Idle_FoldArms_Loop',
   },
+  // Thaïlande (acte III). Nok, qui tresse le jasmin du temple et frappait le gong quand le
+  // temps s'est arrêté : jeune, chignon, la blouse claire et le pagne indigo
+  nok: {
+    metier: 'nok', gabarit: 'mince', h: enUnites(1.56),
+    tenue: 'tenues:Female_Peasant', corps: 'corps:Superhero_Female_FullBody',
+    cheveux: 'coiffures_r:Hair_Buns', sourcils: 'coiffures_r:Eyebrows_Female', cheveuxC: 0x16110e,
+    haut: 0xe8dcc4, valeur: 1.15, bas: 0x2e3a6a, valeurBas: 0.8, idle: 'Idle_Loop',
+  },
+  // les moines du grand piton, figés au milieu d'un geste : crâne rasé, robe safran
+  moine: {
+    metier: 'moine', gabarit: 'sec', h: enUnites(1.70),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x2a2018,
+    haut: 0xd8781e, valeur: 0.95, bas: 0xc8681a, valeurBas: 0.9, idle: 'Idle_Talking_Loop',
+  },
+  balayeur: {
+    metier: 'moine', gabarit: 'sec', h: enUnites(1.66),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x2a2018,
+    haut: 0xd8781e, valeur: 0.95, bas: 0xc8681a, valeurBas: 0.9, idle: 'Farm_Watering',
+  },
   mage: {
     metier: 'mage', gabarit: 'sec', h: enUnites(1.62),
     tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
