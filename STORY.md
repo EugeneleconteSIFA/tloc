@@ -460,6 +460,9 @@ Il sert notamment à :
 
 Le Colosse est un géant de bronze inspiré de la statue de Barletta.
 
+C'est un géant inventé : aucune des trois villes n'a de statue colossale, et Barletta n'est pas
+du voyage (Eugène, 2 octobre).
+
 Chaque pas produit un bond du temps.
 
 Camille le ralentit, monte sur lui et retire le morceau de cloche.

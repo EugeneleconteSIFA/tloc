@@ -45,12 +45,13 @@ de page.
 - **Pouilles (acte IV)** — Matera, Alberobello et Gallipoli faits le 1er octobre
   (`carte/mondes/*.json`, relief Copernicus GLO-30 récolté) ; Gallipoli complétée le
   2 octobre jusqu'à la gare. **Barletta et Castel del Monte sont retirés** : Eugène et
-  Camille n'y sont jamais allés (2 octobre). Reste à exporter sur openstreetmap.org :
-  - **Matera, les Sassi au nord** : 40,664–40,673 N ; 16,604–16,616 E — le premier extrait
-    s'arrête au pied de la cathédrale et laisse dehors presque tout le **Sasso Barisano**.
-    Les deux envoyés le 2 octobre tombent à 2–3 km au nord-ouest, sur les quartiers modernes.
-  - **Décision** : où loger le Colosse (inspiré de la statue de Barletta) et le « château à
-    huit tours » de `STORY.md`, maintenant que le monde, ce sont les trois villes.
+  Camille n'y sont jamais allés (2 octobre). Matera complétée le 2 octobre (le Sasso
+  Barisano). Plus rien à exporter pour les Pouilles.
+  - **Le Colosse** : un géant de bronze **inventé**, inspiré de la statue de Barletta
+    (Eugène, 2 octobre). **Décision** : où il se tient — le port de Gallipoli
+    (`DECISIONS-RECIT.md`, près de Nunzia) ou la Murgia face aux Sassi de Matera.
+  - **Décision** : le « château à huit tours » de `STORY.md` (c'était Castel del Monte) —
+    l'enlever, ou le confier au château Tramontano (Matera) ou au château angevin (Gallipoli).
 - **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
   couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
   zone choisie à la main ; Overpass si c'est trop gros) :
@@ -77,7 +78,7 @@ de page.
 ## Modèles 3D
 
 - **Géants** : le Dormeur (une vraie falaise couchée, à choisir), le Yak (yaksha du Wat
-  Arun), le Colosse (scan de la statue de Barletta, à chercher), le loup géant.
+  Arun), le Colosse (géant de bronze inventé ; la statue de Barletta comme modèle d'allure), le loup géant.
 - **Animaux** manquants : loup, moutons, vautours, tarentules, chevaux sauvages (déjà là :
   cheval, biche, vache, taureau, âne). Le pack Quaternius d'origine contient peut-être un loup.
 - **Personnages en costume** : les Roquette en cavaliers ; moines thaïs, Nok, Somsak, Mali,
