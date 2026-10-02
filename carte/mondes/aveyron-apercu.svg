@@ -82,9 +82,6 @@
 <text x="-197.5" y="-62.8" font-size="36.7" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="8.56" paint-order="stroke">Le duel du lac</text>
 <circle cx="470.0" cy="440.0" r="17.12" fill="#e67e22" stroke="#7a3d00" stroke-width="3.67"/>
 <text x="494.5" y="452.2" font-size="36.7" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="8.56" paint-order="stroke">La source des Vergnes</text>
-<path d="M1700.0 -750.0L3400.0 -750.0L3400.0 450.0L1700.0 450.0L1700.0 -750.0Z" fill="#e67e22" fill-opacity="0.18" stroke="#e67e22" stroke-width="4.89" stroke-dasharray="14.7 9.8"/>
-<circle cx="2550.0" cy="-150.0" r="17.12" fill="#e67e22" stroke="#7a3d00" stroke-width="3.67"/>
-<text x="2574.5" y="-137.8" font-size="36.7" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="8.56" paint-order="stroke">Le Dormeur</text>
 <path d="M-550.3 641.0h1000" stroke="#222" stroke-width="9.78"/>
 <text x="-550.3" y="623.9" font-size="31.8" fill="#222">1 km</text>
 </svg>

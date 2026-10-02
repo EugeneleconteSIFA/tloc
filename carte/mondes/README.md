@@ -152,7 +152,7 @@ orange sur l'aperçu**, pour qu'on sache toujours qu'ils ne viennent pas d'OSM.
 | **Le Pouget** (la grande maison) | 185, -315 | rive nord-est, dans les prés, à égale distance des deux autres : là où les familles se retrouvent chez l'aïeule |
 | **Le duel du lac** | -222, -75 | sur la crête du barrage : un passage étroit entre l'eau et le vide, au point même de la querelle |
 | **La source des Vergnes** | 470, 440 | sur le ruisseau qui nourrit le lac : bouchée par la bande, le lac baisse. Les autres sources de la quête peuvent être des points d'OSM : la fontaine du lac (-269, -339), les deux fontaines de Saint-Symphorien |
-| **Le Dormeur** | 2 550, -150 (zone 1 700–3 400 × -750–450) | aucune falaise dans OSM ; dans les 2 km sans plan entre le lac et le bourg, où rien ne gêne un géant. **À affiner sur le relief** quand il sera récolté |
+| **Le Dormeur** | -2 592, -501 (zone -2 900 à -2 300 × -1 100 à 50) | aucune falaise dans OSM ni sur le plateau : le mur de la vallée à l'ouest du lac, 400 m de haut (candidat A des environs, choisi par Eugène le 2 octobre) |
 
 Ce qu'OSM n'a pas : **le four** de Saint-Symphorien (aucun `baking_oven`, seulement la
 « Rue du Four »), aucune falaise, aucune source. Le « lavoir » n'existe que par la rue du
@@ -182,8 +182,8 @@ aucune falaise pour le géant couché. `python3 recolter-relief-aveyron.py envir
 14 × 12 km autour du lac au pas de 50 m (339 requêtes, `relief-aveyron-environs.json`, de 279
 à 947 m) : une vallée profonde longe le lac au nord-ouest, à 400 m sous le plateau —
 probablement la Truyère, en contrebas de Montézic (à confirmer). `apercu-aveyron.py` en tire
-`aveyron-environs.png` : les pentes de plus de 33° et deux candidats, **à choisir par Eugène**
-(le Dormeur reste posé dans le trou entre les extraits tant qu'il n'a pas choisi) :
+`aveyron-environs.png` : les pentes de plus de 33° et deux candidats. **Eugène a choisi A**
+(2 octobre) : le Dormeur est posé sur le mur de l'ouest dans `aveyron.json`, hors des extraits OSM.
 
 | candidat | x, z | lat, lon | ce que c'est |
 |---|---|---|---|

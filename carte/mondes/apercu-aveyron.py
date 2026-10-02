@@ -208,8 +208,8 @@ if os.path.exists(CHROME):
 # Le monde (5 × 1,4 km) est un plateau doux : aucune falaise pour le géant couché. Les environs
 # (relief-aveyron-environs.json, 14 × 12 km au pas de 50 m) montrent la vallée profonde qui
 # longe le lac au nord-ouest ; on y dessine les pentes de plus de 33° et les candidats.
-DORMEUR = [  # (nom, x, z, note) — mesurés le 2 octobre sur les environs ; à valider par Eugène
-    ('A — le mur de l’ouest', -2592, -501, '1,1 km nord-sud, 400 m de haut (300 → 700 m), 2,6 km à l’ouest du lac'),
+DORMEUR = [  # (nom, x, z, note) — mesurés le 2 octobre sur les environs ; Eugène a choisi A
+    ('A — le mur de l’ouest : le Dormeur (choisi)', -2592, -501, '1,1 km nord-sud, 400 m de haut (300 → 700 m), 2,6 km à l’ouest du lac'),
     ('B — l’escarpement du nord', 562, -3174, '1,7 km, 235 m de haut, 3,2 km au nord du lac'),
 ]
 F_ENV = os.path.join(ICI, 'relief-aveyron-environs.json')
@@ -228,7 +228,7 @@ if os.path.exists(F_ENV):
     bx = (E_['x0'] - pas / 2, E_['z0'] - pas / 2, nx * pas, nz * pas)
     o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" font-family="Helvetica, Arial, sans-serif">' % (W2, H2),
          '<rect width="100%" height="100%" fill="#fbfaf6"/>',
-         '<text x="20" y="34" font-size="20" font-weight="600" fill="#2b2b2b">Les environs du lac (14 × 12 km, relief IGN au pas de 50 m) — où coucher le Dormeur ?</text>',
+         '<text x="20" y="34" font-size="20" font-weight="600" fill="#2b2b2b">Les environs du lac (14 × 12 km, relief IGN au pas de 50 m) — où se couche le Dormeur</text>',
          '<text x="20" y="58" font-size="14" fill="#555">en rouge : pentes de plus de 33° ; en orange : les deux candidats ; cadres gris : les extraits OSM ; grille de 1 km</text>',
          '<svg x="20" y="70" width="%.0f" height="%.0f" viewBox="%.1f %.1f %.1f %.1f">' % ((nx * pas * s, nz * pas * s) + bx),
          '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#f4f1e8"/>' % bx,

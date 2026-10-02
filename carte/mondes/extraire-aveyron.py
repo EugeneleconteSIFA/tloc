@@ -344,10 +344,12 @@ POSES = [
      'note': "sur le ruisseau des Vergnes, qui NOURRIT le lac par le sud-est (il en sort au barrage) : "
              "la bande l'a bouchée, le lac baisse. Les autres sources de la quête : la fontaine du lac "
              "(OSM, x -269 z -339) et les deux fontaines de Saint-Symphorien (OSM)"},
-    {'k': 'dormeur', 'nom': 'Le Dormeur', 'x': 2550.0, 'z': -150.0,
-     'zone': [[1700, -750], [3400, -750], [3400, 450], [1700, 450], [1700, -750]],
-     'note': "aucune falaise dans OSM : le géant couché se cherche sur le relief (pas encore récolté), "
-             "dans les 2 km sans plan entre le lac et le bourg — rien n'y gêne un géant de 300 m"},
+    # Déplacé le 2 octobre : le plateau entre le lac et le bourg n'a aucune falaise ; Eugène a
+    # choisi le candidat A d'aveyron-environs.png, le mur de la vallée à l'ouest du lac.
+    {'k': 'dormeur', 'nom': 'Le Dormeur', 'x': -2592.0, 'z': -501.0,
+     'zone': [[-2900, -1100], [-2300, -1100], [-2300, 50], [-2900, 50], [-2900, -1100]],
+     'note': "le mur de l'ouest (44,7377 N ; 2,6480 E) : 1,1 km nord-sud, de 300 à 700 m, 2,6 km à l'ouest "
+             "du lac, hors des extraits OSM — relief dans relief-aveyron-environs.json (pas de 50 m)"},
 ]
 for e in POSES:
     out['lieux'].append(dict(e, pose='Eugène'))

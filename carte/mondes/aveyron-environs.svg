@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="883" height="813" font-family="Helvetica, Arial, sans-serif">
 <rect width="100%" height="100%" fill="#fbfaf6"/>
-<text x="20" y="34" font-size="20" font-weight="600" fill="#2b2b2b">Les environs du lac (14 × 12 km, relief IGN au pas de 50 m) — où coucher le Dormeur ?</text>
+<text x="20" y="34" font-size="20" font-weight="600" fill="#2b2b2b">Les environs du lac (14 × 12 km, relief IGN au pas de 50 m) — où se couche le Dormeur</text>
 <text x="20" y="58" font-size="14" fill="#555">en rouge : pentes de plus de 33° ; en orange : les deux candidats ; cadres gris : les extraits OSM ; grille de 1 km</text>
 <svg x="20" y="70" width="843" height="723" viewBox="-6025.0 -6025.0 14050.0 12050.0">
 <rect x="-6025.0" y="-6025.0" width="14050.0" height="12050.0" fill="#f4f1e8"/>
@@ -15,9 +15,9 @@
 <circle cx="-135" cy="170" r="50" fill="#555"/>
 <circle cx="400" cy="150" r="50" fill="#555"/>
 <circle cx="185" cy="-315" r="50" fill="#555"/>
-<circle cx="2550" cy="-150" r="50" fill="#555"/>
+<circle cx="-2592" cy="-501" r="50" fill="#555"/>
 <circle cx="-2592" cy="-501" r="700" fill="none" stroke="#e67e22" stroke-width="66.7"/>
-<text x="-1872" y="-541" font-size="250" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="66.7" paint-order="stroke">A — le mur de l’ouest</text>
+<text x="-1872" y="-541" font-size="250" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="66.7" paint-order="stroke">A — le mur de l’ouest : le Dormeur (choisi)</text>
 <text x="-1872" y="-271" font-size="200" fill="#333" stroke="#fff" stroke-width="50.0" paint-order="stroke">1,1 km nord-sud, 400 m de haut (300 → 700 m), 2,6 km à l’ouest du lac</text>
 <circle cx="562" cy="-3174" r="700" fill="none" stroke="#e67e22" stroke-width="66.7"/>
 <text x="1282" y="-3214" font-size="250" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="66.7" paint-order="stroke">B — l’escarpement du nord</text>
