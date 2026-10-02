@@ -14,7 +14,7 @@ import * as PNJ from './pnj.js';
 // En mètres, comme la carte (1 unité = 1 m) : Camille y a l'échelle de la ville (0,6).
 // =====================================================================
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
-  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
+  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state } from './engine.js?v=41';
 import { DONJON } from './carte.js';
 
 const R_ILE = 50, R_COUR = 26, R_TOUR = 10, EP_TOUR = 1.4, H_TOUR = 72;
@@ -240,6 +240,10 @@ function build() {
       n.position.set(0, 8.75, -1.0); g.add(n); }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     for (const s of [-1, 1]) { const x = g.position.x + Math.cos(a) * s * 2.35, z = g.position.z - Math.sin(a) * s * 2.35; addCap(x, z, x, z, 0.85); }
+    // la porte des Troupeaux mène au Pouget — provisoire aussi : dans l'histoire, elle ne
+    // s'ouvre qu'à l'acte V ; c'est le premier monde bâti, Eugène veut pouvoir y aller
+    if (P.geant === 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte des Troupeaux',
+      fn: () => goToLevel('pouget', [8.8, 0, 40], Math.PI, 'La porte s’ouvre sur une pente de châtaigniers…') });
     // la porte de Lille ramène à la dalle du donjon (le passage provisoire, quetes.js)
     if (P.ouverte) addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'repasser la porte de Lille',
       fn: () => goToLevel('citadel', [DONJON.x + 7, 0, DONJON.gateZ + 8.5], 0, 'Retour à Lille…') });
@@ -401,10 +405,14 @@ function silhouette(i, monde) {
 
 function populate() {
   // Camille passe la porte de Lille : dans la cour, face à la tour
-  player.pos.set(0, 0, R_COUR - 2.5); player.yaw = Math.PI; G.camYaw = 0;
+  player.pos.set(0, 0, R_COUR - 2.5); player.yaw = Math.PI; G.camYaw = Math.PI;
 }
 // rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
+// à l'arrivée par une porte, la sauvegarde rend l'angle de caméra du niveau qu'on quitte : on
+// la remet une fois dans le dos de Camille, face à la tour
+let camPosee = false;
 function animate(now, dt) {
+  if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est dans le dos
   const t = now / 1000, troupeaux = ouverts().has('loup');
   for (const c of BOUGE.cloches) c.g.rotation.z = troupeaux ? Math.sin(t * 0.9 + c.ph) * 0.05 : 0;   // les cloches se balancent seules, très peu
   if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite
