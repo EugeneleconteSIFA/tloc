@@ -95,7 +95,7 @@ export async function monde(f) {
       cones.push(c.toNonIndexed());
       const s = new THREE.SphereGeometry(r * 0.16, 8, 6); s.translate(cx, haut + r * 1.75, cz); murs.push(s.toNonIndexed());
     } else if (style === 'deuxPans') {
-      const o = 0.4, hl = (W / 2 + o) * f.toit.pente, ac = (a0 + a1) / 2, bc = (b0 + b1) / 2;
+      const o = 0.4, hl = Math.min((W / 2 + o) * f.toit.pente, f.toit.hMax || 1e9), ac = (a0 + a1) / 2, bc = (b0 + b1) / 2;
       const P = (a, c, y) => [cx + (ac + a) * ux - (bc + c) * uz, haut + y, cz + (ac + a) * uz + (bc + c) * ux];
       const la = L / 2 + o, lb = W / 2 + o;
       const v = [P(-la, -lb, 0), P(la, -lb, 0), P(la, 0, hl), P(-la, 0, hl), P(-la, lb, 0), P(la, lb, 0)];
@@ -107,8 +107,12 @@ export async function monde(f) {
       gp.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 0.5, 1, 1, 0, 1, 0, 0.5, 1, 0, 0, 0, 0, 1, 0, 0.5, 1, 0.5, 1, 1, 0, 0, 0], 2)); gp.computeVertexNormals();
       murs.push(gp);
     }
+    inscrire(pts, cx, cz);
+  }
+  // la grille des collisions : chaque bâtiment dans les cases de 20 m qu'il touche. Les lieux
+  // y inscrivent aussi ce qu'ils bâtissent eux-mêmes (les maisons sur pilotis de Ko Panyi)
+  function inscrire(pts, cx, cz) {
     const i = B.length; B.push({ pts, cx, cz });
-    // la grille des collisions : chaque bâtiment dans les cases de 20 m qu'il touche
     let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gz = Math.floor(z0 / 20); gz <= Math.floor(z1 / 20); gz++) {
       const k = gx + ',' + gz; if (!GRILLE.has(k)) GRILLE.set(k, []); GRILLE.get(k).push(i); }
@@ -167,7 +171,7 @@ export async function monde(f) {
       g.computeVertexNormals();
       const m = new THREE.Mesh(g, phMat(f.loinSol ? f.loinSol[0] : 'forest_leaves_02', 300, 300, { color: f.loinSol ? f.loinSol[1] : 0x6a8058 })); m.receiveShadow = true; scene.add(m); }
     // ---------- la mer ----------
-    if (f.mer != null) { const m = new THREE.Mesh(new THREE.CircleGeometry(6000, 64), new THREE.MeshStandardMaterial({ color: f.merCouleur || 0x2f6a8a, roughness: 0.08, metalness: 0.75 }));
+    if (f.mer != null) { const m = new THREE.Mesh(new THREE.CircleGeometry(6000, 64), new THREE.MeshStandardMaterial({ color: f.merCouleur || 0x2f6a8a, roughness: f.merPoli ?? 0.08, metalness: f.merMetal ?? 0.75 }));
       m.rotation.x = -Math.PI / 2; m.position.y = f.mer - H0 + 0.05; scene.add(m); }
 
     // ---------- les bâtiments, fondus par matière ----------
@@ -214,7 +218,7 @@ export async function monde(f) {
         fn: () => showMenu('LE PETIT TRAIN', 'Gare de ' + f.titre, 'Il passe toutes les heures. Ici, une heure passe vite.',
           [...lignes.map(([nom, lieu, pos, yaw]) => ({ label: nom, fn: () => { hideMenu(); goToLevel(lieu, pos, yaw, 'Le petit train file à travers les oliviers…'); } })),
             { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) }); }
-    if (f.plus) f.plus({ hauteur, scene, PLAN, H0, bloque, addInteract });
+    if (f.plus) f.plus({ hauteur, scene, PLAN, H0, bloque, addInteract, inscrire, CADRE });
   }
 
   // la caméra : à l'arrivée par une porte, la sauvegarde rend l'angle du lieu qu'on quitte —
@@ -222,6 +226,7 @@ export async function monde(f) {
   let camPosee = false;
   function animate(now) {
     for (const v of voiles) v.material.opacity = 0.28 + Math.sin(now / 900) * 0.08;
+    if (f.anime) f.anime(now);
     if (!camPosee && state.running && !state.paused) {
       // arrivée par le train ou une porte : si la place tombe dans un mur, la place libre la plus proche
       const p = player.pos;

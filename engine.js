@@ -47,7 +47,25 @@ const canvas = document.getElementById('game');
 // du post-traitement, qui n'en ont pas, et le canevas ne reçoit qu'un rectangle plein écran —
 // le MSAA n'y lissait rien, mais la carte payait sa résolution sur 2880 × 1800 à chaque image
 // (+9 % d'images/s au banc, A/B alterné). Le lissage est celui du FXAA (antiCrenelage).
-export const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+// Un écran qui dit ce qui se passe, au-dessus de tout (même de l'écran de chargement) : une
+// panne de la carte graphique ne laisse sinon qu'une erreur dans la console.
+function ecranPanne(texte) {
+  const m = document.createElement('div');
+  m.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:#0b1020;color:#ffe7a3;font:600 18px "Trebuchet MS",sans-serif;text-align:center;padding:24px';
+  m.textContent = texte;
+  document.body.appendChild(m);
+}
+// CHROME QUI REFUSE LE RENDU (Eugène, 2 octobre : « Web page caused context loss and was
+// blocked ») : après plusieurs pertes de contexte, Chrome interdit WebGL à la page jusqu'au
+// redémarrage du navigateur, et la création du rendu lève une exception. Recharger n'y fait
+// rien : on dit au joueur la seule chose qui marche.
+export const renderer = (() => {
+  try { return new THREE.WebGLRenderer({ canvas, antialias: false }); }
+  catch (e) {
+    ecranPanne('Le navigateur a coupé l’affichage 3D après des plantages de la carte graphique. Quitte-le complètement (Cmd+Q sur Mac) puis relance-le : ta partie est gardée.');
+    throw e;
+  }
+})();
 // La vérification des shaders (getProgramInfoLog) force le navigateur à finir chaque
 // compilation sur-le-champ : 1,3 s d'attente au profil du chargement. Les joueurs n'en ont
 // pas besoin ; ?debug dans l'adresse la remet pour chercher une erreur de shader.
@@ -64,10 +82,20 @@ canvas.addEventListener('webglcontextlost', (e) => {
   // ordinateur démarre en qualité maximale ; relancé pareil, une carte à court de mémoire
   // replantait aussitôt, en boucle. Le choix est gardé, les touches 1 à 4 le changent.
   try { localStorage.setItem('tloc_qualite', '3'); } catch (er) {}
-  const m = document.createElement('div');
-  m.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:#0b1020;color:#ffe7a3;font:600 18px "Trebuchet MS",sans-serif;text-align:center;padding:24px';
-  m.textContent = 'La carte graphique a interrompu l’affichage. Ta partie est sauvegardée : on la relance en qualité basse (touches 1 à 4 pour la changer)…';
-  document.body.appendChild(m);
+  // PAS DE RECHARGEMENT EN BOUCLE (2 octobre) : une carte qui relâche dès le démarrage faisait
+  // perdre, recharger, reperdre… et Chrome, au bout de quelques pertes, bloque WebGL pour la
+  // page jusqu'au redémarrage du navigateur. Une seule relance par minute ; à la deuxième
+  // perte, on s'arrête et on dit quoi faire.
+  let pertes = [];
+  try { pertes = JSON.parse(sessionStorage.getItem('tloc_pertes') || '[]'); } catch (er) {}
+  const maintenant = Date.now();
+  pertes = pertes.filter((t) => maintenant - t < 60000); pertes.push(maintenant);
+  try { sessionStorage.setItem('tloc_pertes', JSON.stringify(pertes)); } catch (er) {}
+  if (pertes.length >= 2) {
+    ecranPanne('La carte graphique a lâché deux fois de suite. Ta partie est sauvegardée : quitte le navigateur (Cmd+Q sur Mac), relance-le, et le jeu repartira en qualité basse.');
+    return;
+  }
+  ecranPanne('La carte graphique a interrompu l’affichage. Ta partie est sauvegardée : on la relance en qualité basse (touches 1 à 4 pour la changer)…');
   setTimeout(() => location.reload(), 1800);
 }, false);
 brancherKTX2(renderer);          // l'essai KTX2 (?ktx2) a besoin de savoir ce que la carte sait décoder
@@ -2644,7 +2672,7 @@ export function newGame() {
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
 export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html', pouget: 'pouget.html', aveyron: 'aveyron.html',
-  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html' };
+  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html', thailande: 'thailande.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
 
 // ---------------------------------------------------------------------
@@ -4334,20 +4362,28 @@ export function finCharge() {
 // paquets pour que la barre avance, puis la compilation asynchrone de three.js, qui laisse
 // le pilote compiler en parallèle quand il sait le faire (KHR_parallel_shader_compile).
 const CARTES_TEX = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap', 'displacementMap', 'lightMap'];
-// SUR TÉLÉPHONE, DES TEXTURES À 512 (30 septembre). Mesuré : 176 textures de 1024 px pèsent
+// DES TEXTURES À 512, D'ABORD SUR TÉLÉPHONE (30 septembre). Mesuré : 176 textures de 1024 px pèsent
 // 975 Mo en mémoire graphique (1,1 Go en tout) — plus que ce qu'un iPhone laisse à un onglet.
 // À 512, c'est le quart ; sur un écran de téléphone, la différence ne se voit presque pas.
 // On réduit l'image AVANT son envoi à la carte (prechaufferRendu), puis de temps en temps
 // celles arrivées après (intérieurs, avatars du multi). Une ImageBitmap part telle quelle
 // (three.js ne la retourne pas) : sa copie sur toile garde donc flipY = false, sans quoi les
 // personnages auraient leurs textures à l'envers.
-const TEX_MAX_TACTILE = 512;
+const TEX_MAX = 512;
+// ET PARTOUT (2 octobre). Le Mac d'Eugène n'a qu'une puce Intel intégrée (Iris Plus 655,
+// 1,5 Go de mémoire graphique au plus, prise sur les 8 Go du Mac) : le jeu y demandait 1,1 Go
+// de textures, et la carte lâchait (« carte graphique ») dès qu'un autre onglet, ou les bancs
+// des sessions parallèles, en prenait un peu. Baisser la qualité n'y changeait rien : elle
+// règle les ombres et les pixels, pas les textures. Avant/après au pont de la Porte Royale :
+// 1 092 → 382 Mo, et l'image presque identique (un peu plus douce tout près) — Eugène a
+// choisi le 512 pour toutes les machines. `?textures=pleines` remet le 1 024 (pour comparer).
+const TEX_LEGERES = !/[?&]textures=pleines\b/.test(location.search);
 function reduireTexture(t) {
   const im = t && t.image;
   if (!im || t.isCompressedTexture || t.isDataTexture || t.isVideoTexture || t.isCubeTexture || t.userData.reduite) return;
   const w = im.width || 0, h = im.height || 0;
-  if (!w || !h || Math.max(w, h) <= TEX_MAX_TACTILE || typeof im.getContext === 'function' && t.userData.vivante) return;
-  const k = TEX_MAX_TACTILE / Math.max(w, h), c = document.createElement('canvas');
+  if (!w || !h || Math.max(w, h) <= TEX_MAX || typeof im.getContext === 'function' && t.userData.vivante) return;
+  const k = TEX_MAX / Math.max(w, h), c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
   try { c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); } catch (e) { return; }
   if (typeof ImageBitmap !== 'undefined' && im instanceof ImageBitmap) { t.flipY = false; t.premultiplyAlpha = false; try { im.close(); } catch (e) {} }
@@ -4359,10 +4395,10 @@ function reduireTextures(racine) {
     for (const m of ms) for (const k of CARTES_TEX) if (m && m[k] && m[k].isTexture) reduireTexture(m[k]);
   });
 }
-if (TACTILE) setInterval(() => { if (state.running) reduireTextures(scene); }, 5000);
+if (TEX_LEGERES) setInterval(() => { if (state.running) reduireTextures(scene); }, 5000);
 async function prechaufferRendu() {
   const t0 = performance.now(), textures = new Set();
-  if (TACTILE) reduireTextures(scene);
+  if (TEX_LEGERES) reduireTextures(scene);
   // les images décodées en tâche de fond (assets.js) : on les attend, sinon celles qui
   // arrivent après partiraient à la première image du jeu — un à-coup juste après « Prêt »
   { const att = texturesEnAttente(); if (att.length) { peindreCharge(`préparation du rendu — ${att.length} images à décoder`, chargeP); await Promise.all(att); } }
