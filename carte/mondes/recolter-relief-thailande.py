@@ -91,7 +91,7 @@ def main():
     S = B['morceaux']['suea']; scx, scz = (S['x0'] + S['x1']) / 2, (S['z0'] + S['z1']) / 2
     srx, srz = (S['x1'] - S['x0']) / 2 - 20, (S['z1'] - S['z0']) / 2 - 20
 
-    h, n_cop = [], 0
+    h, n_cop, brut = [], 0, {}
     for j in range(nz):
         for i in range(nx):
             x, z = x0 + i * PAS, z0 + j * PAS
@@ -113,13 +113,37 @@ def main():
                     bord = min(x - M['x0'], M['x1'] - x, z - M['z0'], M['z1'] - z)
                     if k > 0.3:
                         H = 220.0
+                        kb = k               # Copernicus tel quel : on y revient le long des sentiers (plus bas)
                         k = k if k < 2.5 else 2.5 + (H - 2.5) * ((k - 2.5) / (H - 2.5)) ** 0.4
                         # le bord de l'extrait, ondulé (sinon l'île serait un rectangle) : la terre y
                         # plonge plus vite qu'elle ne s'abaisse, pour finir en falaise dans l'eau
                         bord += 40 * (math.sin(x / 71) + math.sin(z / 57 + 1.3) + math.sin((x + z) / 37 + 0.4)) / 3
                         f = lisse((bord - 30) / 110)
                         v = max(v, k * f + (FOND - 40) * (1 - f))
+                        brut[len(h)] = max(FOND, kb * f + (FOND - 40) * (1 - f))
             h.append(round(v, 1))
+    # LES SENTIERS DE RAILAY ET DE PHI PHI (banc lieu-thailande, 2 octobre : 2 916 points trop
+    # raides sur 24 231). Le redressement en falaises relevait aussi les pentes que les
+    # sentiers gravissent : à moins de 6 m d'un chemin d'OSM, on reprend Copernicus tel quel
+    # (les vraies pentes, que les vrais sentiers savent monter), et on fond sur 8 m de plus.
+    poids = {}
+    for c in B['chemins'] + B['routes']:
+        if c.get('m') not in ('railay', 'phiphi') or c.get('surface'): continue
+        for (ax, az), (bx, bz) in zip(c['pts'], c['pts'][1:]):
+            for j in range(max(0, int((min(az, bz) - 15 - z0) / PAS)), min(nz, int((max(az, bz) + 15 - z0) / PAS) + 1)):
+                for i in range(max(0, int((min(ax, bx) - 15 - x0) / PAS)), min(nx, int((max(ax, bx) + 15 - x0) / PAS) + 1)):
+                    n = j * nx + i
+                    if n not in brut: continue
+                    w = 1 - lisse((dist_bord(x0 + i * PAS, z0 + j * PAS, [(ax, az), (bx, bz)]) - 6) / 8)
+                    if w > poids.get(n, 0): poids[n] = w
+    for n, w in poids.items(): h[n] = round(h[n] * (1 - w) + brut[n] * w, 1)
+    # les pontons de TOUTE la baie (Phi Phi, Railay) : comme les passerelles de Ko Panyi, à 1,2 m
+    for c in B['ponts']:
+        if c.get('k') != 'pier' or c.get('m') == 'panyi' or len(c['pts']) < 2: continue
+        for (ax, az), (bx, bz) in zip(c['pts'], c['pts'][1:]):
+            for j in range(max(0, int((min(az, bz) - 6 - z0) / PAS)), min(nz, int((max(az, bz) + 6 - z0) / PAS) + 1)):
+                for i in range(max(0, int((min(ax, bx) - 6 - x0) / PAS)), min(nx, int((max(ax, bx) + 6 - x0) / PAS) + 1)):
+                    if dist_bord(x0 + i * PAS, z0 + j * PAS, [(ax, az), (bx, bz)]) < 5 and h[j * nx + i] < 1.2: h[j * nx + i] = 1.2
     # les passerelles et les pontons de Ko Panyi : le village marche AU-DESSUS de l'eau, sur
     # des planches — à 1,2 m, sur 7 m de part et d'autre de chaque passerelle d'OSM
     for c in B['chemins'] + B['ponts']:
@@ -131,15 +155,57 @@ def main():
                     if dist_bord(x, z, [(ax, az), (bx, bz)]) < 7 and h[j * nx + i] < 1.2: h[j * nx + i] = 1.2
     # les bâtiments sur la pente (le Wat Tham Suea, haussé ×3,2) : un terre-plein sous chacun,
     # à l'altitude médiane de son emprise — sinon leurs murs descendent de dix mètres côté vallée
-    for bt in B['batiments']:
+    # un nœud déjà aplani pour un bâtiment ne l'est pas une seconde fois pour son voisin : sinon
+    # le dernier terre-plein creusait le premier, et un temple du grand piton se retrouvait
+    # sur une marche, ses murs descendant de vingt mètres comme une tour
+    aplanis = set()
+    for bt in sorted(B['batiments'], key=lambda b: -abs(sum(b['pts'][i][0] * b['pts'][i + 1][1] - b['pts'][i + 1][0] * b['pts'][i][1] for i in range(len(b['pts']) - 1)))):
         xs = [q[0] for q in bt['pts']]; zs = [q[1] for q in bt['pts']]
         i0, i1 = int((min(xs) - x0) / PAS) - 1, int((max(xs) - x0) / PAS) + 2
         j0, j1 = int((min(zs) - z0) / PAS) - 1, int((max(zs) - z0) / PAS) + 2
-        noeuds = [(i, j) for j in range(max(0, j0), min(nz, j1 + 1)) for i in range(max(0, i0), min(nx, i1 + 1))]
+        noeuds = [(i, j) for j in range(max(0, j0), min(nz, j1 + 1)) for i in range(max(0, i0), min(nx, i1 + 1)) if (i, j) not in aplanis]
         vals = sorted(h[j * nx + i] for i, j in noeuds)
         if not vals or vals[-1] - vals[0] < 2.5 or vals[0] < 0.5: continue
         med = vals[len(vals) // 2]
-        for i, j in noeuds: h[j * nx + i] = med
+        for i, j in noeuds: h[j * nx + i] = med; aplanis.add((i, j))
+    # LE PROFIL DE CHAQUE SENTIER, EN DERNIER (banc, 2e passe : encore 2 690 points trop raides ;
+    # posé avant les terre-pleins, il était recreusé par eux au bord des rues). Copernicus
+    # est un modèle de SURFACE : dans Ton Sai et à Railay, il compte les toits et les arbres —
+    # des marches de 5 m au milieu de la rue. On relève donc chaque chemin tous les 5 m, on
+    # lisse son profil (moyenne glissante sur 35 m), on borne sa pente à 50 % (27°) dans les deux
+    # sens, et on pose le sol sur ce profil à moins de 8 m du chemin (la grille est au pas de 10 m :
+    # plus étroit, le chemin tombait entre deux nœuds tirés vers le relief brut), fondu jusqu'à 15 m.
+    def hgrille(x, z):
+        fx = min(max((x - x0) / PAS, 0), nx - 1.001); fz = min(max((z - z0) / PAS, 0), nz - 1.001)
+        i, j = int(fx), int(fz); u, v = fx - i, fz - j
+        return (h[j * nx + i] * (1 - u) + h[j * nx + i + 1] * u) * (1 - v) + (h[(j + 1) * nx + i] * (1 - u) + h[(j + 1) * nx + i + 1] * u) * v
+    cible, poids2 = {}, {}
+    for c in B['chemins'] + B['routes']:
+        if c.get('m') == 'panyi' or c.get('surface') or len(c['pts']) < 2: continue
+        q = []
+        for (ax, az), (bx, bz) in zip(c['pts'], c['pts'][1:]):
+            n = max(1, int(math.hypot(bx - ax, bz - az) / 5))
+            q += [(ax + (bx - ax) * t / n, az + (bz - az) * t / n) for t in range(n)]
+        q.append(tuple(c['pts'][-1]))
+        prof = [hgrille(x, z) for x, z in q]
+        if max(prof) < 0.5: continue                          # tout en mer
+        lis = [sum(prof[max(0, k - 3):k + 4]) / len(prof[max(0, k - 3):k + 4]) for k in range(len(prof))]
+        for k in range(1, len(lis)):                          # la pente bornée, aller…
+            d = math.hypot(q[k][0] - q[k - 1][0], q[k][1] - q[k - 1][1]) * 0.5
+            lis[k] = min(max(lis[k], lis[k - 1] - d), lis[k - 1] + d)
+        for k in range(len(lis) - 2, -1, -1):                 # … et retour
+            d = math.hypot(q[k][0] - q[k + 1][0], q[k][1] - q[k + 1][1]) * 0.5
+            lis[k] = min(max(lis[k], lis[k + 1] - d), lis[k + 1] + d)
+        for (x, z), y in zip(q, lis):
+            if y < 0.3: continue                              # le chemin finit dans la mer : on n'y touche pas
+            for j in range(max(0, int((z - 16 - z0) / PAS)), min(nz, int((z + 16 - z0) / PAS) + 1)):
+                for i in range(max(0, int((x - 16 - x0) / PAS)), min(nx, int((x + 16 - x0) / PAS) + 1)):
+                    w = 1 - lisse((math.hypot(x0 + i * PAS - x, z0 + j * PAS - z) - 8) / 7)
+                    n = j * nx + i
+                    if w > poids2.get(n, 0): poids2[n] = w; cible[n] = y
+    # Les chemins passent AVANT les terre-pleins : les garder faisait retomber la baie à 89,9 %
+    # praticable. Le bâtiment qui en perd son assise prend un soubassement de pierre (monde.js, socleMax).
+    for n, w in poids2.items(): h[n] = round(h[n] * (1 - w) + cible[n] * w, 1)
     out = os.path.join(ICI, 'relief-thailande.json')
     json.dump({'note': "Copernicus GLO-30 (DSM, ESA) RETOUCHÉ (voir recolter-relief-thailande.py : pitons dessinés à Ko Panyi "
                        "et Khao Phing Kan, falaises redressées à Railay et Phi Phi, colline du Wat Tham Suea haussée), grille en "

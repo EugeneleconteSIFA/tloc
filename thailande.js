@@ -40,6 +40,10 @@ function pilotis({ hauteur, scene, PLAN, inscrire }) {
   const dansP = (x, z, pts) => { let d = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, zi] = pts[i], [xj, zj] = pts[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d; } return d; };
   const murs = [], toits = [], pieux = [], poses = [];
   const voies = [...PLAN.chemins, ...PLAN.ponts].filter((c) => c.m === 'panyi' && c.pts.length >= 2);
+  // toutes les passerelles, segment par segment : une maison ne se pose pas EN TRAVERS d'une autre
+  // (banc lieu-thailande, 2 octobre : 195 points de passerelle bloqués par des maisons voisines)
+  const segs = voies.flatMap((c) => c.pts.slice(1).map((q, k) => [c.pts[k], q]));
+  const dSeg = (x, z, [a, b]) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz); };
   for (const c of voies) for (let k = 0; k < c.pts.length - 1; k++) {
     const [a, b] = [c.pts[k], c.pts[k + 1]], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 6) continue;
     const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
@@ -48,6 +52,7 @@ function pilotis({ hauteur, scene, PLAN, inscrire }) {
       const x = a[0] + ux * s - uz * off * cote, z = a[1] + uz * s + ux * off * cote;
       if (hauteur(x, z) > 3 || poses.some(([px, pz]) => Math.hypot(px - x, pz - z) < 6.5)) continue;   // pas sur le rocher, pas l'une dans l'autre
       if (x > 84 && x < 109 && z > 10 && z < 58) continue;      // le marché flottant et ses deux abords restent libres
+      if (segs.some((sg) => sg[0] !== a && dSeg(x, z, sg) < Math.max(w, d) / 2 + 1.0)) continue;
       if (ile && !dansP(x, z, ile.pts) && Math.random() < 0.35) continue;
       poses.push([x, z]);
       const ang = Math.atan2(uz, ux), hm = rand(2.6, 3.4), y0 = 1.3;
@@ -116,13 +121,20 @@ function parois() {
 // ---------- la jungle ----------
 // Partout où la terre monte au-dessus des grèves et où la pente tient un arbre : un semis
 // serré (tous les 7 m, décalé au hasard), qui laisse à nu les parois et les villages.
-function jungle({ hauteur, bloque, CADRE }) {
+function jungle({ hauteur, bloque, CADRE, PLAN }) {
   const esp = especeGeo('charme'); if (!esp) return;
   const pts = [], pas = 7;
+  // les chemins restent dégagés : leurs points tous les 2 m, rangés par case de 4 m (on teste
+  // la case de l'arbre et ses voisines) — des troncs se dressaient au milieu des rues de Ton Sai
+  const chemin = new Set();
+  for (const c of [...PLAN.chemins, ...PLAN.routes]) { if (c.surface) continue;
+    for (let k = 0; k < c.pts.length - 1; k++) { const [a, b] = [c.pts[k], c.pts[k + 1]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2));
+      for (let t = 0; t <= n; t++) chemin.add(Math.floor((a[0] + (b[0] - a[0]) * t / n) / 4) + ',' + Math.floor((a[1] + (b[1] - a[1]) * t / n) / 4)); } }
+  const surChemin = (x, z) => { const i = Math.floor(x / 4), j = Math.floor(z / 4); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (chemin.has((i + a) + ',' + (j + b))) return true; return false; };
   for (let z = CADRE.z0; z < CADRE.z1; z += pas) for (let x = CADRE.x0; x < CADRE.x1; x += pas) {
     const px = x + rand(-3, 3), pz = z + rand(-3, 3), h = hauteur(px, pz); if (h < 3.5) continue;
     const pente = Math.max(Math.abs(hauteur(px + 2, pz) - hauteur(px - 2, pz)), Math.abs(hauteur(px, pz + 2) - hauteur(px, pz - 2))) / 4;
-    if (pente > 0.75 || (pente > 0.5 && Math.random() < 0.5) || bloque(px, pz, 3)) continue;
+    if (pente > 0.75 || (pente > 0.5 && Math.random() < 0.5) || bloque(px, pz, 3) || surChemin(px, pz)) continue;
     pts.push([px, pz, h]);
   }
   const n = pts.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n);
@@ -262,6 +274,65 @@ function marche({ hauteur }) {
   });
 }
 const VENDEURS = [];
+
+// ---------- la tyrolienne ----------
+// SCENARIO.md § 12 : les moines font passer leurs vivres d'un sommet à l'autre sur des câbles,
+// avec une poulie. LA règle, tenue par la machine : on ne glisse que vers le BAS — un câble
+// dont l'arrivée n'est pas plus basse que le départ n'est pas posé. Le grand piton s'atteint
+// ainsi depuis le belvédère de Phi Phi (aucun passeur n'y accoste, dans l'histoire), et de lui
+// un câble immense plonge jusqu'au marché flottant. (La poulie du moine cuisinier viendra
+// avec le cloître ; d'ici là, la tyrolienne est libre.)
+const CABLES = [
+  { nom: 'vers le grand piton', de: [2988, 1108], a: [976, 322] },          // belvédère 2 de Phi Phi (185 m) → le sommet du grand piton (~112 m), à côté du départ du câble suivant
+  { nom: 'vers le marché flottant', de: [972, 330], a: [96, 32] },          // le sommet, à côté du chedi (113 m) → les barques de Ko Panyi
+  { nom: 'vers la plage de Railay', de: [-239, 2012], a: [-650, 1534] },     // le belvédère de Railay (57 m) → Ao Rai Le
+];
+const PENDU = 2.1;            // de la poulie aux pieds de Camille
+let GLISSE = null;
+function cablePoint(c, t) {
+  // une chaînette approchée : la corde, et une flèche de 2 % de la portée au milieu
+  return new THREE.Vector3(c.p0.x + (c.p1.x - c.p0.x) * t, c.p0.y + (c.p1.y - c.p0.y) * t - c.fleche * 4 * t * (1 - t), c.p0.z + (c.p1.z - c.p0.z) * t);
+}
+function tyroliennes({ hauteur, addInteract }) {
+  const acier = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, metalness: 0.7, roughness: 0.45 }), bois = phMat('tree_trunk', 1, 1, { color: 0x6a5038 });
+  for (const c of CABLES) {
+    const y0 = hauteur(...c.de), y1 = Math.max(hauteur(...c.a), 0.55);
+    if (!(y1 < y0 - 2)) { console.warn('tyrolienne refusée (elle monterait) :', c.nom); continue; }       // la règle
+    c.p0 = new THREE.Vector3(c.de[0], y0 + 4.2, c.de[1]); c.p1 = new THREE.Vector3(c.a[0], y1 + 3.6, c.a[1]);
+    c.long = c.p0.distanceTo(c.p1); c.fleche = c.long * 0.02;
+    c.p0.y += c.fleche * 0.3;                     // que la corde ne frôle pas la crête au départ
+    const pts = []; for (let k = 0; k <= 60; k++) pts.push(cablePoint(c, k / 60));
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.05, 5), acier));
+    // les deux potences : un poteau, une traverse, le câble y est noué
+    for (const [p, y] of [[c.p0, y0], [c.p1, y1]]) {
+      const g = new THREE.Group(); g.position.set(p.x, y, p.z); g.rotation.y = Math.atan2(c.p1.x - c.p0.x, c.p1.z - c.p0.z); scene.add(g);
+      g.add(mesh(new THREE.CylinderGeometry(0.16, 0.2, p.y - y + 0.6, 7), bois, 0, (p.y - y + 0.6) / 2, 0));
+      g.add(mesh(boxG(1.6, 0.18, 0.18), bois, 0, p.y - y, 0));
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    }
+    c.duree = Math.min(28, Math.max(7, c.long / 55));
+    addInteract({ pos: new THREE.Vector3(c.de[0], y0, c.de[1]), r: 4, prompt: () => 's’accrocher au câble — ' + c.nom, fn: () => glisser(c) });
+  }
+}
+function glisser(c) {
+  if (GLISSE) return;
+  GLISSE = { c, t: 0 };
+  player.yaw = Math.atan2(c.p1.x - c.p0.x, c.p1.z - c.p0.z); G.camYaw = player.yaw;
+  showMessage('Tu passes la sangle dans la poulie des moines, et tu te laisses aller…', 3);
+  SFX.roll && SFX.roll();
+}
+function animeGlisse(dt) {
+  if (!GLISSE) return;
+  const g = GLISSE; g.t = Math.min(1, g.t + dt / g.c.duree);
+  // la poulie part doucement, file au milieu, freine au bout (sinon on s'écrase sur la potence)
+  const s = g.t * g.t * (3 - 2 * g.t);
+  const q = cablePoint(g.c, Math.min(1, Math.max(0, s)));
+  player.pos.set(q.x, q.y - PENDU, q.z); player.vy = 0; player.fallFrom = player.pos.y;
+  if (g.t >= 1) {
+    const [x, z] = g.c.a, y = HAUT ? HAUT(x, z) : 0; player.pos.set(x, Math.max(y, 0.55), z); player.fallFrom = player.pos.y; player.vy = 0;
+    GLISSE = null; showMessage('Les pieds touchent. ' + g.c.nom.replace('vers ', '').replace(/^./, (l) => l.toUpperCase()) + '.', 3);
+  }
+}
 
 // ---------- Nok, le gong, les moines figés ----------
 // SCENARIO.md § 12 : sur les îles, tout s'est arrêté au milieu d'un geste et d'une phrase ;
@@ -414,6 +485,7 @@ monde({
   sol: ['grass_ground', 0x8aa070], mer: 0, merCouleur: 0x2e7a78, merPoli: 0.12, merMetal: 0.55,
   murs: ['chaux_craquelee', 0xe4dccc], toit: { style: 'deuxPans', slug: 'clay_roof_tiles_02', couleur: 0xa84a2a, pente: 0.9, hMax: 4.5 }, hMurs: [3.2, 4.6],
   chemin: ['rocky_trail', 0xb8a888],
+  socleMax: 2.5, socle: ['old_stone_wall_02', 0xb0a490],
   arbres: null,       // la jungle se plante ici (jungle()), sur le relief, pas sur les polygones de bois
   depart: { x: 104, z: 10.4, yaw: -Math.PI / 2 },
   portes: [{ x: 61.5, z: -71.9, rot: 0.3, prompt: 'repasser la porte de l’île', vers: ['temple', [20.35, 0, -11.75], Math.atan2(-20.35, 11.75)], label: 'Retour à l’île du temps…' }],
@@ -425,12 +497,13 @@ monde({
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
     // sans ça, les parois tournées au nord sont noires
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
-    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx); marche(ctx);
+    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx); marche(ctx); tyroliennes(ctx);
   },
   anime(now) {
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
     animeHabitants(dt);
     for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
+    animeGlisse(dt);
     if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
     if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }

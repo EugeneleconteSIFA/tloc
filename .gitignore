@@ -30,3 +30,4 @@ assets_back/02_personnages/animaux/*.gltf
 # essai KTX2 (29 septembre) : les .ktx2 se refont avec outils_ktx2.mjs ; hors du dépôt tant
 # que la décision n'est pas prise (23 Mo, pas de gain de téléchargement ni de cadence)
 assets_back/**/*.ktx2
+bancs/.tour.lock/

@@ -39,7 +39,7 @@ if git status --porcelain -- "${CHEMINS[@]:-.}" | sed 's/^...//; s/.* -> //' | g
   if [ -n "$TLOC_SANS_CONTROLE" ]; then echo "⚠️  CONTRÔLE SAUTÉ (TLOC_SANS_CONTROLE) — personne n'a vérifié ce qui part."
   else
     echo "→ Contrôle (syntaxe, démarrage des pages, banc de chargement — quelques minutes)…"
-    node bancs/controle.mjs || { echo "❌ Rien envoyé : le contrôle a échoué (détail ci-dessus)."; exit 1; }
+    TOUR_ATTENTE=5400 bancs/tour.sh node bancs/controle.mjs || { echo "❌ Rien envoyé : le contrôle a échoué (détail ci-dessus)."; exit 1; }
   fi
 fi
 

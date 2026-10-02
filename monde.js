@@ -43,6 +43,7 @@ function densifier(pts, pas = 2) {
  *   arbres: { espece, bois, isoles, h: [min, max] } | null, mer: altitude NGF de la mer | null,
  *   depart: { x, z, yaw }, portes: [{ x, z, prompt, vers: [lieu, pos, yaw], label }],
  *   gare: { x, z, lignes: [[nom, lieu, pos, yaw]] } | null, plus(ctx) pour ce qui est propre au lieu,
+ *   socleMax (m) et socle: [slug, couleur] — le soubassement de pierre des bâtiments en pente,
  *   toitSur(b, geo) pour coiffer soi-même un bâtiment, anime(now), solLieu(x, z) → un sol à soi (ou null),
  *   musique, counts, start, entry
  */
@@ -69,7 +70,7 @@ export async function monde(f) {
   };
 
   // ---------- un bâtiment : ses murs (extrudés sur l'emprise), son toit selon le style ----------
-  const murs = [], toits = [], cones = [];
+  const murs = [], toits = [], cones = [], socles = [];
   function batir(b) {
     const pts = b.pts; if (pts.length < 3) return;
     const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
@@ -82,8 +83,15 @@ export async function monde(f) {
     const trullo = b.k === 'trullo' || b.toit === 'conical';
     const style = trullo ? 'trullo' : b.toit === 'flat' ? 'plat' : b.toit === 'gabled' ? 'deuxPans' : f.toit.style;
     const hm = trullo ? 2.4 : b.h ? Math.max(2.6, b.h - (style === 'deuxPans' ? W * 0.3 : 0)) : b.niv ? b.niv * 3 : (L * W > 60 ? f.hMurs[1] : f.hMurs[0]);
-    const base = hb - 1.2, haut = ht + hm;
+    // SUR LA PENTE (consigne de précision, 2 octobre) : au-delà de `socleMax` mètres de dénivelé
+    // sous l'emprise, le mur enduit ne descend plus jusqu'au point bas — il commence au-dessus
+    // d'un soubassement de pierre (un mur de soutènement), au lieu de pendre comme une tour.
+    const sMax = f.socleMax ?? Infinity, base = ht - hb > sMax ? ht - sMax : hb - 1.2, haut = ht + hm;
     const sh = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+    if (base > hb - 1.2) { const gs = new THREE.ExtrudeGeometry(sh, { depth: base - hb + 1.4, bevelEnabled: false, steps: 1 }); gs.rotateX(-Math.PI / 2); gs.translate(0, hb - 1.2, 0); gs.clearGroups();
+      const p = gs.attributes.position, uv = gs.attributes.uv; gs.computeVertexNormals(); const n = gs.attributes.normal;
+      for (let k = 0; k < p.count; k++) uv.setXY(k, (p.getX(k) * Math.abs(n.getZ(k)) + p.getZ(k) * Math.abs(n.getX(k))) / 3, p.getY(k) / 3);
+      socles.push(gs.index ? gs.toNonIndexed() : gs); }
     const gm = new THREE.ExtrudeGeometry(sh, { depth: haut - base, bevelEnabled: false, steps: 1 }); gm.rotateX(-Math.PI / 2); gm.translate(0, base, 0);
     gm.clearGroups();
     // les UV des murs en mètres, face par face : sinon la pierre s'étire sur toute la façade
@@ -180,6 +188,8 @@ export async function monde(f) {
 
     // ---------- les bâtiments, fondus par matière ----------
     PLAN.batiments.filter((b) => dansCadre(b.pts)).forEach(batir);
+    if (socles.length) { const m = new THREE.Mesh(mergeGeometries(socles.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return g; })), phMat(f.socle ? f.socle[0] : 'old_stone_wall_02', 3, 3, { color: f.socle ? f.socle[1] : 0xa89c88 }));
+      m.castShadow = m.receiveShadow = true; scene.add(m); }
     if (murs.length) { const m = new THREE.Mesh(mergeGeometries(murs.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return g; })), phMat(f.murs[0], 3, 3, { color: f.murs[1], side: THREE.DoubleSide }));
       m.castShadow = m.receiveShadow = true; scene.add(m); }
     if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits), phMat(f.toit.slug, 1.4, 1.4, { color: f.toit.couleur, roughness: 0.85, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; scene.add(m); }
@@ -188,7 +198,13 @@ export async function monde(f) {
       phMat('rocher_01', 1.2, 1.2, { color: 0x8a8884, roughness: 0.9 })); m.castShadow = m.receiveShadow = true; scene.add(m); }
 
     // ---------- les chemins, les rues, l'eau ----------
-    { const gs = [...PLAN.routes, ...PLAN.chemins].filter((c) => dansCadre(c.pts, 20)).map((c) => ruban(densifier(c.pts), c.r >= 3 ? 6 : c.r === 2 ? 4 : c.r === 1 ? 2.6 : 1.5, 0.18));
+    // Un chemin qui passe sous la mer n'est pas dessiné là : en Thaïlande, les morceaux d'OSM
+    // déplacés dans la baie gardent des bouts de route qui partaient vers une côte disparue
+    // (le Wat Tham Suea, Phi Phi). On coupe le ruban en tronçons sur la terre ferme.
+    const surTerre = (x, z) => f.mer == null || hauteur(x, z) > f.mer - H0 + 0.1;
+    const troncons = (pts) => { const o = []; let cur = []; for (const q of densifier(pts)) { if (surTerre(q[0], q[1])) cur.push(q); else { if (cur.length > 1) o.push(cur); cur = []; } } if (cur.length > 1) o.push(cur); return o; };
+    { const gs = [...PLAN.routes.filter((c) => !c.surface), ...PLAN.chemins, ...(PLAN.ponts || []).filter((c) => c.k === 'pier' && c.pts.length >= 2 && c.pts[0] !== c.pts[c.pts.length - 1])].filter((c) => dansCadre(c.pts, 20))
+        .flatMap((c) => troncons(c.pts).map((t) => ruban(t, c.r >= 3 ? 6 : c.r === 2 ? 4 : c.r === 1 ? 2.6 : c.k === 'pier' ? 2.4 : 1.5, 0.18)));
       if (gs.length) { const m = new THREE.Mesh(mergeGeometries(gs), phMat(f.chemin[0], 3, 3, { color: f.chemin[1], polygonOffset: true, polygonOffsetFactor: -2 })); m.receiveShadow = true; scene.add(m); }
       const eau = new THREE.MeshStandardMaterial({ color: 0x4a6a80, roughness: 0.06, metalness: 0.65, polygonOffset: true, polygonOffsetFactor: -3 });
       const ge = (PLAN.eau.cours || []).filter((c) => dansCadre(c.pts, 20)).map((c) => ruban(densifier(c.pts), 1.4, 0.1));

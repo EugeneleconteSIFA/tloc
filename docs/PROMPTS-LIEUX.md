@@ -69,3 +69,27 @@ Fichiers AUTORISÉS : quetes.js, village.js, citadelle.js, docs/ (tes nouveaux f
 INTERDITS : engine.js sauf accord (dis-moi ce qu'il te faut), monde.js, temple.js, thailande.js, aveyron.js, pouilles.js et villes, pouget*.js, carte.js, carte/ign-recolte.py (ne jamais le relancer).
 Règles : jamais git checkout/reset/pull/stash ; éditer en place ; commentaires en français qui disent pourquoi ; PBR Poly Haven, pas d'aplats ; textures à 512 px au plus ; publier avec ./publier-dev.sh 'message' <tes chemins seulement> quand la charge du Mac est sous 3 ; la prod jamais. Un point bref toutes les 15 minutes.
 ```
+
+---
+
+## Consigne de PRÉCISION — à ajouter à chaque session de lieu (2 octobre)
+
+```
+Consigne de précision (Eugène, 2 octobre) : la première version des lieux a été bâtie en masse depuis OSM, et ça se voit — toits mal orientés ou qui débordent, rues où l'on se cogne à des murs invisibles, sols qui flottent ou s'enfoncent, textures étirées. Avant toute nouveauté, ton lieu doit être JUSTE et 100 % praticable. Méthode, dans cet ordre :
+
+1. MESURER D'ABORD. Écris un banc pour ton lieu (bancs/lieu-<nom>.mjs, lancé par bancs/tour.sh) qui sort des chiffres :
+   a. praticabilité : chaque rue, chemin, escalier et passerelle d'OSM échantillonné tous les 2 m — part des points où level.blocked() est faux, et pente entre deux points (plus de 35° = « trop raide ») ; le départ, chaque porte, chaque gare/ponton et chaque PNJ doivent être atteignables (marche réelle avec player.walkTo depuis le départ, pas une téléportation) ;
+   b. bâti : pour chaque bâtiment, l'écart entre son emprise OSM et l'empreinte de son toit (le toit couvre-t-il exactement les murs ? déborde-t-il chez le voisin ?), la hauteur du mur visible côté aval (plus de 1,5 m de soubassement = à reprendre en terre-plein ou en gradins), les murs qui se chevauchent ;
+   c. sols : écart entre les rubans de rue et le relief (flotte > 5 cm, enfoncé > 2 cm), les zones où deux surfaces se battent (z-fighting) ;
+   Le banc écrit bancs/resultats/lieu-<nom>-<date>.json et une planche PNG. Objectif : 100 % des points de rue praticables, 0 toit qui déborde, 0 soubassement > 1,5 m, 0 ruban qui flotte.
+
+2. LES TOITS. Le faîtage suit le LONG côté de chaque corps de bâtiment, pas l'axe moyen d'un polygone en L : découpe les emprises non rectangulaires en rectangles (un toit par aile), utilise roof:shape / roof:direction / roof:levels d'OSM quand ils existent. Les maisons mitoyennes d'une même rangée ont la même orientation et des hauteurs qui se suivent. Débord de toit : 30 à 50 cm, jamais au-dessus du voisin. Hauteur de toit plafonnée (pas de cathédrale sur un hangar). Le style suit le lieu réel (lauzes à deux pans en Lozère, tuiles canal en Aveyron, terrasses plates et trulli dans les Pouilles) — vérifie sur photos.
+
+3. LA PENTE. Aucun bâtiment ne pend dans le vide ni ne s'enfonce : terre-plein sous chaque bâtiment à l'altitude de sa porte (côté rue), murs de soutènement en pierre là où le terrain tombe, escaliers là où une rue monte trop.
+
+4. LES SOLS ET TEXTURES. Chaque surface a son matériau PBR Poly Haven (phMat) à sa vraie échelle : pavé, asphalte, terre battue, herbe, dalle — d'après le tag surface d'OSM quand il existe. UV en mètres sur chaque face (jamais une texture étirée sur une façade). Pas de motif répété visible au loin (varie la teinte à grande échelle). Textures 512 px au plus. Pas d'aplat de couleur seul.
+
+5. VÉRIFIER EN RENDU, pas sur lecture de code : une planche fixe de 8 vues par lieu (une aérienne, une de dessus sur les toits avec les emprises OSM en surimpression, trois à hauteur de Camille dans les rues principales, deux gros plans de façade et de sol, une depuis le départ) — refaite après chaque correction, avant/après côte à côte.
+
+6. N'avance sur une nouveauté (habitants, quêtes, décor) que quand le banc du point 1 est au vert. Publie avec le chiffre du banc dans le message de commit.
+```
