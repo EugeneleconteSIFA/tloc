@@ -89,7 +89,9 @@ export async function monde(f) {
     const p = gm.attributes.position, uv = gm.attributes.uv; gm.computeVertexNormals(); const n = gm.attributes.normal;
     for (let k = 0; k < p.count; k++) { const plat = Math.abs(n.getY(k)) > 0.7; uv.setXY(k, plat ? p.getX(k) / 3 : (p.getX(k) * Math.abs(n.getZ(k)) + p.getZ(k) * Math.abs(n.getX(k))) / 3, plat ? p.getZ(k) / 3 : p.getY(k) / 3); }
     murs.push(gm.index ? gm.toNonIndexed() : gm);
-    if (style === 'trullo') {
+    // un lieu peut coiffer lui-même certains bâtiments (les temples thaïs du grand piton)
+    if (f.toitSur && f.toitSur(b, { cx, cz, ux, uz, a0, a1, b0, b1, L, W, haut })) { /* coiffé par le lieu */ }
+    else if (style === 'trullo') {
       // le trullo : un cône de pierres sèches grises sur un cylindre blanchi, la pointe blanche
       const r = Math.sqrt(Math.max(4, L * W) / Math.PI) * 0.92, c = new THREE.ConeGeometry(r, r * 1.7, 14, 3); c.translate(cx, haut + r * 0.85, cz);
       cones.push(c.toNonIndexed());

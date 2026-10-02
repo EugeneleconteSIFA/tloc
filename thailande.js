@@ -157,6 +157,51 @@ function chedi({ hauteur, scene, addInteract }) {
   addInteract({ pos: new THREE.Vector3(x, y, z), r: 12, prompt: () => 'le chedi doré', fn: () => showMessage('Le chedi du grand piton. Les clochettes de ses anneaux sont arrêtées en plein tintement.', 6) });
 }
 
+// ---------- les temples du grand piton : toits thaïs, chedis ----------
+// OSM ne dit que l'emprise. Un bâtiment rond devient un chedi (la cloche blanche et dorée sur
+// son socle) ; les autres prennent le toit des temples thaïs : deux ou trois pans superposés,
+// très pentus, rouges bordés de vert, les pignons dorés et les chofa — les cornes dorées —
+// aux bouts du faîtage. Les maillages sont fondus par matière, comme le reste du bâti.
+const TEMPLE = { rouge: [], vert: [], or: [], blanc: [] };
+function toitThai(b, { cx, cz, ux, uz, a0, a1, b0, b1, L, W, haut }) {
+  if (b.m !== 'suea') return false;
+  const ac = (a0 + a1) / 2, bc = (b0 + b1) / 2;
+  const P = (a, c, y) => [cx + (ac + a) * ux - (bc + c) * uz, y, cz + (ac + a) * uz + (bc + c) * ux];
+  const tri = (dst, ...v) => dst.push(...v.flat());
+  if (b.pts.length > 12 && Math.max(L, W) / Math.min(L, W) < 1.25) {
+    // un chedi : la cloche, les anneaux, la flèche (même profil que celui du sommet)
+    const r = Math.min(L, W) / 2 * 0.9, g = new THREE.LatheGeometry([[0, 0], [r, 0], [r * 1.02, r * 0.18], [r * 0.95, r * 0.62], [r * 0.76, r * 1.0], [r * 0.48, r * 1.3], [r * 0.22, r * 1.42], [0, r * 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 24);
+    g.translate(cx, haut, cz); TEMPLE.blanc.push(g.toNonIndexed());
+    const fl = new THREE.ConeGeometry(r * 0.16, r * 1.6, 10); fl.translate(cx, haut + r * 1.45 + r * 0.8, cz); TEMPLE.or.push(fl.toNonIndexed());
+    return true;
+  }
+  // les étages du toit : chacun plus court, posé un peu plus haut que le précédent
+  const n = L > 18 ? 3 : 2;
+  for (let k = 0; k < n; k++) {
+    const la = L / 2 + 1.2 - k * L * 0.14, lb = W / 2 + 1.0 - k * 0.6, y0 = haut + k * 1.6, hf = lb * 1.35;
+    const v = [P(-la, -lb, y0), P(la, -lb, y0), P(la, 0, y0 + hf), P(-la, 0, y0 + hf), P(-la, lb, y0), P(la, lb, y0)];
+    const dst = k === 0 ? TEMPLE.vert : TEMPLE.rouge;
+    tri(dst, v[0], v[1], v[2]); tri(dst, v[0], v[2], v[3]); tri(dst, v[4], v[3], v[2]); tri(dst, v[4], v[2], v[5]);
+    if (k === n - 1) {
+      tri(TEMPLE.or, v[0], v[3], v[4]); tri(TEMPLE.or, v[1], v[5], v[2]);             // les pignons dorés
+      for (const s of [-1, 1]) { const c = new THREE.ConeGeometry(0.22, 2.2, 6); c.rotateZ(-s * 0.5); const q = P(s * la, 0, y0 + hf); c.translate(q[0], q[1] + 0.9, q[2]); TEMPLE.or.push(c.toNonIndexed()); }
+    }
+  }
+  return true;
+}
+function templesThai({ scene }) {
+  const geo = (v) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.computeVertexNormals();
+    const p = g.attributes.position, uv = []; for (let k = 0; k < p.count; k++) uv.push(p.getX(k) + p.getZ(k), p.getY(k)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g; };
+  const fondre = (l) => mergeGeometries(l.map((g) => { if (!g.attributes.uv) { const p = g.attributes.position, uv = []; for (let k = 0; k < p.count; k++) uv.push(p.getX(k) + p.getZ(k), p.getY(k)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); } for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return g; }));
+  const tuiles = (c) => phMat('clay_roof_tiles_02', 1, 1, { color: c, side: THREE.DoubleSide });
+  for (const [v, m] of [[TEMPLE.rouge, tuiles(0xc04a2a)], [TEMPLE.vert, tuiles(0x5a9a5a)]]) if (v.length) { const x = new THREE.Mesh(geo(v), m); x.castShadow = x.receiveShadow = true; scene.add(x); }
+  const or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide });
+  const pignons = [], autres = []; for (const g of TEMPLE.or) (Array.isArray(g) || typeof g === 'number' ? pignons : autres).push(g);
+  if (pignons.length) scene.add(new THREE.Mesh(geo(pignons), or));
+  if (autres.length) scene.add(new THREE.Mesh(fondre(autres), or));
+  if (TEMPLE.blanc.length) { const x = new THREE.Mesh(fondre(TEMPLE.blanc), phMat('chaux_craquelee', 3, 3, { color: 0xf2eee4 })); x.castShadow = true; scene.add(x); }
+}
+
 // ---------- la pluie suspendue ----------
 // Des gouttes immobiles autour de Camille : un pavé de 40 m répété en 3 × 3 × 2, recalé tous
 // les 40 m — la même goutte reste au même endroit du monde, elle ne suit pas Camille.
@@ -222,11 +267,12 @@ monde({
   counts: 'La baie des pitons : Ko Panyi et son village sur pilotis, Khao Phing Kan, Railay, Phi Phi, et le grand piton du temple. Les passeurs attendent aux pontons.',
   start: 'La pluie ne tombe pas. Elle est là, en l’air, goutte par goutte. Seule la mer bouge encore.',
   entry: { title: 'La baie des pitons', sub: 'La Cloche des Îles — Thaïlande', cam: [700, 260, 900], at: [0, 20, 0], cam2: [180, 30, 80], at2: [40, 10, -40], dur: 6 },
+  toitSur: toitThai,
   plus(ctx) {
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
     // sans ça, les parois tournées au nord sont noires
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
-    parois(ctx); jungle(ctx); pilotis(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie();
+    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie();
   },
   anime(now) {
     const t = now / 1000;
