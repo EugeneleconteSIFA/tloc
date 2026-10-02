@@ -47,11 +47,12 @@ de page.
   2 octobre jusqu'à la gare. **Barletta et Castel del Monte sont retirés** : Eugène et
   Camille n'y sont jamais allés (2 octobre). Matera complétée le 2 octobre (le Sasso
   Barisano). Plus rien à exporter pour les Pouilles.
-  - **Le Colosse** : un géant de bronze **inventé**, inspiré de la statue de Barletta
-    (Eugène, 2 octobre). **Décision** : où il se tient — le port de Gallipoli
-    (`DECISIONS-RECIT.md`, près de Nunzia) ou la Murgia face aux Sassi de Matera.
-  - **Décision** : le « château à huit tours » de `STORY.md` (c'était Castel del Monte) —
-    l'enlever, ou le confier au château Tramontano (Matera) ou au château angevin (Gallipoli).
+  - **Le Colosse** : un géant de bronze **inventé**, inspiré de la statue de Barletta, qui
+    garde le **port de Gallipoli** (Eugène, 2 octobre).
+  - **Le château** de l'acte : le **château Tramontano** de Matera, à la place de Castel del
+    Monte (Eugène, 2 octobre). Il est dans `matera.json` (lieux, `chateau`).
+  - **À faire** : corriger `docs/SCENARIO.md` sur `STORY.md` — il raconte encore le Colosse
+    sur le port de Barletta, Nunzia « jeune fille de Barletta » et le donjon dans Castel del Monte.
 - **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
   couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
   zone choisie à la main ; Overpass si c'est trop gros) :

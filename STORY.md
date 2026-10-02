@@ -407,7 +407,8 @@ Elle continue.
 
 ### Le monde
 
-Côte méditerranéenne, villages blancs, oliviers, falaises, grottes et château à huit tours.
+Côte méditerranéenne, villages blancs, oliviers, falaises, grottes et le château Tramontano de
+Matera (il remplace le château à huit tours, Castel del Monte — Eugène, 2 octobre).
 
 Trois villes fortifiées des Pouilles — **Matera**, le cœur de **Gallipoli**, **Alberobello** — et,
 pour passer de l'une à l'autre, **un petit train** (Eugène, 1er octobre ; plans OSM dans
@@ -461,7 +462,7 @@ Il sert notamment à :
 Le Colosse est un géant de bronze inspiré de la statue de Barletta.
 
 C'est un géant inventé : aucune des trois villes n'a de statue colossale, et Barletta n'est pas
-du voyage (Eugène, 2 octobre).
+du voyage. Il garde le port de **Gallipoli**, la ville de Nunzia (Eugène, 2 octobre).
 
 Chaque pas produit un bond du temps.
 
