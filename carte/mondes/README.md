@@ -14,10 +14,16 @@ d'ailleurs : l'IGN (RGE ALTI) pour la France, comme à Lille ; un modèle numér
 | `aveyron-saint-gervais.osm` | Saint-Amans-des-Cots, **lac de Saint-Gervais** | 44,729–44,740 ; 2,676–2,699 | La Cloche du Midi (acte II) | le lac, l'église, Perpignau ; 90 bâtiments |
 | `aveyron-saint-symphorien.osm` | **Saint-Symphorien-de-Thénières** | 44,735–44,741 ; 2,726–2,738 | La Cloche du Midi (acte II) | le bourg, l'église, les Cazelles ; 74 bâtiments |
 | `pouilles-matera.osm` | **Matera**, les Sassi | 40,655–40,667 ; 16,598–16,622 | La Cloche des Heures (acte IV) | Casalnuovo, Malve, Pianelle, la Murgia ; 1 353 bâtiments |
+| `pouilles-matera-sassi.osm` | **Matera**, le Sasso Barisano et le nord (« map (13) », 2 octobre) | 40,662–40,674 ; 16,599–16,622 | La Cloche des Heures (acte IV) | San Pietro Barisano, la Madonna delle Virtù, Sant'Agostino ; fondu avec le précédent |
 | `pouilles-alberobello.osm` | **Alberobello**, les trulli | 40,778–40,790 ; 17,227–17,250 | La Cloche des Heures (acte IV) | la voie Bari–Tarente ; 2 934 bâtiments |
 | `pouilles-gallipoli.osm` | **Gallipoli**, la vieille ville sur son île | 40,050–40,062 ; 17,962–17,986 | La Cloche des Heures (acte IV) | le pont, le seno del Canneto, la voie Lecce–Gallipoli |
 | `pouilles-gallipoli-gare.osm` | **Gallipoli**, la ville neuve et la gare (« map (12) », 2 octobre) | 40,050–40,062 ; 17,977–18,000 | La Cloche des Heures (acte IV) | la gare, ses quais, le port mercantile ; fondu avec le précédent |
 | `lozere-garde-guerin.osm` | **La Garde-Guérin** : la tour, l'église Saint-Michel, la Régordane | 44,476–44,479 ; 3,932–3,938 | La Cloche des Troupeaux (acte V) | 46 bâtiments, le village fortifié entier |
+| `thailande-ko-panyi.osm` | **Ko Panyi**, le village sur pilotis (« map (14) », 2 octobre) | 8,332–8,340 ; 98,498–98,510 | La Cloche des Îles (acte III) | passerelles et pontons, la mosquée, le rocher |
+| `thailande-ko-tapu.osm` | **Khao Phing Kan et Ko Tapu** (« map (16) ») | 8,273–8,277 ; 98,498–98,504 | La Cloche des Îles | les pitons, le belvédère |
+| `thailande-railay.osm` | **Railay** (« map (17) ») | 8,000–8,016 ; 98,830–98,853 | La Cloche des Îles | falaises, grottes de Phra Nang, plages ; 214 bâtiments |
+| `thailande-phi-phi.osm` | **Phi Phi** (« map (18) ») | 7,696–7,819 ; 98,678–98,865 | La Cloche des Îles | on n'en garde que l'isthme de Ton Sai (7,731–7,750 ; 98,762–98,784) |
+| `thailande-wat-tham-suea.osm` | **Wat Tham Suea**, celui de **Kanchanaburi** (« map (15) ») | 13,952–13,956 ; 99,603–99,609 | La Cloche des Îles | le temple, le chedi — pas celui de Krabi |
 | `iles-nicobar.osm` | **îles Nicobar** (Inde) : Nancowry, Kamorta, Katchall, Trinkat | 7,912–8,158 ; 93,421–93,795 | La Cloche des Îles (acte III) ? | ⚠ pas la Thaïlande : à confirmer avec Eugène |
 
 ## Les Pouilles : trois villes et un petit train (Eugène, 1er octobre)
@@ -189,7 +195,7 @@ z = sud, sans pivot.
 
 | ville | origine (+) | cadre | contenu | la gare |
 |---|---|---|---|---|
-| **Matera** | la Civita : la cathédrale, entre les deux Sassi | 1 978 × 1 307 m | 1 288 bâtiments, 268 escaliers, 146 murs, 19 falaises, la Gravina (un « drain » pour OSM, gardé comme torrent) ; 71 lieux : 15 églises et 3 églises rupestres, 17 places, 20 belvédères, le château Tramontano, les Sassi | **Matera Centrale** (x -850, z 56), souterraine : la ligne Bari–Matera (voie étroite) y arrive en tunnel ; Matera Sud aussi |
+| **Matera** | la Civita : la cathédrale, entre les deux Sassi | 2 010 × 2 092 m : deux extraits fondus | 2 161 bâtiments, 396 escaliers, 235 murs, 37 falaises, la Gravina (un « drain » pour OSM, gardé comme torrent) ; 121 lieux : 33 églises et 7 églises rupestres, 28 places, 26 belvédères, le château Tramontano, les **deux Sassi** (Barisano et Caveoso) | **Matera Centrale** (x -850, z 56), souterraine : la ligne Bari–Matera (voie étroite) y arrive en tunnel ; Matera Sud aussi |
 | **Alberobello** | le Rione Monti : barycentre de ses 96 trulli (OSM ne nomme pas le rione) | 1 974 × 1 305 m | 2 882 bâtiments dont **472 trulli** (`k: trullo`) ; 24 lieux : la basilique des Saints-Côme-et-Damien, Sant'Antonio, Santa Lucia, 9 places, 7 belvédères | **Alberobello** (x 491, z -560), ligne Bari–Tarente, 2 quais |
 | **Gallipoli** | le barycentre de l'île de la vieille ville | 3 202 × 1 365 m : deux extraits fondus (l'enveloppe ; 40 m d'écart de latitude aux coins) | la **mer** (la côte OSM refermée sur sa gauche en terre ferme, `cote.terre`), 3 îles, 3 récifs, les remparts (`enceinte`), 967 bâtiments (dans la vieille ville, souvent des îlots entiers), 22 jetées et ponts ; 51 lieux : 15 églises, le château angevin, Portaterra, la fontaine grecque, 8 ports, les deux « seni » | **Gallipoli** (x 1 020, z -219), dans le cadre depuis le second extrait, avec 4 quais ; l'arrêt « Gallipoli Via Salento » au sud-est. Le dernier tronçon de la voie, désaffecté (`desaffectee`), passe le viaduc jusqu'au pied de l'île |
 
@@ -198,12 +204,10 @@ z = sud, sans pivot.
 - **Barletta et Castel del Monte ne font pas partie du monde** (Eugène, 2 octobre : « nous
   n'y avons jamais été »). Le Colosse, inspiré de la statue de Barletta, et le « château à
   huit tours » de `STORY.md` restent à loger dans les trois villes — une décision de récit.
-- **Matera est coupée au nord** : l'extrait s'arrête 3 m au sud de la cathédrale. Le
-  **Sasso Barisano**, la moitié nord des Sassi, est presque entièrement dehors. Il faut
-  un export sur **40,664–40,673 N ; 16,604–16,616 E**. Les deux envoyés le 2 octobre
-  (« map (10) » et « (11) », 40,672–40,691 N ; 16,566–16,598 E) tombent sur les quartiers
-  modernes du nord-ouest (Spine Bianche, Villa Longo, Serra Rifusa), à 2–3 km des Sassi :
-  laissés de côté, pas copiés ici.
+- **Matera** : le premier extrait s'arrêtait au pied de la cathédrale ; « map (13) »
+  (2 octobre) ramène le Sasso Barisano. Les deux envoyés avant (« map (10) » et « (11) »,
+  40,672–40,691 N ; 16,566–16,598 E) tombaient sur les quartiers modernes du nord-ouest
+  (Spine Bianche, Villa Longo, Serra Rifusa) : laissés de côté, pas copiés ici.
 - À Alberobello, le **Rione Monti** et l'**Aia Piccola** n'existent pas comme lieux dans OSM ;
   le Rione Monti est posé à l'origine, `propose: true`.
 
@@ -231,10 +235,25 @@ résultat est le suivant :
 
 | fichier | nœuds (pas de 10 m) | altitudes |
 |---|---|---|
-| `relief-pouilles-matera.json` | 211 × 144 | 243 à 448 m — la Gravina, 200 m sous la Murgia |
+| `relief-pouilles-matera.json` | 214 × 223 | 243 à 448 m — la Gravina, 200 m sous la Murgia |
 | `relief-pouilles-alberobello.json` | 210 × 143 | 376 à 446 m |
 | `relief-pouilles-gallipoli.json` | 333 × 150 | -2 à 43 m (18° E passe dans la ville neuve : deux tuiles, cousues au bord) |
 
 Vérifié sur l'aperçu : à Matera, le versant sombre de la Gravina court au pied des Sassi,
 juste à l'ouest du torrent d'OSM ; à Gallipoli, la bosse de l'île tombe sur l'île. Le plan
 et le relief sont dans le même repère.
+
+## La Thaïlande : une baie, cinq morceaux (2 octobre)
+
+Eugène : « on va faire un mélange de tout cela ». Les cinq extraits sont DÉPLACÉS dans une baie
+inventée de 5,8 × 3,8 km (`repere_thailande.py` : une origine et un décalage par morceau),
+pour qu'on voie les îles les unes depuis les autres (SCENARIO.md § 12). Ko Panyi au centre
+(le marché flottant, la porte de l'île), Khao Phing Kan au sud-ouest, le Wat Tham Suea au
+nord-est (le grand piton du Yak), Railay au sud, Phi Phi au sud-est.
+
+| fichier | rôle |
+|---|---|
+| `extraire-thailande.py` | les cinq OSM → `thailande.json` (chaque élément porte `m`, son morceau) |
+| `recolter-relief-thailande.py` | Copernicus GLO-30 (3 tuiles, 85 Mo, dans `copernicus/`, non versionnées) → `relief-thailande.json`, RETOUCHÉ : pitons dessinés à Ko Panyi et Khao Phing Kan (Copernicus ne les voit pas), falaises redressées à Railay et Phi Phi, colline du Wat Tham Suea ×3,2, terre-pleins sous les bâtiments en pente, passerelles de Ko Panyi à 1,2 m |
+
+Le jeu : `thailande.html` / `thailande.js` (sur `monde.js`), par la porte des Îles de l'île du temps.

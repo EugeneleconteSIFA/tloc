@@ -244,10 +244,13 @@ function build() {
     // s'ouvre qu'à l'acte V ; c'est le premier monde bâti, Eugène veut pouvoir y aller
     if (P.geant === 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte des Troupeaux',
       fn: () => goToLevel('pouget', [8.8, 0, 40], Math.PI, 'La porte s’ouvre sur une pente de châtaigniers…') });
-    // le Midi mène au lac de Saint-Gervais, les Heures à Gallipoli — provisoires comme les
+    // le Midi mène au lac de Saint-Gervais, les Îles à la baie des pitons, les Heures à Alberobello, dans un trullo (Eugène,
+    // 2 octobre, comme docs/SCENARIO.md) — provisoires comme les
     // Troupeaux ; les autres portes disent au moins qu'elles ne s'ouvrent pas encore
     const VERS = { dormeur: ['aveyron', [-120, 0, 135], Math.atan2(120, -135), 'la porte du Midi', 'La porte s’ouvre sur un soleil qui ne bouge pas…'],
-      colosse: ['gallipoli', [-55, 0, 116], Math.PI, 'la porte des Heures', 'La porte s’ouvre sur un blanc éblouissant…'] };
+      colosse: ['alberobello', [6.8, 0, 1.4], Math.PI, 'la porte des Heures', 'La porte s’ouvre sous un toit de pierre en cône…'],
+      // les Îles mènent à Ko Panyi, au village sur pilotis de la baie des pitons (2 octobre)
+      yak: ['thailande', [104, 0, 10.4], -Math.PI / 2, 'la porte des Îles', 'La porte s’ouvre sur une pluie qui ne tombe pas…'] };
     if (VERS[P.geant]) { const [lieu, pos, yaw, nomP, label] = VERS[P.geant];
       addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser ' + nomP, fn: () => goToLevel(lieu, pos, yaw, label) }); }
     else if (!P.ouverte && P.geant !== 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte',

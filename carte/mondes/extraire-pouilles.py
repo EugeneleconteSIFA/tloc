@@ -23,8 +23,9 @@ sys.path.insert(0, ICI)
 import repere_pouilles as RP
 
 # Une ville peut avoir plusieurs extraits, fondus comme en Lozère : à Gallipoli, le second
-# (2 octobre) pousse 1,1 km plus à l'est, jusqu'à la gare que le premier laissait dehors.
-SOURCES = {'matera': ['pouilles-matera.osm'], 'alberobello': ['pouilles-alberobello.osm'],
+# (2 octobre) pousse 1,1 km plus à l'est, jusqu'à la gare que le premier laissait dehors ;
+# à Matera, le second monte jusqu'à 40,674 N et ramène le Sasso Barisano.
+SOURCES = {'matera': ['pouilles-matera.osm', 'pouilles-matera-sassi.osm'], 'alberobello': ['pouilles-alberobello.osm'],
            'gallipoli': ['pouilles-gallipoli.osm', 'pouilles-gallipoli-gare.osm']}
 # La gare où le train dépose Camille : celle du centre, quand la ville en a deux (Matera Sud
 # est à 1 km des Sassi, Matera Centrale sous la piazza Matteotti, au bord du Piano).

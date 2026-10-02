@@ -53,17 +53,11 @@ de page.
     Monte (Eugène, 2 octobre). Il est dans `matera.json` (lieux, `chateau`).
   - `docs/SCENARIO.md` corrigé sur `STORY.md` le 2 octobre (Gallipoli, le Tramontano, Cosimo).
   - **La porte du Temple** débouche à **Alberobello**, dans un trullo (Eugène, 2 octobre,
-    comme le dit `SCENARIO.md`). **À faire dans le code** : `pouilles.js` la met encore à
-    Gallipoli (fiche `gallipoli`, `portes`).
-- **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
-  couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
-  zone choisie à la main ; Overpass si c'est trop gros) :
-  - **Ko Panyi** et les pitons autour (8,33 N ; 98,50 E) — les îles et les passeurs ;
-  - **Wat Tham Suea**, le temple de la grotte du Tigre, Krabi (8,13 N ; 98,92 E) — le temple du Yak ;
-  - en plus, si besoin : Khao Phing Kan / Ko Tapu (8,27 N ; 98,50 E), Railay (8,01 N ; 98,84 E),
-    Ko Phi Phi Don (7,74 N ; 98,77 E).
-  Le relief des pitons viendra de Copernicus GLO-30 (OSM ne le donne pas) — à télécharger
-  avec l'accord d'Eugène.
+    comme le dit `SCENARIO.md`) : fait dans le code le 2 octobre (`temple.js`, `pouilles.js`).
+- **Thaïlande (acte III)** — reçue le 2 octobre (« map (14) » à « map (18) ») : Ko Panyi, Khao
+  Phing Kan / Ko Tapu, Railay, Phi Phi, le Wat Tham Suea (celui de Kanchanaburi), fondus en
+  une baie (`carte/mondes/README.md`) ; relief Copernicus téléchargé avec l'accord d'Eugène.
+  Jouable : `thailande.html`, par la porte des Îles. Plus rien à exporter.
 - **La Blessure et l'autre rive (acte VI)** : **décision** sur le bord de Lille où passe le
   canyon ; des références pour la forêt du Buc, les ruines, la forge, la tombe.
 
