@@ -244,6 +244,14 @@ function build() {
     // s'ouvre qu'à l'acte V ; c'est le premier monde bâti, Eugène veut pouvoir y aller
     if (P.geant === 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte des Troupeaux',
       fn: () => goToLevel('pouget', [8.8, 0, 40], Math.PI, 'La porte s’ouvre sur une pente de châtaigniers…') });
+    // le Midi mène au lac de Saint-Gervais, les Heures à Gallipoli — provisoires comme les
+    // Troupeaux ; les autres portes disent au moins qu'elles ne s'ouvrent pas encore
+    const VERS = { dormeur: ['aveyron', [-120, 0, 135], Math.atan2(120, -135), 'la porte du Midi', 'La porte s’ouvre sur un soleil qui ne bouge pas…'],
+      colosse: ['gallipoli', [-55, 0, 116], Math.PI, 'la porte des Heures', 'La porte s’ouvre sur un blanc éblouissant…'] };
+    if (VERS[P.geant]) { const [lieu, pos, yaw, nomP, label] = VERS[P.geant];
+      addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser ' + nomP, fn: () => goToLevel(lieu, pos, yaw, label) }); }
+    else if (!P.ouverte && P.geant !== 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte',
+      fn: () => showMessage(P.geant === 'fissure' ? 'La pierre est fendue. Rien ne bouge derrière.' : 'La porte ne s’ouvre pas encore.', 4) });
     // la porte de Lille ramène à la dalle du donjon (le passage provisoire, quetes.js)
     if (P.ouverte) addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'repasser la porte de Lille',
       fn: () => goToLevel('citadel', [DONJON.x + 7, 0, DONJON.gateZ + 8.5], 0, 'Retour à Lille…') });

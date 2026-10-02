@@ -60,9 +60,13 @@ canvas.addEventListener('webglcontextlost', (e) => {
   e.preventDefault();
   try { if (!G.sansSauvegarde && state.running) saveGame(true); } catch (er) {}
   try { sessionStorage.setItem('tloc_auto', G.sansSauvegarde ? 'prologue' : state.running ? 'resume' : ''); } catch (er) {}
+  // ET ON RELANCE EN QUALITÉ BASSE (Eugène, 2 octobre : « le jeu plante au démarrage ») : un
+  // ordinateur démarre en qualité maximale ; relancé pareil, une carte à court de mémoire
+  // replantait aussitôt, en boucle. Le choix est gardé, les touches 1 à 4 le changent.
+  try { localStorage.setItem('tloc_qualite', '3'); } catch (er) {}
   const m = document.createElement('div');
   m.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;background:#0b1020;color:#ffe7a3;font:600 18px "Trebuchet MS",sans-serif;text-align:center;padding:24px';
-  m.textContent = 'La carte graphique a interrompu l’affichage. Ta partie est sauvegardée : on la relance…';
+  m.textContent = 'La carte graphique a interrompu l’affichage. Ta partie est sauvegardée : on la relance en qualité basse (touches 1 à 4 pour la changer)…';
   document.body.appendChild(m);
   setTimeout(() => location.reload(), 1800);
 }, false);
@@ -2639,7 +2643,8 @@ export function newGame() {
   // pendant le prologue rejoué, « Nouvelle partie » le recommence : la partie du personnage n'y est pour rien
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
-export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html', pouget: 'pouget.html' };
+export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html', pouget: 'pouget.html', aveyron: 'aveyron.html',
+  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
 
 // ---------------------------------------------------------------------

@@ -42,7 +42,11 @@ export function montrerOrdinateur(precision = '') {
     <p>L’application est adaptée pour jouer sur ordinateur, au clavier et à la souris. Merci de changer d’écran pour jouer.</p>
     ${precision ? `<p class="precision">${ECH(precision)}</p>` : ''}
     <p class="sous-titre">Ici, tu peux préparer tes personnages, ouvrir des parties et inviter tes amis.</p>
-    <form method="dialog"><button class="plein large">Compris</button></form>`;
+    <form method="dialog"><button class="plein large">Compris</button></form>
+    <p class="sous-titre" style="margin-top:18px"><a href="accueil.html?mobile=1" id="essaiMobile">Essayer quand même sur ce téléphone (bêta)</a></p>`;
+  // LA BÊTA MOBILE, À PORTÉE DE DOIGT (Eugène, 2 octobre : « sur téléphone, je ne peux toujours
+  // pas jouer ») : il fallait deviner l'adresse ?mobile=1. Le lien la donne ; l'appareil s'en
+  // souvient (tloc_mobile), et l'accueil se recharge en mode jeu.
   dialogueOrdi.showModal();
   return false;
 }
