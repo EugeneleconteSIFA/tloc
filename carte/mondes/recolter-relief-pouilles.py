@@ -4,10 +4,11 @@
 
 Lancé le 1er octobre, avec l'accord d'Eugène (l'IGN ne couvre pas l'Italie). La source :
 Copernicus GLO-30 (30 m, tuiles publiques sans compte, sur
-le seau AWS ouvert de l'ESA). Il en faut DEUX (taille relevée le 1er octobre par HEAD) :
+le seau AWS ouvert de l'ESA). Il en faut TROIS (tailles relevées par HEAD) :
 
     Copernicus_DSM_COG_10_N40_00_E016_00_DEM.tif   37,6 Mo   Matera
     Copernicus_DSM_COG_10_N40_00_E017_00_DEM.tif   21,6 Mo   Alberobello, Gallipoli
+    Copernicus_DSM_COG_10_N40_00_E018_00_DEM.tif   10,0 Mo   l'est de Gallipoli (2 octobre)
 
 L'autre source, TINITALY (INGV, 10 m, un vrai modèle de TERRAIN), demande un formulaire
 d'inscription : c'est Eugène qui le remplit ; ce script lirait ses tuiles de la même façon
@@ -41,10 +42,14 @@ def nom_tuile(lat, lon):
     return 'Copernicus_DSM_COG_10_N%02d_00_E%03d_00_DEM' % (math.floor(lat), math.floor(lon))
 
 def tuiles_utiles():
+    # les quatre coins de chaque cadre (marge comprise), pas l'origine seule : le second
+    # extrait de Gallipoli passe 18° E, et la tuile de l'origine laissait 1 200 trous au bord
     t = set()
     for v in RP.VILLES:
-        o = RP.ORIGINES[v]
-        t.add(nom_tuile(o['lat'], o['lon']))
+        c = json.load(open(os.path.join(ICI, '%s.json' % v)))['cadre']
+        for x in (c['x0'] - 60, c['x1'] + 60):
+            for z in (c['z0'] - 60, c['z1'] + 60):
+                t.add(nom_tuile(*RP.latlon(v, x, z)))
     return sorted(t)
 
 def telecharger():
@@ -77,8 +82,11 @@ class Tuile:
     def alt(self, lat, lon):
         fi = (lon - self.lon0) / self.sx
         fj = (self.lat0 - lat) / self.sy
+        # À moins d'un pixel du bord (la couture entre deux tuiles : 18° E passe dans
+        # Gallipoli), on lit le dernier pixel au lieu de laisser un trou.
+        if not (-1 < fi < self.nx and -1 < fj < self.ny): return None
+        fi, fj = min(max(fi, 0.0), self.nx - 1.001), min(max(fj, 0.0), self.ny - 1.001)
         i, j = int(math.floor(fi)), int(math.floor(fj))
-        if not (0 <= i < self.nx - 1 and 0 <= j < self.ny - 1): return None
         a, b = fi - i, fj - j
         H = self.h
         return float((1 - a) * (1 - b) * H[j, i] + a * (1 - b) * H[j, i + 1]

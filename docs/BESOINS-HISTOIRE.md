@@ -43,17 +43,14 @@ de page.
   le duel, la source et le Dormeur posés à la main autour du lac, validés par Eugène.
   Reste : **une photo ou un dessin de Beauregard.**
 - **Pouilles (acte IV)** — Matera, Alberobello et Gallipoli faits le 1er octobre
-  (`carte/mondes/*.json`, relief Copernicus GLO-30 récolté). À exporter sur openstreetmap.org,
-  comme pour la Thaïlande :
-  - **Barletta**, le port et le **Colosse** (41,312–41,325 N ; 16,270–16,295 E) — le gardien
-    de l'acte, dans aucun extrait ;
-  - **Castel del Monte**, le château à huit tours (41,080–41,090 N ; 16,263–16,278 E) — dans
-    aucun extrait ;
-  - **Matera, plus au nord** : refaire l'export jusqu'à 40,672 N — le premier s'arrête au
-    pied de la cathédrale et laisse dehors presque tout le **Sasso Barisano** ;
-  - **Gallipoli, plus à l'est** : jusqu'à 17,990 E — la gare est à 221 m hors du cadre.
-  Le relief de Barletta et de Castel del Monte : une seule tuile Copernicus de plus
-  (N41 E016, les deux y tombent), à prendre quand les extraits seront là.
+  (`carte/mondes/*.json`, relief Copernicus GLO-30 récolté) ; Gallipoli complétée le
+  2 octobre jusqu'à la gare. **Barletta et Castel del Monte sont retirés** : Eugène et
+  Camille n'y sont jamais allés (2 octobre). Reste à exporter sur openstreetmap.org :
+  - **Matera, les Sassi au nord** : 40,664–40,673 N ; 16,604–16,616 E — le premier extrait
+    s'arrête au pied de la cathédrale et laisse dehors presque tout le **Sasso Barisano**.
+    Les deux envoyés le 2 octobre tombent à 2–3 km au nord-ouest, sur les quartiers modernes.
+  - **Décision** : où loger le Colosse (inspiré de la statue de Barletta) et le « château à
+    huit tours » de `STORY.md`, maintenant que le monde, ce sont les trois villes.
 - **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
   couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
   zone choisie à la main ; Overpass si c'est trop gros) :
@@ -86,7 +83,7 @@ de page.
 - **Personnages en costume** : les Roquette en cavaliers ; moines thaïs, Nok, Somsak, Mali,
   le passeur ; Nunzia à quatre âges ; le berger ; pèlerins, chevaliers, paysans de 1765,
   ouvriers de 1870.
-- **Décors** : barques à longue queue, temples thaïs ; trulli, Castel del Monte ; train à
+- **Décors** : barques à longue queue, temples thaïs ; trulli ; train à
   vapeur et gare ; viaduc en trois états de chantier, barrage, menhirs.
 
 ## Animations

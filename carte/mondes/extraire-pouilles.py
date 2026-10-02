@@ -13,8 +13,8 @@ la gare de chaque ville — là où le train dépose Camille.
 
 Bibliothèque standard seulement. Lance apercu-pouilles.py à la fin.
 
-Absents de TOUS les extraits, à ne pas inventer : le Colosse de Barletta (le gardien de
-l'acte) et Castel del Monte (le château à huit tours). Il faudra deux extraits de plus.
+Barletta et Castel del Monte n'en sont pas : Eugène et Camille n'y sont jamais allés
+(Eugène, 2 octobre). Le monde, ce sont les trois villes.
 """
 import xml.etree.ElementTree as ET, json, math, os, subprocess, sys
 
@@ -22,8 +22,10 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ICI)
 import repere_pouilles as RP
 
-SOURCES = {'matera': 'pouilles-matera.osm', 'alberobello': 'pouilles-alberobello.osm',
-           'gallipoli': 'pouilles-gallipoli.osm'}
+# Une ville peut avoir plusieurs extraits, fondus comme en Lozère : à Gallipoli, le second
+# (2 octobre) pousse 1,1 km plus à l'est, jusqu'à la gare que le premier laissait dehors.
+SOURCES = {'matera': ['pouilles-matera.osm'], 'alberobello': ['pouilles-alberobello.osm'],
+           'gallipoli': ['pouilles-gallipoli.osm', 'pouilles-gallipoli-gare.osm']}
 # La gare où le train dépose Camille : celle du centre, quand la ville en a deux (Matera Sud
 # est à 1 km des Sassi, Matera Centrale sous la piazza Matteotti, au bord du Piano).
 GARES = {'matera': 'Matera Centrale', 'alberobello': 'Alberobello', 'gallipoli': 'Gallipoli'}
@@ -144,19 +146,27 @@ CLS_CHEMIN = {'track': 1, 'footway': 0, 'path': 0, 'steps': 0}
 def extraire(ville):
     global CADRE
     def jeu(la, lo): return RP.jeu(ville, la, lo)
-    root = ET.parse(os.path.join(ICI, SOURCES[ville])).getroot()
-    b = root.find('bounds')
-    x0, z1 = jeu(float(b.get('minlat')), float(b.get('minlon')))
-    x1, z0 = jeu(float(b.get('maxlat')), float(b.get('maxlon')))
-    xa, _ = jeu(float(b.get('maxlat')), float(b.get('minlon')))
-    xb, _ = jeu(float(b.get('minlat')), float(b.get('maxlon')))
-    CADRE = {'src': SOURCES[ville], 'x0': round(min(x0, xa), 1), 'x1': round(max(x1, xb), 1),
-             'z0': round(z0, 1), 'z1': round(z1, 1)}
     def tags(el): return {t.get('k'): t.get('v') for t in el.findall('tag')}
-    N = {n.get('id'): (float(n.get('lat')), float(n.get('lon')), tags(n)) for n in root.findall('node')}
-    W = {w.get('id'): ([nd.get('ref') for nd in w.findall('nd')], tags(w)) for w in root.findall('way')}
-    R = {r.get('id'): ([(m.get('type'), m.get('ref'), m.get('role')) for m in r.findall('member')], tags(r))
-         for r in root.findall('relation')}
+    N, W, R, bords = {}, {}, {}, []
+    for src in SOURCES[ville]:
+        root = ET.parse(os.path.join(ICI, src)).getroot()
+        b = root.find('bounds')
+        x0, z1 = jeu(float(b.get('minlat')), float(b.get('minlon')))
+        x1, z0 = jeu(float(b.get('maxlat')), float(b.get('maxlon')))
+        xa, _ = jeu(float(b.get('maxlat')), float(b.get('minlon')))
+        xb, _ = jeu(float(b.get('minlat')), float(b.get('maxlon')))
+        bords.append((min(x0, xa), max(x1, xb), z0, z1))
+        for n in root.findall('node'):
+            N[n.get('id')] = (float(n.get('lat')), float(n.get('lon')), tags(n))
+        for w in root.findall('way'):
+            W.setdefault(w.get('id'), ([nd.get('ref') for nd in w.findall('nd')], tags(w)))
+        for r in root.findall('relation'):
+            R.setdefault(r.get('id'), ([(m.get('type'), m.get('ref'), m.get('role')) for m in r.findall('member')], tags(r)))
+    # Un seul cadre, l'enveloppe des extraits : à Gallipoli ils ont presque la même latitude
+    # (40 m d'écart aux coins), donc l'enveloppe ne promet rien qu'OSM n'ait pas livré.
+    CADRE = {'src': ' + '.join(SOURCES[ville]), 'x0': round(min(b[0] for b in bords), 1),
+             'x1': round(max(b[1] for b in bords), 1), 'z0': round(min(b[2] for b in bords), 1),
+             'z1': round(max(b[3] for b in bords), 1)}
 
     def ligne(refs):
         out = []
@@ -411,6 +421,5 @@ if __name__ == '__main__':
     for v in villes:
         if v not in SOURCES: sys.exit('villes : ' + ', '.join(SOURCES))
         extraire(v)
-    print("manquants (dans AUCUN extrait) : le Colosse de Barletta, Castel del Monte")
     if '--sans-apercu' not in sys.argv:
         subprocess.run([sys.executable, os.path.join(ICI, 'apercu-pouilles.py')], check=False)
