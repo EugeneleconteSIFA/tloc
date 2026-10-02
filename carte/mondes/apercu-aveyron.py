@@ -203,3 +203,57 @@ if os.path.exists(CHROME):
                     '--window-size=%d,%d' % (W_TOT, H_TOT), 'file://' + SVG],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     if os.path.exists(PNG): print('aveyron-apercu.png : %.0f Ko' % (os.path.getsize(PNG) / 1024))
+
+# ---- les environs : où se couche le Dormeur ---------------------------------------------
+# Le monde (5 × 1,4 km) est un plateau doux : aucune falaise pour le géant couché. Les environs
+# (relief-aveyron-environs.json, 14 × 12 km au pas de 50 m) montrent la vallée profonde qui
+# longe le lac au nord-ouest ; on y dessine les pentes de plus de 33° et les candidats.
+DORMEUR = [  # (nom, x, z, note) — mesurés le 2 octobre sur les environs ; à valider par Eugène
+    ('A — le mur de l’ouest', -2592, -501, '1,1 km nord-sud, 400 m de haut (300 → 700 m), 2,6 km à l’ouest du lac'),
+    ('B — l’escarpement du nord', 562, -3174, '1,7 km, 235 m de haut, 3,2 km au nord du lac'),
+]
+F_ENV = os.path.join(ICI, 'relief-aveyron-environs.json')
+if os.path.exists(F_ENV):
+    E_ = json.load(open(F_ENV))
+    nx, nz, pas, hh = E_['nx'], E_['nz'], E_['pas'], E_['h']
+    s = 3.0 / pas                     # 3 px par maille
+    W2, H2 = int(nx * pas * s) + 40, int(nz * pas * s) + 90
+    rects = []
+    for j in range(1, nz - 1):
+        for i in range(1, nx - 1):
+            gx = (hh[j * nx + i + 1] - hh[j * nx + i - 1]) / (2 * pas)
+            gz = (hh[(j + 1) * nx + i] - hh[(j - 1) * nx + i]) / (2 * pas)
+            if math.degrees(math.atan(math.hypot(gx, gz))) > 33:
+                rects.append('M%.0f %.0fh%gv%gh-%gz' % (E_['x0'] + i * pas - pas / 2, E_['z0'] + j * pas - pas / 2, pas, pas, pas))
+    bx = (E_['x0'] - pas / 2, E_['z0'] - pas / 2, nx * pas, nz * pas)
+    o = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" font-family="Helvetica, Arial, sans-serif">' % (W2, H2),
+         '<rect width="100%" height="100%" fill="#fbfaf6"/>',
+         '<text x="20" y="34" font-size="20" font-weight="600" fill="#2b2b2b">Les environs du lac (14 × 12 km, relief IGN au pas de 50 m) — où coucher le Dormeur ?</text>',
+         '<text x="20" y="58" font-size="14" fill="#555">en rouge : pentes de plus de 33° ; en orange : les deux candidats ; cadres gris : les extraits OSM ; grille de 1 km</text>',
+         '<svg x="20" y="70" width="%.0f" height="%.0f" viewBox="%.1f %.1f %.1f %.1f">' % ((nx * pas * s, nz * pas * s) + bx),
+         '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="#f4f1e8"/>' % bx,
+         ombrage('environs').replace('opacity="0.7"', 'opacity="1"'),
+         '<path d="%s" fill="#c0392b" fill-opacity="0.55"/>' % ''.join(rects)]
+    g = ''.join('M%d %.0fV%.0f' % (v, bx[1], bx[1] + bx[3]) for v in range(-6000, 8001, 1000))
+    g += ''.join('M%.0f %dH%.0f' % (bx[0], v, bx[0] + bx[2]) for v in range(-6000, 6001, 1000))
+    o.append('<path d="%s" stroke="#777" stroke-opacity="0.5" stroke-width="%.1f" fill="none"/>' % (g, 1 / s))
+    for c in L['cadres']:
+        o.append('<rect x="%.0f" y="%.0f" width="%.0f" height="%.0f" fill="none" stroke="#333" stroke-width="%.1f"/>' % (c['x0'], c['z0'], c['x1'] - c['x0'], c['z1'] - c['z0'], 2 / s))
+    o.append(chemin(L['eau']['plans'], True, fill='#a9cfe9', stroke='#2f7fb8', stroke_width=1.5 / s))
+    for l in L['lieux']:
+        if l.get('pose') and l['k'] in ('maison', 'dormeur'):
+            o.append('<circle cx="%.0f" cy="%.0f" r="%.0f" fill="#555"/>' % (l['x'], l['z'], 3 / s))
+    for nom, x, z, note in DORMEUR:
+        o.append('<circle cx="%d" cy="%d" r="%.0f" fill="none" stroke="#e67e22" stroke-width="%.1f"/>' % (x, z, 700, 4 / s))
+        o.append('<text x="%d" y="%d" font-size="%.0f" font-weight="700" fill="#a04000" stroke="#fff" stroke-width="%.1f" paint-order="stroke">%s</text>'
+                 % (x + 720, z - 40, 15 / s, 4 / s, html.escape(nom)))
+        o.append('<text x="%d" y="%d" font-size="%.0f" fill="#333" stroke="#fff" stroke-width="%.1f" paint-order="stroke">%s</text>'
+                 % (x + 720, z + 230, 12 / s, 3 / s, html.escape(note)))
+    o.append('<text x="%d" y="%d" font-size="%.0f" fill="#333" stroke="#fff" stroke-width="%.1f" paint-order="stroke">lac de Saint-Gervais</text>' % (250, 120, 12 / s, 3 / s))
+    o += ['</svg>', '</svg>']
+    SV2, PN2 = os.path.join(ICI, 'aveyron-environs.svg'), os.path.join(ICI, 'aveyron-environs.png')
+    open(SV2, 'w').write('\n'.join(o))
+    if os.path.exists(CHROME):
+        subprocess.run([CHROME, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--screenshot=' + PN2,
+                        '--window-size=%d,%d' % (W2, H2), 'file://' + SV2], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+        print('aveyron-environs.png : %.0f Ko' % (os.path.getsize(PN2) / 1024))

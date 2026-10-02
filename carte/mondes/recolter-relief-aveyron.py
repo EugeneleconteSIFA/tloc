@@ -14,6 +14,7 @@ constantes, 0,7 % d'écart. Ici on demande à l'IGN l'altitude AUX nœuds de la 
     python3 recolter-relief-aveyron.py monde   le lac, le trou et le bourg au pas de 10 m  (~370 requêtes)
     python3 recolter-relief-aveyron.py lac     le lac et ses rives au pas de 5 m           (~270 requêtes)
     python3 recolter-relief-aveyron.py bourg   Saint-Symphorien au pas de 2 m              (~455 requêtes)
+    python3 recolter-relief-aveyron.py environs 14 × 12 km au pas de 50 m, pour le Dormeur (~340 requêtes)
 
 Le monde couvre AUSSI les 2 km sans plan OSM entre les deux extraits : c'est là que se
 cherche le Dormeur (falaise en géant couché), et le jeu y a besoin d'un sol.
@@ -45,6 +46,10 @@ def zones():
                        z0=min(c['z0'] for c in B), z1=max(c['z1'] for c in B), pas=10.0, res='ign_rge_alti_wld')}
     z['lac'] = dict(L['cadrages']['lac'], pas=5.0, res='ign_lidar_hd_mnt_mono_wld')   # 2 m ferait 1 700 requêtes
     z['bourg'] = dict(L['cadrages']['bourg'], pas=2.0, res='ign_lidar_hd_mnt_mono_wld')
+    # Les environs, grossiers : le monde (5 × 1,4 km) est un plateau doux, sans une falaise
+    # pour le Dormeur. On regarde 14 × 12 km autour du lac au pas de 50 m pour trouver les
+    # vraies pentes — les gorges de la Truyère sont tout près (2 octobre).
+    z['environs'] = dict(x0=-6000, x1=8000, z0=-6000, z1=6000, pas=50.0, res='ign_rge_alti_wld')
     return z
 
 def get(url, essais=4):

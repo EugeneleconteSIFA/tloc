@@ -74,7 +74,7 @@ de page.
 
 ## Modèles 3D
 
-- **Géants** : le Dormeur (une vraie falaise couchée, à choisir), le Yak (yaksha du Wat
+- **Géants** : le Dormeur (une vraie falaise couchée : deux candidats sur le relief IGN, `carte/mondes/aveyron-environs.png`, à choisir), le Yak (yaksha du Wat
   Arun), le Colosse (géant de bronze inventé ; la statue de Barletta comme modèle d'allure), le loup géant.
 - **Animaux** manquants : loup, moutons, vautours, tarentules, chevaux sauvages (déjà là :
   cheval, biche, vache, taureau, âne). Le pack Quaternius d'origine contient peut-être un loup.

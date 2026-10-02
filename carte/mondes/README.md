@@ -175,7 +175,20 @@ d'une grille d'environ 5 m. La première récolte du lac et du bourg l'a pris (1
 voisins égaux, des marches dans l'ombrage) : refaite au LiDAR HD (`ign_lidar_hd_mnt_mono_wld`),
 l'ancienne est dans `_mauvais/`. Le monde, au pas de 10 m, n'est pas touché.
 
-`python3 recolter-relief-aveyron.py monde lac bourg` : 1 091 requêtes. Ensuite,
+`python3 recolter-relief-aveyron.py monde lac bourg` : 1 091 requêtes.
+
+**Les environs, pour le Dormeur (2 octobre).** Le monde est un plateau doux (698 à 826 m) :
+aucune falaise pour le géant couché. `python3 recolter-relief-aveyron.py environs` récolte
+14 × 12 km autour du lac au pas de 50 m (339 requêtes, `relief-aveyron-environs.json`, de 279
+à 947 m) : une vallée profonde longe le lac au nord-ouest, à 400 m sous le plateau —
+probablement la Truyère, en contrebas de Montézic (à confirmer). `apercu-aveyron.py` en tire
+`aveyron-environs.png` : les pentes de plus de 33° et deux candidats, **à choisir par Eugène**
+(le Dormeur reste posé dans le trou entre les extraits tant qu'il n'a pas choisi) :
+
+| candidat | x, z | lat, lon | ce que c'est |
+|---|---|---|---|
+| **A — le mur de l'ouest** | -2 592, -501 | 44,7377 N ; 2,6480 E | un mur nord-sud de 1,1 km, de 300 à 700 m (400 m de haut sur 900 m), 2,6 km à l'ouest du lac : un géant couché qu'on voit depuis le fond de la vallée |
+| **B — l'escarpement du nord** | 562, -3 174 | 44,7617 N ; 2,6879 E | 1,7 km de long, 235 m de haut, 3,2 km au nord du lac | Ensuite,
 `python3 apercu-aveyron.py` pose l'ombrage : il doit tomber dans le vallon des Vergnes et
 sous le lac, pas à côté.
 
