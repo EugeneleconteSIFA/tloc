@@ -51,8 +51,10 @@ de page.
     garde le **port de Gallipoli** (Eugène, 2 octobre).
   - **Le château** de l'acte : le **château Tramontano** de Matera, à la place de Castel del
     Monte (Eugène, 2 octobre). Il est dans `matera.json` (lieux, `chateau`).
-  - **À faire** : corriger `docs/SCENARIO.md` sur `STORY.md` — il raconte encore le Colosse
-    sur le port de Barletta, Nunzia « jeune fille de Barletta » et le donjon dans Castel del Monte.
+  - `docs/SCENARIO.md` corrigé sur `STORY.md` le 2 octobre (Gallipoli, le Tramontano, Cosimo).
+  - **La porte du Temple** débouche à **Alberobello**, dans un trullo (Eugène, 2 octobre,
+    comme le dit `SCENARIO.md`). **À faire dans le code** : `pouilles.js` la met encore à
+    Gallipoli (fiche `gallipoli`, `portes`).
 - **Thaïlande (acte III)** — Eugène les enverra (1er octobre) ; l'extrait reçu sous ce nom
   couvrait les îles Nicobar (Inde), rangé à part. À exporter sur openstreetmap.org (Exporter →
   zone choisie à la main ; Overpass si c'est trop gros) :
@@ -105,7 +107,7 @@ UAL ou Mixamo.
 
 ## Décisions de récit
 
-Qui est l'amour de Nunzia, et où il vit (la quête de la lettre) ; le plan des étages du
+~~Qui est l'amour de Nunzia~~ : Cosimo, l'apprenti mécanicien du train (Eugène, 2 octobre) ; le plan des étages du
 Temple au fil des retours ; les cinq cloches (formes, tailles).
 
 ## Déjà là, rien à fournir

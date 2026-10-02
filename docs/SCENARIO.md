@@ -1016,7 +1016,7 @@ pierre mouillée, et le son d'une cloche de mouton. La porte mène de nouveau en
 | **Les signes des trulli** | douze signes peints sur les toits des trulli, à trouver et à lire | un morceau de cœur ; le dernier signe montre le Temple |
 | **Les oursins** | pêcher à la canne dans les rochers, à marée basse | des écus |
 | **La fête de la pizzica** | danser au village (un jeu de rythme au tambourin) | une tenue |
-| **La lettre de Nunzia** | porter une lettre de Nunzia à trente ans à son amoureux, pêcheur sur un autre port, avant qu'ils soient vieux tous les deux | la dernière réplique de Nunzia change : elle a eu sa vie avec lui |
+| **La lettre de Nunzia** | porter une lettre de Nunzia à **Cosimo**, l'apprenti mécanicien du petit train, qui vit à Alberobello, avant qu'ils soient vieux tous les deux ; il rend en échange toutes les lettres qu'il n'a jamais postées (`DECISIONS-RECIT.md`, § 1) | la dernière réplique de Nunzia change : leur vie a eu lieu, et elle était réciproque |
 
 **Durée : ~45 min en allant vite.**
 

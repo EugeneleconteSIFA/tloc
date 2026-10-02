@@ -442,6 +442,10 @@ Nunzia veut faire parvenir une lettre à la personne qu'elle aime avant que les 
 
 Camille doit découvrir qui est cette personne, où elle vit et comment lui remettre la lettre.
 
+C'est **Cosimo**, l'apprenti mécanicien du petit train, qui vit à Alberobello, au bout de la
+ligne ; ils ne se voient qu'une minute par jour, en gare de Gallipoli (Eugène, 2 octobre ; le
+détail dans `docs/DECISIONS-RECIT.md`, § 1).
+
 La quête se termine sans récompense spectaculaire.
 
 La récompense est que cette vie a eu lieu.

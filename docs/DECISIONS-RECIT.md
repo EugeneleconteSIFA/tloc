@@ -8,6 +8,9 @@ se répare d'un coup. Une fois relues, elles passent dans `STORY.md`.
 
 ## 1. Les Pouilles : Nunzia, et la personne qu'elle aime
 
+**Relu par Eugène le 2 octobre** : Cosimo, oui (« j'aime bien Cosimo ») ; le Colosse au port de
+Gallipoli, oui. Passé dans `STORY.md` et `docs/SCENARIO.md`.
+
 **Où.** Les Pouilles sont désormais trois villes fortifiées reliées par un petit train
 (Matera, le cœur de Gallipoli, Alberobello — Eugène, 1er octobre). Barletta n'en fait plus
 partie : **Nunzia vit à Gallipoli**, la ville sur son île, face à la mer. Le Colosse, « inspiré
