@@ -66,7 +66,7 @@ fait de l'histoire une tragédie : on la lit en entier à l'acte VI, et on conti
 >
 > *Chaque géant donnera ce qu'il est, et ne le reprendra pas.* (acte III, au sommet)
 >
-> *Chaque heure sauvée coûtera des années, et nul ne les rendra.* (acte IV, au château des huit tours)
+> *Chaque heure sauvée coûtera des années, et nul ne les rendra.* (acte IV, au château Tramontano)
 >
 > *Toutes les heures seront mêlées, et la dernière sera la sienne.* (acte V, à la tour de la Garde-Guérin)
 >
@@ -162,8 +162,8 @@ remontant le temps, sauf celles de l'épée de Lydéric (acte VII).
 | **Le Dormeur** | géant gardien de l'Aveyron | une falaise en forme de géant couché, au bord du causse |
 | **Le Yak** | géant gardien de Thaïlande | un géant de pierre et de faïence, gardien de la porte du plus haut temple ; timide et bon |
 | **Nok** | l'amie de Thaïlande | une jeune fille qui tresse des guirlandes pour le temple, la seule qui bouge encore sur les îles |
-| **Le Colosse** | géant gardien des Pouilles | un géant de bronze qui veille sur le port de Barletta (la vraie statue de 5 m existe toujours) |
-| **Nunzia** | l'amie des Pouilles | une jeune fille de Barletta, qui vieillit pendant qu'on la connaît |
+| **Le Colosse** | géant gardien des Pouilles | un géant de bronze inventé, inspiré de la statue de Barletta, qui veille sur le port de Gallipoli |
+| **Nunzia** | l'amie des Pouilles | une jeune fille de Gallipoli, qui vieillit pendant qu'on la connaît |
 | **Le loup de Lozère** | géant gardien de la Lozère | un loup grand comme une grange, gardien des troupeaux ; rendu fou, c'est lui que l'histoire a appelé la Bête du Gévaudan |
 | **Le berger du Pouget** | l'ami de Lozère | le vieux berger du hameau du Pouget, le seul resté dans son temps ; l'ami du loup depuis toujours |
 
@@ -825,8 +825,8 @@ ennemis sur les toits) et lâcher prise au-dessus d'un toit ou de la mer pour y 
   Vieux-Lille jusqu'aux quais de la Deûle ; du bastion le plus haut jusqu'au pied du glacis ;
 - **Aveyron** : les câbles de la mine, entre les chevalements, et un câble au-dessus des
   gorges, du causse jusqu'au fond ;
-- **Pouilles** : du château des huit tours, sur sa colline, jusqu'aux oliviers de la plaine ;
-  des falaises jusqu'à la mer.
+- **Pouilles** : du château Tramontano, sur sa colline, jusqu'aux toits des Sassi ; des
+  falaises de la Gravina jusqu'au fond du ravin ; des remparts de Gallipoli jusqu'à la mer.
 
 Côté code : un câble, c'est deux points et une pente ; on refuse de le poser si l'arrivée
 n'est pas plus basse que le départ, pour que la règle soit tenue par la machine.
@@ -890,11 +890,13 @@ Le mage ne dit rien. Camille, pour la première fois, hésite devant une porte.
 
 ### Le format
 
-**Une côte.** Les Pouilles, dans le talon de la botte de l'Italie : une plaine d'oliviers
-millénaires, des villages de pierre blanche perchés sur des collines, des falaises percées de
-grottes au-dessus d'une mer très bleue, et un château à huit tours seul sur sa colline. Après les
-îles de Thaïlande, qu'on traversait en barque, ici **on longe la mer à pied** : on plonge
-dedans, on entre dans les falaises par la mer. Un format entre les deux autres : plus petit que l'Aveyron, plus plat que la Thaïlande,
+**Trois villes et un petit train.** Les Pouilles, dans le talon de la botte de l'Italie :
+**Gallipoli**, la vieille ville blanche sur son île, face à une mer très bleue ; **Matera**,
+ses Sassi creusés dans la falaise au-dessus d'un ravin, et le château Tramontano sur sa
+colline ; **Alberobello**, ses trulli. Pour passer de l'une à l'autre, un petit train, à
+travers une plaine d'oliviers millénaires (Eugène, 1er octobre). Après les îles de
+Thaïlande, qu'on traversait en barque, ici **on longe la mer à pied** à Gallipoli : on plonge
+dedans, on entre dans les rochers par la mer. Un format entre les deux autres : plus petit que l'Aveyron, plus plat que la Thaïlande,
 et tourné vers l'eau.
 
 ### Le mal du temps : le temps qui s'emballe
@@ -911,15 +913,16 @@ et descend toute seule fait partie des énigmes.
 
 ### Le géant : le Colosse
 
-**Un géant de bronze**, debout sur le port de Barletta. La vraie statue existe : un colosse de
-bronze de plus de cinq mètres, dans une rue de Barletta, dont on dit qu'il a fait fuir une flotte
-ennemie en pleurant de colère. Dans le jeu, c'est le gardien des Pouilles. Phinaert lui a
+**Un géant de bronze**, debout sur le port de Gallipoli. C'est un géant inventé : son allure
+vient du colosse de Barletta, une vraie statue de bronze de plus de cinq mètres, mais
+Barletta n'est pas du voyage, et aucune des trois villes n'a de statue pareille (Eugène,
+2 octobre). Dans le jeu, c'est le gardien des Pouilles. Phinaert lui a
 planté le morceau de cloche dans la poitrine : le Colosse marche le long de la côte sans
 jamais s'arrêter, et à chacun de ses pas, le temps fait un bond.
 
 ### Nunzia, et l'enquête des trois âges
 
-Nunzia est une jeune fille de Barletta, quinze ans quand Camille arrive. Elle l'aide, la
+Nunzia est une jeune fille de Gallipoli, quinze ans quand Camille arrive. Elle l'aide, la
 guide, devient son amie. **Et elle vieillit pendant l'acte** : à chaque retour au port, elle
 a dix ans de plus. À la fin, c'est une vieille femme.
 
@@ -928,8 +931,8 @@ témoins sont la même personne, à trois âges.**
 - **Nunzia à quinze ans** sait **qui** : « Le Colosse ? Il a changé quand l'homme rouge est
   venu. **Mon grand-père** l'a vu. »
 - **Nunzia à trente ans** sait **où**, parce qu'elle l'a appris depuis : « Grand-père est
-  mort, Camille. Mais il m'a dit, avant : **l'homme rouge est monté au château des huit
-  tours.** »
+  mort, Camille. Mais il m'a dit, avant : **l'homme rouge est monté au château de Matera,
+  le Tramontano.** »
 - **Nunzia à soixante ans** sait **comment** : « Le château ne s'ouvre qu'au rythme de la
   pizzica. **La vieille joueuse de tambourin d'Alberobello** te l'apprendra. C'est ma fille. »
 
@@ -941,11 +944,12 @@ On ne peut pas brûler les étapes : Nunzia ne sait pas encore ce qu'elle appren
 |---|---|
 | **Le trullo de la porte** | la porte du Temple débouche dans un *trullo*, une petite maison ronde en pierre sèche au toit pointu, à Alberobello, le village des trulli |
 | **Alberobello** | les trulli, leurs toits peints de signes blancs ; la joueuse de tambourin |
-| **Le port de Barletta** | Nunzia, les pêcheurs, le quai où le Colosse s'est tenu mille ans |
-| **La ville blanche** | un village de maisons blanches sur une colline, des ruelles en escalier, des voûtes ; les habitants s'y sont réfugiés pour vieillir moins vite à l'ombre |
+| **Le port de Gallipoli** | Nunzia, les pêcheurs, le quai où le Colosse s'est tenu mille ans |
+| **Les Sassi de Matera** | des maisons creusées dans la roche, les unes sur les toits des autres, des ruelles en escalier, des voûtes ; les habitants s'y sont réfugiés pour vieillir moins vite à l'ombre |
+| **Le petit train** | la gare de chaque ville mène aux deux autres, à travers la plaine |
 | **La plaine des oliviers** | des oliviers vieux de mille ans, tordus comme des géants ; des fermes fortifiées ; des tarentules géantes dans les caves |
-| **Les falaises et les grottes** | un village accroché à la falaise, et sous lui des grottes marines qu'on atteint à la nage ou à marée basse |
-| **Le château des huit tours** | le donjon de l'acte : un château à huit côtés, huit tours, huit salles, seul sur sa colline (le vrai Castel del Monte) |
+| **Les rochers et les grottes** | sous les remparts de Gallipoli, des grottes marines qu'on atteint à la nage ou à marée basse |
+| **Le château Tramontano** | le donjon de l'acte : le château de Matera, sur sa colline au-dessus des Sassi — trois tours rondes, un château resté inachevé (il remplace Castel del Monte : Eugène, 2 octobre) |
 
 ### L'objet : le tambourin
 
@@ -974,13 +978,14 @@ vivante, pas comme une moquerie.
 | la tour la plus haute du château | **le lasso** (Aveyron) pour monter, **la poulie** pour passer d'une tour à une tour plus basse | déjà en poche |
 | le Colosse | le combat | — |
 
-**Le donjon : le château des huit tours.** Huit salles en couronne autour d'une cour à huit
-côtés. Chaque salle a sa tour ; chaque tour, un mécanisme. Le temps y court aussi : dans
+**Le donjon : le château Tramontano.** Trois tours rondes autour d'une cour, au-dessus des
+Sassi : un château qu'on n'a jamais fini de bâtir. Chaque tour a ses salles ; chaque salle,
+un mécanisme. Le temps y court aussi : dans
 certaines salles, on voit le même lieu jeune, puis en ruine, puis jeune encore. On bat le
 tambourin pour figer la salle à l'âge qu'il faut (le pont intact, la porte pas encore
 murée). Au centre de la cour, le cinquième morceau de la prophétie est gravé dans la dalle.
 
-**Le combat : le Colosse.** Sur la plage, à marée descendante. Le Colosse marche, et chaque
+**Le combat : le Colosse.** Sur la plage de Gallipoli, à marée descendante. Le Colosse marche, et chaque
 pas fait un bond de temps : la mer monte d'un coup, les rochers apparaissent et
 disparaissent. On le ralentit au tambourin, on grimpe sur sa jambe au lasso, on frappe le
 morceau de cloche dans sa poitrine.
@@ -988,8 +993,8 @@ morceau de cloche dans sa poitrine.
 ### La fin de l'acte — le premier choix de Camille
 
 Libéré, le Colosse s'arrête sur le quai, à sa place. Il donne **son élan** (un grand saut, qui
-fait franchir des vides qu'on ne sautait pas) et **redevient statue** : c'est lui qu'on voit
-encore aujourd'hui, immobile, dans une rue de Barletta.
+fait franchir des vides qu'on ne sautait pas) et **redevient statue**, immobile sur le quai
+de Gallipoli, face à la mer.
 
 La **Cloche des Heures** sort de sa poitrine. Camille sait, depuis le Yak, qu'elle sonne pour
 Phinaert. Mais si elle ne la sonne pas, le temps des Pouilles reste emballé, et tout un peuple
