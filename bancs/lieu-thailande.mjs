@@ -9,20 +9,58 @@
 //           morceau a été déplacé dans la baie — monde.js ne le dessine plus, il n'est pas compté ;
 // par morceau de la baie (panyi, tapu, suea, railay, phiphi), avec les pires tronçons.
 //
-//   bancs/tour.sh node bancs/lieu-thailande.mjs [http://127.0.0.1:8000]
+// Il mesure aussi le CHARGEMENT de thailande.html (cache vidé : durée, étapes, triangles) et tire
+// une planche fixe de 8 vues, les mêmes avant et après une retouche (4 octobre : les îles resserrées).
 //
-// Sortie : bancs/resultats/lieu-thailande-<date>.json
+//   TLOC_ETIQUETTE=avant bancs/tour.sh node bancs/lieu-thailande.mjs [http://127.0.0.1:8000]
+//
+// Sortie : bancs/resultats/lieu-thailande-<date>[-<étiquette>].json et -vues.png
 import { createRequire } from 'module';
 import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const { chromium } = createRequire(`${process.env.HOME}/Documents/Projet-Padel/package.json`)('playwright');
 const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const NOM = DIR + 'lieu-thailande-' + JOUR + (process.env.TLOC_ETIQUETTE ? '-' + process.env.TLOC_ETIQUETTE : '');
+// la planche : la baie d'en haut, les quatre cœurs vus du ciel, puis trois vues à hauteur de
+// Camille sur les bords des cœurs (là où une rue coupée finirait dans le vide)
+const VUES = [
+  { nom: 'la baie', cam: [900, 900, 2100], at: [800, 0, 900] },
+  { nom: 'Ko Panyi', cam: [260, 70, 170], at: [0, 5, -10] },
+  { nom: 'le grand piton', cam: [1170, 150, 620], at: [975, 40, 330] },
+  { nom: 'Railay, l’isthme', cam: [-250, 140, 1330], at: [-520, 10, 1720] },
+  { nom: 'Phi Phi, Ton Sai', cam: [2380, 160, 2330], at: [2370, 10, 1810] },
+  // au bout d'une rue coupée (PLAN.bouts, le plus proche du point donné) : 30 m avant, dans son axe
+  { nom: 'Railay : une rue coupée au nord', bout: [-512, 1480] },
+  { nom: 'Railay : une rue coupée au sud', bout: [-447, 1930] },
+  { nom: 'Ton Sai : une rue coupée au nord', bout: [2409, 1640] },
+  { nom: 'Ton Sai : la rue de l’ouest', bout: [2120, 1887] },
+  { nom: 'le belvédère des moines', cam: [2596, 2.2, 1790], at: [976, 60, 322], sol: 'cam' },
+  { nom: 'Ko Panyi : le bout sud', cam: [-20, 1.7, 150], at: [-20, 1.5, 260], sol: true },
+  { nom: 'Ko Panyi : le rocher', cam: [-40, 1.7, -100], at: [-80, 40, -250], sol: 'cam' },
+];
 
 const b = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 try {
-  const p = await b.newPage({ viewport: { width: 960, height: 540 } });
+  const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const erreurs = [];
+  p.on('pageerror', (e) => erreurs.push(e.message));
+  p.on('response', (r) => { if (r.status() >= 400) erreurs.push(r.status() + ' ' + r.url().replace(/^https?:\/\/[^/]+\//, '')); });
+  p.on('console', (m) => { if (m.type() === 'error' || /Poly Haven|inconnu|absente|refusée/.test(m.text())) erreurs.push(m.text()); });
+  // les étapes : engine.js ne range leurs durées (tloc_poids_charge) qu'à partir de huit, et un
+  // monde n'en a que six — on lit donc l'étiquette de la barre à chaque changement
+  await p.addInitScript(() => { window.__etapes = []; const t = () => { const l = document.getElementById('loadlabel'); if (!l) return requestAnimationFrame(t);
+    new MutationObserver(() => window.__etapes.push([l.textContent, performance.now()])).observe(l, { childList: true, characterData: true, subtree: true }); window.__etapes.push([l.textContent, performance.now()]); }; t(); });
+  await p.goto(`${ORIGINE}/connexion.html`); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  const t0 = Date.now();
   await p.goto(`${ORIGINE}/thailande.html`);
-  await p.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000 });
+  await p.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000, polling: 100 });
+  const charge = (Date.now() - t0) / 1000;
+  const etapes = await p.evaluate(() => { const E = window.__etapes, o = {}; for (let k = 0; k < E.length - 1; k++) o[E[k][0]] = Math.round((o[E[k][0]] || 0) + E[k + 1][1] - E[k][1]); return o; });
+  const rendu = await p.evaluate(() => { let tri = 0, maillages = 0, inst = 0;
+    window.TLOC.scene.traverse((o) => { if (!o.isMesh || !o.geometry) return; maillages++; const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3;
+      tri += o.isInstancedMesh ? n * o.count : n; if (o.isInstancedMesh) inst += o.count; });
+    return { maillages, triangles: Math.round(tri), instances: inst }; });
+  await p.waitForTimeout(2000);
   const res = await p.evaluate(async () => {
     const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v=')));
     const L = E.G.level, B = await (await fetch('carte/mondes/thailande.json')).json();
@@ -48,10 +86,36 @@ try {
     const tot = Object.values(par).reduce((s, P) => ({ points: s.points + P.points, bloques: s.bloques + P.bloques, raides: s.raides + P.raides, enMer: s.enMer + P.enMer }), { points: 0, bloques: 0, raides: 0, enMer: 0 });
     return { tot, par, pires: pires.slice(0, 25) };
   });
+  // ---------------- la planche fixe de 8 vues ----------------
+  await p.evaluate(() => { for (const id of ['hud', 'overlay', 'msg', 'prompt', 'zone']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; } });
+  const images = [];
+  for (const v of VUES) {
+    await p.evaluate(async (v) => { const T = window.TLOC, H = (x, z) => T.getH(x, z);
+      if (v.bout) { const P = await (await fetch('carte/mondes/thailande.json')).json(); let b = null;
+        for (const q of P.bouts || []) if (!b || Math.hypot(q[0] - v.bout[0], q[1] - v.bout[1]) < Math.hypot(b[0] - v.bout[0], b[1] - v.bout[1])) b = q;
+        if (b) { const L = Math.hypot(b[2], b[3]), ux = b[2] / L, uz = b[3] / L; v.cam = [b[0] - ux * 30, 1.7, b[1] - uz * 30]; v.at = [b[0] + ux * 25, 6, b[1] + uz * 25]; v.sol = true; } }
+      const cam = v.sol ? [v.cam[0], H(v.cam[0], v.cam[2]) + v.cam[1], v.cam[2]] : v.cam, at = v.sol === true ? [v.at[0], Math.max(0, H(v.at[0], v.at[2])) + v.at[1], v.at[2]] : v.at;
+      const actif = window.__vueActive; T.cutscene([{ cam, at, cam2: cam, at2: at, dur: 600 }], () => {}); if (actif) T.cutAdvance(true); window.__vueActive = true;
+      document.querySelectorAll('[id^=cine], .cine').forEach((e) => { e.style.display = 'none'; }); }, v);
+    await p.waitForTimeout(2200);
+    images.push({ nom: v.nom, png: (await p.screenshot({ type: 'png' })).toString('base64') });
+  }
+  const planche = await p.evaluate(async (images) => {
+    const W = 640, Hh = 360, cv = document.createElement('canvas'); cv.width = W * 4; cv.height = (Hh + 24) * Math.ceil(images.length / 4); const g = cv.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, cv.width, cv.height);
+    for (let k = 0; k < images.length; k++) { const im = new Image(); im.src = 'data:image/png;base64,' + images[k].png; await im.decode();
+      const x = (k % 4) * W, y = Math.floor(k / 4) * (Hh + 24); g.drawImage(im, x, y + 24, W, Hh); g.fillStyle = '#fff'; g.font = '15px sans-serif'; g.fillText((k + 1) + '. ' + images[k].nom, x + 8, y + 17); }
+    return cv.toDataURL('image/png');
+  }, images);
+  fs.mkdirSync(DIR, { recursive: true });
+  fs.writeFileSync(NOM + '-vues.png', Buffer.from(planche.split(',')[1], 'base64'));
+
+  console.log(`chargé en ${charge.toFixed(1)} s ; somme des étapes ${Math.round(Object.values(etapes || {}).reduce((a, b) => a + b, 0))} ms ; ${rendu.maillages} maillages, ${(rendu.triangles / 1e6).toFixed(2)} M triangles, ${rendu.instances} instances`);
+  console.log('étapes (ms) : ' + Object.entries(etapes || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round(v)}`).join(' | '));
+  if (erreurs.length) console.log('erreurs :', erreurs.slice(0, 10));
   const pc = (P) => `${(100 * (1 - (P.bloques + P.raides) / Math.max(1, P.points))).toFixed(1)} % praticable (${P.points} points sur terre : ${P.bloques} bloqués, ${P.raides} trop raides${P.enMer != null ? ` ; ${P.enMer} en mer, non comptés` : ''})`;
   console.log('baie :', pc(res.tot));
   for (const [m, P] of Object.entries(res.par)) console.log('  ' + m.padEnd(7), pc(P));
   console.log('pires tronçons :'); for (const t of res.pires.slice(0, 10)) console.log('  ', JSON.stringify(t));
-  fs.mkdirSync(DIR, { recursive: true });
-  fs.writeFileSync(`${DIR}lieu-thailande-${JOUR}.json`, JSON.stringify({ date: new Date().toISOString(), ...res }, null, 1));
+  fs.writeFileSync(NOM + '.json', JSON.stringify({ date: new Date().toISOString(), chargement_s: charge, etapes, rendu, erreurs: erreurs.slice(0, 20), ...res }, null, 1));
+  console.log('→ ' + NOM + '.json, -vues.png');
 } finally { await b.close(); }

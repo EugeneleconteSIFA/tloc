@@ -128,6 +128,122 @@ def terre_ferme(p):
     q = list(p) + [(xb + gx, zb - gn), (xa + gx, za - gn)]
     return decoupe(q)
 
+# ---- LES CŒURS (4 octobre) ----------------------------------------------------------------
+# Eugène : « c'est l'espace de balade qui est immense, pas la distance entre les îles ». Railay et
+# Phi Phi portaient 18 000 des 21 000 points de chemin du banc pour une histoire qui tient en
+# quelques endroits. Chaque île garde un CŒUR où l'on marche, autour de ce qui sert
+# (thailande.js : quais, Nok, la porte, le marché, les moines, les câbles), et une GARDE autour :
+# ce qui reste de l'île, falaise ou jungle où l'on ne passe pas. Au-delà, la mer. Les îles ne
+# bougent pas les unes par rapport aux autres (repere_thailande.py est intact).
+#   falaise : Railay, Phi Phi — chemins et bâti coupés au cœur ; recolter-relief-thailande.py
+#             dresse une falaise au bord, thailande.js bloque la garde (la même ondulation, BORD)
+#   pilotis : Ko Panyi — le village coupé au cœur, rendu à l'eau ; le rocher reste, entier
+#   ile     : le grand piton — l'île ramenée à son sommet : ses routes finissent dans la mer
+# Khao Phing Kan, déjà petite, ne change pas. Les fichiers d'avant : carte/mondes/complet/.
+COEURS = {
+    'panyi':  {'mode': 'pilotis', 'coeur': (-240, 170, -140, 200), 'garde': (-260, 190, -420, 215)},
+    'suea':   {'mode': 'ile', 'coeur': (860, 1130, 215, 470), 'garde': (780, 1210, 140, 545)},
+    'railay': {'mode': 'falaise', 'coeur': (-740, -290, 1480, 1930)},
+    # jusqu'à z 2060 : les deux pontons de Ton Sai entiers (coupés à 2010, ils finissaient dans l'eau)
+    'phiphi': {'mode': 'falaise', 'coeur': (2120, 2620, 1640, 2060)},
+}
+BANDE = 120          # la garde des îles « falaise » : le cœur élargi d'autant
+# L'escalier des moines (Phi Phi) : le câble du grand piton doit partir PLUS HAUT que le sommet où
+# il arrive (~105 m), et aucun chemin du cœur de Ton Sai ne monte au-dessus de 38 m. Il part du
+# bout des marches d'OSM, au pied de la colline est, et monte en quatre lacets à ~130 m. Les lacets
+# sont à 32 m l'un de l'autre : à 27, le relief (pas de 10 m) mêlait leurs hauteurs — des sauts de 19 m.
+ESCALIER = [(2512.0, 1777.0), (2528.0, 1850.0), (2560.0, 1700.0), (2592.0, 1850.0), (2605.0, 1790.0)]
+
+def garde_de(m):
+    C = COEURS[m]
+    if 'garde' in C: return C['garde']
+    x0, x1, z0, z1 = C['coeur']
+    return (x0 - BANDE, x1 + BANDE, z0 - BANDE, z1 + BANDE)
+
+def dans_r(q, r): return r[0] <= q[0] <= r[1] and r[2] <= q[1] <= r[3]
+
+def couper_ligne(p, r):
+    """Une ligne coupée à un rectangle (Liang-Barsky, segment par segment) : les morceaux dedans,
+    chacun avec ses deux bouts marqués « coupé » ou non — un bout coupé est là où une rue
+    s'arrête au bord du cœur, et le relief doit y dresser quelque chose."""
+    out, cur, coupe0 = [], [], False
+    def seg(a, b):
+        t0, t1 = 0.0, 1.0
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        for pp, qq in ((-dx, a[0] - r[0]), (dx, r[1] - a[0]), (-dz, a[1] - r[2]), (dz, r[3] - a[1])):
+            if pp == 0:
+                if qq < 0: return None
+                continue
+            t = qq / pp
+            if pp < 0: t0 = max(t0, t)
+            else: t1 = min(t1, t)
+        if t0 > t1: return None
+        return t0, t1
+    for a, b in zip(p, p[1:]):
+        s = seg(a, b)
+        if s is None:
+            if cur: out.append((cur, coupe0, True)); cur = []
+            continue
+        t0, t1 = s
+        A = (round(a[0] + (b[0] - a[0]) * t0, 1), round(a[1] + (b[1] - a[1]) * t0, 1))
+        Bq = (round(a[0] + (b[0] - a[0]) * t1, 1), round(a[1] + (b[1] - a[1]) * t1, 1))
+        if not cur: cur, coupe0 = [A], t0 > 0
+        cur.append(Bq)
+        if t1 < 1: out.append((cur, coupe0, True)); cur = []
+    if cur: out.append((cur, coupe0, False))
+    return [(q, c0, c1) for q, c0, c1 in out if len(q) >= 2 and sum(math.hypot(v[0] - u[0], v[1] - u[1]) for u, v in zip(q, q[1:])) >= 6]
+
+def couper_surface(p, r):
+    global CADRE
+    sauve = CADRE
+    CADRE = {'x0': r[0] + MARGE, 'x1': r[1] - MARGE, 'z0': r[2] + MARGE, 'z1': r[3] - MARGE}
+    q = p[:-1] if p[0] == p[-1] else p
+    q = decoupe(list(q)) if not all(dans_r(x, r) for x in q) else list(q)
+    CADRE = sauve
+    if len(q) < 3: return None
+    return q + [q[0]]
+
+def resserrer(o, m):
+    """Le morceau m ramené à son cœur (voir COEURS). Rend la liste des bouts coupés."""
+    if m not in COEURS: return []
+    C = COEURS[m]; coeur, garde = C['coeur'], garde_de(m)
+    voie = coeur if C['mode'] != 'ile' else garde      # où les rues s'arrêtent
+    bouts = []
+    def lignes(liste, r, noter, surf=False):
+        res = []
+        for e in liste:
+            # une surface (une place, un ponton dessiné en polygone) se garde entière ou pas du tout
+            if e.get('surface') or (surf and len(e['pts']) > 3 and e['pts'][0] == e['pts'][-1]):
+                c = centre(e['pts'])
+                if dans_r(c, r): res.append(e)
+                continue
+            for q, c0, c1 in couper_ligne(e['pts'], r):
+                res.append(dict(e, pts=q))
+                if noter:
+                    if c0: bouts.append([q[0][0], q[0][1], q[0][0] - q[1][0], q[0][1] - q[1][1], m])
+                    if c1: bouts.append([q[-1][0], q[-1][1], q[-1][0] - q[-2][0], q[-1][1] - q[-2][1], m])
+        return res
+    for k in ('routes', 'chemins', 'ponts'): o[k] = lignes(o[k], voie, C['mode'] == 'falaise', k == 'ponts')
+    for k in ('murs', 'falaises', 'enceinte'): o[k] = lignes(o[k], garde, False)
+    for k in ('cours', 'canaux'): o['eau'][k] = lignes(o['eau'][k], garde, False)
+    o['batiments'] = [b for b in o['batiments'] if dans_r(centre(b['pts']), voie)]
+    def surfaces(liste, r):
+        res = []
+        for e in liste:
+            s = couper_surface(e['pts'], r)
+            if s and aire(s) > 4: res.append(dict(e, pts=s))
+        return res
+    for k in ('plans', 'recifs'): o['eau'][k] = surfaces(o['eau'][k], garde)
+    for k in o['verdure']: o['verdure'][k] = surfaces(o['verdure'][k], garde)
+    # Ko Panyi : la terre plate (le village sur pilotis) s'arrête au cœur — le reste rendu à l'eau ;
+    # le rocher, lui, est une masse boisée (verdure), il reste entier dans la garde
+    o['cote']['iles'] = surfaces(o['cote']['iles'], coeur if C['mode'] == 'pilotis' else garde)
+    o['lieux'] = [l for l in o['lieux'] if dans_r((l['x'], l['z']), garde)]
+    if m == 'phiphi':
+        o['chemins'].append({'pts': [list(q) for q in ESCALIER], 'r': 0, 'k': 'steps', 'nom': "l'escalier des moines", 'moines': True, 'm': 'phiphi'})
+        o['lieux'].append({'k': 'belvedere', 'm': 'phiphi', 'x': ESCALIER[-1][0], 'z': ESCALIER[-1][1], 'nom': 'le belvédère des moines'})
+    return bouts
+
 CLS_ROUTE = {'primary': 3, 'secondary': 3, 'tertiary': 2, 'tertiary_link': 2, 'residential': 2,
              'living_street': 2, 'unclassified': 2, 'pedestrian': 1, 'service': 1}
 CLS_CHEMIN = {'track': 1, 'footway': 0, 'path': 0, 'steps': 0}
@@ -385,8 +501,14 @@ def extraire(m):
 if __name__ == '__main__':
     # la baie : les morceaux mis bout à bout, liste par liste ; le cadre est leur enveloppe
     baie = None
+    bouts = []
     for m in RT.NOMS:
         o = extraire(m)
+        n0 = (len(o['batiments']), len(o['chemins']) + len(o['routes']) + len(o['ponts']))
+        bouts += resserrer(o, m)
+        if m in COEURS:
+            print('  resserré au cœur %s : bâtiments %d → %d, voies %d → %d, %d bouts coupés' % (
+                COEURS[m]['coeur'], n0[0], len(o['batiments']), n0[1], len(o['chemins']) + len(o['routes']) + len(o['ponts']), sum(1 for b in bouts if b[4] == m)))
         if baie is None:
             baie = o; baie['morceaux'] = {}
         else:
@@ -394,7 +516,13 @@ if __name__ == '__main__':
                 if isinstance(v, list): baie[k] += v
                 elif isinstance(v, dict) and k != 'cadre':
                     for kk, vv in v.items(): baie[k][kk] += vv
-        baie['morceaux'][m] = dict(o['cadre'], lieu=RT.MORCEAUX[m]['lieu'], dx=RT.MORCEAUX[m]['dx'], dz=RT.MORCEAUX[m]['dz'])
+        # le morceau, pour le relief, n'est plus l'extrait OSM mais sa garde : l'île s'y arrête
+        c = o['cadre']; M = dict(c, lieu=RT.MORCEAUX[m]['lieu'], dx=RT.MORCEAUX[m]['dx'], dz=RT.MORCEAUX[m]['dz'],
+                                 extrait=[c['x0'], c['x1'], c['z0'], c['z1']])
+        if m in COEURS:
+            g = garde_de(m); M.update(x0=g[0], x1=g[1], z0=g[2], z1=g[3], coeur=list(COEURS[m]['coeur']), mode=COEURS[m]['mode'])
+        baie['morceaux'][m] = M
+    baie['bouts'] = bouts
     cs = baie['morceaux'].values()
     baie['cadre'] = {'x0': min(c['x0'] for c in cs) - 300, 'x1': max(c['x1'] for c in cs) + 300,
                      'z0': min(c['z0'] for c in cs) - 300, 'z1': max(c['z1'] for c in cs) + 300}

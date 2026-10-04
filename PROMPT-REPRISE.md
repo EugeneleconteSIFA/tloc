@@ -332,6 +332,36 @@ prod 26,5 s / 32 Mo → dev **20,6 s / 22,6 Mo**, et 16,2 s à la visite suivant
 Reste, par ordre de gain : l'envoi des textures (3,5 s — KTX2/Basis, il faut l'outil
 `basisu`), « sols » 1,8 s et `sdPoly` (1 s au profil), « quartier » 1,6 s (`tri`).
 
+**À faire dans `monde.js`** (noté le 2 octobre par la session de la Lozère, qui n'a pas le droit
+d'y écrire) : les chemins de `ruban()` sont INVISIBLES d'en haut dans tous les mondes (Aveyron,
+Pouilles, Thaïlande) — l'ordre `b, b+2, b+1` tourne leurs faces vers le bas et le matériau n'a
+qu'une face. Corriger en `b, b+1, b+2, b+1, b+3, b+2`, et mettre des sommets tous les mètres en
+travers (sinon la route s'enfonce sous un dos d'âne). `lozere.js` et `pouget.js` dessinent leurs
+rues eux-mêmes en attendant. Autre manque : `monde.js` ne sait pas recoudre plusieurs reliefs fins
+(Villefort a dû passer par `carte/mondes/recoudre-relief-lozere.py`).
+
+**À faire dans `monde.js`, suite** (noté le 2 octobre par la session de l'Aveyron, même raison) :
+`aveyron.js` bâtit lui-même son bâti, ses rues et ses arbres (le plan joué ne les passe plus à
+`monde.js`), parce que la recette commune 1) coiffe chaque emprise d'un toit sur son rectangle
+englobant — 152 toits sur 159 débordaient, 69 au-dessus d'un voisin (`bancs/lieu-aveyron.mjs`) ;
+la fiche découpe les emprises en ailes rectangulaires (un toit par aile, débord ramené à 0 au-dessus
+d'un voisin), à reprendre dans `batir()` pour tous les mondes ; 2) pose le plancher au point le plus
+haut de l'emprise (49 soubassements de plus de 1,5 m) ; 3) sème les arbres AVANT que le lieu ait
+bâti ce que lui fait `plus()`, d'où des arbres dans les maisons ; 4) ne varie pas la teinte du sol à
+grande échelle : le motif de `withered_grass` se répète vu d'avion, et la fiche ne peut rien y faire
+sans une patine dans le relief fin. Les crochets qui manquent : un `apresBati(ctx)` appelé avant les
+arbres, et une option `sol.patine`.
+
+**La Thaïlande resserrée (4 octobre)** : `thailande.html` se charge en 3,4 s (somme des étapes 2,6 s ;
+3,9 s avant), 1,33 M triangles contre 7,2 M, 6 700 instances de jungle contre 67 700, relief 677 Ko
+contre 1,1 Mo. Mesure : `bancs/lieu-thailande.mjs`, qui relève maintenant le chargement. À savoir :
+`engine.js` ne range la durée des étapes (`tloc_poids_charge`) qu'à partir de HUIT, et un monde de
+`monde.js` n'en a que six. `bancs/charge.mjs` ne voit donc rien sur les mondes, et
+`lieu-thailande.mjs` lit l'étiquette de la barre à la place. L'étape « Chargement… » (fetch du plan et
+du relief, puis `build()` du monde) fait 1,7 s à elle seule, sans sous-étapes : à découper dans
+`monde.js` si un monde grossit. Les autres pages des mondes n'ont pas de barre (`#loadbar`), seulement
+un rouet : thailande.html l'a reçue le 4 octobre ; aveyron, lozère, pouilles, à faire.
+
 ### E bis. Performance en jeu, suite possible
 
 **Unification des matériaux — faite le 24 septembre** (`unifierMateriaux()` dans
@@ -1229,6 +1259,40 @@ proximité, tloc-multi.js `coupsFleche`).
   on la déplace par `TLOC.player.pos`. Le poids réseau du banc varie de 35 à 42 Mo pour le
   même code : `response.body()` échoue parfois (le 1er, `Male_Ranger.bin` manquait au
   relevé alors que Lydéric le portait à l'écran). Juger le poids sur plusieurs passes.
+
+### Z. Les îles de Thaïlande resserrées (4 octobre) — **faites, vérifiées en rendu**
+
+Eugène : « c'est l'espace de balade qui est immense, pas la distance entre les îles ». Chaque île
+garde un cœur où l'on marche (`COEURS`, `carte/mondes/extraire-thailande.py`) : Ko Panyi 410 × 340,
+le grand piton 270 × 255, Railay 450 × 450 (l'isthme entre ses deux plages), Phi Phi 500 × 420 (Ton
+Sai entre ses deux baies, avec les pontons) ; Khao Phing Kan ne change pas. Les îles ne bougent pas
+les unes par rapport aux autres. Plans et reliefs complets d'avant : `carte/mondes/complet/`.
+- **Trois manières de finir une île.** `falaise` (Railay, Phi Phi) : rues et bâti coupés au cœur, une
+  garde de 120 m, puis la mer ; `recolter-relief-thailande.py` dresse une paroi de 24 m à `bord_coeur()`
+  du cœur (une ondulation de 0 à 16 m) ; `thailande.js` (`garde()`) bloque à `BORD()` + 3 m — la même
+  formule des deux côtés, à changer ensemble. `pilotis` (Ko Panyi) : le village coupé au cœur, la terre
+  plate aussi, rendue à l'eau ; le rocher reste entier. `ile` (le grand piton) : l'ellipse de l'île
+  passe juste au-delà des coins du cœur ; ses routes finissent dans la mer.
+- **Les bouts coupés sont dans le plan** (`PLAN.bouts` : x, z, direction, morceau). Le banc filme trois
+  rues coupées dans leur axe : chacune bute sur une paroi de calcaire et de jungle.
+- **Deux câbles déplacés.** Railay part du haut du sentier au sud du village (−587, 1920, 48 m).
+  Phi Phi part du **belvédère des moines** (2605, 1790, 131 m), au sommet d'un escalier ajouté au plan
+  (`ESCALIER`, quatre lacets à 32 m l'un de l'autre ; à 27 m, la grille de 10 m mêlait leurs
+  hauteurs). Le relief lui donne une pente constante (il n'est pas recalé sur Copernicus).
+- **Praticabilité 95,9 → 98,1 %** (Ko Panyi 97,4, Khao Phing Kan 100, le grand piton 97,1, Railay
+  98,7, Phi Phi 97,8), sur 7 400 points de chemin au lieu de 21 200. Le gain vient du relief : là
+  où deux chemins se croisaient, le premier imposait sa hauteur au nœud (des marches de 3 à 19 m). Le
+  nœud prend maintenant la moyenne pondérée des chemins, en deux passes. Restent 40 points bloqués à
+  Ko Panyi (une passerelle sous une maison, à (34, 26)) et 22 à Phi Phi (une rue sous un bâtiment, à
+  (2349, 1918)) : déjà là avant.
+- **Le disque gris du grand piton (corrigé le soir même, Eugène)** : la plaine de Kanchanaburi (23 m)
+  tombait toute à 2 m, un anneau de grève grise autour de l'île. Elle devient un flanc (2 m au bord,
+  16 m sous la colline), l'île plonge sur 8 % de son rayon au lieu de 18, l'ellipse est resserrée au
+  sud (le quai recalé en (985, 491)) et gardée large au nord (le temple y est à 43 m), et le sable
+  des grèves est réchauffé (`parois()`, thailande.js). Captures : `bancs/resultats/lieu-thailande-
+  2026-10-04-grand-piton-disque-avant.png` et `-apres.png`.
+- **Défauts vus et pas corrigés** : la vue d'ensemble de la baie est mangée par la brume
+  (`brume: [.., 260, 3200]`) ; deux 404 au chargement, sans requête visible (sans doute l'icône).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 

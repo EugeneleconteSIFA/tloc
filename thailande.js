@@ -6,7 +6,9 @@
 // porte de l'île), Khao Phing Kan et Ko Tapu (les pitons), Railay (les falaises et les
 // grottes), Phi Phi (Ton Sai), et le Wat Tham Suea, haussé en grand piton. Ils sont fondus
 // dans UNE baie inventée (carte/mondes/repere_thailande.py) ; les passeurs vont de l'une à
-// l'autre.
+// l'autre. Le 4 octobre, chaque île est ramenée à son cœur, quelques centaines de mètres autour
+// de ce qui sert (Eugène : « les îles sont trop grandes ») ; les plans complets d'avant sont dans
+// carte/mondes/complet/.
 // =====================================================================
 import { monde } from './monde.js';
 import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX } from './engine.js?v=41';
@@ -20,7 +22,7 @@ import * as PNJ from './pnj.js';
 const QUAIS = {
   panyi:  { nom: 'Ko Panyi, le village sur pilotis', ici: [118, 7.5], barque: [131, 9] },
   tapu:   { nom: 'Khao Phing Kan, les pitons', ici: [-701, 551], barque: [-689, 552] },
-  suea:   { nom: 'le grand piton', ici: [985, 458], barque: [995, 474] },
+  suea:   { nom: 'le grand piton', ici: [985, 491], barque: [993, 512] },      // la grève sud, recalée le 4 octobre (le flanc a remplacé la plaine)
   railay: { nom: 'Railay, les falaises', ici: [-656.6, 1529.5], barque: [-669, 1535] },
   phiphi: { nom: 'Phi Phi, l’isthme de Ton Sai', ici: [2187, 1927], barque: [2191, 1941] },
 };
@@ -112,7 +114,9 @@ function parois() {
         float paroi = smoothstep(0.82, 0.6, n.y);
         diffuseColor.rgb = mix(diffuseColor.rgb, r, paroi);
         float greve = smoothstep(3.2, 1.6, vMonde.y) * (1.0 - paroi) * step(-1.5, vMonde.y);
-        diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(tSable, vMonde.xz / 3.0).rgb * vec3(1.05, 1.0, 0.9), greve);`);
+        // le sable des plages de Phang Nga est clair et doré : le gravier tel quel était gris (le
+        // « disque gris » du grand piton, Eugène, 4 octobre)
+        diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(tSable, vMonde.xz / 3.0).rgb * vec3(1.32, 1.17, 0.9), greve);`);
   };
   m.customProgramCacheKey = () => 'sol-thailande';
   m.needsUpdate = true;
@@ -279,13 +283,16 @@ const VENDEURS = [];
 // SCENARIO.md § 12 : les moines font passer leurs vivres d'un sommet à l'autre sur des câbles,
 // avec une poulie. LA règle, tenue par la machine : on ne glisse que vers le BAS — un câble
 // dont l'arrivée n'est pas plus basse que le départ n'est pas posé. Le grand piton s'atteint
-// ainsi depuis le belvédère de Phi Phi (aucun passeur n'y accoste, dans l'histoire), et de lui
-// un câble immense plonge jusqu'au marché flottant. (La poulie du moine cuisinier viendra
+// ainsi depuis le belvédère des moines de Phi Phi (aucun passeur n'y accoste, dans l'histoire), et
+// de lui un câble immense plonge jusqu'au marché flottant. (La poulie du moine cuisinier viendra
 // avec le cloître ; d'ici là, la tyrolienne est libre.)
+// Les îles resserrées (4 octobre) : les anciens départs, le belvédère 2 de Phi Phi et celui de
+// Railay, sont hors des cœurs. Phi Phi part du haut de l'escalier des moines (extraire-thailande.py,
+// ESCALIER) ; Railay, du haut du sentier qui monte au sud du village.
 const CABLES = [
-  { nom: 'vers le grand piton', de: [2988, 1108], a: [976, 322] },          // belvédère 2 de Phi Phi (185 m) → le sommet du grand piton (~112 m), à côté du départ du câble suivant
-  { nom: 'vers le marché flottant', de: [972, 330], a: [96, 32] },          // le sommet, à côté du chedi (113 m) → les barques de Ko Panyi
-  { nom: 'vers la plage de Railay', de: [-239, 2012], a: [-650, 1534] },     // le belvédère de Railay (57 m) → Ao Rai Le
+  { nom: 'vers le grand piton', de: [2605, 1790], a: [976, 322] },          // le belvédère des moines, Phi Phi (~131 m) → le flanc du sommet du grand piton (~66 m), à côté du départ du câble suivant
+  { nom: 'vers le marché flottant', de: [972, 330], a: [96, 32] },          // le sommet, à côté du chedi (104 m) → les barques de Ko Panyi
+  { nom: 'vers la plage de Railay', de: [-587, 1920], a: [-650, 1534] },     // le haut du sentier de Railay (51 m) → Ao Rai Le
 ];
 const PENDU = 2.1;            // de la poulie aux pieds de Camille
 let GLISSE = null;
@@ -426,6 +433,30 @@ function animeHabitants(dt) {
   if (actif) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
 }
 
+// ---------- la garde : là où l'on ne passe plus ----------
+// Les îles sont ramenées à leur cœur (extraire-thailande.py, COEURS : PLAN.morceaux[m].coeur). Le
+// reste de l'île est une falaise (le relief la dresse à BORD() du cœur) ou de la jungle ; on y
+// bloque le passage à BORD() + 3 m — au pied de la falaise, pas avant, que la rue coupée y mène.
+// Posé APRÈS la jungle, qui évite ce qui est bloqué : la garde garde ses arbres.
+const BORD = (x, z) => 8 + 4 * (Math.sin(x / 23) + Math.sin(z / 17 + 1.3));     // la même que bord_coeur(), recolter-relief-thailande.py
+function garde({ hauteur, inscrire, PLAN }) {
+  const pas = 4;
+  for (const M of Object.values(PLAN.morceaux || {})) {
+    if (!M.coeur || M.mode === 'ile') continue;          // le grand piton : la mer fait la limite
+    const [cx0, cx1, cz0, cz1] = M.coeur;
+    const hors = (x, z) => Math.hypot(Math.max(cx0 - x, 0, x - cx1), Math.max(cz0 - z, 0, z - cz1)) > BORD(x, z) + 3 && hauteur(x, z) > 0.2;
+    // par rangées de 4 m, les cases bloquées bout à bout ne font qu'un rectangle
+    for (let z = M.z0; z < M.z1; z += pas) {
+      let debut = null;
+      for (let x = M.x0; x <= M.x1; x += pas) {
+        const b = x < M.x1 && hors(x + pas / 2, z + pas / 2);
+        if (b && debut === null) debut = x;
+        if (!b && debut !== null) { inscrire([[debut, z], [x, z], [x, z + pas], [debut, z + pas]], (debut + x) / 2, z + pas / 2); debut = null; }
+      }
+    }
+  }
+}
+
 // ---------- la pluie suspendue ----------
 // Des gouttes immobiles autour de Camille : un pavé de 40 m répété en 3 × 3 × 2, recalé tous
 // les 40 m — la même goutte reste au même endroit du monde, elle ne suit pas Camille.
@@ -497,7 +528,7 @@ monde({
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
     // sans ça, les parois tournées au nord sont noires
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
-    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx); marche(ctx); tyroliennes(ctx);
+    parois(ctx); jungle(ctx); pilotis(ctx); templesThai(ctx); koTapu(ctx); chedi(ctx); passeurs(ctx); pluie(ctx); placerPluie(); habitants(ctx); marche(ctx); tyroliennes(ctx); garde(ctx);
   },
   anime(now) {
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
