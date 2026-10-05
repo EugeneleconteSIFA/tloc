@@ -91,6 +91,11 @@ la ville), la lanterne. Il ouvre *La ronde de Désiré* (quête secondaire).
 Le gardien : « L'escalier est derrière l'autel. » Dans la chapelle, la dalle derrière l'autel
 s'ouvre sur un escalier ; avec la lanterne, on descend : les galeries.
 
+**Codé le 5 octobre (B2)** : la dalle (`chapelle.js`) propose « descendre dans la crypte » quand on
+a la lanterne ; un mot, puis `passerActe1('souterrains')` et les galeries, au pied de l'escalier de
+la crypte (case 17 ; 7 du plan de `cave.js`, dans la contre-mine). L'escalier se remonte : on
+reparaît dans la chapelle à côté de la dalle, sans le plan d'entrée par le portail.
+
 ### 8. Les souterrains
 
 Les galeries de Vauban existent (`cave.html` : rats, chauves-souris, fosses, levier, grille,
@@ -98,6 +103,33 @@ Rat-Roi). Elles changent de rôle : Eugène n'y est plus (il est au donjon) ; **
 Bastien** près de la citerne ; **l'arc** au fond du puits aux chauves-souris (le coffre
 actuel) ; la grille au levier qu'on touche **à l'arc** ; **le Rat-Roi** avale la clé de la
 porte secrète (« une flèche dans les tonneaux pendus ») ; la sortie par la poterne.
+
+**Codé le 5 octobre (B2)**, tout dans `cave.js`, et seulement pour une partie de l'acte I (la
+cave lit `prologueFait` dans la sauvegarde avant de bâtir : une ancienne partie garde la vanne, la
+cage et Eugène) :
+- **le chemin** : l'escalier de la crypte (contre-mine) → **la citerne** et **Bastien** (fantôme
+  translucide ; la première fois, il interpelle : « Halte ! ») → à droite après la citerne, le
+  goulet qui monte à la salle voûtée → **le puits aux chauves-souris** (le puits de lumière de la
+  salle : chauves-souris pendues, deux de plus en vol) et le coffre de l'intendant : **l'arc**
+  (`passerActe1('arc')`, et `bowChest` : l'arc de la place d'Armes n'est plus à prendre) →
+  **le levier**, scellé à 3 m sur le refend de la grille : une flèche le fait basculer → les
+  fosses → **le terrier** : trois trous au pied du mur est, le Rat-Roi y montre le museau
+  (intouchable : `caged`, et sa position hors du plan pour que la visée ne le vise pas), trois
+  tonneaux pendus à une même corde au-dessus → une flèche, ils tombent devant les trous, le Rat-Roi
+  sort → vaincu, il recrache **la clé de la poterne** (`state.clePoterne`) → retour à l'entrée :
+  **la porte de la poterne** en haut des marches (« Fermé à clé. » sans la clé) → elle s'ouvre
+  sur le jour : `state.galleryOpen` (la grille de la poterne, côté place, s'ouvre aussi),
+  `passerActe1('citadelle')`, et la citadelle, devant la poterne.
+- **les billets d'Eugène** n° 2 (au pied du puits de l'arc) et n° 3 (juste passé la grille, avant
+  le Rat-Roi) ; lus, ils s'inscrivent dans `state.billets` (`{ 2: true, 3: true }`).
+- **le trône du Rat-Roi**, sous la voûte effondrée : la planche gravée (une tour, des cloches, une
+  grande silhouette).
+- les répliques de Bastien suivent l'étape (`souterrains`, `arc`, puis `citadelle` dès qu'on a la
+  clé) ; ses indices posent `state.ind.bastien` et `state.ind.ratRoi` (le journal de Lille peut
+  les reprendre : `INDICES`, `quetes.js`).
+- **le levier et les tonneaux arrêtent les flèches** (`arrowBlocked`) : le point rouge de la
+  visée s'y pose, ce qui dit qu'on les vise ; la fenêtre en hauteur est large, la flèche partie
+  à hauteur d'épaule (sans la souris) touche aussi.
 
 ### 9. La citadelle
 
@@ -145,6 +177,7 @@ porte de lumière s'ouvre, il y entre avec Eugène. Camille le suit : l'île du 
 | 3 | codée en partie (répliques d'Émile et du pêcheur, la canne donnée) ; **les vers ne se ramassent pas encore** |
 | 4 | à faire (la pêche) |
 | 5 – 10 | à faire. **Eugène a autorisé le 2 octobre** : `tavern.js`, `atlas.js`, `engine.js`, `house.js`, `chapelle.js`, `cave.js` |
+| 7, 8 | **codées, jouées en headless de bout en bout** (5 octobre, B2 : `bancs/acte1-souterrains.mjs` : 26 pas sur 28, les deux autres sont le défaut ci-dessous ; une capture par moment clé) : la crypte, Bastien, l'arc, le levier, le Rat-Roi, la clé, la porte de la poterne ; l'ancienne histoire intacte. **Un défaut hors B2** : avec l'arc en poche, la page de la citadelle se fige au chargement (`loadGame`, engine.js:2687, écrit dans le `bowBack` que la Camille riggée n'a pas) — `cave.js` et `chapelle.js` s'en gardent, `index.html` non |
 
 ## Bilan du 2 octobre au soir — arrêté en cours d'étape 2, à reprendre ici
 

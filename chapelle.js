@@ -17,6 +17,7 @@ import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, phMat, stoneMat, IR
   world, addCap, addBox, addPlatform, makeTorch, SFX, state, player,
   addInteract, showMessage, saveGame, goToLevel, bootLevel, minimapDots, makeSky, dialogue } from './engine.js?v=41';
 import { TOWN, townWorld } from './carte.js';
+import { passerActe1 } from './etat.js';
 
 const HW = 6.2, HD = 9.95, HM = 9.6, FAITE = 12.4;   // demi-largeur, demi-profondeur, hauteur des murs, faîtage
 const AR = 5.75, AZ = -HD;                            // abside : rayon et centre
@@ -30,6 +31,12 @@ const [SX, SZ] = townWorld(-1.5, -13.0);
 const EXIT = { level: 'citadel', pos: [SX, 0, SZ], yaw: -TOWN.a };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 let cierges = [], lustres = [], rais = [];
+// LA DESCENTE (acte I, étape 7) : le pied de l'escalier de la crypte dans les galeries — la
+// case (17 ; 7) du plan de cave.js, en mètres de la cave, Camille tournée vers la galerie.
+// Constante à reporter si le plan des galeries bouge (CRYPTE, cave.js).
+const CAVE_CRYPTE = [51, 0, 22.4];
+// remonté des galeries : on reparaît à côté de la dalle, pas au portail (cf. onLoad)
+let depuisCrypte = false;
 
 // ---------------------------------------------------------------------
 //  Vitrail : un vrai verre coloré au plomb, fabriqué au canvas
@@ -253,7 +260,7 @@ function build() {
       const ann = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 16), IRON()); ann.rotation.x = Math.PI / 2; ann.position.set(tx, CH + 0.1, tz + 0.25); scene.add(ann);
       // le joint noir autour de la dalle : l'air froid qui remonte se devine
       const joint = mesh(boxG(1.38, 0.02, 1.08), mat(0x0a0806, { roughness: 1 }), tx, CH + 0.005, tz); scene.add(joint);
-      addInteract({ pos: V(tx, CH, tz), r: 1.8, prompt: () => (state.prologueFait ? 'soulever la dalle de la crypte' : 'regarder la dalle'),
+      addInteract({ pos: V(tx, CH, tz), r: 1.8, prompt: () => (!state.prologueFait ? 'regarder la dalle' : state.lanterne ? 'descendre dans la crypte' : 'soulever la dalle de la crypte'),
         fn: () => {
           if (!state.prologueFait) { dialogue([{ text: 'Une dalle à anneau, scellée par la poussière. Personne ne l’a soulevée depuis longtemps.' }]); return; }
           if (!state.lanterne) {
@@ -261,7 +268,12 @@ function build() {
             dialogue([{ text: 'Camille soulève la dalle. Des marches s’enfoncent dans un noir complet ; un air froid remonte.' },
               { who: 'Camille', text: '« Trop sombre. Il me faudrait une lumière. »' }], () => { if (neuf) showMessage('Lydéric saura peut-être où trouver une lumière.', 5); });
             return; }
-          showMessage('La lanterne éclaire les marches… (la descente aux souterrains arrive bientôt)', 5);
+          // la lanterne en main : les marches mènent aux galeries de Vauban, sous la ville.
+          // L'étape avance AVANT goToLevel, qui sauvegarde : la cave lit l'acte dans la sauvegarde.
+          dialogue([{ text: 'La lanterne de Désiré éclaire les marches. Elles descendent loin, sous la ville, vers la citadelle.' }], () => {
+            passerActe1(state, 'souterrains');
+            goToLevel('cave', CAVE_CRYPTE, 0, 'Camille descend sous la ville…');
+          });
         } }); }
     addInteract({ pos: V(0, 0, az2 + 2.4), r: 2.6, prompt: () => "lire le retable",
       fn: () => dialogue([
@@ -389,9 +401,15 @@ const level = {
   name: 'chapelle', musique: 'chapelle', getH: () => 0, zoneName: () => 'Chapelle Saint-Roch', build, populate, animate, minimap,
   counts: () => `<small>La chapelle Saint-Roch — le retable, la plaque de la garnison et les cierges se lisent (Entrée). Le portail, derrière toi, pour ressortir.</small>`,
   start: () => showMessage('Il fait frais. La lumière des vitraux traverse la nef en biais et tombe sur les dalles.', 5),
-  arriveMessage: () => 'La chapelle Saint-Roch.',
-  entry: () => ({ title: 'La chapelle Saint-Roch', sub: 'Au bout de la rue nord', cam: [PX + 1.2, 2.2, HD - 3.6], at: [0, 3.0, AZ + 1.6], cam2: [0.4, 3.6, 2.0], at2: [0, 2.6, AZ + 1.6], dur: 4.5 }),
+  // startGame appelle onLoad AVANT de lire puis d'effacer « d'où l'on arrive » : c'est ici qu'on le retient
+  onLoad: () => { depuisCrypte = sessionStorage.getItem('tloc_arrive') === 'cave'; },
+  arriveMessage: () => depuisCrypte ? 'Camille remonte de la crypte. La chapelle est vide.' : 'La chapelle Saint-Roch.',
+  // remontant de la crypte, on est déjà dedans, derrière l'autel : pas de plan d'entrée par le portail
+  entry: () => depuisCrypte ? null : ({ title: 'La chapelle Saint-Roch', sub: 'Au bout de la rue nord', cam: [PX + 1.2, 2.2, HD - 3.6], at: [0, 3.0, AZ + 1.6], cam2: [0.4, 3.6, 2.0], at2: [0, 2.6, AZ + 1.6], dur: 4.5 }),
   onKill: () => {},
 };
 await PNJ.installerCamille(PNJ_E);
+// on remonte de la crypte avec l'arc des galeries : la Camille riggée n'a pas d'arc dans le dos,
+// et loadGame (engine.js) y écrit — l'exception figeait la page (cf. cave.js, même garde)
+if (!player.mesh.userData.bowBack) player.mesh.userData.bowBack = new THREE.Object3D();
 bootLevel(level, null);

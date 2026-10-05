@@ -4,9 +4,10 @@ import * as PNJ from './pnj.js';
 import { THREE, clamp, lerp, rand, TAU, distSeg, scene, camera, G, T, mat, pbr, pbrRepeat, phMat, patiner, uvMeters, makeCanvas, tex, stoneMat, IRON, GOLD, hemi, sun, renderer, bloom,
   mesh, boxG, sphG, capG, world, addCap, addBox, getH, blocked, makeChest, makeGrille, makeTorch, makeLever, SFX, state, player, enemies, pickups,
   spawnEnemy, spawnPickup, spawnGaufre, addInteract, showMessage, burst, saveGame, goToLevel, bootLevel, minimapDots, damagePlayer,
-  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey } from './engine.js?v=41';
+  cut, cutscene, dialogue, followActor, makePrince, makeCage, makeKey, readSave, arrows } from './engine.js?v=41';
 import * as LOOK from './look.js';
 import * as BOURSE from './bourse.js';
+import { passerActe1, atteintActe1 } from './etat.js';
 LOOK.veiller();
 
 // =====================================================================
@@ -47,6 +48,34 @@ const V4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const V8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 let cage = null, prince = null, cagePos = null;
 let gate, gateCap, lever, chest, startPos, lantern, lastSafe = new THREE.Vector3(3, 0, 3), torches = [];
+
+// =====================================================================
+//  L'ACTE I (STORY.md ; docs/DECOUPAGE-ACTE1.md, étapes 7 et 8)
+// =====================================================================
+// Les galeries changent de rôle. On y descend par la crypte de la chapelle Saint-Roch, la
+// lanterne de Désiré en main, et on en sort par la poterne, dans la citadelle. Eugène n'y est
+// plus (Phinaert le tient au donjon) : à sa place, le fantôme de Bastien près de la citerne,
+// l'arc au fond du puits aux chauves-souris, un levier hors d'atteinte qu'on touche à l'arc,
+// et le Rat-Roi, caché dans ses trous, qui a avalé la clé de la poterne.
+// Une ancienne sauvegarde (sans prologueFait) garde l'ancienne histoire : la vanne, la cage.
+// On lit la SAUVEGARDE et pas `state` : build() et populate() passent avant que startGame ne
+// la charge, et les deux histoires ne bâtissent ni ne peuplent les mêmes galeries — or la
+// sauvegarde retrouve les monstres par leur rang : l'ordre de ponte ne doit pas changer d'une
+// visite à l'autre. On n'arrive ici que par goToLevel, qui vient de sauvegarder.
+const ACTE1 = (() => { const d = readSave(); return !!(d && d.flags && d.flags.prologueFait); })();
+const CRYPTE = [17, 7];                 // pied de l'escalier de la crypte (chapelle.js, CAVE_CRYPTE)
+const CITERNE = [36, 25.5];             // dans la contre-mine, entre les quatre étais du milieu
+const BASTIEN = [39.7, 24.4];           // au coin de la citerne, tourné vers l'escalier de la crypte
+const PUITS_ARC = [36, 9];              // le puits de la salle voûtée (case o en 12 ; 3) : les chauves-souris y nichent
+// Le levier de la grille : scellé sur le refend, côté salle, au-dessus du cordon. On ne le
+// tire pas, on le touche d'une flèche — c'est ce qui donne l'arc à faire dans les galeries.
+const LEVIER_HAUT = [49.2, 3.0, 6.0];
+const TROUS = [12, 15, 18];             // les trous du Rat-Roi, au pied du mur est des fosses (x = 88,5)
+const TONNEAUX_X = 87.2, TONNEAUX_Y = 3.0;
+const CACHE = new THREE.Vector3(500, 0, 500);   // le Rat-Roi terré : hors du plan, sinon la visée de l'arc le vise dans son trou
+let coffreArc = null, porteSecrete = null, bastien = null, ratRoi = null, arrivee = null, tonneauxCorde = null;
+const tonneaux = [];
+let peekT = 2, peekTrou = 0, terrierDit = false;
 
 // Élévations de la galerie. Le berceau a exactement la demi-largeur du couloir :
 // il retombe sur le cordon d'imposte, à 3,30 m, et sa clé est à 4,80 m. La caméra
@@ -417,7 +446,7 @@ function build() {
       poserTorche(c, r, 0, 1, 'flamme', x - 0.55, z + 1.32);
       { const pl = mesh(new THREE.PlaneGeometry(1.4, 0.42), plaqueMat('GALERIE DES FOSSES', null), x - 0.36, 2.9, z); pl.rotation.y = -Math.PI / 2; scene.add(pl);
         const cd = mesh(new THREE.BoxGeometry(1.56, 0.56, 0.07), M.pierre, x - 0.31, 2.9, z); cd.rotation.y = -Math.PI / 2; scene.add(cd); }
-    } else if (t === 'L') {
+    } else if (t === 'L' && !ACTE1) {           // à l'acte I, le levier est là-haut, près de la grille (batirActe1)
       lever = makeLever(); lever.position.set(x, 0, z + 1.0); scene.add(lever);
       scene.add(mesh(new THREE.BoxGeometry(1.5, 0.35, 1.5), M.pierre, x, 0.17, z + 1.0));
       scene.add(mesh(new THREE.BoxGeometry(0.22, 2.6, 0.22), M.fer, x - 0.62, 1.3, z + 1.0));
@@ -429,7 +458,10 @@ function build() {
       // de la galerie derrière la cage — on n'y va que si on fouille
       // (le plan n'a qu'une case « C » : ils ne sont posés qu'une fois)
       BOURSE.petitCoffre('galerie-contremine', 1 * TS, 0, 10 * TS, 18, Math.PI / 2, 0.75);
-      BOURSE.petitCoffre('galerie-cage', 29 * TS, 0, 5 * TS, 20, -Math.PI / 2, 0.75);
+      // à l'acte I, il n'y a plus de cage, et ce coin est le terrier du Rat-Roi : le coffre
+      // remonte de deux dalles, sinon il bouche le trou du milieu et prend les flèches
+      if (ACTE1) BOURSE.petitCoffre('galerie-cage', 29 * TS, 0, 2.5 * TS, 20, -Math.PI / 2, 0.75);
+      else BOURSE.petitCoffre('galerie-cage', 29 * TS, 0, 5 * TS, 20, -Math.PI / 2, 0.75);
       chest = makeChest(); chest.position.set(x, 0, z); scene.add(chest); addCap(x, z, x, z, 0.9);
       scene.add(mesh(new THREE.BoxGeometry(2.5, 0.34, 2.5), M.pierre, x, 0.17, z));
       scene.add(mesh(new THREE.BoxGeometry(2.1, 0.18, 2.1), M.pierre, x, 0.42, z));
@@ -439,6 +471,9 @@ function build() {
         halo(x + dx, 1.14, z + dz, 0.44, 0.35);
       }
       chest.userData.glow.distance = 11; chest.userData.glow.color.setHex(0xffd080);
+    } else if (t === 'E' && ACTE1) {
+      // Eugène n'est plus là : la voûte effondrée reste, et son jour tombe sur le trône du Rat-Roi
+      puitsDeLumiere(x, z, { r: 0.82, h: 4.4, eboule: true, fort: true, evase: 2.9 });
     } else if (t === 'E') {
       cagePos = new THREE.Vector3(x, 0, z);
       cage = makeCage(1.4, 3.2); cage.position.set(x, 0, z); scene.add(cage); addCap(x, z, x, z, 1.5, 3.5);
@@ -475,7 +510,8 @@ function build() {
   poserPlaque('CONTRE-MINE', 'bas', 4, 4, 0, 1);
   poserPlaque('IMPASSE', null, 3, 4, 0, 1);
   poserPlaque('SALLE VOÛTÉE', 'haut', 10, 6, -1, 0);    // au goulet qui remonte vers la nef
-  poserPlaque('VANNE N° 4', null, 15, 10, 0, 1);        // au-dessus du levier
+  if (!ACTE1) poserPlaque('VANNE N° 4', null, 15, 10, 0, 1);        // au-dessus du levier
+  else poserPlaque('SAINT-ROCH', 'haut', CRYPTE[0] - 1, CRYPTE[1], 0, -1);   // l'escalier de la crypte, à côté
 
   // ---------- détails : ossements, futailles, chaînes ----------
   for (let i = 0; i < 14; i++) {
@@ -501,6 +537,7 @@ function build() {
     }
   }
   creerGouttes();
+  if (ACTE1) batirActe1();
 }
 
 // ---------------------------------------------------------------------
@@ -519,10 +556,39 @@ function escalierDeSortie(x, z) {
   for (const sx of [-1, 1]) scene.add(mesh(new THREE.BoxGeometry(0.28, 2.5, 0.5), M.pierre, x + sx * 1.35, 1.25, z - 1.25));
   const jour = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.6), MAT.jour); jour.position.set(x, 2.5, z - 3.9); jour.rotation.x = -0.35; scene.add(jour);
   const l = new THREE.PointLight(0xbfd6ff, 9, 17, 1.45); l.position.set(x, 3.1, z - 2.4); scene.add(l);
-  addInteract({ pos: new THREE.Vector3(x, 0, z), r: 2.2, prompt: () => 'remonter à la surface',
+  // L'ACTE I : en haut des marches, la porte de la poterne — la « porte secrète » de la
+  // citadelle, celle dont le Rat-Roi a avalé la clé. Le jour passe dessous. Une porte et non
+  // une grille : on ne doit pas voir la place d'Armes avant d'y avoir gagné le droit.
+  if (ACTE1) {
+    porteSecrete = new THREE.Group(); porteSecrete.position.set(x - 1.25, 0, z - 1.38); porteSecrete.userData.dynamic = true; scene.add(porteSecrete);
+    porteSecrete.add(mesh(new THREE.BoxGeometry(2.5, 3.5, 0.12), M.planche, 1.25, 2.1, 0));
+    for (const yy of [0.9, 2.1, 3.3]) porteSecrete.add(mesh(new THREE.BoxGeometry(2.4, 0.13, 0.05), M.fer, 1.25, yy, 0.08));
+    porteSecrete.add(mesh(new THREE.BoxGeometry(0.3, 0.42, 0.08), M.fer, 2.2, 1.9, 0.09));   // la serrure
+    // derrière la porte, le jour (la volée s'enfonce dans le mur plein, cf. escalierDeLaCrypte)
+    const [cv, g] = makeCanvas(16, 128), gr = g.createLinearGradient(0, 128, 0, 0);
+    gr.addColorStop(0, '#5a6270'); gr.addColorStop(0.5, '#b8c8e0'); gr.addColorStop(1, '#f4f8ff');
+    g.fillStyle = gr; g.fillRect(0, 0, 16, 128);
+    scene.add(mesh(new THREE.PlaneGeometry(2.45, 3.8), new THREE.MeshBasicMaterial({ map: tex(cv, 1) }), x, 1.9, z - 1.47));
+  }
+  addInteract({ pos: new THREE.Vector3(x, 0, z), r: 2.2,
+    prompt: () => !ACTE1 || state.galleryOpen ? 'remonter à la surface' : state.clePoterne ? 'ouvrir la porte de la poterne' : 'la porte de la poterne',
     // POTERNE = (27, 31) × ECH 4,5 = (121,5 ; 139,5) ; l'interaction de citadelle.js
     // est 3,6 m à l'ouest de son centre. Constante à reporter si l'échelle rebouge.
-    fn: () => goToLevel('citadel', [117.9, 0, 139.5], -Math.PI / 2, 'Retour vers la lumière du jour…') });
+    fn: () => { if (ACTE1 && !state.galleryOpen) { ouvrirPoterne(); return; }
+      goToLevel('citadel', [117.9, 0, 139.5], -Math.PI / 2, 'Retour vers la lumière du jour…'); } });
+}
+// La porte de la poterne (acte I). Ouverte, elle ouvre aussi la grille de la poterne côté
+// citadelle (state.galleryOpen, lu par quetes.js) : on peut redescendre par là.
+function ouvrirPoterne() {
+  if (!state.clePoterne) {
+    dialogue([{ text: 'Une porte de chêne bardée de fer, en haut des marches. Le jour passe dessous. La serrure est énorme.' },
+      { who: 'Camille', text: '« Fermé à clé. »' }]);
+    return;
+  }
+  state.galleryOpen = true; passerActe1(state, 'citadelle'); saveGame(true);
+  SFX.pickup(); setTimeout(() => SFX.stomp(), 350);
+  showMessage('La clé du Rat-Roi tourne dans la serrure. La porte s’ouvre sur le jour : la citadelle.', 4);
+  setTimeout(() => goToLevel('citadel', [117.9, 0, 139.5], -Math.PI / 2, 'Camille sort dans la citadelle…'), 1600);
 }
 
 // Puits de lumière : un évent maçonné qui monte vers le terre-plein, sa grille, son
@@ -727,6 +793,214 @@ function creerGouttes() {
   }
 }
 
+// ---------------------------------------------------------------------
+//  L'acte I : ce qu'on bâtit en plus (rien de tout ça dans l'ancienne histoire)
+// ---------------------------------------------------------------------
+function batirActe1() {
+  const M = MAT;
+  escalierDeLaCrypte(CRYPTE[0] * TS, CRYPTE[1] * TS);
+  citerne(...CITERNE);
+
+  // LE PUITS AUX CHAUVES-SOURIS : le puits de lumière de la salle, où elles nichent tête en
+  // bas ; au fond, le coffre de l'intendant. Le jour qui tombe dessus le désigne de loin.
+  { const [x, z] = PUITS_ARC;
+    coffreArc = makeChest(); coffreArc.position.set(x, 0, z + 0.6); scene.add(coffreArc); addCap(x, z + 0.6, x, z + 0.6, 0.9);
+    coffreArc.userData.glow.distance = 9; coffreArc.userData.glow.color.setHex(0xffd080);
+    const noir = mat(0x1c1714, { roughness: 1 });
+    for (let i = 0; i < 9; i++) {                      // pendues au conduit, ailes repliées
+      const a = rand(0, TAU), y = SPRING + 1.4 + rand(0, 3.2), bx = x + Math.cos(a) * 0.66, bz = z + Math.sin(a) * 0.66;
+      const corps = mesh(sphG(0.08, 6), noir, bx, y, bz); corps.scale.set(1, 1.7, 1); scene.add(corps);
+      const ai = mesh(new THREE.ConeGeometry(0.1, 0.26, 4), noir, bx, y + 0.02, bz); ai.rotation.x = Math.PI; scene.add(ai);
+    }
+    for (let i = 0; i < 7; i++) {                       // le guano et les os autour du coffre
+      const os = mesh(capG(0.05, rand(0.3, 0.6), 6), M.os, x + rand(-1.6, 1.6), 0.06, z + rand(-1.4, 1.8));
+      os.rotation.set(Math.PI / 2, 0, rand(0, TAU)); scene.add(os);
+    }
+    billet(x + 1.5, z - 1.1, 2, '« Une salle ronde, une dalle gravée. Il y a posé ma main. Rien ne s’est passé. Il a ri quand même. »');
+  }
+
+  // LE LEVIER DE LA GRILLE, hors d'atteinte : sur une console de pierre, au-dessus du cordon
+  { const [x, y, z] = LEVIER_HAUT;
+    lever = makeLever(); lever.position.set(x, y, z); scene.add(lever);
+    scene.add(mesh(new THREE.BoxGeometry(0.62, 0.3, 0.8), M.pierre, x + 0.04, y - 0.15, z));
+    scene.add(mesh(new THREE.BoxGeometry(0.3, 0.34, 0.5), M.pierre, x + 0.12, y - 0.45, z));
+    // la tringle qui court du levier au haut de la grille : elle dit à quoi il sert
+    scene.add(mesh(new THREE.BoxGeometry(0.06, 0.06, 2.9), M.fer, x + 0.22, y + 0.3, z + 1.45));
+    addInteract({ pos: new THREE.Vector3(x - 1.2, 0, z), r: 2.0, enabled: () => !state.caveLever, prompt: () => 'regarder le levier',
+      fn: () => dialogue([{ text: 'Le levier de la grille est scellé haut dans le mur, au-dessus du cordon de pierre. Même en sautant, la main n’y arrive pas.' }]) });
+  }
+
+  // LE TERRIER DU RAT-ROI : trois trous au pied du mur est des fosses, et au-dessus, trois
+  // tonneaux pendus à la même corde. Une flèche dans les tonneaux : ils tombent devant les trous.
+  for (const tz of TROUS) {
+    const tr = new THREE.Mesh(new THREE.CircleGeometry(0.78, 14, 0, Math.PI), M.noir); tr.position.set(88.25, 0, tz); tr.rotation.y = -Math.PI / 2; scene.add(tr);
+    for (let i = 0; i < 9; i++) { const a = rand(0.05, Math.PI - 0.05), r = rand(0.8, 1.05);
+      const c = mesh(new THREE.DodecahedronGeometry(rand(0.1, 0.22), 0), M.caillou, 88.3 - rand(0, 0.35), Math.sin(a) * r * 0.9, tz + Math.cos(a) * r);
+      c.rotation.set(rand(0, TAU), rand(0, TAU), 0); scene.add(c); }
+    for (let i = 0; i < 3; i++) { const os = mesh(capG(0.05, rand(0.3, 0.55), 6), M.os, 87.4 + rand(-0.6, 0.3), 0.06, tz + rand(-1, 1)); os.rotation.set(Math.PI / 2, 0, rand(0, TAU)); scene.add(os); }
+    const g = new THREE.Group(); g.position.set(TONNEAUX_X, TONNEAUX_Y, tz); g.userData.dynamic = true; scene.add(g);
+    g.add(mesh(new THREE.CylinderGeometry(0.46, 0.42, 1.05, 12), M.bois, 0, 0, 0));
+    for (const yy of [-0.3, 0.3]) g.add(mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 14), M.fer, 0, yy, 0).rotateX(Math.PI / 2));
+    g.userData.vy = 0; g.userData.rz = rand(-0.5, 0.5);
+    tonneaux.push(g);
+  }
+  { // la corde commune : un bout le long des trois anneaux, et les trois suspentes
+    tonneauxCorde = new THREE.Group(); tonneauxCorde.userData.dynamic = true; scene.add(tonneauxCorde);
+    const chanvre = mat(0x8a7656, { roughness: 1 });
+    tonneauxCorde.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, TROUS[2] - TROUS[0] + 1.6, 5), chanvre, TONNEAUX_X, CLEF - 0.45, (TROUS[0] + TROUS[2]) / 2).rotateX(Math.PI / 2));
+    for (const tz of TROUS) tonneauxCorde.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, CLEF - 0.45 - TONNEAUX_Y - 0.5, 5), chanvre, TONNEAUX_X, (CLEF - 0.45 + TONNEAUX_Y + 0.5) / 2, tz));
+  }
+
+  // LE TRÔNE DU RAT-ROI, sous la voûte effondrée : un tas de rebuts, une planche gravée
+  { const x = 86.4, z = 3.6;
+    for (let i = 0; i < 14; i++) { const b = mesh(new THREE.BoxGeometry(rand(0.5, 1.2), 0.07, rand(0.12, 0.2)), M.bois, x + rand(-0.8, 0.8), rand(0.05, 0.6), z + rand(-0.7, 0.7));
+      b.rotation.set(rand(-0.4, 0.4), rand(0, TAU), rand(-0.4, 0.4)); scene.add(b); }
+    for (let i = 0; i < 6; i++) { const os = mesh(capG(0.05, rand(0.3, 0.6), 6), M.os, x + rand(-1, 1), 0.08, z + rand(-1, 1)); os.rotation.set(Math.PI / 2, 0, rand(0, TAU)); scene.add(os); }
+    const pl = mesh(new THREE.PlaneGeometry(0.9, 1.15), new THREE.MeshStandardMaterial({ map: dessinGratte(), roughness: 0.95 }), x + 0.9, 0.85, z - 0.25);
+    pl.rotation.set(-0.12, -Math.PI / 2 + 0.25, 0); scene.add(pl);
+    addCap(x, z, x, z, 0.9);
+    addInteract({ pos: new THREE.Vector3(x - 0.6, 0, z + 1.2), r: 1.9, prompt: () => 'regarder le trône du Rat-Roi',
+      fn: () => dialogue([{ text: 'Un tas de planches, d’os et de cuillères volées. Sur une planche, un dessin gratté : une tour, des cloches pendues, et une grande silhouette dessous.' },
+        { who: 'Camille', text: '« … »' }]) });
+  }
+  // avant le Rat-Roi, juste passé la grille
+  billet(54.6, 9.8, 3, '« Il parle au mur. Il dit “mille ans”, “l’ermite”, “les autres cloches”. Je note tout, au cas où. »');
+}
+
+// L'escalier de la crypte : la même volée que celle de la poterne, mais c'est la lueur des
+// cierges de la chapelle qui tombe d'en haut, pas le jour.
+function escalierDeLaCrypte(x, z) {
+  const M = MAT;
+  for (let k = 0; k < 6; k++) {
+    scene.add(mesh(new THREE.BoxGeometry(2.5, 0.34, 0.62), M.pierre, x, 0.17 + k * 0.32, z - 0.55 - k * 0.56));
+    scene.add(mesh(new THREE.BoxGeometry(2.5, 0.06, 0.1), M.pierre, x, 0.35 + k * 0.32, z - 0.86 - k * 0.56));
+  }
+  scene.add(mesh(new THREE.TorusGeometry(1.35, 0.24, 8, 18, Math.PI), M.pierre, x, 2.5, z - 1.25));
+  for (const sx of [-1, 1]) scene.add(mesh(new THREE.BoxGeometry(0.28, 2.5, 0.5), M.pierre, x + sx * 1.35, 1.25, z - 1.25));
+  // la volée s'enfonce dans le mur plein : dans l'arc, une lueur posée contre la maçonnerie
+  // tient lieu de cage d'escalier — sans elle on voyait un mur de brique au bout des marches
+  { const [cv, g] = makeCanvas(16, 128), gr = g.createLinearGradient(0, 128, 0, 0);
+    gr.addColorStop(0, '#2a1608'); gr.addColorStop(0.55, '#7a4a1c'); gr.addColorStop(1, '#d89048');
+    g.fillStyle = gr; g.fillRect(0, 0, 16, 128);
+    const lueur = new THREE.Mesh(new THREE.PlaneGeometry(2.45, 3.8), new THREE.MeshBasicMaterial({ map: tex(cv, 1) })); lueur.position.set(x, 1.9, z - 1.47); scene.add(lueur); }
+  const l = new THREE.PointLight(0xffb070, 7, 14, 1.5); l.position.set(x, 3.0, z - 2.2); scene.add(l);
+  addInteract({ pos: new THREE.Vector3(x, 0, z), r: 2.2, prompt: () => 'remonter à la chapelle',
+    // à côté de la dalle de la crypte, sur le chœur de la chapelle (chapelle.js)
+    fn: () => goToLevel('chapelle', [2.7, 0.44, -7.2], 0, 'Camille remonte vers la chapelle…') });
+}
+
+// La citerne de la contre-mine : un bassin de pierre où l'eau des galeries finit par dormir.
+// C'est le repère de Bastien (« à droite après la citerne »).
+function citerne(x, z) {
+  const M = MAT, L = 4.4, P = 3.0, H = 0.85, e = 0.34;
+  const pierre = (w, h) => { const m = phMat('old_stone_wall_02', w, h); m.color.setRGB(1.05, 1.0, 0.92); return m; };
+  for (const sz of [-1, 1]) scene.add(mesh(new THREE.BoxGeometry(L, H, e), pierre(L, H), x, H / 2, z + sz * (P / 2 - e / 2)));
+  for (const sx of [-1, 1]) scene.add(mesh(new THREE.BoxGeometry(e, H, P - 2 * e), pierre(P, H), x + sx * (L / 2 - e / 2), H / 2, z));
+  scene.add(mesh(new THREE.BoxGeometry(L - 2 * e, 0.3, P - 2 * e), M.suie, x, 0.2, z));
+  const eau = new THREE.Mesh(new THREE.PlaneGeometry(L - 2 * e, P - 2 * e), M.eau); eau.rotation.x = -Math.PI / 2; eau.position.set(x, H - 0.28, z); scene.add(eau);
+  // la potence et son seau, pour puiser
+  scene.add(mesh(new THREE.BoxGeometry(0.18, 2.6, 0.18), M.bois, x - L / 2 - 0.2, 1.3, z));
+  scene.add(mesh(new THREE.BoxGeometry(1.5, 0.15, 0.15), M.poutre, x - L / 2 + 0.45, 2.55, z));
+  scene.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.1, 4), M.fer, x - L / 2 + 1.1, 1.95, z));
+  scene.add(mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.32, 10), M.bois, x - L / 2 + 1.1, 1.25, z));
+  addCap(x - L / 2 + P / 2, z, x + L / 2 - P / 2, z, P / 2);
+  addCap(x - L / 2 - 0.2, z, x - L / 2 - 0.2, z, 0.2);
+  addInteract({ pos: new THREE.Vector3(x, 0, z + P / 2 + 0.8), r: 1.8, prompt: () => 'regarder la citerne',
+    fn: () => dialogue([{ text: 'Une citerne de pierre, pleine d’une eau noire et immobile. Le seau est sec depuis longtemps.' }]) });
+}
+
+// Un billet d'Eugène (DIALOGUES-ACTE1.md, « Les billets d'Eugène ») : la voix d'Eugène,
+// jamais d'indice en gras. state.billets garde ceux qu'on a lus (numérotés comme le tableau).
+function billet(x, z, n, texte) {
+  const p = mesh(new THREE.PlaneGeometry(0.34, 0.24), mat(0xe8e0c8, { roughness: 1, side: THREE.DoubleSide }), x, 0.03, z);
+  p.rotation.set(-Math.PI / 2, 0, rand(0, TAU)); scene.add(p);
+  addInteract({ pos: new THREE.Vector3(x, 0, z), r: 1.4, prompt: () => (state.billets && state.billets[n] ? 'relire le billet d’Eugène' : 'ramasser le billet'),
+    fn: () => { state.billets = state.billets || {}; const neuf = !state.billets[n]; state.billets[n] = true; if (neuf) saveGame(true);
+      dialogue([{ text: 'Un billet plié en quatre. L’écriture d’Eugène, tracée vite.' }, { who: 'Eugène', text: texte }]); } });
+}
+// la planche du trône : une tour, des cloches pendues, une grande silhouette — gratté à la pointe
+function dessinGratte() {
+  const [c, g] = makeCanvas(128, 160);
+  g.fillStyle = '#6e5a42'; g.fillRect(0, 0, 128, 160);
+  for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(40,28,18,' + (Math.random() * 0.25).toFixed(2) + ')'; g.fillRect(0, Math.random() * 160, 128, 1 + Math.random() * 2); }
+  g.strokeStyle = '#d8c8a8'; g.lineWidth = 2; g.lineCap = 'round';
+  const trait = (pts) => { g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.stroke(); };
+  trait([[30, 150], [30, 40], [52, 20], [74, 40], [74, 150]]);                           // la tour
+  for (const [bx, by] of [[42, 52], [62, 52], [52, 76]]) { trait([[bx, by - 8], [bx, by - 4]]); trait([[bx - 6, by + 6], [bx - 4, by - 4], [bx + 4, by - 4], [bx + 6, by + 6], [bx - 6, by + 6]]); }
+  trait([[96, 150], [96, 100], [104, 84], [112, 100], [112, 150]]);                       // la grande silhouette
+  g.beginPath(); g.arc(104, 76, 8, 0, TAU); g.stroke();
+  trait([[96, 104], [80, 120]]); trait([[112, 104], [122, 124]]);
+  return tex(c, 1);
+}
+
+// Bastien, le fantôme du soldat de 1668 : né APRÈS le chargement (le premier pas de update),
+// comme les habitants nouveaux du bourg. Un personnage de la banque, rendu translucide.
+function poserBastien() {
+  const m = PNJ.buildRole('houtland', 0x4a5a78) || (window.TLOC && window.TLOC.MAKERS.fantome());
+  if (!m) return;
+  const bleu = new THREE.Color(0xa8c0ff);
+  m.traverse((o) => { if (!o.isMesh) return;
+    const v = (Array.isArray(o.material) ? o.material : [o.material]).map((x) => { const c = x.clone();
+      c.transparent = true; c.opacity = 0.42; c.depthWrite = false; if (c.color) c.color.lerp(bleu, 0.65);
+      if (c.emissive) { c.emissive.setHex(0x3a5aa8); c.emissiveIntensity = 0.8; } return c; });
+    o.material = Array.isArray(o.material) ? v : v[0]; o.castShadow = false; });
+  m.scale.setScalar(G.echelle); m.position.set(BASTIEN[0], 0.12, BASTIEN[1]); m.rotation.y = Math.PI / 2; m.userData.dynamic = true; scene.add(m);
+  const halo = new THREE.Sprite(MAT.haloSprite.clone()); halo.material.color.setHex(0x8fb0ff); halo.material.opacity = 0.3; halo.scale.set(1.8, 2.6, 1); halo.position.y = 1.35; m.add(halo);
+  bastien = m;
+  addInteract({ pos: new THREE.Vector3(BASTIEN[0], 0, BASTIEN[1]), r: 2.6, prompt: () => (state.ind && state.ind.bastien ? 'parler à Bastien' : 'parler au fantôme'), fn: parlerBastien });
+}
+// Les répliques de Bastien (DIALOGUES-ACTE1.md) : celle de l'étape la plus récente.
+function parlerBastien() {
+  bastien.rotation.y = Math.atan2(player.pos.x - bastien.position.x, player.pos.z - bastien.position.z);
+  const B = (text) => ({ who: 'Bastien', text });
+  const ind = state.ind = state.ind || {};
+  let l;
+  if (state.clePoterne || atteintActe1(state, 'citadelle')) l = [B('« Tu remontes ? Salue le soleil pour moi. Ça fait trois cents ans. »')];
+  else if (atteintActe1(state, 'arc')) {
+    l = [B('« Le Rat-Roi s\'est engraissé de tout ce qui tombe du donjon. **Il a avalé une clé**, je l\'ai vu faire. Il se cache dans ses trous ; **une flèche dans les tonneaux pendus au-dessus**, et il n\'a plus où se cacher. »'),
+      B('« Au fond, il y a une salle que Vauban a fait murer. Personne n\'a jamais pu pousser la pierre. »')];
+    ind.ratRoi = true;
+  } else {
+    const indice = B('« La grille ne se lève qu\'au levier, et le levier est trop haut pour une main. **L\'arc de l\'intendant est resté dans le puits aux chauves-souris**, à droite après la citerne. »');
+    l = ind.bastien ? [indice] : [B('« Halte ! … Ah, tu n\'es pas de sa bande. Bastien, soldat du roi, mort en 1668. Ne crains rien, je suis mort poliment. »'), indice];
+    ind.bastien = true;
+  }
+  saveGame(true);
+  dialogue(l);
+}
+// Le levier touché d'une flèche : la grille se lève
+function levierTouche() {
+  state.caveLever = true; gateCap.r = 0; saveGame(true);
+  SFX.hit(); setTimeout(() => SFX.stomp(), 300);
+  burst(LEVIER_HAUT[0], LEVIER_HAUT[1] + 0.8, LEVIER_HAUT[2], 0xfff0a0, 10, 3, 0.4);
+  showMessage('La flèche frappe le levier, qui bascule : la grille se lève en grinçant.', 4);
+}
+// Les tonneaux tombent devant les trous : le Rat-Roi n'a plus où se cacher
+function lacherTonneaux() {
+  state.caveTonneaux = true; saveGame(true);
+  SFX.hit(); setTimeout(() => SFX.stomp(), 450);
+  if (tonneauxCorde) tonneauxCorde.visible = false;
+  setTimeout(() => {
+    burst(TONNEAUX_X, 0.6, TROUS[1], 0xc8b090, 22, 5, 0.7, 10, 1.3);
+    if (ratRoi && !ratRoi.dead) sortirRatRoi();
+    showMessage('Les tonneaux s’écrasent devant les trous : le Rat-Roi n’a plus où se cacher !', 4);
+  }, 600);
+}
+function sortirRatRoi() {
+  const e = ratRoi; e.caged = false; e.pos.set(84.6, 0, TROUS[1]); e.home.copy(e.pos); e.mesh.visible = true; e.state = 'chase'; e.t = 0;
+}
+// LES FLÈCHES (G.level.arrowBlocked, appelé par engine.js pour chaque flèche ET pour le point
+// rouge de la visée) : le levier et les tonneaux arrêtent la flèche — le point rouge s'y pose,
+// ce qui dit qu'on les vise — mais seule une vraie flèche les fait basculer. La fenêtre en
+// hauteur est large : sans la souris, la flèche part à hauteur d'épaule.
+function arrowBlocked(p) {
+  if (!ACTE1) return false;
+  const vraie = arrows.some((a) => a.mesh.position === p);
+  if (!state.caveLever && p.y > 1.0 && p.y < 4.6 && Math.hypot(p.x - LEVIER_HAUT[0], p.z - LEVIER_HAUT[2]) < 1.0) { if (vraie) levierTouche(); return true; }
+  if (!state.caveTonneaux && p.y > 0.8 && p.y < 4.6 && Math.abs(p.x - TONNEAUX_X) < 1.1 && p.z > TROUS[0] - 1.2 && p.z < TROUS[2] + 1.2) { if (vraie) lacherTonneaux(); return true; }
+  return false;
+}
+
 function pullLever() {
   if (state.caveLever) return;
   state.caveLever = true; SFX.hit(); setTimeout(() => SFX.stomp(), 300);
@@ -753,7 +1027,14 @@ function populate() {
     const t = tile(c, r);
     if (t === 'R') spawnEnemy('rat', c * TS, r * TS, 'cave');
     else if (t === 'B') spawnEnemy('chauve', c * TS, r * TS, 'cave');
-    else if (t === 'K') spawnEnemy('ratroi', c * TS, r * TS, 'cave');
+    else if (t === 'K') { const e = spawnEnemy('ratroi', c * TS, r * TS, 'cave'); if (ACTE1) ratRoi = e; }
+  }
+  // l'acte I : deux chauves-souris de plus, dans le puits où elles nichent — APRÈS le plan,
+  // pour que les monstres du plan gardent leur rang ; le Rat-Roi terré, invisible
+  if (ACTE1) {
+    spawnEnemy('chauve', PUITS_ARC[0] - 1.5, PUITS_ARC[1] - 1.8, 'cave');
+    spawnEnemy('chauve', PUITS_ARC[0] + 2.0, PUITS_ARC[1] + 1.4, 'cave');
+    if (ratRoi) { ratRoi.caged = true; ratRoi.mesh.visible = false; ratRoi.pos.copy(CACHE); }
   }
   player.pos.copy(startPos); player.yaw = 0; G.camYaw = 0;
   // La lanterne de Camille est la vraie lumière du niveau : c'est elle qui rend le
@@ -761,16 +1042,75 @@ function populate() {
   lantern = new THREE.PointLight(0xffc088, 24, 22, 1.3); scene.add(lantern);
 }
 function onLoad() {
+  // startGame appelle onLoad AVANT de lire puis d'effacer « d'où l'on arrive » : on le retient ici
+  arrivee = sessionStorage.getItem('tloc_arrive');
+  if (ACTE1) {
+    if (state.caveArc && coffreArc) coffreArc.userData.lid.rotation.x = -1.9;
+    if (state.galleryOpen && porteSecrete) porteSecrete.rotation.y = -1.7;
+    if (state.caveTonneaux) {
+      for (const t of tonneaux) { t.position.y = 0.5; t.rotation.z = t.userData.rz; t.userData.pose = true; }
+      if (tonneauxCorde) tonneauxCorde.visible = false;
+      if (ratRoi && !ratRoi.dead) sortirRatRoi();
+    }
+  }
   if (state.caveLever) { gateCap.r = 0; gate.position.y = 3.2; lever.userData.arm.rotation.x = 0.9; }
   if (state.princeFreed && prince) { cage.userData.door.rotation.y = 1.4; prince.position.set(player.pos.x + 1.5, 0, player.pos.z + 1.5); }
   if (state.caveHeart && chest) chest.userData.lid.rotation.x = -1.9;
   if (isWall(toC(player.pos.x), toR(player.pos.z)) || isPit(toC(player.pos.x), toR(player.pos.z))) player.pos.copy(startPos);
   lastSafe.copy(player.pos);
 }
+// le pas de jeu de l'acte I : Bastien, le coffre de l'arc, les tonneaux, le Rat-Roi terré, la porte
+function majActe1(dt) {
+  const p = player;
+  if (!bastien && state.running) poserBastien();
+  if (bastien) {
+    bastien.position.y = 0.12 + Math.sin(state.time * 1.3) * 0.08;      // il flotte, à peine
+    PNJ.animeVillageois(bastien, dt, false);
+    // la première fois, c'est lui qui interpelle : « Halte ! »
+    if (!(state.ind && state.ind.bastien) && !cut.active && Math.hypot(p.pos.x - BASTIEN[0], p.pos.z - BASTIEN[1]) < 6) parlerBastien();
+  }
+  if (coffreArc) {
+    if (!state.caveArc && Math.hypot(coffreArc.position.x - p.pos.x, coffreArc.position.z - p.pos.z) < 2.2) {
+      // bowChest aussi : l'arc de la place d'Armes (quetes.js) n'est plus à prendre
+      state.caveArc = true; state.bow = true; state.bowChest = true; passerActe1(state, 'arc'); saveGame(true);
+      coffreArc.userData.glow.intensity = 3; SFX.pickup(); setTimeout(() => SFX.win(), 200);
+      burst(coffreArc.position.x, 1, coffreArc.position.z, 0xffe070, 24, 3, 1.2, 2, 1.2);
+      showMessage('L’ARC de l’intendant ! C pour le sortir, puis tire. Le levier de la grille, là-haut, est à portée de flèche.', 8);
+    }
+    coffreArc.userData.lid.rotation.x = lerp(coffreArc.userData.lid.rotation.x, state.caveArc ? -1.9 : 0, 1 - Math.exp(-6 * dt));
+    coffreArc.userData.glow.intensity = lerp(coffreArc.userData.glow.intensity, state.caveArc ? 0.6 : 0, 1 - Math.exp(-2 * dt));
+  }
+  // les tonneaux tombent : une chute franche, un rebond, et ils restent couchés devant les trous
+  if (state.caveTonneaux) for (const t of tonneaux) {
+    if (t.userData.pose) continue;
+    t.userData.vy -= 22 * dt; t.position.y += t.userData.vy * dt;
+    t.position.x = lerp(t.position.x, 87.75, 1 - Math.exp(-4 * dt));
+    t.rotation.z = lerp(t.rotation.z, t.userData.rz, 1 - Math.exp(-6 * dt));
+    if (t.position.y <= 0.5) { t.position.y = 0.5; if (t.userData.vy < -3) t.userData.vy *= -0.25; else { t.userData.vy = 0; t.userData.pose = true; } }
+  }
+  // le Rat-Roi terré : il montre le museau à l'un de ses trous, puis rentre. Hors de portée de
+  // l'épée et de la visée (caged, et sa position est hors du plan) : seul le maillage sort.
+  if (ratRoi && !ratRoi.dead && !state.caveTonneaux) {
+    const e = ratRoi, d = Math.hypot(87 - p.pos.x, TROUS[1] - p.pos.z);
+    e.caged = true; e.state = 'idle'; e.t = 99; e.target = null; e.pos.copy(CACHE); e.bar.visible = false;
+    peekT -= dt;
+    if (peekT <= 0) {
+      if (e.mesh.visible || d > 18) { e.mesh.visible = false; peekT = rand(1.4, 3.2); }
+      else { peekTrou = Math.floor(rand(0, 2.999)); e.mesh.visible = true; peekT = 1.3; }
+    }
+    e.mesh.position.set(89.8, 0, TROUS[peekTrou]); e.mesh.rotation.y = -Math.PI / 2;   // le corps dans le mur, le museau dehors
+    if (!terrierDit && d < 12) { terrierDit = true; showMessage('Le Rat-Roi ! Il file dans ses trous dès qu’on approche. Au-dessus, des tonneaux pendent à une corde.', 6); }
+  }
+  if (porteSecrete) porteSecrete.rotation.y = lerp(porteSecrete.rotation.y, state.galleryOpen ? -1.7 : 0, 1 - Math.exp(-3 * dt));
+}
 let gateHintT = 0;
 function update(dt) {
   const p = player;
-  gateHintT -= dt; if (gate && !state.caveLever && gateHintT <= 0 && Math.hypot(gate.position.x - p.pos.x, gate.position.z - p.pos.z) < 4) { gateHintT = 12; showMessage("La grille est verrouillée : sa vanne est en bas, dans la contre-mine. Redescends et suis le caniveau — l'eau y va.", 5); }
+  gateHintT -= dt; if (gate && !state.caveLever && gateHintT <= 0 && Math.hypot(gate.position.x - p.pos.x, gate.position.z - p.pos.z) < 4) { gateHintT = 12;
+    showMessage(!ACTE1 ? "La grille est verrouillée : sa vanne est en bas, dans la contre-mine. Redescends et suis le caniveau — l'eau y va."
+      : state.bow ? 'Le levier de la grille, là-haut dans le mur : une flèche (C pour sortir l’arc), et il basculera.'
+      : 'La grille ne se lève qu’au levier, et le levier est scellé trop haut dans le mur.', 5); }
+  if (ACTE1) majActe1(dt);
   if (lantern) lantern.position.set(p.pos.x, p.pos.y + 2.4, p.pos.z);
   if (p.onGround && p.pos.y >= -0.1 && !isPit(toC(p.pos.x), toR(p.pos.z))) {
     // position sûre = dalle de sol entourée de sol (pas au bord d'une fosse)
@@ -850,21 +1190,49 @@ function minimap(g, W) {
   minimapDots(g, (x, z) => P(x, z));
 }
 function counts() {
+  if (ACTE1) {
+    const rats = enemies.filter(e => !e.dead && e.kind === 'rat').length, bats = enemies.filter(e => !e.dead && e.kind === 'chauve').length;
+    return `Rats <b>${rats}</b> &nbsp; Chauves-souris <b>${bats}</b> &nbsp; Grille <b>${state.caveLever ? '✓' : '✗'}</b> &nbsp; Clé de la poterne <b>${state.clePoterne ? '✓' : '?'}</b>${state.bow ? ' &nbsp; Arc <b>C</b>' : ''}<br><small>Objectif : ${objective()}</small>`;
+  }
   const rats = enemies.filter(e => !e.dead && (e.kind === 'rat' || e.kind === 'ratroi')).length, bats = enemies.filter(e => !e.dead && e.kind === 'chauve').length;
   return `Rats <b>${rats}</b> &nbsp; Chauves-souris <b>${bats}</b> &nbsp; Levier <b>${state.caveLever ? '✓' : '✗'}</b> &nbsp; Clé de la cage <b>${state.cageKey ? '✓' : '?'}</b>${state.bow ? ' &nbsp; Arc <b>C</b>' : ''}<br><small>Objectif : ${objective()}</small>`;
 }
 function objective() {
+  if (ACTE1) return state.galleryOpen ? 'la poterne est ouverte : remonte dans la citadelle (l’escalier de l’entrée)'
+    : state.clePoterne ? 'la clé de la poterne : remonte à l’escalier de l’entrée, sous le rai de jour'
+    : state.caveTonneaux ? 'vaincs le Rat-Roi : il a avalé la clé'
+    : state.ind && state.ind.ratRoi ? 'le Rat-Roi se cache dans ses trous : une flèche dans les tonneaux pendus au-dessus'
+    : state.caveLever ? 'au-delà de la grille, les fosses : saute-les (X). Bastien, près de la citerne, en sait plus'
+    : state.bow ? 'le levier de la grille, trop haut pour la main : une flèche'
+    : state.ind && state.ind.bastien ? 'l’arc de l’intendant, dans le puits aux chauves-souris, à droite après la citerne'
+    : 'les galeries filent vers la citadelle : suis les torches allumées';
   return state.princeFreed ? "remonte à la surface avec Eugène : l'escalier de l'entrée, sous le rai de jour, puis Lydéric au pont"
     : state.cageKey ? 'ouvre la cage d’Eugène, sous le puits de lumière au bout de la galerie des fosses'
     : state.caveLever ? 'franchis la grille, saute les fosses et vaincs le Rat-Roi qui garde la clé de la cage'
     : "descends dans la contre-mine en suivant le caniveau, et tire la vanne n° 4 qui ouvre la grille";
 }
 const level = {
-  name: 'cave', musique: 'cave', getH: levelH, blocked: levelBlocked, zoneName, build, populate, update, animate, minimap, counts, onLoad, onFall, objective,
+  name: 'cave', musique: 'cave', getH: levelH, blocked: levelBlocked, zoneName, build, populate, update, animate, minimap, counts, onLoad, onFall, objective, arrowBlocked,
   start: () => showMessage("Les galeries de Vauban. Ça suinte, ça résonne. Les torches allumées marquent le chemin ; le caniveau descend vers la contre-mine.", 6),
-  arriveMessage: () => state.princeFreed ? "Les galeries. Le prince te suit : remonte par l'escalier, sous le rai de jour." : "Les galeries de Vauban. Suis les torches allumées : celles qui sont mortes ne mènent nulle part.",
-  entry: () => state.princeFreed ? null : { title: 'Les galeries de Vauban', sub: 'Sous la citadelle', cam: [startPos.x + 13, 3.6, startPos.z + 9], at: [startPos.x + 2, 1.4, startPos.z + 1], cam2: [startPos.x + 3.5, 2.5, startPos.z + 4.5], at2: [startPos.x, 1.5, startPos.z], dur: 4.5, text: 'Quelque part au bout de ces galeries, Eugène attend…' },
-  onKill: (e) => { BOURSE.prime(e); if (e.kind === 'ratroi' && !state.cageKey) { state.cageKey = true; saveGame(true);
+  arriveMessage: () => ACTE1 ? (arrivee === 'chapelle' ? 'Les galeries de Vauban, sous la ville. Les torches allumées marquent le chemin ; les mortes ne mènent nulle part.' : 'Les galeries de Vauban.')
+    : state.princeFreed ? "Les galeries. Le prince te suit : remonte par l'escalier, sous le rai de jour." : "Les galeries de Vauban. Suis les torches allumées : celles qui sont mortes ne mènent nulle part.",
+  entry: () => {
+    if (ACTE1) {
+      if (arrivee !== 'chapelle') return null;
+      const x = CRYPTE[0] * TS, z = CRYPTE[1] * TS;
+      return { title: 'Les galeries de Vauban', sub: 'Sous la ville', cam: [x + 1, 2.8, z + 6], at: [x, 1.4, z - 0.5], cam2: [x + 0.5, 2.2, z + 3.5], at2: [x, 1.4, z], dur: 4.5, text: 'Sous la chapelle, les galeries de Vauban filent vers la citadelle.' };
+    }
+    return state.princeFreed ? null : { title: 'Les galeries de Vauban', sub: 'Sous la citadelle', cam: [startPos.x + 13, 3.6, startPos.z + 9], at: [startPos.x + 2, 1.4, startPos.z + 1], cam2: [startPos.x + 3.5, 2.5, startPos.z + 4.5], at2: [startPos.x, 1.5, startPos.z], dur: 4.5, text: 'Quelque part au bout de ces galeries, Eugène attend…' };
+  },
+  onKill: (e) => { BOURSE.prime(e);
+    // l'acte I : le Rat-Roi recrache la clé de la poterne (la « porte secrète » de la citadelle)
+    if (ACTE1) { if (e.kind === 'ratroi' && !state.clePoterne) { state.clePoterne = true; saveGame(true);
+      setTimeout(() => cutscene([
+        { cam: [e.pos.x - 3.5, 2.5, e.pos.z + 3], at: [e.pos.x, 0.8, e.pos.z], dur: 2.5, text: 'Le Rat-Roi s\'effondre… et recrache une grosse clé de fer.', fn: () => { const k = makeKey(); k.position.set(e.pos.x, 1.0, e.pos.z); k.userData.dynamic = true; scene.add(k); burst(e.pos.x, 1, e.pos.z, 0xffe070, 20, 3, 1, 3, 1.2); SFX.pickup(); setTimeout(() => scene.remove(k), 2400); } },
+        { say: 'Sur l’anneau de la clé, gravé au couteau : « POTERNE ».' },
+      ], () => showMessage('La clé de la poterne. La porte est en haut de l’escalier de l’entrée, sous le rai de jour.', 6)), 800); }
+      return; }
+    if (e.kind === 'ratroi' && !state.cageKey) { state.cageKey = true; saveGame(true);
     setTimeout(() => cutscene([
       { cam: [e.pos.x + 3, 2.5, e.pos.z + 3], at: [e.pos.x, 0.8, e.pos.z], dur: 2.5, text: 'Le Rat-Roi s\'effondre… et lâche une petite clé de fer.', fn: () => { const k = makeKey(); k.position.set(e.pos.x, 1.0, e.pos.z); k.userData.dynamic = true; scene.add(k); burst(e.pos.x, 1, e.pos.z, 0xffe070, 20, 3, 1, 3, 1.2); SFX.pickup(); setTimeout(() => scene.remove(k), 2400); } },
       { cam: [cagePos.x + 4, 2.5, cagePos.z + 4], at: [cagePos.x, 1.6, cagePos.z], cam2: [cagePos.x + 3, 2.2, cagePos.z + 3], at2: [cagePos.x, 1.6, cagePos.z], dur: 3.5, text: 'La clé de la cage d’Eugène ! Il est tout près, au bout de la galerie des fosses.' },
@@ -872,4 +1240,9 @@ const level = {
 };
 // Camille riggée si la banque est là, sinon la version en primitives
 await PNJ.installerCamille(PNJ_E);
+// La Camille riggée n'a pas d'arc dans le dos (userData.bowBack) : avec l'arc en poche,
+// loadGame (engine.js) y écrivait et l'exception coupait startGame avant la boucle — la page
+// restait figée. C'est ici que l'acte I donne l'arc : on pose un arc fantôme, invisible.
+// Le vrai remède est dans engine.js (PROMPT-REPRISE, « Demandes pour d'autres fichiers »).
+if (!player.mesh.userData.bowBack) player.mesh.userData.bowBack = new THREE.Object3D();
 bootLevel(level, null);

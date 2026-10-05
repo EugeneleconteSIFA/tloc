@@ -233,6 +233,19 @@ Le seul fantôme qui ne soit pas méchant. Il n'apparaît qu'à la lanterne, pr�
 Un dessin gratté sur une planche : une tour, des cloches pendues, et une grande silhouette
 dessous. *Camille* : « … »
 
+### Ajoutées en codant les galeries (5 octobre) — récit, jamais de gras
+
+- **La dalle de la crypte, la lanterne en main** : « La lanterne de Désiré éclaire les marches.
+  Elles descendent loin, sous la ville, vers la citadelle. »
+- **La porte de la poterne, sans la clé** : « Une porte de chêne bardée de fer, en haut des marches.
+  Le jour passe dessous. La serrure est énorme. » — *Camille* : « Fermé à clé. »
+- **Le Rat-Roi vaincu** : « Le Rat-Roi s'effondre… et recrache une grosse clé de fer. » — « Sur
+  l'anneau de la clé, gravé au couteau : « POTERNE ». »
+- **Le levier de la grille** : « Le levier de la grille est scellé haut dans le mur, au-dessus du
+  cordon de pierre. Même en sautant, la main n'y arrive pas. »
+- **La citerne** : « Une citerne de pierre, pleine d'une eau noire et immobile. Le seau est sec
+  depuis longtemps. »
+
 ---
 
 ## La citadelle — les trois cadenas

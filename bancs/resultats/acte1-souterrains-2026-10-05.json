@@ -1,0 +1,231 @@
+{
+ "date": "2026-10-05T15:27:47.394Z",
+ "pas": [
+  {
+   "nom": "la dalle propose de descendre, la lanterne en main",
+   "ok": true,
+   "detail": "descendre dans la crypte"
+  },
+  {
+   "nom": "on arrive dans les galeries",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’acte passe à « souterrains »",
+   "ok": true,
+   "detail": "souterrains"
+  },
+  {
+   "nom": "Camille au pied de l’escalier de la crypte",
+   "ok": true,
+   "detail": "51.0 ; 22.4"
+  },
+  {
+   "nom": "la porte de la poterne est fermée à clé",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’escalier de la crypte remonte à la chapelle",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "dans la chapelle, Camille reparaît à côté de la dalle",
+   "ok": true,
+   "detail": "2.70 ; 0.00 ; -7.20"
+  },
+  {
+   "nom": "et on redescend",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "de l’escalier à la citerne, à pied",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "nom": "Bastien : « Halte ! » puis l’arc au puits aux chauves-souris",
+   "ok": true,
+   "detail": "2 répliques"
+  },
+  {
+   "nom": "de la citerne au puits, à pied (à droite après la citerne)",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "nom": "le coffre donne l’arc ; l’acte passe à « arc »",
+   "ok": true,
+   "detail": "bow true, arc"
+  },
+  {
+   "nom": "le billet n° 2 se lit",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "Bastien : le Rat-Roi a avalé une clé, la flèche dans les tonneaux",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "une flèche dans le levier lève la grille",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la grille franchie, à pied",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "nom": "le billet n° 3 se lit",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "le long des fosses jusqu’au terrier, à pied",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "nom": "le Rat-Roi terré montre le museau à un trou",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "terré, il est hors d’atteinte (caged, hors du plan pour la visée)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "une flèche dans les tonneaux : ils tombent, le Rat-Roi sort",
+   "ok": true,
+   "detail": "{\"caged\":false,\"visible\":true,\"pos\":[81.88560000000003,15]}"
+  },
+  {
+   "nom": "le Rat-Roi vaincu recrache la clé de la poterne",
+   "ok": true,
+   "detail": "Le Rat-Roi s'effondre… et recrache une grosse clé de fer. |  : Sur l’anneau de la clé, gravé au couteau : « POTERNE »."
+  },
+  {
+   "nom": "le trône du Rat-Roi : le dessin gratté",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "du terrier à la poterne, à pied",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "nom": "la clé ouvre la porte de la poterne",
+   "ok": true,
+   "detail": "ouvrir la porte de la poterne"
+  },
+  {
+   "nom": "on sort dans la citadelle, devant la poterne ; l’acte passe à « citadelle »",
+   "ok": false,
+   "detail": "citadel, à 37.4 m, citadelle — la page est figée : loadGame (engine.js:2687) écrit dans le bowBack que la Camille riggée n’a pas (hors B2, PROMPT-REPRISE)"
+  },
+  {
+   "nom": "ancienne histoire : la cage d’Eugène et la vanne sont là, ni crypte ni Bastien",
+   "ok": true,
+   "detail": "{\"eugene\":true,\"levier\":true,\"crypte\":false,\"bastien\":false,\"sortie\":\"remonter à la surface\"}"
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": false,
+   "detail": "PAGEERROR TypeError: Cannot set properties of undefined (setting 'visible')"
+  }
+ ],
+ "repliques": {
+  "dalle": {
+   "invite": "descendre dans la crypte",
+   "repliques": [
+    " : La lanterne de Désiré éclaire les marches. Elles descendent loin, sous la ville, vers la citadelle."
+   ]
+  },
+  "porteFermee": {
+   "invite": "la porte de la poterne",
+   "repliques": [
+    " : Une porte de chêne bardée de fer, en haut des marches. Le jour passe dessous. La serrure est énorme.",
+    "Camille : « Fermé à clé. »"
+   ]
+  },
+  "bastienSouterrains": [
+   "Bastien : « Halte ! … Ah, tu n'es pas de sa bande. Bastien, soldat du roi, mort en 1668. Ne crains rien, je suis mort poliment. »",
+   "Bastien : « La grille ne se lève qu'au levier, et le levier est trop haut pour une main. **L'arc de l'intendant est resté dans le puits aux chauves-souris**, à droite après la citerne. »"
+  ],
+  "billet2": {
+   "invite": "ramasser le billet",
+   "repliques": [
+    " : Un billet plié en quatre. L’écriture d’Eugène, tracée vite.",
+    "Eugène : « Une salle ronde, une dalle gravée. Il y a posé ma main. Rien ne s’est passé. Il a ri quand même. »"
+   ]
+  },
+  "bastienArc": {
+   "invite": "parler à Bastien",
+   "repliques": [
+    "Bastien : « Le Rat-Roi s'est engraissé de tout ce qui tombe du donjon. **Il a avalé une clé**, je l'ai vu faire. Il se cache dans ses trous ; **une flèche dans les tonneaux pendus au-dessus**, et il n'a plus où se cacher. »",
+    "Bastien : « Au fond, il y a une salle que Vauban a fait murer. Personne n'a jamais pu pousser la pierre. »"
+   ]
+  },
+  "billet3": {
+   "invite": "ramasser le billet",
+   "repliques": [
+    " : Un billet plié en quatre. L’écriture d’Eugène, tracée vite.",
+    "Eugène : « Il parle au mur. Il dit “mille ans”, “l’ermite”, “les autres cloches”. Je note tout, au cas où. »"
+   ]
+  },
+  "cle": [
+   "Le Rat-Roi s'effondre… et recrache une grosse clé de fer.",
+   " : Sur l’anneau de la clé, gravé au couteau : « POTERNE »."
+  ],
+  "trone": {
+   "invite": "regarder le trône du Rat-Roi",
+   "repliques": [
+    " : Un tas de planches, d’os et de cuillères volées. Sur une planche, un dessin gratté : une tour, des cloches pendues, et une grande silhouette dessous.",
+    "Camille : « … »"
+   ]
+  }
+ },
+ "echecs": [
+  "on sort dans la citadelle, devant la poterne ; l’acte passe à « citadelle »",
+  "aucune erreur de page"
+ ],
+ "piles": [
+  "TypeError: Cannot set properties of undefined (setting 'visible') ←     at loadGame (http://127.0.0.1:8000/engine.js?v=41:2687:55) ←     at startGame (http://127.0.0.1:8000/engine.js?v=41:4518:18) ←     at bootLevel (http://127.0.0.1:8000/engine.js?v=41:4501:45)"
+ ],
+ "introuvables": [],
+ "final": {
+  "acte1": "citadelle",
+  "bow": true,
+  "caveLever": true,
+  "caveTonneaux": true,
+  "clePoterne": true,
+  "galleryOpen": true,
+  "ind": {
+   "bastien": true,
+   "ratRoi": true
+  },
+  "billets": {
+   "2": true,
+   "3": true
+  },
+  "over": false,
+  "hp": 12
+ },
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "PAGEERROR TypeError: Cannot set properties of undefined (setting 'visible')",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}
