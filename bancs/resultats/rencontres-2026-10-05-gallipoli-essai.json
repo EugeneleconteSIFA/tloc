@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T13:45:33.630Z",
+ "etiquette": "gallipoli-essai",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 45,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "gallipoli",
+ "arrivees": [
+  [
+   -53,
+   100
+  ],
+  [
+   -53,
+   101
+  ]
+ ],
+ "rencontres": {
+  "total": 8,
+  "humains": 1,
+  "mixtes": 6,
+  "bots": 1
+ },
+ "voisinMedianM": 4
+}

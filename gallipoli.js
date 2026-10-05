@@ -207,7 +207,7 @@ function bercer(t) {
   BARQUES.coques.instanceMatrix.needsUpdate = BARQUES.planchers.instanceMatrix.needsUpdate = true;
 }
 
-ville('gallipoli', {
+const lieuPret = ville('gallipoli', {
   solLieu: solQuai,
   plus(ctx) {
     const { y } = port(ctx); place(ctx);
@@ -222,3 +222,43 @@ ville('gallipoli', {
     if (colosse && !fige && colosse.userData.ctrl) { const c = colosse.userData.ctrl; c.jouer(colosse.userData.idle, 0); c.update(0.9); fige = true; }
   },
 });
+
+// L'ARÈNE du multi (5 octobre, cf. ARENE_LILLE dans game.js et docs/NOTE-MULTI.md) : la vieille
+// ville sur son île, ses ruelles blanches et ses palais — 4 100 m² où l'on marche, relevés le
+// 5 octobre en marchant aux règles du moteur depuis (20, 60) : de (−56, −24) à (104, 140), de
+// −1,7 à 4,2 m. Puis le parvis du Duomo. Deux camps de la ville : les pêcheurs du port, à l'est,
+// et les mouliniers des pressoirs à huile creusés sous les maisons (les frantoi), à l'ouest.
+const ARENE_GALLIPOLI = {
+  id: 'gallipoli', nom: 'Gallipoli, la vieille ville',
+  sd: (x, z) => Math.hypot(x - 20, z - 60), centre: [20, 60],
+  depart: { x: 9.5, z: 100 },                   // devant le Duomo
+  aires: [
+    { id: 'ville', nom: 'la vieille ville', r: 95,   // 95 : les départs des camps restent à 20 m de la limite
+      couleur: '#ffd070', lueur: 0xffc860, eparpille: 45 },
+    { id: 'duomo', nom: 'le parvis du Duomo', r: 30, sd: (x, z) => Math.hypot(x - 9.5, z - 107.5), couleur: '#ff9a70', lueur: 0xff6a3a, eparpille: 18 },
+  ],
+  camps: {
+    garnison: { nom: 'Les pêcheurs', court: 'Pêcheurs', pluriel: true },
+    bourg: { nom: 'Les mouliniers', court: 'Mouliniers', pluriel: true },
+  },
+  campsTexte: 'Les pêcheurs du port contre les mouliniers des pressoirs à huile, dans les ruelles de la vieille ville.',
+  departsCamps: { garnison: [96, 72], bourg: [-44, 94] },
+  objets: [
+    { id: 'armure-port', type: 'armure', x: 96, z: 74, nom: 'du côté du port' },
+    { id: 'armure-pressoirs', type: 'armure', x: -48, z: 96, nom: 'du côté des pressoirs' },
+    { id: 'arc-nord', type: 'arc', x: -2, z: -18, nom: 'au bout nord de l’île' },
+    { id: 'arc-sud', type: 'arc', x: 78, z: 118, nom: 'au sud, vers le Palazzo Ravenna' },
+    { id: 'bouclier', type: 'bouclier', x: 9.5, z: 100, nom: 'sur le parvis du Duomo' },
+  ],
+  pointsForts: () => [
+    { id: 'duomo', nom: 'le parvis du Duomo', x: 9.5, z: 100 },
+    { id: 'balsamo', nom: 'le Palazzo Balsamo', x: 38.4, z: 72.5 },
+    { id: 'ravenna', nom: 'le Palazzo Ravenna', x: 82.6, z: 95.4 },
+    { id: 'centre', nom: 'le cœur de la vieille ville', x: 20, z: 60 },
+    { id: 'nord', nom: 'le bout nord de l’île', x: -2, z: -20 },
+    { id: 'port', nom: 'le côté du port', x: 100, z: 72 },
+    { id: 'pressoirs', nom: 'le côté des pressoirs', x: -52, z: 98 },
+  ],
+};
+// le niveau naît dans monde() (après l'installation de Camille) : ville() rend sa promesse
+lieuPret.then(() => { if (G.level && G.level.name === 'gallipoli') G.level.arenes = [ARENE_GALLIPOLI]; });

@@ -230,6 +230,8 @@ export const ARENES = {
   gardeguerin: { nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
   pouget: { nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
   batut: { nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
+  panyi: { nom: 'Ko Panyi', page: 'thailande.html', dit: 'le village sur pilotis de la baie des pitons : de passerelle en passerelle, jusqu’au marché flottant' },
+  gallipoli: { nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
 };
 export const pageArene = (id) => (ARENES[id] || ARENES.lille).page;
 export const instance = () => lire(CLE_INSTANCE);

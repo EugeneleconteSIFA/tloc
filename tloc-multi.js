@@ -228,16 +228,24 @@ function prendreArene(id) {
 function assurerArene() {
   if (!G.level) return;
   if (!niveauHabille) { niveauHabille = true; habillerNiveau(); }
-  if (arene && (!areneVoulue || arene.id === areneVoulue) && arenesNiveau().includes(arene)) return;
-  const avant = arene;
-  prendreArene(areneVoulue || (arene && arene.id));
-  if (arene === avant) return;
-  aireEnVigueur = premiereAire();
+  if (!(arene && (!areneVoulue || arene.id === areneVoulue) && arenesNiveau().includes(arene))) {
+    const avant = arene;
+    prendreArene(areneVoulue || (arene && arene.id));
+    if (arene !== avant) aireEnVigueur = premiereAire();
+  }
   // les camps gardent leurs clés (le serveur compte « garnison » et « bourg ») ; l'arène leur
-  // donne ses noms — à la Garde-Guérin, la garde de la tour contre les muletiers…
-  for (const [k, c] of Object.entries(CAMPS)) Object.assign(c, CAMPS_LILLE[k], (arene && arene.camps && arene.camps[k]) || {});
-  campsTexte = (arene && arene.campsTexte) || TEXTE_CAMPS_LILLE;
+  // donne ses noms — à la Garde-Guérin, la garde de la tour contre les muletiers… Une fois par
+  // arène : quand le niveau la portait dès le départ, elle ne « changeait » jamais, et les
+  // camps gardaient les noms de Lille.
+  const cle = arene ? arene.id : '';
+  if (cle !== campsDe) {
+    campsDe = cle;
+    for (const [k, c] of Object.entries(CAMPS)) Object.assign(c, CAMPS_LILLE[k], (arene && arene.camps && arene.camps[k]) || {});
+    campsTexte = (arene && arene.campsTexte) || TEXTE_CAMPS_LILLE;
+    peindrePanneau();
+  }
 }
+let campsDe = null;
 const PREAVIS = 50;
 let debutCours = 0;                                  // pour le match à mort, qui n'a pas de chrono
 function calendrierAire() {
@@ -1241,10 +1249,10 @@ function nomEmplacement(x, z, pris, place) {
   return nom;
 }
 function proposerDrapeaux() {
-  if (regle !== 'drapeaux' || drapeauxProposes || lieuxDrapeauxServeur || !lieux.length || !state.running || !G.level) return;
+  if (regle !== 'drapeaux' || drapeauxProposes || lieuxDrapeauxServeur || (!lieux.length && aLille()) || !state.running || !G.level) return;   // hors de Lille, pas de lieux nommés
   if (!manche || !manche.duree) return;               // la zone dépend de la durée
   if (!nav || nav.fait < nav.nz) return;
-  const place = lieux.find((l) => l.id === 'place');
+  const place = lieuDepart();                         // la place d'Armes à Lille, le départ de l'arène ailleurs
   if (!place) return;
   const p0 = terrainDrapeau(place) || praticable(place.x, place.z);
   if (!p0) return;
@@ -2109,6 +2117,62 @@ function avancer(b, dirX, dirZ, vitesse, dt) {
   return false;
 }
 
+// LE GRAPHE d'une arène à pièces et à étages (`graphe` : { n: [[x, z, y], …], a: [[i, j], …] }) :
+// des points (les pièces, les seuils des portes, les escaliers marche à marche) reliés quand on
+// passe à pied de l'un à l'autre. Le bot part du point qu'il voit, va au point qui voit sa cible,
+// par le plus court chemin ; arrivé, il reprend la poursuite ordinaire. Le chemin se refait
+// toutes les 2 s (la cible bouge) ; coincé 3 s sur un point, il le saute.
+const ligneLibre = (ax, az, bx, bz, y) => {
+  const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 0.5));
+  for (let k = 1; k < n; k++) { const t = k / n; if (blocked(ax + (bx - ax) * t, az + (bz - az) * t, 0.45, false, y + 0.1)) return false; }
+  return true;
+};
+// le point du graphe le plus proche qu'on voit d'ici, à cet étage (les plus proches d'abord)
+function noeudVu(Gr, x, z, y) {
+  const l = Gr.n.map((q, i) => [i, Math.hypot(q[0] - x, q[1] - z), q]).filter(([, d, q]) => Math.abs(q[2] - y) < 1.6 && d < 45).sort((a, b) => a[1] - b[1]);
+  for (const [i, , q] of l.slice(0, 12)) if (ligneLibre(x, z, q[0], q[1], Math.min(y, q[2]))) return i;
+  return -1;
+}
+function cheminGraphe(Gr, s, t) {
+  if (!Gr.voisins) { Gr.voisins = Gr.n.map(() => []); for (const [i, j] of Gr.a) { const d = Math.hypot(Gr.n[i][0] - Gr.n[j][0], Gr.n[i][1] - Gr.n[j][1], Gr.n[i][2] - Gr.n[j][2]); Gr.voisins[i].push([j, d]); Gr.voisins[j].push([i, d]); } }
+  const dist = Gr.n.map(() => Infinity), prec = Gr.n.map(() => -1), fait = Gr.n.map(() => false); dist[s] = 0;
+  for (;;) {
+    let u = -1; for (let i = 0; i < dist.length; i++) if (!fait[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0 || u === t) break; fait[u] = true;
+    for (const [v, d] of Gr.voisins[u]) if (dist[u] + d < dist[v]) { dist[v] = dist[u] + d; prec[v] = u; }
+  }
+  if (dist[t] === Infinity) return null;
+  const ch = []; for (let u = t; u >= 0; u = prec[u]) ch.unshift(u);
+  return ch;
+}
+function suivreGraphe(b, c, dt, now) {
+  const Gr = arene && arene.graphe;
+  if (!Gr) return false;
+  const cy = c.y ?? b.pos.y, memeEtage = Math.abs(cy - b.pos.y) < 2;
+  // même étage, rien entre eux : la poursuite ordinaire (la vue se relit toutes les 0,6 s)
+  if (memeEtage) {
+    if (!(b.vueT > now)) { b.vueT = now + 600; b.vu = ligneLibre(b.pos.x, b.pos.z, c.x, c.z, b.pos.y); }
+    if (b.vu || Math.hypot(c.x - b.pos.x, c.z - b.pos.z) < 3) { b.chemin = null; return false; }
+  }
+  if (!b.chemin || now > b.chemin.refait) {
+    const s = noeudVu(Gr, b.pos.x, b.pos.z, b.pos.y), t = noeudVu(Gr, c.x, c.z, cy);
+    const ch = s >= 0 && t >= 0 ? cheminGraphe(Gr, s, t) : null;
+    if (!ch) { b.chemin = null; return false; }
+    b.chemin = { pts: ch.map((i) => Gr.n[i]), k: 0, refait: now + 2000, coince: 0, dPrec: Infinity };
+  }
+  const C = b.chemin;
+  let q = C.pts[C.k];
+  if (Math.hypot(q[0] - b.pos.x, q[1] - b.pos.z) < 0.8 || C.coince > 3) {
+    C.coince = 0; C.dPrec = Infinity;
+    if (++C.k >= C.pts.length) { b.chemin = null; return false; }
+    q = C.pts[C.k];
+  }
+  const d = Math.hypot(q[0] - b.pos.x, q[1] - b.pos.z);
+  avancer(b, q[0] - b.pos.x, q[1] - b.pos.z, b.P.vitesse, dt);
+  if (d > C.dPrec - b.P.vitesse * dt * 0.2) C.coince += dt; else C.coince = Math.max(0, C.coince - dt);
+  C.dPrec = Math.min(C.dPrec, d);
+  return true;
+}
 function butAuHasard(b) {
   const base = baseDe(b) || { x: b.pos.x, z: b.pos.z };
   for (let k = 0; k < 6; k++) {
@@ -2149,7 +2213,7 @@ function attenteDrapeaux() {
   return e ?? navVitesse.e ?? null;
 }
 function preparerNav() {
-  if (!lieux.length || !G.level) return;
+  if ((!lieux.length && aLille()) || !G.level) return;   // hors de Lille, pas de lieux nommés : la grille se fait quand même
   // pas avant la fin du chargement : les lieux existent pendant la construction, les murs pas encore tous
   if (!nav && !document.getElementById('loading')?.classList.contains('hidden')) return;
   if (!nav) {
@@ -2395,6 +2459,14 @@ function penserBot(b, dt, now) {
     }
   }
   const cible = b.cible && ennemis.find((e) => e.id === b.cible);
+  // Une cible à un autre étage, ou derrière un mur (le Batut) : le graphe de l'arène, plutôt
+  // que de tourner sous elle — au banc, en 90 s, aucun bot n'était jamais monté, et celui qui
+  // visait restait collé à la cloison de la salle à manger. Sans cible, une flânerie sur
+  // quatre va à un point du graphe pris au hasard (b.flane), à un autre étage le plus souvent.
+  const vise = cible || (b.chasse && ennemis.find((e) => e.id === b.chasse)) || b.flane;
+  if (vise && suivreGraphe(b, vise, dt, now)) return;
+  if (b.flane && (vise === b.flane) && !b.chemin) b.flane = null;
+  if (b.flane && cible) b.flane = null;
   // à bout de cœurs, les plus malins décrochent un moment
   if (cible && P.fuite && b.hp <= b.mx * P.fuite && b.fuiteT < -6) { b.fuiteT = 2.5; annoncer(b, 'repli', 'Je suis à bout, je décroche un instant !', 20000); }
   if (cible && b.fuiteT > 0) {
@@ -2486,7 +2558,11 @@ function penserBot(b, dt, now) {
   if ((b.calme += dt) > 5 && b.hp < b.mx && regle === 'balade') { b.hp = Math.min(b.mx, b.hp + 1); b.calme = 3; }
   const traque = b.chasse && ennemis.find((e) => e.id === b.chasse);
   if (traque) b.but = { x: traque.x, z: traque.z };
-  if (!b.but || Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 2.5) b.but = butAuHasard(b);
+  if (!b.but || Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 2.5) {
+    b.but = butAuHasard(b);
+    const Gr = arene && arene.graphe;
+    if (Gr && Math.random() < 0.25) { const ailleurs = Gr.n.filter((q) => Math.abs(q[2] - b.pos.y) > 2), l = ailleurs.length ? ailleurs : Gr.n, q = l[Math.floor(Math.random() * l.length)]; b.flane = { x: q[0], z: q[1], y: q[2] }; }
+  }
   const avant = b.pos.clone();
   avancer(b, b.but.x - b.pos.x, b.but.z - b.pos.z, P.vitesse * (traque ? 1 : 0.6), dt);
   // coincé contre un mur : autre destination
@@ -2590,7 +2666,9 @@ function tickBots(dt, now) {
   // choisit son apparence, son camp et son point d'arrivée — ils l'attendaient pour naître,
   // et l'humain entrait dans une partie vide (Eugène). La pause du pilote ne les fige pas
   // non plus : les autres joueurs, eux, jouent.
-  const actifs = G.level && lieux.length && document.getElementById('loading')?.classList.contains('hidden');
+  // (`lieux.length` : à Lille, les lieux nommés disent que la carte est bâtie ; le Batut et le
+  // Pouget n'en ont pas — leurs bots ne pensaient pas du tout, figés où la manche les posait)
+  const actifs = G.level && (lieux.length || !aLille()) && document.getElementById('loading')?.classList.contains('hidden');
   if (actifs) ralliementDesBots(now);
 
   tickFlechesBots(dt);

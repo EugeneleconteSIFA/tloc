@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T13:48:06.585Z",
+ "etiquette": "panyi-camps",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 20,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "panyi",
+ "arrivees": [
+  [
+   17,
+   -33
+  ],
+  [
+   15,
+   -29
+  ]
+ ],
+ "rencontres": {
+  "total": 6,
+  "humains": 1,
+  "mixtes": 4,
+  "bots": 1
+ },
+ "voisinMedianM": 7
+}

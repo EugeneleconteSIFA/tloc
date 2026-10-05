@@ -515,6 +515,30 @@ Vérifié par une sonde qui marche avec `tryMove` et `getH` du moteur : jardin �
 sans un blocage. Une aire peut avoir sa propre mesure (`sd` d'aire, tloc-multi.js : `sdAire`) :
 le jardin n'est pas le domaine rétréci. Un objet d'arène peut donner son étage (`y`).
 
+**Les bots dans les maisons, Ko Panyi, Gallipoli (5 octobre, le soir)** :
+- Hors de Lille, les bots NE PENSAIENT PAS : `tickBots` ne les animait que si le niveau avait des
+  lieux nommés (`lieux.length`), ce qui n'est vrai qu'à Lille. Au Batut et au Pouget, ils restaient
+  où la manche les posait ; la grille des chemins et les drapeaux étaient bloqués de même. Levé
+  hors de Lille (`aLille()`) ; les drapeaux partent du départ de l'arène (`lieuDepart`).
+- LE GRAPHE (`graphe` : { n: [[x, z, y]…], a: [[i, j]…] }, `suivreGraphe`) : une cible à un autre
+  étage, ou derrière un mur, et le bot va du point du graphe qu'il voit au point qui voit sa
+  cible, par le plus court chemin (Dijkstra), puis reprend la poursuite. Au Batut, 75 points par
+  maison : les pièces, les seuils, la vis marche à marche, l'escalier droit. Banc (un joueur posté
+  dans la grande chambre, trois bots, 90 s) : avant, aucun bot à l'étage ; après, les trois y
+  sont en 40 s, au contact. Chaque arête vérifiée aux collisions du moteur (rayon 0,5 m) : elles
+  ont révélé la statue qui bouchait la galerie (40 cm de chaque côté), un banc devant la porte de
+  la salle d'armes, et la porte du billard donnant sur 70 cm entre la cage et le mur.
+- Les portes du Batut à 2,6 m (3 m l'entrée) : à 2 m, il ne restait que 70 cm de passage.
+- Les noms des camps de l'arène ne s'appliquaient que si l'arène « changeait » : quand le niveau la
+  portait dès le départ, les camps gardaient les noms de Lille. Appliqués une fois par arène.
+- **Ko Panyi** (`thailande.html` ; l'arène est dans `thailande-arene.js`, À REPLIER dans
+  thailande.js : une autre session le tenait) : le village sur pilotis (92 m), puis le marché
+  flottant ; les pêcheurs du ponton contre les marchands du haut du village. Banc : 10 rencontres
+  en 45 s à 2 joueurs et 2 bots, voisin à 3 m.
+- **Gallipoli** (`gallipoli.html`, gallipoli.js) : la vieille ville (95 m), puis le parvis du
+  Duomo ; les pêcheurs du port contre les mouliniers des pressoirs à huile. Banc : 8 rencontres en
+  45 s, voisin à 4 m.
+
 **Les objets par arène (5 octobre, fin d'après-midi)** : une arène peut déclarer `objets`
 ({ id, type, x, z, nom }) au lieu de ceux de Lille (`PLAN_OBJETS`). Le Batut : l'armure dans
 chaque chambre, l'arc dans chaque bibliothèque, l'écu au bord du bassin ; la Garde-Guérin et le

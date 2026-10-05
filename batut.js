@@ -23,7 +23,7 @@
 //
 // LES PORTES : Camille a 0,5 m de rayon de collision quelle que soit son échelle (engine.js,
 // tryMove), et un mur arrête à son rayon plus le sien. Une porte de 1,20 m laissait 7 cm : on
-// n'entrait pas. Elles font 2 m et plus.
+// n'entrait pas ; à 2 m, 70 cm, de biais on butait encore. Elles font 2,6 m (3 m l'entrée) : 1,30 m de passage.
 //
 // En mètres (1 unité = 1 m), Camille à l'échelle 0,6 (1,80 m). Origine au bassin, x est, z sud.
 // Une maison : `u` la profondeur depuis la façade sur jardin (0) jusqu'au mur du fond (30), `v`
@@ -58,6 +58,7 @@ const MAISONS = {
 const MURS = [];                              // pour la minicarte : les murs pleins du rez-de-chaussée, en plan
 const HAIES = [];                             // idem, les buis
 const PIECES = [];                            // pour le nom de la zone : { nom, x0, x1, z0, z1, y0 }
+const GRAPHE = { n: [], a: [] };             // pour les bots (tloc-multi.js, suivreGraphe) : les pièces, les seuils, les escaliers
 
 // une boîte aux six faces texturées à leur taille réelle (cf. aveyron.js)
 function boite(w, h, d, slug, opt = {}) {
@@ -136,22 +137,22 @@ function maison(cle) {
   // ---- les murs extérieurs : pierre, sur les deux niveaux ----
   // la façade : la porte, la porte-fenêtre du salon ; le fond : la tour (en bas depuis la cuisine,
   // en haut depuis la galerie haute), la porte de service de la cuisine ; les deux bouts de la galerie
-  murM(0, -DEMI, 0, DEMI, exterieur, [[0, 2.4, 0, 3.0], [11.5, 2.0, 0, 2.8]]);
-  murM(PROF, -DEMI, PROF, DEMI, exterieur, [[-1.6, 2.0, 0, 2.6], [1.6, 2.0, H1, H1 + 2.5], [-4.6, 2.0, 0, 2.5]]);
-  murM(0, DEMI, PROF, DEMI, exterieur, [[14, 2.2, 0, 2.7]]);
-  murM(0, -DEMI, PROF, -DEMI, exterieur, [[14, 2.2, 0, 2.7]]);
+  murM(0, -DEMI, 0, DEMI, exterieur, [[0, 3.0, 0, 3.0], [11.5, 2.4, 0, 2.8]]);
+  murM(PROF, -DEMI, PROF, DEMI, exterieur, [[-1.6, 2.4, 0, 2.6], [1.6, 2.4, H1, H1 + 2.5], [-5, 2.4, 0, 2.5]]);
+  murM(0, DEMI, PROF, DEMI, exterieur, [[14, 2.6, 0, 2.7]]);
+  murM(0, -DEMI, PROF, -DEMI, exterieur, [[14, 2.6, 0, 2.7]]);
   // ---- les cloisons du rez-de-chaussée ----
-  murM(12, -DEMI, 12, DEMI, {}, [[11.5, 2.2], [-11.5, 2.2]]);                         // devant / galerie (l'escalier du vestibule s'y adosse)
-  murM(16, -DEMI, 16, DEMI, {}, [[12, 2.2], [0, 2.4], [-12, 2.2]]);                    // galerie / fond
-  murM(0, 5, 12, 5, {}, [[1.6, 2.0]]);                                                 // vestibule / salon
-  murM(0, -5, 12, -5, {}, [[6, 2.2]]);                                                 // vestibule / salle à manger
-  murM(16, 6, PROF, 6, {}, [[23, 2.0]]);                                               // bibliothèque / cuisine
-  murM(16, -6, PROF, -6, {}, [[19, 2.0]]);                                            // cuisine / cellier (la cheminée est à u = 23)
+  murM(12, -DEMI, 12, DEMI, {}, [[11.5, 2.6], [-11.5, 2.6]]);                         // devant / galerie (l'escalier du vestibule s'y adosse)
+  murM(16, -DEMI, 16, DEMI, {}, [[12, 2.6], [0, 2.8], [-12, 2.6]]);                    // galerie / fond
+  murM(0, 5, 12, 5, {}, [[1.6, 2.6]]);                                                 // vestibule / salon
+  murM(0, -5, 12, -5, {}, [[6, 2.6]]);                                                 // vestibule / salle à manger
+  murM(16, 6, PROF, 6, {}, [[23, 2.6]]);                                               // bibliothèque / cuisine
+  murM(16, -6, PROF, -6, {}, [[19, 2.6]]);                                            // cuisine / cellier (la cheminée est à u = 23)
   // ---- les cloisons de l'étage ----
-  murM(0, 5, PROF, 5, etage, [[7.5, 2.0], [22.5, 2.0]]);                               // galerie haute / billard, salle d'armes
-  murM(0, -5, PROF, -5, etage, [[7.5, 2.0], [22.5, 2.0]]);                             // galerie haute / chambres
-  murM(15, 5, 15, DEMI, etage, [[11.5, 2.0]]);                                         // billard / salle d'armes
-  murM(15, -5, 15, -DEMI, etage, [[-11.5, 2.0]]);                                      // les deux chambres
+  murM(0, 5, PROF, 5, etage, [[13, 2.6], [22.5, 2.6]]);                                // galerie haute / billard (à l'est de la cage : à u = 7,5, la porte donnait sur 70 cm entre la cage et le mur), salle d'armes
+  murM(0, -5, PROF, -5, etage, [[7.5, 2.6], [22.5, 2.6]]);                             // galerie haute / chambres
+  murM(15, 5, 15, DEMI, etage, [[11.5, 2.6]]);                                         // billard / salle d'armes
+  murM(15, -5, 15, -DEMI, etage, [[-11.5, 2.6]]);                                      // les deux chambres
 
   // ---- l'escalier droit du vestibule : contre le mur du salon, de u = 3 à 11 ----
   const ESC = { u0: 3, u1: 11, v0: 2.6, v1: 4.3 };
@@ -251,6 +252,40 @@ function maison(cle) {
       poser(new THREE.Mesh(new THREE.CylinderGeometry(Ri, Ri, 0.25, 32, 1, false, s < 0 ? 0 : Math.PI, Math.PI), phMat('wood_planks', 2 * Ri, Ri, { color: 0x7a5a3a })), xc, H1 - 0.125, zc);
       const aB = angle(best.tour + 0.45), c = addCap(xc, zc, xc + Math.cos(aB) * Ri, zc + Math.sin(aB) * Ri, 0.12, H1 + 1.6); c.bottom = H1 - 0.5; }
     PIECES.push({ nom: `${NOM} — la tour`, x0: xc - Ri, x1: xc + Ri, z0: zc - Ri, z1: zc + Ri, y0: 0, tour: true });
+    // LE GRAPHE DES BOTS (cf. suivreGraphe, tloc-multi.js) : un point par pièce et par seuil de
+    // porte, la vis marche à marche, l'escalier droit ; une arête quand on passe à pied de l'un
+    // à l'autre (aucun mur, aucun meuble entre les deux)
+    const nd = (u, v, y = 0) => GRAPHE.n.push([X(u), v, y]) - 1, ndM = (x, z, y) => GRAPHE.n.push([x, z, y]) - 1;
+    const lien = (...l) => { for (let k = 1; k < l.length; k++) GRAPHE.a.push([l[k - 1], l[k]]); };
+    // dehors : la cour, devant la porte-fenêtre, les coins, les bouts de la galerie
+    const cour = nd(-3, 0), cour2 = nd(-3, 11.5), coinN = nd(-3, DEMI + 3), coinS = nd(-3, -DEMI - 3), extN = nd(14, DEMI + 3), extS = nd(14, -DEMI - 3);
+    lien(cour, cour2, coinN, extN); lien(cour, coinS, extS);
+    // le rez-de-chaussée
+    const sEnt = nd(0, 0), vest = nd(4, -1), sSal = nd(1.6, 5), sal = nd(7.5, 8.5), salE = nd(10.8, 10), salF = nd(10.8, 15), sPf = nd(1, 11.5), sal2 = nd(2, 9);
+    const sDin = nd(6, -5), din = nd(8.5, -7), dinE = nd(9.6, -12), dinF = nd(9.5, -15);
+    const sSG = nd(12, 11.5), galN = nd(13.6, 11.5), sDG = nd(12, -11.5), galS = nd(13.6, -11.5), galC = nd(13.6, 2), galC2 = nd(13.6, -2);
+    const sGN = nd(14, DEMI), sGS = nd(14, -DEMI);
+    const sGC = nd(16, 0), cuis = nd(20, -1.5), sCel = nd(19, -6), celIn = nd(19, -7.4), celA = nd(21.5, -7.2), cel = nd(21.5, -10);
+    const sGB = nd(16, 12), bib = nd(17.4, 12), al1 = nd(17.4, 9.75), al2 = nd(17.4, 14.75), al1b = nd(23, 9.75), al2b = nd(23, 14.75);
+    lien(cour, sEnt, vest, sSal, sal, salE, salF); lien(cour2, sPf, sal2, sal); lien(vest, sDin, din, dinE, dinF);
+    lien(salE, sSG, galN); lien(dinE, sDG, galS); lien(galN, galC, galC2, galS); lien(galN, sGN, extN); lien(galS, sGS, extS);
+    lien(galC, sGC, cuis); lien(galC2, sGC); lien(cuis, sCel, celIn, celA, cel);
+    lien(galN, sGB, bib); lien(bib, al1, al1b); lien(bib, al2, al2b);
+    // la tour : la porte depuis la cuisine, la vis, le palier, la porte de la galerie haute
+    const sT = nd(29.3, -1.6), tBas = nd(31.4, -1.6);
+    lien(cuis, sT, tBas);
+    let prec = tBas;
+    for (let t = 0.15; t < best.tour; t += 0.3) { const a = angle(t), i = ndM(xc + Math.cos(a) * 2, zc + Math.sin(a) * 2, t / best.tour * H1); lien(prec, i); prec = i; }
+    const pal = ndM(xc + Math.cos(angle(best.tour)) * 2, zc + Math.sin(angle(best.tour)) * 2, H1);
+    const sTH = nd(29.3, 1.6, H1), gHE = nd(24, 1.6, H1), gHC = nd(15, 0, H1), gHO = nd(6, -0.5, H1);
+    lien(prec, pal, nd(31, 1.6, H1), sTH, gHE, gHC, gHO);
+    // l'escalier droit du vestibule
+    const bEsc = nd(2.2, 3.45), mEsc = nd(7, 3.45, H1 / 2), hEsc = nd(11.6, 3.45, H1);
+    lien(vest, bEsc, mEsc, hEsc, gHC);
+    // l'étage : les deux chambres, le billard, la salle d'armes
+    const sGch = nd(7.5, -5, H1), gch = nd(8, -11, H1), sCf = nd(22.5, -5, H1), cf = nd(22, -11, H1), sCh = nd(15, -11.5, H1);
+    const sBil = nd(13, 5, H1), bil = nd(10, 9, H1), sArm = nd(22.5, 5, H1), arm = nd(22, 8.5, H1), sBA = nd(15, 11.5, H1);
+    lien(gHO, sGch, gch, sCh, cf, sCf, gHE); lien(gHC, sBil, bil, sBA, arm, sArm, gHE);
   }
 
   // ---- les baies : granit, vitre, croisée, volets ; dedans, le jour qui entre ----
@@ -293,13 +328,13 @@ function maison(cle) {
     addBox(x - 0.48, x + 0.48, v - 1.4, v + 1.4, 0.95);
   };
   canape(3.5, 12, -1); canape(8.5, 12, 1); meuble(mx(6), 12, 1.2, 1.8, 0.45, BOIS, SOMBRE);
-  meuble(mx(5.5), 7.4, 1.0, 1.0, 1.0, 'fabric_pattern_07', 0x6a5a3a); meuble(mx(10.5), 7.2, 1.6, 2.2, 1.0, BOIS, 0x2a1e16);   // un fauteuil, le piano
+  meuble(mx(1.2), 16.5, 1.0, 1.0, 1.0, 'fabric_pattern_07', 0x6a5a3a); meuble(mx(10.5), 7.2, 1.6, 2.2, 1.0, BOIS, 0x2a1e16);   // un fauteuil, le piano
   // la salle à manger : la longue table, les buffets contre le pignon et la cloison
   meuble(mx(6), -11.5, 1.4, 6.0, 0.78, BOIS, SOMBRE); meuble(mx(6), -DEMI + 0.45, 3.4, 0.6, 1.2, BOIS, SOMBRE);
   meuble(mx(11.4), -9, 0.6, 2.4, 1.0, BOIS, CLAIR);
   // la galerie : des coffres, une horloge, une statue
   meuble(mx(15.4), -6, 0.7, 1.2, 0.7, BOIS, SOMBRE); meuble(mx(15.4), 6, 0.7, 1.2, 0.7, BOIS, SOMBRE);   // contre la cloison : au milieu, ils bouchaient la galerie meuble(mx(15.4), -16.5, 0.6, 0.6, 2.2, BOIS, SOMBRE);
-  meuble(mx(14), 0, 0.9, 0.9, 1.9, 'granite_tile_03', 0xc8c2b6);
+  meuble(mx(15.3), 16.4, 0.9, 0.9, 1.9, 'granite_tile_03', 0xc8c2b6);   // la statue, dans le coin : au milieu, elle bouchait la galerie (40 cm de chaque côté)
   // la bibliothèque : quatre rayonnages en épis (2,4 m : on ne voit pas par-dessus), une table de lecture
   const livres = [0x6a2a24, 0x2a4a3a, 0x3a3a5a, 0x7a5a2a, 0x4a2a3a];
   for (const [k, v] of [[0, 8.5], [1, 11], [2, 13.5], [3, 16]]) {
@@ -327,7 +362,7 @@ function maison(cle) {
   for (const v of [8, 11, 14]) meuble(mx(28.9), v, 0.5, 2.0, 2.1, BOIS, SOMBRE, y);              // les râteliers de la salle d'armes
   meuble(mx(21), 11.5, 2.4, 1.2, 0.85, BOIS, CLAIR, y);
   // la galerie haute : des bancs, deux bahuts
-  meuble(mx(16), -4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y); meuble(mx(24), 4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y);
+  meuble(mx(16), -4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y); meuble(mx(27.4), 4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y);   // pas devant la porte de la salle d'armes
   meuble(mx(20), -4.3, 1.4, 0.6, 1.1, BOIS, SOMBRE, y);
 
   // ---- dehors : un tas de bois, une charrette, des tonneaux ; la cour de terre battue ----
@@ -456,6 +491,7 @@ const ARENE_BATUT = {
   // chacun arrive dans son vestibule
   departsCamps: { garnison: [-(FACADE + 7), -1.5], bourg: [FACADE + 7, -1.5] },
   dispersion: 2.5,                       // on reste dans son vestibule (12 × 10 m)
+  graphe: GRAPHE,                        // pour que les bots passent de pièce en pièce et montent (cf. maison())
   // de quoi fouiller les maisons : l'armure en haut, dans la grande chambre ; l'arc dans la
   // bibliothèque ; l'écu, un seul, au bord du bassin — on se le dispute au milieu du jardin
   objets: [
@@ -478,7 +514,7 @@ const ARENE_BATUT = {
 
 const level = {
   name: 'batut', echelle: 0.6, musique: 'campagne', getH: () => 0, zoneName,
-  build, populate, animate, minimap, arenes: [ARENE_BATUT],
+  build, populate, animate, minimap, arenes: [ARENE_BATUT],   // son graphe (GRAPHE) est rempli au build
   counts: () => '<small>Le Batut et Beauregard — deux maisons, un jardin entre les deux.</small>',
   start: () => showMessage('Le Batut à l’ouest, Beauregard à l’est. Le jardin entre les deux.', 5),
   arriveMessage: () => 'Le Batut et Beauregard.',

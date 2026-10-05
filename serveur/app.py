@@ -1028,7 +1028,7 @@ class NouvelleInstance(BaseModel):
     duree: int = Field(default=180, ge=60, le=900)
     # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) ; en ajouter une,
     # c'est l'ajouter ici et dans ARENES (tloc-compte.js)
-    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut)$")
+    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut|panyi|gallipoli)$")
 
 
 def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
