@@ -21,6 +21,14 @@ import * as ATLAS from './atlas.js';
 import * as PNJ from './pnj.js';
 // (la géométrie de l'arène — tracé, parc, porte, bastions — vient de sa déclaration, game.js)
 import { ENCEINTE, TOWN, sdEau, sdEnceinte, surOuvrage, surPont, townWorld } from './carte.js';
+// L'eau, les ouvrages, les ponts et l'enceinte de carte.js sont ceux de Lille : ailleurs (le
+// multi se joue aussi à la Garde-Guérin, au Pouget — 5 octobre), ils mentiraient. Le lieu peut
+// donner son eau à son arène (`sdEau`) ; sinon, il n'y en a pas.
+const aLille = () => !!(G.level && G.level.name === 'citadel');
+const eau = (x, z) => (aLille() ? sdEau(x, z) : arene && arene.sdEau ? arene.sdEau(x, z) : 99);
+const ouvrage = (x, z, y) => (aLille() ? surOuvrage(x, z, y) : false);
+const pont = (x, z) => (aLille() ? surPont(x, z) : null);
+const horsEnceinte = (x, z) => (aLille() ? sdEnceinte(x, z) : -99);
 import { PARTAGE } from './etat.js';
 import { openGate } from './quetes.js';
 import { FAUCHE_DEBUG } from './nature.js';
@@ -98,6 +106,7 @@ if (slot || actif) {
 // niveau — celles que le moteur appelle pour afficher les compteurs et le message
 // d'arrivée. L'objet `level` de game.js n'est pas touché sur le disque : seule
 // l'instance en mémoire de cette page l'est.
+let habillerNiveau = () => {};                        // posée ci-dessous en instance
 if (actif) {
   Object.assign(state, {
     introSeen: true,          // pas d'enlèvement du prince en ouverture
@@ -139,17 +148,25 @@ if (actif) {
       + BOURSE.ligneHUD();
   };
 
-  if (G.level) {
-    G.level.counts = comptesInstance;
-    G.level.start = () => showMessage(
-      `${monPerso} entre dans la citadelle. Ici, pas de quête : les monstres, les remparts, et les autres joueurs.`, 6);
+  // Fait une fois, dès que le niveau existe : à Lille, tout de suite (game.js l'a rangé avant
+  // ce fichier) ; dans les mondes de monde.js et au Pouget, un peu plus tard — leur niveau naît
+  // après l'installation de Camille (cf. assurerArene, appelé à chaque image)
+  habillerNiveau = () => {
+    if (aLille()) {
+      G.level.counts = comptesInstance;
+      G.level.start = () => showMessage(
+        `${monPerso} entre dans la citadelle. Ici, pas de quête : les monstres, les remparts, et les autres joueurs.`, 6);
+    } else {
+      G.level.counts = () => `<small>Instance « ${inst.nom} » — ${arene ? arene.nom : 'balade'} : duels, pas de quête.</small>` + BOURSE.ligneHUD();
+      G.level.start = () => showMessage(`${monPerso} arrive : ${arene ? arene.nom : 'ici'}. Pas de quête : les autres joueurs.`, 6);
+    }
     G.level.arriveMessage = () => `De retour dans l\u2019instance « ${inst.nom} ».`;
     G.level.entry = () => null;      // pas de scène d'arrivée scénarisée
     // Phinaert est un monstre comme les autres (Eugène, 29 septembre) : sa mort ne lance pas
     // la cinématique de la quête (le donjon libéré, la clé au sommet) en pleine partie
     const tuer = G.level.onKill;
     G.level.onKill = (e) => { if (e.k && e.k.boss) { BOURSE.prime(e); showMessage('Phinaert est à terre !', 3); return; } return tuer && tuer(e); };
-  }
+  };
   // son onde de choc frappe tout le monde : chaque navigateur simule ses monstres, et donc
   // celle de mon Phinaert atteint les bots que je fais vivre (les autres humains encaissent
   // celle du leur). Même chemin qu'un coup reçu : recul, riposte, mise à terre.
@@ -191,20 +208,37 @@ function ouvrirDonjon() {
 // future limite ; ensuite, hors de l'aire, on perd un demi-cœur toutes les 1,5 s (les bots
 // aussi, et ils rentrent d'eux-mêmes).
 // Sans arène déclarée (un lieu qui n'en a pas encore), une seule aire sans limite : 'tout'.
-const ARENES = (G.level && G.level.arenes) || [];
-let arene = ARENES[0] || null;
+// lues à la demande : hors de Lille, le niveau (et son arène) naît après ce fichier
+const arenesNiveau = () => (G.level && G.level.arenes) || [];
+let arene = arenesNiveau()[0] || null, areneVoulue = null, niveauHabille = false;
 const AIRES = { tout: { id: 'tout', r: Infinity, nom: 'toute la carte' } };
 const idsAires = () => (arene ? arene.aires.map((a) => a.id) : ['tout']);
 // l'instance dit son arène à l'entrée (bienvenue) ; un lieu qui ne la déclare pas prend la sienne
 function prendreArene(id) {
-  arene = ARENES.find((a) => a.id === id) || ARENES[0] || null;
+  const L = arenesNiveau();
+  arene = L.find((a) => a.id === id) || L[0] || null;
   for (const k of Object.keys(AIRES)) if (k !== 'tout') delete AIRES[k];
   if (arene) for (const a of arene.aires) AIRES[a.id] = a;
   for (const r of rideaux.values()) scene.remove(r);
   rideaux.clear();
 }
+// À chaque image (et à l'entrée dans le salon) : l'arène voulue par l'instance, dès que le
+// niveau l'a déclarée ; l'habillage du niveau en instance, une fois ; les noms des camps
+function assurerArene() {
+  if (!G.level) return;
+  if (!niveauHabille) { niveauHabille = true; habillerNiveau(); }
+  if (arene && (!areneVoulue || arene.id === areneVoulue) && arenesNiveau().includes(arene)) return;
+  const avant = arene;
+  prendreArene(areneVoulue || (arene && arene.id));
+  if (arene === avant) return;
+  aireEnVigueur = premiereAire();
+  // les camps gardent leurs clés (le serveur compte « garnison » et « bourg ») ; l'arène leur
+  // donne ses noms — à la Garde-Guérin, la garde de la tour contre les muletiers…
+  for (const [k, c] of Object.entries(CAMPS)) Object.assign(c, CAMPS_LILLE[k], (arene && arene.camps && arene.camps[k]) || {});
+  campsTexte = (arene && arene.campsTexte) || TEXTE_CAMPS_LILLE;
+}
 const PREAVIS = 50;
-let debutCours = 0;                                   // pour le match à mort, qui n'a pas de chrono
+let debutCours = 0;                                  // pour le match à mort, qui n'a pas de chrono
 function calendrierAire() {
   if (!manche) return [];
   const d = manche.duree || 180, ids = idsAires(), n = ids.length;
@@ -229,7 +263,8 @@ function etatAire(t) {
 }
 const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && arene.sd(x, z) > AIRES[aire].r;
 const premiereAire = () => idsAires()[0];
-const lieuDepart = () => lieux.find((l) => l.id === (arene ? arene.depart : 'place'));
+// `depart` : l'identifiant d'un lieu (E.addLieu), ou directement un point { x, z }
+const lieuDepart = () => { const d = arene ? arene.depart : 'place'; return d && typeof d === 'object' ? d : lieux.find((l) => l.id === d); };
 
 // le rideau : un ruban vertical le long de la limite, lumière qui monte et ondoie
 const rideaux = new Map();
@@ -426,10 +461,16 @@ let estHote = false, rdv = null;   // le rendez-vous : le premier point choisi p
 // reconnaît de loin) et la plaque du nom ; le serveur refuse les coups entre alliés et
 // compte les mises à terre par camp. Chaque camp a son point de ralliement, posé par le
 // premier des siens qui entre.
-const CAMPS = {
-  garnison: { nom: 'La garnison', tunique: 0, couleur: '#9cc8ff' },
-  bourg: { nom: 'Les gens du bourg', tunique: 1, couleur: '#ff9c8c' },
+// Les noms sont ceux de Lille ; une autre arène donne les siens (`camps`, cf. assurerArene),
+// `court` est celui du score, et `pluriel` accorde le verbe (« la garnison prend », « les gens
+// du bourg prennent »).
+const CAMPS_LILLE = {
+  garnison: { nom: 'La garnison', court: 'Garnison', tunique: 0, couleur: '#9cc8ff', pluriel: false },
+  bourg: { nom: 'Les gens du bourg', court: 'Bourg', tunique: 1, couleur: '#ff9c8c', pluriel: true },
 };
+const CAMPS = { garnison: { ...CAMPS_LILLE.garnison }, bourg: { ...CAMPS_LILLE.bourg } };
+const TEXTE_CAMPS_LILLE = 'La garnison de la citadelle contre les gens du bourg.';
+let campsTexte = TEXTE_CAMPS_LILLE;
 let mode = 'libre', enjeu = false, points = { garnison: 0, bourg: 0 }, effectifs = { garnison: 0, bourg: 0 };
 const enEquipes = () => mode === 'equipes';
 const memeCamp = (a) => enEquipes() && state.camp && a.camp === state.camp;
@@ -457,8 +498,8 @@ function peindrePanneau() {
   const lignes = [`<b style="color:#ffe7a3">${ech(inst.nom)}</b> <span style="opacity:.7">${ech(inst.code)}</span>`];
   if (enEquipes()) {
     const G_ = CAMPS.garnison, B_ = CAMPS.bourg;
-    lignes.push(`<b style="color:${G_.couleur}">Garnison ${points.garnison}</b> — <b style="color:${B_.couleur}">${points.bourg} Bourg</b>`
-      + (state.camp ? ` <span style="opacity:.7">(tu es ${state.camp === 'garnison' ? 'de la garnison' : 'du bourg'})</span>` : ''));
+    lignes.push(`<b style="color:${G_.couleur}">${G_.court} ${points.garnison}</b> — <b style="color:${B_.couleur}">${points.bourg} ${B_.court}</b>`
+      + (CAMPS[state.camp] ? ` <span style="opacity:.7">(tu es avec ${CAMPS[state.camp].nom.charAt(0).toLowerCase() + CAMPS[state.camp].nom.slice(1)})</span>` : ''));
     if (regle === 'balade') lignes.push(`<span style="opacity:.8;font-size:12px">premier camp à ${VICTOIRE_BALADE} points : victoire</span>`);
     if (regle === 'drapeaux' && drapeaux.length) {
       const n = (c) => drapeaux.filter((d) => d.camp === c).length;
@@ -584,7 +625,13 @@ function connecter() {
       moi = m.moi;
       estHote = !!m.hote; rdv = m.rdv || null;
       mode = m.mode || 'libre'; enjeu = !!m.enjeu; regle = m.regle || 'balade';
-      if (m.arene && (!arene || m.arene !== arene.id)) { prendreArene(m.arene); aireEnVigueur = premiereAire(); }
+      // l'instance se joue ailleurs (un lien, un onglet resté ouvert) : on va à la page de son arène
+      const page = C.pageArene(m.arene), ici = location.pathname.split('/').pop() || 'index.html';
+      if (m.arene && page !== ici) {
+        try { sessionStorage.setItem('tloc_auto', 'instance'); sessionStorage.setItem('tloc_entree', '1'); } catch (e) {}
+        ws.onclose = null; ws.close(); location.replace(page); return;
+      }
+      areneVoulue = m.arene || null; assurerArene();
       if (m.points) points = m.points;
       if (m.camps) effectifs = m.camps;
       // de retour dans une instance en équipes : on redit son camp au salon
@@ -715,7 +762,7 @@ function choisirCamp(suite) {
     suite();
   };
   showMenu('Choisis ton camp', 'Instance en équipes',
-    'La garnison de la citadelle contre les gens du bourg. Les coups entre alliés ne portent pas ; chaque mise à terre d’un adversaire rapporte un point à ton camp.',
+    campsTexte + ' Les coups entre alliés ne portent pas ; chaque mise à terre d’un adversaire rapporte un point à ton camp.',
     [{ label: ligne('garnison'), fn: () => prendre('garnison') }, { label: ligne('bourg'), fn: () => prendre('bourg') }]);
 }
 
@@ -728,7 +775,7 @@ function praticable(x, z) {
     for (let k = 0; k < n; k++) {
       const a = k / n * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
       if (world.bounds && world.bounds(px, pz)) continue;
-      if (sdEau(px, pz) < 2) continue;
+      if (eau(px, pz) < 2) continue;
       const y = world.levelH ? world.levelH(px, pz) : 0;
       if (blocked(px, pz, 0.8, false, y)) continue;
       const nom = world.zoneName ? world.zoneName(px, pz) : '';
@@ -759,9 +806,24 @@ function praticableOuvertIci(x, z) {
   }
   return null;
 }
+// Hors de Lille, pas de carte où cliquer (l'atlas est celui de la châtellenie) : on arrive au
+// départ de son camp si l'arène en donne un (`departsCamps` : au Batut ou à Beauregard selon
+// son équipe…), sinon au ralliement, sinon au départ de l'arène, sur un point praticable.
+function arriveeAuto() {
+  const dc = enEquipes() && arene && arene.departsCamps && arene.departsCamps[state.camp];
+  const base = dc ? { x: dc[0], z: dc[1] } : (monRdv() || lieuDepart());
+  if (!base) return null;
+  for (let k = 0; k < 40; k++) {
+    // à quelques mètres du point, au hasard : deux joueurs arrivaient l'un dans l'autre
+    const a = Math.random() * TAU, r = 3 + Math.random() * (5 + k);
+    const q = praticableOuvertIci(base.x + Math.cos(a) * r, base.z + Math.sin(a) * r);
+    if (q && !horsAire(q.x, q.z, premiereAire())) return q;
+  }
+  return null;
+}
 async function choisirApparition() {
   const pre = monRdv();
-  const p = await ATLAS.choisirPoint(praticableOuvert, enEquipes() ? pre : (estHote ? null : pre));
+  const p = arene && !arene.carte ? arriveeAuto() : await ATLAS.choisirPoint(praticableOuvert, enEquipes() ? pre : (estHote ? null : pre));
   if (p) {
     player.pos.set(p.x, getH(p.x, p.z, (world.levelH ? world.levelH(p.x, p.z) : 0) + 0.5) + 0.1, p.z);
     player.vy = 0; player.kb.set(0, 0, 0);
@@ -942,7 +1004,7 @@ function peindreFete(fin = null) {
     : `<b style="color:#ffe7a3">Fête de la moisson</b> — ${Math.floor(reste / 60)}:${String(reste % 60).padStart(2, '0')}`;
   let corps = sc.slice(0, 4).map(([id, n], k) => `${k + 1}. ${ech(nomDe(id))} <b>${n}</b>`).join(' &nbsp; ');
   if (enEquipes()) { const t = totauxCamps((fin || fete).scores);
-    corps = `<b style="color:${CAMPS.garnison.couleur}">Garnison ${t.garnison}</b> — <b style="color:${CAMPS.bourg.couleur}">${t.bourg} Bourg</b><br>` + corps; }
+    corps = `<b style="color:${CAMPS.garnison.couleur}">${CAMPS.garnison.court} ${t.garnison}</b> — <b style="color:${CAMPS.bourg.couleur}">${t.bourg} ${CAMPS.bourg.court}</b><br>` + corps; }
   banniere.innerHTML = `${tete}<br>${corps || '<span style="opacity:.7">personne n’a encore fauché</span>'}`;
 }
 function tickFete(now) {
@@ -1043,15 +1105,16 @@ function tickBannieres(now) {
 function evenementBanniere(m) {
   bannieres = m.bannieres || bannieres;
   if (m.points) points = m.points;
-  const nomCamp = (c) => (c === 'garnison' ? 'la garnison' : 'du bourg'), deMoi = moi && m.id === moi.id;
-  const drap = `la bannière ${m.camp === 'garnison' ? 'de la garnison' : 'du bourg'}`;
+  // les noms de l'arène : « la bannière de la garnison », « des muletiers », « de ceux d'en bas »
+  const leCamp = (c) => CAMPS[c].nom.charAt(0).toLowerCase() + CAMPS[c].nom.slice(1), deMoi = moi && m.id === moi.id;
+  const drap = `la bannière ${('de ' + leCamp(m.camp)).replace(/^de les /, 'des ').replace(/^de le /, 'du ')}`;
   if (m.evt === 'prise') showMessage(deMoi ? `Tu portes ${drap} ! Rapporte-la à ton ralliement.` : `${m.perso} s’empare de ${drap} !`, 4);
   else if (m.evt === 'tombe') showMessage(`${m.perso} lâche ${drap}.`, 3);
   else if (m.evt === 'rendue') showMessage(`${m.perso} ramène ${drap} chez elle.`, 3);
   else if (m.evt === 'rentre') showMessage(`${drap.charAt(0).toUpperCase() + drap.slice(1)} rentre à son ralliement.`, 3);
   else if (m.evt === 'marque') {
     const camp = autreCamp(m.camp);
-    showMessage(`${m.perso} rapporte ${drap} : trois points pour ${camp === 'garnison' ? 'la garnison' : 'le bourg'} !`, 5);
+    showMessage(`${m.perso} rapporte ${drap} : trois points pour ${leCamp(camp)} !`, 5);
     try { if (camp === state.camp) SFX.win(); } catch (e) {}
   }
   peindrePanneau();
@@ -1195,7 +1258,7 @@ function proposerDrapeaux() {
     // à 40 m au moins de la limite du monde : près d'elle, les rues continuent au-delà sans
     // rempart dessiné, et l'on bute contre un « faux mur » en voyant le drapeau (Eugène, 29 sept.)
     // l'aire la plus étroite : à 14 m en deçà de sa limite (12 m des courtines de la citadelle)
-    if (A.r === Infinity ? sdEnceinte(x, z) > -40 : etroite ? arene.sd(x, z) > A.r - 14
+    if (A.r === Infinity ? horsEnceinte(x, z) > -40 : etroite ? arene.sd(x, z) > A.r - 14
       : (parc && !parc[k]) || arene.sd(x, z) > A.r || (A.exclut && A.exclut(x, z))) continue;
     if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
@@ -1225,7 +1288,7 @@ function proposerDrapeaux() {
 // hors du tissu bâti de la ville (son `exclut`, enQuartier) qui l'entame côté Esplanade.
 function intraDeule(p0) {
   const { nx, nz, libre } = nav, vu = new Uint8Array(nx * nz), file = new Int32Array(nx * nz);
-  const ouvert = (k) => { const i = k % nx, j = (k - i) / nx; return libre[k] && surPont(nav.x0 + (i + 0.5) * NAV_PAS, nav.z0 + (j + 0.5) * NAV_PAS) === null; };
+  const ouvert = (k) => { const i = k % nx, j = (k - i) / nx; return libre[k] && pont(nav.x0 + (i + 0.5) * NAV_PAS, nav.z0 + (j + 0.5) * NAV_PAS) === null; };
   const k0 = caseNav(p0.x, p0.z); if (k0 < 0) return vu;
   let tete = 0, queue = 0; vu[k0] = 1; file[queue++] = k0;
   while (tete < queue) {
@@ -1242,7 +1305,7 @@ function intraDeule(p0) {
 // plus proche collait à la tour, et le cercle passait à travers ses murs). On cherche autour
 // du lieu un centre dont le cercle, sondé sur deux couronnes, ne touche ni mur ni eau.
 function terrainDrapeau(l, relie = null) {
-  const libre = (x, z) => !(world.bounds && world.bounds(x, z)) && sdEau(x, z) > 2 && !blocked(x, z, 0.9, false, world.levelH ? world.levelH(x, z) : 0);
+  const libre = (x, z) => !(world.bounds && world.bounds(x, z)) && eau(x, z) > 2 && !blocked(x, z, 0.9, false, world.levelH ? world.levelH(x, z) : 0);
   for (let r = 0; r <= 40; r += 2) {
     const n = r ? Math.ceil(r * 1.5) : 1;
     for (let k = 0; k < n; k++) {
@@ -1343,7 +1406,7 @@ function evenementDrapeaux(m) {
   const d = m.id && drapeaux.find((x) => x.id === m.id);
   if (d && m.evt === 'pris') {
     const noms = (m.noms || []).join(', ');
-    showMessage(`${CAMPS[m.camp].nom} ${m.camp === 'garnison' ? 'prend' : 'prennent'} ${d.nom}${noms ? ' (' + noms + ')' : ''} !`, 4);
+    showMessage(`${CAMPS[m.camp].nom} ${CAMPS[m.camp].pluriel ? 'prennent' : 'prend'} ${d.nom}${noms ? ' (' + noms + ')' : ''} !`, 4);
     try { if (m.camp === state.camp) SFX.win(); } catch (e) {}
   } else if (d && m.evt === 'neutre') showMessage(`Le drapeau de ${d.nom} est rabattu : ${m.camp === state.camp ? 'reprends-le !' : 'il n’est plus à personne.'}`, 3.5);
   peindreDrapeaux(); peindrePanneau();
@@ -1416,7 +1479,7 @@ function proposerObjets() {
 // des murs et de l'eau. On en cherche un sur des cercles de 14 à 26 m autour du lieu
 // (au centre du moulin, elle mordait dans sa tour).
 function placeEcurie(l) {
-  const libre = (x, z) => sdEau(x, z) > 2 && !(world.bounds && world.bounds(x, z)) && !blocked(x, z, 0.6, false, (world.levelH ? world.levelH(x, z) : 0));
+  const libre = (x, z) => eau(x, z) > 2 && !(world.bounds && world.bounds(x, z)) && !blocked(x, z, 0.6, false, (world.levelH ? world.levelH(x, z) : 0));
   for (let r = 14; r <= 26; r += 3) for (let k = 0; k < 16; k++) {
     const a = k / 16 * TAU, x = l.x + Math.cos(a) * r, z = l.z + Math.sin(a) * r;
     let ok = true;
@@ -2023,7 +2086,7 @@ function avancer(b, dirX, dirZ, vitesse, dt) {
     const ax = b.pos.x + dx * 4, az = b.pos.z + dz * 4;
     // (à la hauteur qu'il aura LÀ-BAS : la rampe d'un pont monte, et jugé à la hauteur de ses
     // pieds le tablier lui paraissait trop haut pour être le sien)
-    if (sdEau(ax, az) < 1.2 && !surOuvrage(ax, az, getH(ax, az, b.pos.y + 0.5))) continue;
+    if (eau(ax, az) < 1.2 && !ouvrage(ax, az, getH(ax, az, b.pos.y + 0.5))) continue;
     if (tryMove(b.pos, dx, dz, 0.45, false)) {
       b.pos.y = getH(b.pos.x, b.pos.z, b.pos.y + 0.5);
       b.yaw = lerpAngle(b.yaw, an, Math.min(1, dt * 10));
@@ -2099,7 +2162,7 @@ function preparerNav() {
     const j = nav.fait++, z = nav.z0 + (j + 0.5) * NAV_PAS;
     for (let i = 0; i < nav.nx; i++) {
       const x = nav.x0 + (i + 0.5) * NAV_PAS;
-      if (sdEnceinte(x, z) >= 0 || (world.bounds && world.bounds(x, z))) { nav.libre[j * nav.nx + i] = 0; continue; }
+      if (horsEnceinte(x, z) >= 0 || (world.bounds && world.bounds(x, z))) { nav.libre[j * nav.nx + i] = 0; continue; }
       // Au-dessus de l'eau, on ne passe que sur un ouvrage (surOuvrage, la règle du moteur), à
       // la hauteur de son tablier (getH la rend). Tester le fond rendait tous les ponts
       // infranchissables : la citadelle était une île dans la grille, et aucun drapeau ne
@@ -2113,10 +2176,10 @@ function preparerNav() {
       // Sous un pont relevé, on se place sur son TABLIER : c'est là que passent les bots (sur
       // l'avenue Léon Jouhaux, à 8 m), et ses parapets ne valent qu'à cette hauteur — vue du
       // sol en dessous, la grille ouvrait des chemins qui les traversaient
-      const tab = surPont(x, z);
-      if (sdEau(x, z) > 1.5) { const yh = tab !== null ? tab : getH(x, z, sol + 0.5); nav.libre[k] = !blocked(x, z, 0.6, false, yh) ? 1 : 0; nav.haut[k] = yh; continue; }
+      const tab = pont(x, z);
+      if (eau(x, z) > 1.5) { const yh = tab !== null ? tab : getH(x, z, sol + 0.5); nav.libre[k] = !blocked(x, z, 0.6, false, yh) ? 1 : 0; nav.haut[k] = yh; continue; }
       const y = getH(x, z, sol + 15);
-      nav.libre[k] = surOuvrage(x, z, y) && !blocked(x, z, 0.6, false, y) ? 1 : 0; nav.haut[k] = y;
+      nav.libre[k] = ouvrage(x, z, y) && !blocked(x, z, 0.6, false, y) ? 1 : 0; nav.haut[k] = y;
     }
     // LES PASSAGES entre cases voisines, testés à mi-chemin : un mur mince (parapet de pont,
     // ravelin de la Porte Royale) tombe entre deux centres distants de 2 m sans toucher ni
@@ -2598,7 +2661,7 @@ function ouvert(x, z) {
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N || vu[b * N + a]) continue;
       const px = x + (a - R) * PAS, pz = z + (b - R) * PAS, y2 = h(a, b);
-      if (y2 - y > 0.5 || (sdEau(px, pz) < 1 && !surOuvrage(px, pz, y2)) || blocked(px, pz, 0.4, false, y2)) continue;
+      if (y2 - y > 0.5 || (eau(px, pz) < 1 && !ouvrage(px, pz, y2)) || blocked(px, pz, 0.4, false, y2)) continue;
       vu[b * N + a] = 1; file.push([a, b]);
     }
   }
@@ -2616,7 +2679,7 @@ function orienterArrivee() {
     let n = 0;                                            // combien de pas libres derrière elle
     for (let d = 1.5; d <= 7.5; d += 1.5) {
       const bx = p.x - sx * d, bz = p.z - sz * d, h = world.levelH ? world.levelH(bx, bz) : 0;
-      if (Math.abs(h - y) > 1 || blocked(bx, bz, 0.5, false, h) || (sdEau(bx, bz) < 1 && !surOuvrage(bx, bz, h))) break;
+      if (Math.abs(h - y) > 1 || blocked(bx, bz, 0.5, false, h) || (eau(bx, bz) < 1 && !ouvrage(bx, bz, h))) break;
       n++;
     }
     if (n > score) { score = n; mieux = a; }
@@ -2910,7 +2973,7 @@ function boucle(now) {
   requestAnimationFrame(boucle);
   const dt = Math.min(0.05, (now - precedent) / 1000); precedent = now;
 
-  if (actif) { premiereEntree(); ouvrirDonjon(); tickAire(dt, now); }
+  if (actif) { assurerArene(); premiereEntree(); ouvrirDonjon(); tickAire(dt, now); }
   // point de réapparition : celui choisi sur la carte ; à défaut, là où la partie a
   // démarré, relevé une fois lancée
   if (state.running && !apparition) {

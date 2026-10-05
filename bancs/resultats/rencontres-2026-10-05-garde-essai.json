@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T09:26:21.701Z",
+ "etiquette": "garde-essai",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 60,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "gardeguerin",
+ "arrivees": [
+  [
+   1767,
+   -5340
+  ],
+  [
+   1761,
+   -5341
+  ]
+ ],
+ "rencontres": {
+  "total": 4,
+  "humains": 1,
+  "mixtes": 3,
+  "bots": 0
+ },
+ "voisinMedianM": 10
+}

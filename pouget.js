@@ -264,8 +264,36 @@ function blocked(x, z, r = 0.4) {
   for (const t of TRONCS) if (Math.abs(x - t.x) < 2 && Math.abs(z - t.z) < 2 && Math.hypot(x - t.x, z - t.z) < t.r + r) return true;
   return false;
 }
+// L'ARÈNE du multi (5 octobre, cf. ARENE_LILLE dans game.js et docs/NOTE-MULTI.md) : le cœur
+// du hameau tient dans 80 × 65 m (les maisons OSM de −39 à 40 m en x, de −29 à 36 m en z) ; on
+// s'y bat de muret en muret, entre les granges, sur la pente. Elle descend du nord-ouest
+// (773 m) au sud-est (751 m) : ceux d'en haut contre ceux d'en bas.
+const ARENE_POUGET = {
+  id: 'pouget', nom: 'Le Pouget',
+  sd: (x, z) => Math.hypot(x, z - 5), centre: [0, 5],
+  depart: { x: 0, z: 5 },
+  aires: [
+    // 80 m : le hameau, ses enclos et ses potagers ; 35 m : les maisons du milieu
+    { id: 'hameau', nom: 'le hameau', r: 80, couleur: '#ffd070', lueur: 0xffc860, eparpille: 50 },
+    { id: 'coeur', nom: 'le cœur du hameau', r: 35, couleur: '#ff9a70', lueur: 0xff6a3a, eparpille: 25 },
+  ],
+  camps: {
+    garnison: { nom: 'Ceux d’en haut', court: 'En haut', pluriel: true },
+    bourg: { nom: 'Ceux d’en bas', court: 'En bas', pluriel: true },
+  },
+  campsTexte: 'Ceux d’en haut contre ceux d’en bas, d’un bout à l’autre du hameau.',
+  departsCamps: { garnison: [-28, -6], bourg: [26, 26] },
+  pointsForts: () => [
+    { id: 'milieu', nom: 'le milieu du hameau', x: 0, z: 5 },
+    { id: 'haut', nom: 'le haut du hameau', x: -28, z: -6 },
+    { id: 'bas', nom: 'le bas du hameau', x: 26, z: 26 },
+    { id: 'ouest', nom: 'le bout ouest', x: -36, z: 22 },
+    { id: 'est', nom: 'le bout est', x: 38, z: -24 },
+  ],
+};
 const level = {
   name: 'pouget', echelle: 0.6, musique: 'campagne', getH: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), blocked,   // les terrasses et les potagers se marchent au-dessus du relief
+  arenes: [ARENE_POUGET],
   zoneName,
   build, populate, animate, minimap,
   counts: () => '<small>Le Pouget, en Lozère — le hameau de granit sur sa pente. La porte de l’île, derrière toi, pour revenir.</small>',

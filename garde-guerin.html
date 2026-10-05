@@ -75,5 +75,11 @@
 { "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
 </script>
 <script type="module" src="garde-guerin.js?v=41"></script>
+<!-- le multi (5 octobre) : seulement en instance — ici, sans instance, on se promène en solo, et
+     tloc-multi.js renverrait à l'accueil (le solo de Lille est réservé au créateur) -->
+<script type="module">
+  let inst = null; try { inst = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); } catch (e) {}
+  if (inst && inst.code) import('./tloc-multi.js?v=41');
+</script>
 </body>
 </html>

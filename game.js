@@ -88,7 +88,8 @@ function animate(now, dt) {
 const ARENE_LILLE = {
   id: 'lille', nom: 'La citadelle de Lille',
   sd: sdPent, centre: [0, 40],
-  depart: 'place',               // le lieu où l'on revient quand rien d'autre n'est sûr
+  carte: true,                   // l'arrivée se choisit sur la carte de la châtellenie (atlas.js)
+  depart: 'place',              // le lieu où l'on revient quand rien d'autre n'est sûr
   aires: [
     // la herse de la Porte Royale reste baissée tant qu'on y joue ; un bot resté dehors rentre
     // par le pont (hors de la grille des chemins, il filait droit et restait au bord du fossé).

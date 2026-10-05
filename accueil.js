@@ -506,7 +506,8 @@ async function actionInstance(code, act, bouton) {
     // une instance a sa propre sauvegarde : les parties solo ne bougent pas d'un pouce
     C.activerInstance(i.code);
     C.poserInstance({ code: i.code, nom: i.nom, perso });
-    sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
+    // la page de son arène (la citadelle : index.html ; cf. C.ARENES)
+    sessionStorage.setItem('tloc_entree', '1'); location.href = C.pageArene(i.arene);   // cf. index.html : on entre par l'accueil
   } else if (act === 'quitter') {
     if (!confirm('Quitter cette instance ? Si tu en es l’hôte, elle est fermée pour tout le monde.')) return;
     await C.quitterInstance(code).catch(() => {});
@@ -579,11 +580,21 @@ const modeChoisi = () => (document.querySelector('input[name="modeInstance"]:che
 const niveauChoisi = () => (document.querySelector('input[name="niveauBots"]:checked') || {}).value || 'soldat';
 const regleChoisie = () => (document.querySelector('input[name="regleInstance"]:checked') || {}).value || 'balade';
 const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono', drapeaux: 'prise des drapeaux' };
-// Les arènes prêtes (5 octobre) : chacune est déclarée par son lieu (`arenes`, game.js pour
-// Lille) et acceptée par le serveur (NouvelleInstance.arene). Une seule pour l'instant : pas
-// de choix à montrer, on la dit seulement sur la partie. La deuxième amènera le sélecteur.
-const ARENES = { lille: 'la citadelle de Lille' };
-const areneChoisie = () => 'lille';
+// Les arènes (5 octobre) : le catalogue est dans tloc-compte.js (C.ARENES : nom, page), la
+// géométrie de chacune dans le fichier de son lieu. Le choix se fait à la création, comme la
+// règle ; la partie le redit sur sa carte.
+const ARENES = Object.fromEntries(Object.entries(C.ARENES).map(([id, a]) => [id, a.nom]));
+const areneChoisie = () => (document.querySelector('input[name="areneInstance"]:checked') || {}).value || 'lille';
+{
+  const z = $('choixArene');
+  if (z) {
+    z.insertAdjacentHTML('beforeend', Object.entries(C.ARENES).map(([id, a], k) =>
+      `<label class="regle-case"><input type="radio" name="areneInstance" value="${id}"${k ? '' : ' checked'} aria-describedby="descArene"><span><em>${ECH(a.nom)}</em></span></label>`).join(''));
+    const dire = () => { $('descArene').textContent = C.ARENES[areneChoisie()].dit + '.'; };
+    z.querySelectorAll('input').forEach((r) => { r.onchange = dire; });
+    dire();
+  }
+}
 let nbVies = 1;
 // la durée se règle à la minute près (5 par défaut) : quatre cases figées ne laissaient pas
 // le choix (Eugène, 29 septembre). Le serveur accepte d'une à quinze minutes.
@@ -674,7 +685,7 @@ function entrerDansPartie(i) {
   const perso = (C.compte() || {}).pseudo || 'Camille';
   C.activerInstance(i.code);
   C.poserInstance({ code: i.code, nom: i.nom, perso });
-  sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
+  sessionStorage.setItem('tloc_entree', '1'); location.href = C.pageArene(i.arene);   // cf. index.html : on entre par l'accueil
 }
 $('creerInstance').onclick = async () => {
   if (partiePrete) return entrerDansPartie(partiePrete);

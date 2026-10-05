@@ -118,7 +118,7 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
    précédente affiche (Eugène, 29 septembre). */
 .etapes { display:flex; flex-direction:column; gap:10px; }
 .etape { display:flex; flex-direction:column; gap:6px; height:72px; min-width:0; }
-.etape:first-child { height:124px; }   /* le mode : ses cases et sa bande */
+.etape.avec-bande { height:124px; }   /* l'arène et le mode : leurs cases et leur bande */
 .sous-section { display:flex; flex-direction:column; gap:8px; min-width:0; }
 .sous-titre { margin:0; font-family:var(--corps, inherit); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--sourd); }
 /* Les modes : quatre cases qui ne bougent JAMAIS. Dessous, une bande de hauteur fixe dit ce
@@ -234,7 +234,7 @@ h1.logo { font-size:clamp(40px,5vw,68px); }
   .rejoindre-bloc > * { grid-column:1 !important; grid-row:auto !important; }
   .mode .rejoindre-bloc .cases { width:100%; }
   .choix-regle { grid-template-columns:repeat(2, minmax(0,1fr)); }
-  .etape:first-child { height:auto; }
+  .etape.avec-bande { height:auto; }
   .regle-bande { height:auto; min-height:46px; flex-wrap:wrap; padding:8px 12px; }
 }
 

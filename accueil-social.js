@@ -95,11 +95,12 @@ async function entrerPartie(code, nom, bouton) {
   }
   if (bouton) { bouton.disabled = true; bouton.textContent = 'Ouverture…'; }
   try {
-    await C.rejoindreInstance(code);
+    const i = await C.rejoindreInstance(code);
     const perso = (C.compte() || {}).pseudo || 'Camille';
     C.activerInstance(code);
     C.poserInstance({ code, nom, perso });
-    sessionStorage.setItem('tloc_entree', '1'); location.href = 'index.html';   // cf. index.html : on entre par l'accueil
+    // la page de son arène (la citadelle : index.html ; cf. C.ARENES)
+    sessionStorage.setItem('tloc_entree', '1'); location.href = C.pageArene(i && i.arene);   // cf. index.html : on entre par l'accueil
   } catch (e) {
     toast(e.message, { erreur: true });
     if (bouton) { bouton.disabled = false; bouton.textContent = 'Rejoindre'; }

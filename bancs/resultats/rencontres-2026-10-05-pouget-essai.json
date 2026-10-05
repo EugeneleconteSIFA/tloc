@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T09:23:32.394Z",
+ "etiquette": "pouget-essai",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 60,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "pouget",
+ "arrivees": [
+  [
+   0,
+   5
+  ],
+  [
+   0,
+   5
+  ]
+ ],
+ "rencontres": {
+  "total": 6,
+  "humains": 2,
+  "mixtes": 4,
+  "bots": 0
+ },
+ "voisinMedianM": 14
+}

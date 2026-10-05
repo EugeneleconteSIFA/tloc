@@ -221,6 +221,16 @@ export async function supprimerPartout(id) {
 // =====================================================================
 //  Instances multijoueur
 // =====================================================================
+// Les ARÈNES du multi (5 octobre) : où se joue une instance, et la page qui la charge. La
+// géométrie de chacune est déclarée par son lieu (`arenes` de l'objet niveau : game.js,
+// garde-guerin.js, pouget.js) ; ce catalogue ne dit que le nom et la page. Le serveur n'accepte
+// que ces identifiants (NouvelleInstance.arene, app.py).
+export const ARENES = {
+  lille: { nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
+  gardeguerin: { nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
+  pouget: { nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
+};
+export const pageArene = (id) => (ARENES[id] || ARENES.lille).page;
 export const instance = () => lire(CLE_INSTANCE);
 export const poserInstance = (i) => (i ? ecrire(CLE_INSTANCE, i) : localStorage.removeItem(CLE_INSTANCE));
 export const creerInstance = (nom, mode = 'libre', enjeu = false, bots = 0, niveau = 'soldat', regle = 'balade', vies = 1, duree = 180, arene = 'lille') =>

@@ -93,7 +93,15 @@
         <!-- Trois étapes l'une sous l'autre, chacune de hauteur fixe : où commence une étape ne
              dépend pas de la précédente (Eugène, 29 septembre). -->
         <div class="etapes">
-        <div class="etape">
+        <!-- l'arène (5 octobre) : où se joue la partie ; la liste vient de C.ARENES (accueil.js) -->
+        <div class="etape avec-bande">
+        <h3 class="sous-titre" aria-hidden="true">Arène</h3>
+        <fieldset class="choix-regle" id="choixArene">
+          <legend class="sr">Arène</legend>
+        </fieldset>
+        <div class="regle-bande"><p class="regle-desc" id="descArene" aria-live="polite"></p></div>
+        </div>
+        <div class="etape avec-bande">
         <h3 class="sous-titre" aria-hidden="true">Mode de jeu</h3>
         <fieldset class="choix-regle">
           <legend class="sr">Mode de jeu</legend>

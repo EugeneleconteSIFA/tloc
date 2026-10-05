@@ -16,7 +16,7 @@
 //
 //   bancs/tour.sh node bancs/rencontres.mjs [http://127.0.0.1:8000]
 //   TLOC_REGLE=temps|survie|balade  TLOC_DUREE=600  TLOC_JOUEURS=4  TLOC_BOTS=4
-//   TLOC_FENETRE=180  TLOC_ETIQUETTE=avant
+//   TLOC_FENETRE=180  TLOC_ETIQUETTE=avant  TLOC_ARENE=lille|gardeguerin|pouget  TLOC_MODE=libre|equipes
 //
 // Il crée des comptes de test sur le serveur LOCAL (pseudos banc_xxxxxx, mots de passe tirés au
 // hasard et jamais écrits) : ne jamais le lancer contre le dev ni la prod.
@@ -36,6 +36,9 @@ const REGLE = process.env.TLOC_REGLE || 'temps', DUREE = +(process.env.TLOC_DURE
 const JOUEURS = +(process.env.TLOC_JOUEURS || 4), BOTS = +(process.env.TLOC_BOTS || 4), FENETRE = +(process.env.TLOC_FENETRE || 180);
 const ETIQ = process.env.TLOC_ETIQUETTE || 'essai';
 const PRES = 30, LOIN = 40;
+const ARENE = process.env.TLOC_ARENE || 'lille', MODE = process.env.TLOC_MODE || 'libre';
+// la page de chaque arène (= C.ARENES, tloc-compte.js)
+const PAGE = { lille: 'index.html', gardeguerin: 'garde-guerin.html', pouget: 'pouget.html' }[ARENE];
 
 async function api(chemin, corps, jeton) {
   const r = await fetch(ORIGINE + chemin, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: 'Bearer ' + jeton } : {}) }, body: JSON.stringify(corps || {}) });
@@ -50,7 +53,7 @@ for (let k = 0; k < JOUEURS; k++) {
   const pseudo = 'banc_' + crypto.randomBytes(3).toString('hex');
   comptes.push({ ...(await api('/api/inscription', { pseudo, mdp: crypto.randomBytes(12).toString('hex') })), perso: 'Banc ' + (k + 1) });
 }
-const inst = await api('/api/instances', { nom: 'Banc des rencontres', mode: 'libre', bots: BOTS, niveau: 'soldat', regle: REGLE, vies: 3, duree: DUREE }, comptes[0].jeton);
+const inst = await api('/api/instances', { nom: 'Banc des rencontres', mode: MODE, arene: ARENE, bots: BOTS, niveau: 'soldat', regle: REGLE, vies: 3, duree: DUREE }, comptes[0].jeton);
 for (const c of comptes.slice(1)) await api(`/api/instances/${inst.code}/rejoindre`, {}, c.jeton);
 console.log(`instance ${inst.code} (${REGLE}, ${DUREE} s, arène ${inst.arene || '—'}) : ${JOUEURS} joueurs, ${BOTS} bots`);
 
@@ -71,14 +74,19 @@ for (const c of comptes) {
 }
 // un à un : quatre chargements de Lille en même temps se marchent dessus
 for (const { page } of pages) {
-  await page.goto(ORIGINE + '/index.html');
+  await page.goto(ORIGINE + '/' + PAGE);
   await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000, polling: 250 });
 }
 console.log('pages chargées');
 
-// l'entrée : l'armoire (Échap), puis un point cliqué au hasard sur la carte, jusqu'à ce qu'il soit pris
+// l'entrée : l'armoire (Échap), le camp en équipes (Entrée), puis à Lille un point cliqué au
+// hasard sur la carte, jusqu'à ce qu'il soit pris ; ailleurs l'arrivée est automatique
 async function entrer({ page, c }) {
   for (let k = 0; k < 60; k++) {
+    if (await page.evaluate(() => !!window.TLOC.state.apparition)) return true;
+    if (await page.evaluate(() => window.TLOC.menu && window.TLOC.menu.active && /camp/i.test(document.getElementById('overlay')?.textContent || ''))) {
+      await page.keyboard.press(k % 2 ? 'ArrowDown' : 'Enter'); await page.waitForTimeout(800); continue;
+    }
     const ok = await page.$('#okTLOC');
     if (ok) {
       for (let e = 0; e < 40; e++) {
@@ -88,10 +96,10 @@ async function entrer({ page, c }) {
       await page.keyboard.press('Enter');
       return true;
     }
-    await page.keyboard.press('Escape');
+    if (await page.$('#boussoleTLOC')) await page.keyboard.press('Escape');
     await page.waitForTimeout(1000);
   }
-  console.log(`[${c.perso}] n'a pas trouvé la carte de choix`);
+  console.log(`[${c.perso}] n'est pas entré (ni armoire, ni carte, ni arrivée)`);
   return false;
 }
 for (const p of pages) await entrer(p);

@@ -1026,9 +1026,9 @@ class NouvelleInstance(BaseModel):
     regle: str = Field(default="balade", pattern="^(balade|survie|temps|drapeaux)$")
     vies: int = Field(default=1, ge=1, le=5)
     duree: int = Field(default=180, ge=60, le=900)
-    # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) : une seule pour
-    # l'instant ; en ajouter une, c'est l'ajouter ici et dans ARENES (accueil.js)
-    arene: str = Field(default="lille", pattern="^(lille)$")
+    # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) ; en ajouter une,
+    # c'est l'ajouter ici et dans ARENES (tloc-compte.js)
+    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget)$")
 
 
 def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:

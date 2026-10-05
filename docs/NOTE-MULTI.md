@@ -449,10 +449,45 @@ L'instance retient son arène : colonne `arene` (app.py, comme `regle`), choisie
 prêtes (`NouvelleInstance.arene`, aujourd'hui `^(lille)$`) ; l'accueil n'affiche pas de choix
 tant qu'il n'y en a qu'une (`ARENES`, accueil.js).
 
-**Ajouter une arène** : la déclarer dans le fichier du lieu, charger `tloc-multi.js` dans sa
-page (aujourd'hui, seul `index.html` le charge), puis l'ouvrir dans `NouvelleInstance.arene`
-et `ARENES`. Les objets du multi (`PLAN_OBJETS`), la forge et les camps restent ceux de Lille :
-à déclarer aussi par l'arène le jour où une deuxième existe.
+**Trois arènes (5 octobre, l'après-midi)** — choisies à la création (étape « Arène » de
+l'accueil, liste `C.ARENES` de tloc-compte.js : nom, page, une phrase) :
+- **La citadelle de Lille** (`index.html`, game.js) : ci-dessus. Seule à garder la carte où l'on
+  clique son arrivée (`carte: true`).
+- **La Garde-Guérin** (`garde-guerin.html`, garde-guerin.js) : le village fortifié (95 m autour
+  de la place, l'enceinte et le belvédère), puis son cœur (42 m : la place, l'église, le four).
+  En équipes, la garde de la tour (départ au pied de la tour) contre les muletiers de la
+  Régordane (départ à l'auberge). Banc : 4 rencontres en 60 s à 2 joueurs et 2 bots, voisin à 10 m.
+- **Le Pouget** (`pouget.html`, pouget.js) : le hameau (80 m), puis son cœur (35 m). Ceux
+  d'en haut (nord-ouest, 773 m) contre ceux d'en bas (sud-est, 751 m). Banc : 6 rencontres en
+  60 s, voisin à 14 m.
+
+**Le socle** : les pages autres qu'index.html ne chargent `tloc-multi.js` qu'en instance (un
+petit script en fin de page : sans instance, on s'y promène en solo comme avant). L'accueil
+envoie à la page de l'arène (`C.pageArene`) ; une instance ouverte sur la mauvaise page y est
+renvoyée dès le `bienvenue`. Hors de Lille, le niveau naît après tloc-multi.js : l'arène est lue
+à la demande (`assurerArene`, à chaque image), l'habillage du niveau en instance aussi
+(`habillerNiveau`). L'eau, les ponts et l'enceinte de carte.js ne valent qu'à Lille (`eau`,
+`pont`, `ouvrage`, `horsEnceinte`) ; ailleurs l'arène peut donner `sdEau`. Sans carte de
+choix, l'arrivée est automatique (`arriveeAuto`) : au départ de son camp (`departsCamps`), sinon
+au ralliement, sinon au départ de l'arène. Les camps gardent leurs clés (`garnison`, `bourg` :
+le serveur les compte) ; l'arène leur donne `nom`, `court` (le score), `pluriel` (l'accord du
+verbe) et `campsTexte` (le menu du choix).
+
+**Ajouter une arène** : la déclarer dans le fichier du lieu (`arenes` de l'objet niveau ; pour
+un monde de monde.js, après `await lieu(…)`, comme garde-guerin.js), ajouter à sa page le petit
+script qui charge le multi en instance, puis l'ouvrir dans `C.ARENES` et
+`NouvelleInstance.arene` (app.py). Les objets du multi (`PLAN_OBJETS`), la forge et les
+bannières restent ceux de Lille : hors de Lille, aucun objet n'est posé (ils ne tombent pas
+dans l'aire), et la fête de la moisson (on fauche l'herbe de Lille) n'a pas de sens. À déclarer
+par l'arène quand on en voudra.
+
+**Idée d'Eugène, à faire — la bataille dans la maison** (le Batut, Aveyron) : « c'est surtout le
+gameplay inside house que j'aime, pas mal pour se cacher ». Une arène faite de deux grandes
+maisons et d'un jardin entre elles : le Batut et Beauregard, la querelle de STORY.md. En
+équipes, on arrive dans sa maison selon son camp (`departsCamps`). Il faut d'abord de vrais
+intérieurs aménagés (pièces, couloirs, escaliers, meubles derrière lesquels se cacher) :
+aujourd'hui, les grandes maisons d'aveyron.js ne sont que des façades. aveyron.js est à la
+session de l'Aveyron le 5 octobre : à reprendre après elle.
 
 Banc : `bancs/rencontres.mjs` — comptes de test sur le serveur LOCAL, quatre joueurs sans tête
 qui marchent au hasard, quatre bots, chrono de 10 min observé sur ses 3 premières minutes ; il

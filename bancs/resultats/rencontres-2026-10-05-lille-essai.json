@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T09:36:00.712Z",
+ "etiquette": "lille-essai",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 60,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "lille",
+ "arrivees": [
+  [
+   8,
+   164
+  ],
+  [
+   -44,
+   12
+  ]
+ ],
+ "rencontres": {
+  "total": 1,
+  "humains": 0,
+  "mixtes": 1,
+  "bots": 0
+ },
+ "voisinMedianM": 67
+}
