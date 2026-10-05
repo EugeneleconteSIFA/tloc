@@ -149,22 +149,32 @@ function rues(ctx, choix) {
     let e = 0; while (pris.has(e)) e++; etage.push(e % 6); });
   const lots = new Map();
   toutes.forEach((c, i) => {
-    const [slug, couleur] = choix(c), w = largeur(c), pts = densifier(c.pts, 1), y = 0.015 + 0.003 * etage[i];
-    const pos = [], idx = [], uv = [], nc = Math.max(2, Math.ceil(w) + 1); let s = 0;
+    // `fondu` (3e valeur de choix, Villefort seulement) : un chemin de terre qui n'est pas un ruban
+    // net. Sa largeur ondule (±25 %) et il a, de chaque côté, une frange de 70 cm qui passe de
+    // la terre à l'herbe (alpha de 1 à 0, aux sommets)
+    const [slug, couleur, fondu] = choix(c), w = largeur(c), pts = densifier(c.pts, 1), y = 0.015 + 0.003 * etage[i];
+    const pos = [], idx = [], uv = [], rgba = [], nc0 = Math.max(2, Math.ceil(w) + 1), nc = fondu ? nc0 + 2 : nc0; let s = 0;
     for (let k = 0; k < pts.length; k++) {
       const [x, z] = pts[k], [xa, za] = pts[Math.max(0, k - 1)], [xb, zb] = pts[Math.min(pts.length - 1, k + 1)];
       let dx = xb - xa, dz = zb - za; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
       if (k) s += Math.hypot(x - pts[k - 1][0], z - pts[k - 1][1]);
+      if (fondu) {
+        const wk = w * (1 + 0.16 * Math.sin(s * 0.21 + i) + 0.09 * Math.sin(s * 0.63 + 1.7 * i));
+        const off = [-(wk / 2 + 0.7), ...Array.from({ length: nc0 }, (_, q) => (q / (nc0 - 1) * 2 - 1) * wk / 2), wk / 2 + 0.7];
+        off.forEach((o, q) => { const px = x - dz * o, pz = z + dx * o; pos.push(px, h(px, pz) + y, pz); uv.push(o + w, s); rgba.push(1, 1, 1, q === 0 || q === nc - 1 ? 0 : 1); });
+      } else
       for (let q = 0; q < nc; q++) { const t = q / (nc - 1) * 2 - 1, px = x - dz * w / 2 * t, pz = z + dx * w / 2 * t; pos.push(px, h(px, pz) + y, pz); uv.push((t + 1) / 2 * w, s); }
       if (k) for (let q = 0; q + 1 < nc; q++) { const b = (k - 1) * nc + q, e = b + nc; idx.push(b, b + 1, e, b + 1, e + 1, e); }   // faces vers le ciel
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+    if (fondu) g.setAttribute('color', new THREE.Float32BufferAttribute(rgba, 4));
     const xs = c.pts.map((p) => p[0]), zs = c.pts.map((p) => p[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
     BILAN.rubans.push({ geo: g, pts: c.pts, w, cx, cz, rayon: Math.hypot(Math.max(...xs) - cx, Math.max(...zs) - cz) + w });
-    const cle = slug + couleur; if (!lots.has(cle)) lots.set(cle, { slug, couleur, gs: [] }); lots.get(cle).gs.push(g);
+    const cle = slug + couleur + !!fondu; if (!lots.has(cle)) lots.set(cle, { slug, couleur, fondu, gs: [] }); lots.get(cle).gs.push(g);
   });
-  for (const { slug, couleur, gs } of lots.values()) {
-    const m = new THREE.Mesh(mergeGeometries(gs), phMat(slug, 1, 1, { color: couleur, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  for (const { slug, couleur, fondu, gs } of lots.values()) {
+    const m = new THREE.Mesh(mergeGeometries(gs), phMat(slug, 1, 1, { color: couleur, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      ...(fondu ? { vertexColors: true, transparent: true, depthWrite: false } : {}) }));
     m.receiveShadow = true; scene.add(m);
   }
 }
@@ -520,14 +530,15 @@ function solDuBourg(ctx, rs, { emprise: E, dense, jardins }) {
   const dBati = (x, z) => { let d = 4; for (const i of cAut(x, z)) { if (x < bC[i][0] || x > bC[i][2] || z < bC[i][1] || z > bC[i][3]) continue;
     if (dansPoly(x, z, corps[i].rect)) return 0; d = Math.min(d, distLigne(x, z, fermes[i])); } return d; };
   // la distance au bord des rues, jusqu'à 4 m
-  const pr = rs.flatMap((c, id) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2, id]));
+  const pr = rs.flatMap((c, id) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2, id, c.r || 0]));
   const rAut = grille(pr, ([x, z, w]) => [x - w - 4, z - w - 4, x + w + 4, z + w + 4]);
-  const dRue = (x, z, sauf = -1) => { let d = 4; for (const i of rAut(x, z)) { const [a, b, w, id] = pr[i]; if (id !== sauf) d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
+  // rmin : les seules rues de cette importance (l'accotement ne borde pas les chemins de terre)
+  const dRue = (x, z, sauf = -1, rmin = 0) => { let d = 4; for (const i of rAut(x, z)) { const [a, b, w, id, r] = pr[i]; if (id !== sauf && r >= rmin) d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
   const jard = jardins.map((j) => { const xs = j.pts.map((p) => p[0]), zs = j.pts.map((p) => p[1]); return { pts: j.pts, b: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)] }; });
   const auJardin = (x, z) => jard.some((j) => x > j.b[0] && x < j.b[2] && z > j.b[1] && z < j.b[3] && dansPoly(x, z, j.pts));
-  // hors du bourg dense, un accotement de 1,6 m le long des rues : il ferme les lanières d'herbe
-  // de moins de 3 m entre deux routes (au pont Saint-Jean)
-  const val = (x, z) => auJardin(x, z) ? -1 : !dense(x, z) ? 1.6 - dRue(x, z) : Math.max(3.5 - dBati(x, z), 3 - dRue(x, z));
+  // hors du bourg dense, un accotement de 1,6 m le long des routes et des rues (pas des chemins de
+  // terre) : il ferme les lanières d'herbe de moins de 3 m entre deux routes (au pont Saint-Jean)
+  const val = (x, z) => auJardin(x, z) ? -1 : !dense(x, z) ? 1.6 - dRue(x, z, -1, 2) : Math.max(3.5 - dBati(x, z), 3 - dRue(x, z));
 
   // 1. l'enrobé : les valeurs aux nœuds, puis chaque case découpée sur val = 0
   const nx = Math.ceil((E.x1 - E.x0) / P) + 1, nz = Math.ceil((E.z1 - E.z0) / P) + 1, V2 = new Float32Array(nx * nz);
@@ -759,7 +770,7 @@ const FICHES = {
       // sombre », SCENARIO § 14), et quatre maisons sur dix du bourg dense crépies, comme dans la rue
       FICHES.villefort.mats = () => ({ ...matieres(), murs: phMat('granit_lozere', 1, 1, { color: 0x9c9a94 }), enduits: phMat('enduit_gris', 1, 1, { color: 0xd8d2c4 }) });
       FICHES.villefort.enduit = (b, i) => ['house', 'apartments', 'detached', 'hotel', undefined].includes(b.k) && dense(b.pts[0][0], b.pts[0][1]) && (Math.imul(i + 7, 2654435761) >>> 0) % 10 < 4;
-      const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['asphalt_02', 0x9a9894] : dense(...milieu(c)) ? ['granite_tile_03', 0xb4b8bc] : ['rocky_trail', 0xb8ab90]);
+      const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['asphalt_02', 0x9a9894] : dense(...milieu(c)) ? ['granite_tile_03', 0xb4b8bc] : ['rocky_trail', 0xb0a088, true]);
       const t0s = performance.now();
       const trottoir = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
       BILAN.msSol = Math.round(performance.now() - t0s);   // règle 8 : ≤ 300 ms
