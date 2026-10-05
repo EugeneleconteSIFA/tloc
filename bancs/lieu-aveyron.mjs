@@ -37,9 +37,9 @@ const VUES_REGARD = [
   { nom: 'yeux : le Pouget, depuis la grille', cam: [169, 1.6, -287], at: [185, 6, -315], sol: true },
   { nom: 'plongée : la grève, la barque, le pré du Batut', cam: [-30, 30, 130], at: [-110, 0, 160] },
   { nom: 'yeux : le barrage, le duel', cam: [-205, 1.6, -40], at: [-235, 1.2, -110], sol: true, rue: true },
-  { nom: 'plongée : le barrage', cam: [-170, 40, -40], at: [-225, 0, -90] },
-  { nom: 'yeux : Perpignou, la rue', cam: [440, 1.6, -205], at: [470, 3, -240], sol: true, rue: true },
-  { nom: 'plongée : le Batut et son domaine', cam: [-92, 38, 135], at: [-135, 0, 170] },
+  { nom: 'dedans : le Batut, le grand salon', cam: [-135.0, 1.6, 165.9], at: [-136.0, 1.2, 173.7], sol: true },
+  { nom: 'dedans : le Pouget, le salon', cam: [180.4, 1.6, -313.5], at: [180.1, 1.2, -321.4], sol: true },
+  { nom: 'dedans : Beauregard, de la tour au hall', cam: [393.6, 1.6, 148.2], at: [403.3, 1.2, 151.2], sol: true },
 ];
 const VUES = REGARD ? VUES_REGARD : [   // la planche fixe : une aérienne, une de dessus (emprises OSM en surimpression), trois dans
   // les rues à hauteur de Camille, deux gros plans (façade, sol), une depuis le départ

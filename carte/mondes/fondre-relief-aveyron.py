@@ -102,6 +102,34 @@ for j in range(nz):
             d = dist_bord(x, z, LP); D[j * nx + i] = d
             h[j * nx + i] = min(h[j * nx + i], NIVEAU - min(FOND, d / PENTE)); creuses += 1
 
+# ---- les terre-pleins des trois maisons Roquette (5 octobre : on entre dans les maisons) ----
+# Une maison sur la pente repose sur un terre-plein : son rez-de-chaussée est plat. Le jeu en a
+# besoin pour de bon — on y marche, et le moteur ne sait pas poser un plancher sous une maison
+# tournée (ses planchers sont alignés sur les axes). Le relief est mis de niveau sous l'emprise de
+# chaque maison et une maille autour (le relief est au pas de 5 m : sans elle, l'interpolation
+# remontait dans la maison), à la médiane du terrain d'origine, puis raccordé sur 7 m.
+# Les emprises sont celles d'aveyron.js (batut(), beauregard(), pouget()), dans le repère de chaque
+# maison : façade vers +z, tournée vers le lac — rot = atan2(−X, −Z).
+MAISONS = [  # X, Z, [x0, x1, z0, z1] de l'emprise, tours et ailes comprises
+    (-135, 170, (-11.5, 14.5, -5.0, 5.0)),     # le Batut : les trois corps
+    (400, 150, (-8.5, 8.5, -4.5, 8.4)),        # Beauregard : le logis et sa tour d'escalier
+    (185, -315, (-18.0, 10.0, -5.0, 6.0)),     # le Pouget : le corps, la tour carrée, l'aile basse
+]
+REPLATS = []
+for X_, Z_, (a0, a1, b0, b1) in MAISONS:
+    rot = math.atan2(-X_, -Z_); c, s = math.cos(rot), math.sin(rot)
+    local = lambda x, z: ((x - X_) * c - (z - Z_) * s, (x - X_) * s + (z - Z_) * c)
+    hors = lambda lx, lz: max(a0 - lx, lx - a1, b0 - lz, lz - b1, 0.0)      # distance à l'emprise
+    sous = sorted(h[j * nx + i] for j in range(nz) for i in range(nx) if hors(*local(X0 + i * PAS, Z0 + j * PAS)) == 0)
+    F = sous[len(sous) // 2] if sous else None
+    if F is None: continue
+    for j in range(nz):
+        for i in range(nx):
+            d = hors(*local(X0 + i * PAS, Z0 + j * PAS))
+            if d <= PAS: h[j * nx + i] = F
+            elif d < PAS + 7: w = (d - PAS) / 7; w = w * w * (3 - 2 * w); h[j * nx + i] = F * (1 - w) + h[j * nx + i] * w
+    REPLATS.append({'x': X_, 'z': Z_, 'niveau': round(F, 2)})
+
 # ---- le contour d'étiage : la courbe D = PENTE × ETIAGE, par les carrés qui marchent ----
 SEUIL = PENTE * ETIAGE
 def g(i, j): return D[j * nx + i] - SEUIL
@@ -223,9 +251,11 @@ for k in range(120000):
     if any((c[0] + a, c[1] + b) in cases for a in (-1, 0, 1) for b in (-1, 0, 1)): continue
     cases.add(c); horizon.append([round(x, 1), round(z, 1), round(alt_loin(x, z), 1)])
 J['horizon'] = {'arbres': horizon}
+J['replats'] = REPLATS          # le niveau du rez-de-chaussée de chaque maison Roquette
 json.dump(J, open(os.path.join(ICI, 'aveyron-jeu.json'), 'w', encoding='utf-8'), separators=(',', ':'), ensure_ascii=False)
 
 print('horizon : %d arbres' % len(horizon))
+print('terre-pleins : %s' % REPLATS)
 print('relief-aveyron-jeu.json : %d × %d nœuds au pas de %g m, %.0f Ko, de %.0f à %.0f m' % (
     nx, nz, PAS, os.path.getsize(os.path.join(ICI, 'relief-aveyron-jeu.json')) / 1024, min(h), max(h)))
 print('lac : surface %.2f m, %d nœuds creusés ; étiage à %.2f m : %d nappes, %.1f ha d’eau sur %.1f'
