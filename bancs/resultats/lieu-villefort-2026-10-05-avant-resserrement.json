@@ -1,0 +1,149 @@
+{
+ "lieu": "villefort",
+ "date": "2026-10-05T08:55:50.827Z",
+ "chargement_s": 3.6,
+ "erreurs": [],
+ "pointsDeRue": 11034,
+ "libres": 11034,
+ "praticable": 100,
+ "tropRaides": 149,
+ "bloques": [],
+ "bati": {
+  "mesure": true,
+  "batiments": 542,
+  "avant": false,
+  "corps": 651,
+  "toitsChezLeVoisin": 0,
+  "toitsQuiCouvrentMal": 0,
+  "soubassementsSup15": 16,
+  "soubassementMax": 5.97,
+  "mursQuiSeChevauchent": 11,
+  "pires": [
+   [
+    "soubassement",
+    35,
+    1.6
+   ],
+   [
+    "soubassement",
+    74,
+    2.98
+   ],
+   [
+    "soubassement",
+    149,
+    1.64
+   ],
+   [
+    "soubassement",
+    227,
+    1.54
+   ],
+   [
+    "soubassement",
+    292,
+    2.05
+   ],
+   [
+    "soubassement",
+    300,
+    1.52
+   ],
+   [
+    "soubassement",
+    331,
+    5.97
+   ],
+   [
+    "soubassement",
+    332,
+    3.15
+   ],
+   [
+    "soubassement",
+    361,
+    3.74
+   ],
+   [
+    "soubassement",
+    375,
+    1.6
+   ],
+   [
+    "soubassement",
+    394,
+    1.93
+   ],
+   [
+    "soubassement",
+    394,
+    3.97
+   ],
+   [
+    "soubassement",
+    394,
+    2.86
+   ],
+   [
+    "soubassement",
+    436,
+    2.24
+   ],
+   [
+    "soubassement",
+    436,
+    3.08
+   ],
+   [
+    "soubassement",
+    515,
+    1.71
+   ]
+  ]
+ },
+ "sols": {
+  "mesure": true,
+  "echantillons": 27758,
+  "flottent": 731,
+  "enfonces": 442,
+  "ecartMax": 0,
+  "combats": 70
+ },
+ "cadre": {
+  "x0": 640,
+  "x1": 1800,
+  "z0": -2950,
+  "z1": -820
+ },
+ "marche": [
+  {
+   "quoi": "le poteau des vieux chemins",
+   "ok": true,
+   "raison": "",
+   "longueur": 4,
+   "secondes": 0.7
+  },
+  {
+   "quoi": "l’église Saint-Victorin",
+   "ok": false,
+   "raison": "bloquée en (1676.4, -984.0)",
+   "longueur": 191,
+   "secondes": 35.4
+  },
+  {
+   "quoi": "la gare",
+   "ok": true,
+   "raison": "",
+   "longueur": 1001,
+   "secondes": 166.3
+  },
+  {
+   "quoi": "le pont Saint-Jean",
+   "ok": true,
+   "raison": "",
+   "longueur": 744,
+   "secondes": 122.7
+  }
+ ],
+ "vert": false
+}

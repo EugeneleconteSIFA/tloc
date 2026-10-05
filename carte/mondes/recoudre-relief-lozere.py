@@ -3,8 +3,10 @@
 Le cadrage « lac » (5 m, RGE ALTI) s'arrête à z = -1 627, juste au nord du bourg ; le cadrage
 « bourg » (5 m, même ressource) prend le bourg et la gare ; ce qui reste dans aucun des deux
 (l'ouest de la gare) vient du relief « monde » à 10 m, interpolé. Le lieu jouable de Villefort
-(villefort.js) est le rectangle CADRE ci-dessous : le bourg, la gare, la rive sud du lac et le
-barrage. Le reste du lac se voit dans l'horizon.
+(villefort.js) est le rectangle CADRE ci-dessous : depuis le 5 octobre, le bourg seul, du pont
+Saint-Jean au sud du bourg (il tient tout entier dans le cadrage « bourg », au pas de 5 m). La gare,
+le lac et le barrage ne sont plus que dans l'horizon (relief « monde »). Le relief d'avant, qui
+allait jusqu'au barrage : complet/relief-lozere-villefort.json.
 
     python3 recoudre-relief-lozere.py      → relief-lozere-villefort.json
 
@@ -13,7 +15,10 @@ Rien n'est demandé à l'IGN ici : il faut d'abord `recolter-relief-lozere.py la
 import json, os
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-CADRE = dict(x0=640.0, x1=1800.0, z0=-2950.0, z1=-820.0, pas=5.0)
+# l'emprise de plans-lieux-lozere.py (1420…1800, −1430…−820), plus 60 m à l'ouest et au nord : un
+# débord qu'on ne parcourt pas (lozere.js le bloque et le boise). Sans lui, le relief de l'horizon,
+# maillé à 60 m, remontait en marche sombre juste derrière les derniers murs.
+CADRE = dict(x0=1360.0, x1=1800.0, z0=-1490.0, z1=-820.0, pas=5.0)
 
 def charge(nom):
     return json.load(open(os.path.join(ICI, 'relief-lozere-%s.json' % nom)))

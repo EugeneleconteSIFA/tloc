@@ -1485,6 +1485,50 @@ règle des 400–500 m : le lac fait à lui seul 600 × 700 m, et ses trois mais
 - Reste : les villageois de la place de Saint-Symphorien ne sont plus posés (hors zone), il faut les
   remettre au bord du lac (le « jouable »). Le réservoir de Montézic est coupé net au bord de la grille.
 
+### Villefort resserré (5 octobre, PC, consigne V) — **fait, vérifié en rendu**
+
+Emprise « A », validée par Eugène sur `bancs/resultats/villefort-2026-10-05-emprise-proposee.png` : le
+bourg seul, du pont Saint-Jean au sud du bourg, **364 × 594 m où l'on marche** (x 1428 → 1792,
+z −1422 → −828). Avant : 1 160 × 2 130 m jusqu'au barrage. Le bourg est un village-rue le long de la
+Régordane et de l'Altier : on dépasse un peu les 500 m de long, mais la surface vaut un carré de 470 m.
+La gare (640 m à l'ouest) et le lac (800 m au nord) ne sont plus qu'à l'horizon. Plan et relief
+d'avant : `carte/mondes/complet/lozere-villefort.json`, `complet/relief-lozere-villefort.json`.
+- **Le découpage** : `plans-lieux-lozere.py` (cadre de Villefort, marge de 60 m au lieu de 400, et les
+  LIGNES coupées : rues, chemins, Régordane, rivières, voies, murets) et `recoudre-relief-lozere.py`
+  (tout le relief vient maintenant du cadrage « bourg », au pas de 5 m). `lozere-garde.json` en sort
+  identique à l'octet près.
+- **Pourquoi couper les lignes** : `hauteur()` de monde.js est bornée au relief fin. Un bout de rue qui
+  dépasse reste à plat, à la hauteur du bord.
+- **Le bord naturel** : le relief fin DÉBORDE de 60 m à l'ouest et au nord de l'emprise. Le débord est
+  bloqué par `inscrire` (`lisiere`, lozere.js) et boisé de chênes serrés : la ripisylve de l'Altier au
+  nord, le bois de la pente à l'ouest. Sans ce débord, le relief de l'horizon (`relief-lozere-monde.json`,
+  maillé à 60 m par monde.js, plus sombre) remontait en marche juste derrière les derniers murs. Les
+  quatre rues coupées (avenue de la Gare, impasse du Lavoir, rue de la Vignette et la Régordane, route
+  de Mende) butent sur un mur de clôture de 2,3 m et son portail fermé, 4 m avant la fin de la rue.
+  L'emprise est dans la fiche (`emprise`) ; `grille` est celle du relief, débord compris. L'est et le
+  sud sont les bords d'avant : vus d'avion, on y voit encore la couture entre le relief fin et l'horizon.
+- **Mesures** (`bancs/tour.sh node bancs/lieu-lozere.mjs villefort`, `bancs/resultats/lieu-villefort-
+  2026-10-05-avant-resserrement.*` et `-apres-resserrement.*`) : chargement 3,6 → 2,7–2,8 s ; plan 176 →
+  57 Ko, relief 788 → 95 Ko ; 542 → 332 bâtiments ; soubassements de plus de 1,5 m 16 → 9 ; rues
+  praticables 100 → 99,73 % (les 4 points bloqués sont les quatre murs des rues coupées). Le poteau,
+  l'église, Chez Fernand et le pont Saint-Jean sont atteints en marchant. Avant, la cible de l'église
+  était DANS le bâti : elle est maintenant sur la rue, devant la porte, et la gare sort des cibles.
+  Captures des bords : `bancs/resultats/villefort-2026-10-05-bord-*.jpg`.
+- **Garde-Guérin et le Pouget, inchangés** : Garde-Guérin donne les mêmes mesures au banc avant et après
+  (68 corps, 99,85 %, quatre cibles sur quatre, même planche). Le Pouget ne charge aucun des fichiers
+  touchés ; il démarre sans erreur (`bancs/resultats/pouget-2026-10-05-apres-resserrement-villefort-depart.jpg`).
+  Le poteau des vieux chemins et l'arrivée de Villefort sont dans l'emprise.
+- **Appris (PC)** : `bancs/lieu-lozere.mjs` est passé sous Windows comme `charge.mjs` (Playwright des
+  outils, `fileURLToPath`, Direct3D 11). Un Chrome sans tête du PC ne fait pas la capture d'une page
+  SVG locale (délai dépassé) : PyMuPDF (`py -3`, `import pymupdf`) rend un SVG en PNG sans navigateur.
+  Le chemin du dossier temporaire des sessions dépasse la limite de 260 caractères de Windows :
+  passer par un dossier court.
+- **Défaut du banc, corrigé** : `ecartMax` valait toujours 0. Dans `bancs/lieu-lozere.mjs`, l'affectation
+  était restée derrière un commentaire `//` sur la même ligne. Les mesures ci-dessus datent d'avant la
+  correction.
+- **Reste** : le réalisme et le jouable de Villefort (consigne V, point 3) : des gens à qui parler, et
+  des `reperes`.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**

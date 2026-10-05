@@ -1,0 +1,90 @@
+{
+ "lieu": "gardeguerin",
+ "date": "2026-10-05T09:19:42.240Z",
+ "chargement_s": 3.8,
+ "erreurs": [],
+ "pointsDeRue": 1342,
+ "libres": 1340,
+ "praticable": 99.85,
+ "tropRaides": 57,
+ "bloques": [
+  [
+   1832.4,
+   -5375.2,
+   ""
+  ],
+  [
+   1830.8,
+   -5375.1,
+   ""
+  ]
+ ],
+ "bati": {
+  "mesure": true,
+  "batiments": 46,
+  "avant": false,
+  "corps": 68,
+  "toitsChezLeVoisin": 0,
+  "toitsQuiCouvrentMal": 0,
+  "soubassementsSup15": 2,
+  "soubassementMax": 2.8,
+  "mursQuiSeChevauchent": 0,
+  "pires": [
+   [
+    "soubassement",
+    3,
+    2.8
+   ],
+   [
+    "soubassement",
+    40,
+    2.7
+   ]
+  ]
+ },
+ "sols": {
+  "mesure": true,
+  "echantillons": 3353,
+  "flottent": 156,
+  "enfonces": 127,
+  "ecartMax": 0,
+  "combats": 13
+ },
+ "cadre": {
+  "x0": 1528,
+  "x1": 2102,
+  "z0": -5612,
+  "z1": -5046
+ },
+ "marche": [
+  {
+   "quoi": "le poteau des vieux chemins",
+   "ok": true,
+   "raison": "",
+   "longueur": 11,
+   "secondes": 2.2
+  },
+  {
+   "quoi": "la place de l’église",
+   "ok": true,
+   "raison": "",
+   "longueur": 143,
+   "secondes": 25.3
+  },
+  {
+   "quoi": "le pied de la tour",
+   "ok": true,
+   "raison": "",
+   "longueur": 20,
+   "secondes": 3.7
+  },
+  {
+   "quoi": "le four banal",
+   "ok": true,
+   "raison": "",
+   "longueur": 93,
+   "secondes": 15.3
+  }
+ ],
+ "vert": false
+}

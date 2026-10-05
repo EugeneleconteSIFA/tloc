@@ -15,14 +15,18 @@
 // Écrit bancs/resultats/lieu-<nom>-<date>[-étiquette].json et .jpg (la planche de 8 vues).
 // Un seul Chrome, une seule page, fermé quoi qu'il arrive (consigne de performance).
 import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+import os from 'os';
+// le Playwright du Mac, ou celui du PC (GitHub/tloc/outils, hors du dépôt), comme bancs/charge.mjs
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
 const ORIGINE = process.env.TLOC_ORIGINE || 'http://127.0.0.1:8000';
 const nom = process.argv[2], etiq = process.argv[3] ? '-' + process.argv[3] : '';
 // « avant » : le lieu tel que monde.js le bâtissait en masse (lozere.js, `?avant`), mesuré de même
 const AVANT = process.argv[3] === 'avant';
-const RES = new URL('resultats/', import.meta.url).pathname;
+// fileURLToPath et non `.pathname`, qui donne « /C:/… » sous Windows
+const RES = fileURLToPath(new URL('resultats/', import.meta.url));
 
 // par lieu : la page, son plan, le pas de son relief, ce qu'on doit pouvoir atteindre à pied,
 // et les huit vues de la planche ([x, y au-dessus du sol, z] → [x, y, z])
@@ -35,18 +39,20 @@ const LIEUX = {
       ['façade', [1803, 1.7, -5300], [1812, 2.5, -5285]], ['sol', [1820, 1.4, -5306], [1828, 0, -5296]], ['le départ', [1856, 1.8, -5226], [1815, 3, -5330]]],
   },
   villefort: {
-    page: 'villefort.html', plan: 'carte/mondes/lozere-villefort.json', grille: { x0: 640, z0: -2950, pas: 5 },
-    cibles: [['le poteau des vieux chemins', 1584.5, -1129.5], ['l’église Saint-Victorin', 1676, -985], ['la gare', 940, -1125], ['le pont Saint-Jean', 1550, -1405]],
+    page: 'villefort.html', plan: 'carte/mondes/lozere-villefort.json', grille: { x0: 1420, z0: -1430, pas: 5 },
+    // la gare est hors du lieu depuis le resserrement du 5 octobre : Chez Fernand la remplace. Les cibles
+    // sont des points de RUE devant la porte (l'ancienne cible de l'église, 4 m plus loin, était dans le bâti)
+    cibles: [['le poteau des vieux chemins', 1584.5, -1129.5], ['l’église Saint-Victorin', 1676.6, -981], ['devant Chez Fernand', 1559.8, -1095.9], ['le pont Saint-Jean', 1550, -1405]],
     vues: [['aérienne', [1250, 420, -1700], [1450, 0, -1150]], ['dessus, emprises OSM', [1590, 230, -1110], [1590, 0, -1111]],
-      ['rue de la Bourgade', [1548, 1.7, -1120], [1585, 3, -1070]], ['avenue de la Gare', [1300, 1.7, -1236], [1100, 3, -1170]], ['place du Bosquet', [1583, 1.7, -1170], [1586, 3, -1090]],
-      ['façade', [1576, 1.7, -1128], [1560, 3, -1122]], ['sol', [1585, 1.4, -1110], [1585, 0, -1100]], ['le départ', [1578, 1.8, -1140], [1586, 3, -1090]]],
+      ['rue de la Bourgade', [1548, 1.7, -1120], [1585, 3, -1070]], ['le bout de l’avenue de la Gare', [1475, 1.7, -1271], [1425, 3, -1276]], ['place du Bosquet', [1583, 1.7, -1170], [1586, 3, -1090]],
+      ['façade', [1576, 1.7, -1128], [1560, 3, -1122]], ['le bord nord, pont Saint-Jean', [1565, 1.7, -1380], [1540, 3, -1432]], ['le départ', [1578, 1.8, -1140], [1586, 3, -1090]]],
   },
 };
 const L = LIEUX[nom];
 if (!L) { console.log('lieux : ' + Object.keys(LIEUX).join(', ')); process.exit(1); }
 const date = new Date().toISOString().slice(0, 10);
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 let bilan = null;
 try {
   const page = await browser.newPage({ viewport: { width: 960, height: 600 } });
@@ -136,7 +142,8 @@ try {
         for (const [x, z] of densifier(r.pts, 2.37).filter(([x, z]) => dans(x, z))) for (const t of [-0.3, 0, 0.3]) {
           const [xa, za] = [x + t * r.w * (Math.random() - 0.5), z + t * r.w * (Math.random() - 0.5)];
           rc.set(new THREE.Vector3(xa, 5000, za), bas); const hit = rc.intersectObject(o)[0]; if (!hit) continue;
-          echant++; const e = hit.point.y - (B.dessin ? B.dessin(xa, za) : hDessin(xa, za));   // le relief seul, sans les terre-pleins ecMax = Math.max(ecMax, Math.abs(e));
+          echant++; const e = hit.point.y - (B.dessin ? B.dessin(xa, za) : hDessin(xa, za));   // le relief seul, sans les terre-pleins
+          ecMax = Math.max(ecMax, Math.abs(e));
           if (e > 0.05) flotte++; if (e < -0.02) enfonce++;
           for (const q of meshes) { if (q === meshes.find((u) => u.o === o) || Math.abs(q.r.cx - r.cx) > q.r.rayon + r.rayon) continue;
             const h2 = rc.intersectObject(q.o)[0]; if (h2 && Math.abs(h2.point.y - hit.point.y) < 0.002) { combat++; break; } }

@@ -444,6 +444,42 @@ function poteau(ctx, ici) {
         { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) });
 }
 
+// Le bord du lieu resserré (Villefort, 5 octobre) : au-delà du cadre, monde.js bloque Camille sans
+// rien montrer. Là où une rue sort du cadre, elle bute sur un mur de clôture et son portail fermé
+// (une cour, un jardin : le bourg continue derrière, on n'y entre pas) ; le long des bords `cotes`,
+// une lisière de chênes serrés (la ripisylve de l'Altier au nord, le bois de la pente à l'ouest) cache
+// le bout du relief fin. Seuls les bords donnés : les deux autres sont ceux d'avant le resserrement.
+function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
+  const h = ctx.dessin, pierre = phMat('granit_lozere', 1, 1, { color: 0xa8a69e });
+  const bois = phMat('wood_planks', 1, 1, { color: 0x6e5a44 }), portails = [], murs = [];
+  const dehors = (x, z) => (cotes.includes('ouest') && x < E.x0 + 1.5) || (cotes.includes('nord') && z < E.z0 + 1.5)
+    || (cotes.includes('est') && x > E.x1 - 1.5) || (cotes.includes('sud') && z > E.z1 - 1.5);
+  // le débord, entre l'emprise et le bout du relief fin : bloqué comme un bâtiment (monde.js ne bloque
+  // que hors de son cadre, qui est le relief fin rentré de 8 m)
+  const { CADRE } = ctx, B = 200;
+  if (cotes.includes('ouest')) ctx.inscrire([[CADRE.x0 - B, CADRE.z0 - B], [E.x0, CADRE.z0 - B], [E.x0, CADRE.z1 + B], [CADRE.x0 - B, CADRE.z1 + B]], E.x0 - 30, (E.z0 + E.z1) / 2);
+  if (cotes.includes('nord')) ctx.inscrire([[CADRE.x0 - B, CADRE.z0 - B], [CADRE.x1 + B, CADRE.z0 - B], [CADRE.x1 + B, E.z0], [CADRE.x0 - B, E.z0]], (E.x0 + E.x1) / 2, E.z0 - 30);
+  for (const c of rs) for (const pts of [c.pts, c.pts.slice().reverse()]) {
+    const d = densifier(pts, 0.5); if (!dehors(...d[0])) continue;
+    // le premier point franchement dedans, et la direction de la rue à cet endroit
+    const k = d.findIndex(([x, z]) => !dehors(x, z)); if (k < 1 || k + 2 >= d.length) continue;
+    const [x, z] = d[k], [xb, zb] = d[k + 2], l = Math.hypot(xb - x, zb - z) || 1, ux = (xb - x) / l, uz = (zb - z) / l;
+    if (murs.some(([a, b]) => Math.hypot(a - x, b - z) < 5)) continue;      // un carrefour coupé : un seul mur
+    const w = largeur(c) + 3.2; murs.push([x, z]);
+    mur(ctx, [[x + uz * w / 2, z - ux * w / 2], [x - uz * w / 2, z + ux * w / 2]], { haut: () => 2.3, ep: 0.6, mat: pierre, bas: 0.8 });
+    // le portail : un vantail de planches, côté bourg, 5 cm devant le mur
+    const pw = Math.min(largeur(c), 4.2), y = h(x, z);
+    const g = new THREE.BoxGeometry(pw, 2.0, 0.08); g.rotateY(Math.atan2(ux, uz));   // la largeur en travers de la rue
+    g.translate(x + ux * 0.35, y + 1.0, z + uz * 0.35); portails.push(g);
+  }
+  if (portails.length) { const m = new THREE.Mesh(mergeGeometries(portails), bois); m.castShadow = m.receiveShadow = true; ctx.scene.add(m); }
+  // la lisière : serrée sur tout le débord, et 10 m dans l'emprise (là, hors des rues et du bâti)
+  const bande = (x, z) => (cotes.includes('ouest') && x < E.x0 + 10) || (cotes.includes('nord') && z < E.z0 + 10);
+  const dedans = (x, z) => x > E.x0 && x < E.x1 && z > E.z0 && z < E.z1;
+  arbres(ctx, { espece: 'chene', n: 900, h: [9, 15], bois: bande, libre: (x, z) => bande(x, z) && (!dedans(x, z) || libre(x, z)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1) });
+  BILAN.bouts = murs;
+}
+
 // ---------------------------------------------------------------------
 //  La lumière et la pierre des Cévennes, communes aux deux lieux
 // ---------------------------------------------------------------------
@@ -472,17 +508,22 @@ function preparer(ctx, f, rueMat) {
 const FICHES = {
   // ---------------------------------------------------------------- Villefort
   // Le bourg de pierre sombre au fond de la vallée de l'Altier (SCENARIO § 14 : « l'endroit où
-  // l'on parle aux gens »), la gare de la ligne Nîmes–Clermont et son triage, et au nord la rive
-  // du lac de barrage, jusqu'au barrage. Le relief est recousu (carte/mondes/recoudre-relief-lozere.py).
+  // l'on parle aux gens »), seul, du pont Saint-Jean au sud du bourg : 370 × 600 m où l'on marche
+  // (PLAN-2026-10-04-CARTES.md, consigne 5, emprise validée par Eugène le 5 octobre). Avant, le lieu
+  // allait jusqu'au barrage (1 160 × 2 130 m) ; la gare, à 640 m à l'ouest, et le lac, à 800 m au
+  // nord, ne sont plus qu'à l'horizon. Plan et relief d'avant : carte/mondes/complet/.
   villefort: {
     ...COMMUN, name: 'villefort', titre: 'Villefort', plan: 'lozere-villefort.json', fin: 'relief-lozere-villefort.json', h0: 610,
-    grille: { x0: 640, z0: -2950, pas: 5 },
+    grille: { x0: 1360, z0: -1490, pas: 5 },
+    // où l'on marche : le relief fin (carte/mondes/recoudre-relief-lozere.py) déborde de 60 m à l'ouest
+    // et au nord, un débord boisé qu'on ne parcourt pas (lisiere) ; monde.js rentre de 8 m les deux autres bords
+    emprise: { x0: 1428, x1: 1792, z0: -1422, z1: -828 },
     sol: ['grass_ground', 0xa2ae7a],
     depart: { x: ARRIVEES.villefort.pos[0], z: ARRIVEES.villefort.pos[2], yaw: ARRIVEES.villefort.yaw },
     portes: [],
-    counts: 'Villefort, le bourg au fond de la vallée. La gare à l’ouest, le lac et le barrage au nord. Le poteau des vieux chemins, place du Bosquet, pour la Garde-Guérin et le Pouget.',
+    counts: 'Villefort, le bourg de pierre au fond de la vallée, le long de l’Altier. Le poteau des vieux chemins, place du Bosquet, pour la Garde-Guérin et le Pouget.',
     start: 'Un bourg de pierre sombre, des toits de lauzes, et au nord, le lac.',
-    entry: { title: 'Villefort', sub: 'La Cloche des Troupeaux — Lozère', cam: [1250, 260, -2700], at: [1450, 0, -1600], cam2: [1700, 40, -1300], at2: [1580, 0, -1120], dur: 6 },
+    entry: { title: 'Villefort', sub: 'La Cloche des Troupeaux — Lozère', cam: [1500, 170, -1560], at: [1610, 0, -1050], cam2: [1700, 40, -1300], at2: [1580, 0, -1120], dur: 6 },
     solLieu(x, z) { return FICHES.villefort._sol ? FICHES.villefort._sol(x, z) : null; },
     plus(ctx) {
       const { PLAN, CADRE, scene } = ctx;
@@ -507,8 +548,11 @@ const FICHES = {
         const m = new THREE.Mesh(g, beton); m.castShadow = m.receiveShadow = true; scene.add(m);
       }
       const bois = (PLAN.verdure.bois || []).filter((b) => dansCadre(CADRE, b.pts)), lacs = (PLAN.eau.plans || []).filter((l) => l.pts.length > 2);
-      arbres(ctx, { espece: 'chene', n: 1400, h: [8, 13], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
+      arbres(ctx, { espece: 'chene', n: 500, h: [8, 13], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
         libre: (x, z) => !ctx.bloque(x, z, 3) && FICHES.villefort._sol(x, z) === null && !lacs.some((l) => dansPoly(x, z, l.pts)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2.5) });
+      // le cadre resserré à l'ouest et au nord ; l'est et le sud sont les bords d'avant
+      lisiere(ctx, [...rs, ...PLAN.regordane.filter((c) => dansCadre(CADRE, c.pts, 20))], { cotes: ['ouest', 'nord'], emprise: FICHES.villefort.emprise,
+        libre: (x, z) => !ctx.bloque(x, z, 2.5) && FICHES.villefort._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1.5) });
       poteau(ctx, 'villefort');
     },
   },
