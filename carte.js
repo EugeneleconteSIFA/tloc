@@ -2348,7 +2348,8 @@ export function voiriesLille() {
   // Un chemin de halage est de la terre battue, pas de la craie : en clair il dessinait
   // un liseré blanc tout autour du fossé et de la Deûle, visible jusqu'en vue aérienne.
   // (5 octobre) les bords se fondent dans l'herbe sur 40 cm à 1 m (rubanGeo, `fondu`)
-  ajoute(rubanGeo(LILLE.chemins, LARGEUR_CHEMIN, 0.14, 5, 0.9),
+  // (les voies que la route de campagne recouvre lui cèdent la place : sansLaRoute)
+  ajoute(rubanGeo(sansLaRoute(LILLE.chemins), LARGEUR_CHEMIN, 0.14, 5, 0.9),
     phMat('rocks_ground_08', 1.6, 1.6, { color: 0x94866c, roughness: 1, transparent: true, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2 }));
   // DES RUES HOMOGÈNES. Les petites voies étaient en terre et les grandes en pavé, si bien
   // qu'en ville une rue changeait de sol à chaque carrefour. En ville, toute voie est pavée ;
@@ -2356,7 +2357,7 @@ export function voiriesLille() {
   // (n'importe lequel de ses points près du bâti : un pont de deux points a son milieu sur
   // l'eau, loin de tout, et passait en terre brune par-dessus son propre tablier pavé)
   const enVille = (o) => { const m = o.pts[o.pts.length >> 1]; return distBati(m[0], m[1]) < 18 || o.pts.some((q) => distBati(q[0], q[1]) < 12); };
-  const urbaines = LILLE.routes.filter(enVille), champs = LILLE.routes.filter((o) => !enVille(o));
+  const routes = sansLaRoute(LILLE.routes), urbaines = routes.filter(enVille), champs = routes.filter((o) => !enVille(o));
   ajoute(rubanGeo(champs, (o) => LARGEUR_ROUTE[Math.min(3, o.r)], 0.16),
     phMat('brown_mud_03', 2, 2, { color: 0x8d7d64, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
   // La chaussée de ville est posée à +0,12 : le bombé, le caniveau et le trottoir se
@@ -2896,14 +2897,21 @@ export function roadPts() {
   if (!ROAD_CACHE) {
     const A = [0, APO + MOAT_OUT + 8];
     // La route du pont royal ne va plus « au bourg » : le bourg est de l'autre côté de
-    // la Deûle. Elle mène à la culée du pont relevé le plus proche de la sortie du pont
-    // royal ; au-delà, ce sont les rues de la ville qui prennent le relais.
+    // la Deûle. Elle mène à la culée d'un pont relevé ; au-delà, ce sont le pont et les rues
+    // de la ville qui prennent le relais.
+    // (5 octobre, Eugène) LE PONT QUI MÈNE AU BOURG, pas le plus proche du pont royal : celui-là
+    // était le pont de la Citadelle, à l'ouest, et la route finissait dans un canal à 400 m du
+    // bourg. On prend le pont dont le détour est le plus court — jusqu'à sa culée, à travers
+    // lui, puis jusqu'au bourg (le pont du Ramponneau, que la Façade de l'Esplanade prolonge).
     const B = (() => {
       preparerPonts();
       let best = null;
-      for (const P of PONTS) for (const q of [P.pts[0], P.pts[P.pts.length - 1]]) {
-        const d = Math.hypot(q[0] - A[0], q[1] - A[1]);
-        if (!best || d < best.d) best = { d, q };
+      for (const P of PONTS) {
+        const ends = [P.pts[0], P.pts[P.pts.length - 1]];
+        for (const [q, r] of [ends, [ends[1], ends[0]]]) {
+          const d = Math.hypot(q[0] - A[0], q[1] - A[1]) + Math.hypot(r[0] - q[0], r[1] - q[1]) + Math.hypot(TOWN.x - r[0], TOWN.z - r[1]);
+          if (!best || d < best.d) best = { d, q };
+        }
       }
       return best ? [best.q[0], best.q[1]] : [TOWN.x, TOWN.z];
     })();
@@ -2947,6 +2955,37 @@ export function roadPts() {
     ROAD_CACHE = P;
   }
   return ROAD_CACHE;
+}
+// (5 octobre) LA ROUTE DU PONT AU BOURG ET LES VOIES RELEVÉES. Recalée sur le pont du
+// Ramponneau, la route de campagne longeait des voies relevées qui vont ailleurs : devant le
+// pont, trois routes côte à côte. Une voie relevée lui cède la place là où elle passe dessous
+// (à moins de `marge`), ou là où elle la longe à moins de 10 m dans le même sens (moins de
+// 25°) ; elle reprend dès qu'elle s'en écarte. Chaque polyligne est rééchantillonnée tous les 4 m.
+export function sansLaRoute(lignes, marge = 4.5) {
+  const R = roadPts(), out = [], COS = Math.cos(25 * Math.PI / 180);
+  const cede = (x, z, ux, uz) => {
+    for (let i = 0; i < R.length - 1; i++) {
+      const d = distSeg(x, z, R[i][0], R[i][1], R[i + 1][0], R[i + 1][1]);
+      if (d < marge) return true;
+      if (d < 10) { const vx = R[i + 1][0] - R[i][0], vz = R[i + 1][1] - R[i][1], L = Math.hypot(vx, vz) || 1;
+        if (Math.abs((ux * vx + uz * vz) / L) > COS) return true; }
+    }
+    return false;
+  };
+  for (const o of lignes) {
+    let run = [];
+    const fin = () => { if (run.length >= 2) out.push({ ...o, pts: run }); run = []; };
+    for (let i = 0; i < o.pts.length - 1; i++) {
+      const a = o.pts[i], b = o.pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 4));
+      const ux = (b[0] - a[0]) / (L || 1), uz = (b[1] - a[1]) / (L || 1);
+      for (let k = i === 0 ? 0 : 1; k <= n; k++) {
+        const x = a[0] + (b[0] - a[0]) * k / n, z = a[1] + (b[1] - a[1]) * k / n;
+        if (cede(x, z, ux, uz)) fin(); else run.push([x, z]);
+      }
+    }
+    fin();
+  }
+  return out;
 }
 
 export function nearRoad(x, z) { const P = roadPts(); for (let i = 0; i < P.length - 1; i++) if (distSeg(x, z, P[i][0], P[i][1], P[i + 1][0], P[i + 1][1]) < 7) return true; return false; }
