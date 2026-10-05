@@ -16,7 +16,7 @@ import { especeGeo } from './foret.js';
 import { construireHameau, potagers, murets, panneau, graine } from './pouget-bati.js';
 import { planterArbresDePres } from './pouget-arbres.js';
 import { enclos } from './pouget-enclos.js';
-import { poteau } from './lozere.js';
+import { poteau, decorDeHameau } from './lozere.js';
 import { PARTAGE } from './etat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -237,14 +237,34 @@ async function build() {
   // ---------- le poteau des vieux chemins : vers Villefort et la Garde-Guérin (lozere.js, le même
   // qu'à Villefort et à la Garde-Guérin ; sans lui, on ne repartait du Pouget que par la porte) ----------
   poteau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), scene, addInteract }, 'pouget');
+
+  // ---------- la vie du hameau (Eugène, 5 octobre : « ça manque de bancs, tonneaux, fleurs, oiseaux,
+  // animaux et troupeaux ») : la fabrique de lozere.js, comme à la Garde-Guérin. Devant les maisons,
+  // bancs, tonneaux et géraniums ; les hirondelles sur les toits et une buse très haut au-dessus de la
+  // vallée ; sur les prés, des fleurs, un second troupeau hors de l'enclos, et un cheval blanc ----------
+  { const tous = [...routesHameau, ...cheminsHameau];
+    const pente = (x, z) => Math.hypot(hauteur(x + 1, z) - hauteur(x - 1, z), hauteur(x, z + 1) - hauteur(x, z - 1)) / 2;
+    R.anime = await decorDeHameau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)) }, {
+      maisons: MAISONS, rues: tous, centre: CENTRE, pres: { rmin: 30, rmax: PRES },
+      libre: (x, z) => !blocked(x, z, 0.7) && solBati(x, z) === -Infinity && Math.hypot(x - DEPART.x, z - DEPART.z) > 3 && Math.hypot(x - PORTE.x, z - PORTE.z) > 3,
+      pre: (x, z) => !dansMaison(x, z, 4) && pente(x, z) < 0.45 && distTrace(x, z, tous) > 3 && !(ENCLOS && dansPoly(x, z, ENCLOS.tour)),
+      brebis: 12,
+      oiseaux: [
+        { centre: CENTRE, y: hauteur(...CENTRE) + 12, rayon: [10, 45], n: 12, taille: 0.35, vitesse: 13, couleur: 0x1a2030, battement: 16, plane: 0.2 },
+        { centre: [CENTRE[0] - 40, CENTRE[1] + 90], y: hauteur(...CENTRE) + 70, rayon: [55, 80], n: 1, taille: 1.3, vitesse: 6, couleur: 0x4a3a2a, battement: 4, plane: 0.85 },
+      ],
+      chevaux: [['cheval_blanc.glb', CENTRE[0] + 52, CENTRE[1] + 38, 0.8, 'Eating']],
+    }); }
 }
 
 function populate() { player.pos.set(DEPART.x, hauteur(DEPART.x, DEPART.z), DEPART.z); player.yaw = DEPART.yaw; G.camYaw = DEPART.yaw; }
 // à l'arrivée par la porte, la sauvegarde rend l'angle de caméra du niveau QU'ON QUITTE : une
 // fois la partie reprise, on la remet une fois dans le dos de Camille, face au hameau
 let camPosee = false;
+let tAvant = 0;
 function animate(now) {
   if (R && R.voile) R.voile.material.opacity = 0.28 + Math.sin(now / 900) * 0.08;
+  { const t = now / 1000, dt = Math.min(0.1, t - (tAvant || t)); tAvant = t; if (R && R.anime) R.anime(t, dt); }   // les oiseaux et le cheval (decorDeHameau)
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est DANS LE DOS (engine.js, la caméra suit le regard)
 }
 function minimap(g, W2) {

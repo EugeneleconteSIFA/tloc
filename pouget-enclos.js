@@ -135,7 +135,8 @@ function brebisGeo(broute) {
 // belle. Réduite pour le jeu (texture 512 px, sans ses cibles de morphing : 536 Ko) ; posée
 // immobile et en instances — 40 brebis, un appel de dessin. Si le fichier manque, la brebis
 // faite main (brebisGeo) la remplace.
-async function modeleBrebis() {
+// exportée : les troupeaux du décor (lozere.js, decorDeHameau) reprennent le même modèle
+export async function modeleBrebis() {
   try {
     const g = await new GLTFLoader().loadAsync('assets_back/02_personnages/animaux/brebis.glb');
     let m = null; g.scene.updateMatrixWorld(true); g.scene.traverse((o) => { if (o.isMesh && !m) m = o; });

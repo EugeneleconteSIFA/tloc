@@ -1837,6 +1837,31 @@ Pouget, la Garde-Guérin et Villefort est possible »)** :
   Villefort, sans erreur, chaque fois à la place d'arrivée. Captures :
   `bancs/resultats/vieux-chemins-2026-10-05-*.jpg`.
 
+**La vie de la Garde-Guérin et du Pouget (Eugène : « ça manque d'éléments de déco : bancs, tonneaux,
+fleurs, oiseaux, animaux et troupeaux »)** — `decorDeHameau`, exporté par lozere.js, appelé par la
+fiche de la Garde-Guérin et par pouget.js. Une seule fabrique pour les deux lieux :
+- **Devant les maisons** (`seuils` : le mur le plus proche d'une rue, s'il reste au moins 1,2 m de
+  libre) : un banc de granit et de planches pour une maison sur trois, un ou deux tonneaux cerclés pour
+  une sur trois, des pots de géraniums rouges, roses ou blancs pour une sur deux. Bancs et tonneaux ont
+  leur collision (`addCap`). `poserBanc` sert aussi aux places de Villefort.
+- **Les prés** : des touffes de fleurs d'une couleur (une fleur seule se perdait dans l'herbe) ; des
+  brebis en trois groupes (26 sur le plateau de la Garde-Guérin, 12 au Pouget hors de l'enclos), avec
+  `modeleBrebis`, désormais exporté par pouget-enclos.js.
+- **Les oiseaux** (`vol`, trois maillages en instances par vol, animés par la fiche) : 14 choucas
+  autour de la tour de la Garde-Guérin, des hirondelles au ras des toits dans les deux lieux, une buse
+  très haut au-dessus de la vallée du Pouget.
+- **Les chevaux** : celui d'un muletier de la Régordane au repos à l'entrée de la Garde-Guérin
+  (cheval.glb, « Eating ») ; un cheval blanc sur un pré du Pouget.
+- **Mesures** : décor 164 ms à la Garde-Guérin, 103 ms au Pouget ; banc de la Garde-Guérin inchangé
+  (99,85 %, quatre cibles sur quatre), Villefort 100 %. Captures : `deco-gardeguerin-2026-10-05-*.jpg`,
+  `deco-pouget-2026-10-05-*.jpg`.
+- **Ce qui manque** : pas de vaches, d'ânes, de chèvres ni de poules. Le pack Quaternius
+  (Cow, Bull, Donkey…) était sur le Mac, en .gltf écartés par le .gitignore : il n'est pas sur le PC.
+  Avec lui (assets_back/02_personnages/animaux/ et glb.py), des vaches d'Aubrac et l'âne du muletier
+  se poseraient par le même `chevalAuRepos`. Pas de chien du berger non plus (il appartient à l'histoire).
+- **Appris** : un nom de capture avec des espaces casse `$(ls …)` dans l'appel à publier-dev.sh (le
+  commit échoue, la sortie filtrée ne le montre pas) ; ne jamais mettre d'espace dans un nom de fichier.
+
 #### Lille, suite en autonomie (5 octobre, pause de midi d'Eugène) — **publié (f49035f, a9d9381, puis la bordure)**
 - **Une porte au milieu de chaque boutique** (garde, brasseur, drapier) : l'étal encadrait la porte de la
   maison inventée ; sur la façade relevée, il ne restait qu'un mur nu entre ses deux baies.
@@ -2038,8 +2063,14 @@ machine chargée) sans écart, 2 984 → 2 989 ms ; l'escalier coûte 6 ms. Capt
 la 1re volée).
 
 Reste : thailande.html porte depuis ce soir les lignes du multi d'une autre session (l'arène de Thaïlande,
-`thailande-arene.js`), pas publiées : laissées à cette session. Les temples du plateau restent pris dans la
-jungle ; le haut de l'escalier ne se voit pas bien depuis la mer.
+`thailande-arene.js`), pas publiées : laissées à cette session. Le haut de l'escalier ne se voit pas bien
+depuis la mer.
+
+**Les temples du sommet dégagés** (Eugène, même soir) : les houppiers (4 à 6 m de rayon) mordaient les toits,
+`bloque(…, 3)` ne les écartait que de 3 m. `jungle()` ne plante plus rien au-dessus de 100 m sur le grand piton
+(le plateau et la bosse du chedi : une esplanade, comme au vrai temple), ni à moins de 12 m d'un bâtiment du
+grand piton. Banc : 20/20, 36/36, 3,2 s, jungle 61 → 49 ms. Planche : `…-realisme-temples-degages-vues.png`.
+Reste : l'esplanade est en herbe ; au vrai Wat Tham Suea, elle est dallée.
 
 #### Aveyron : les intérieurs des trois maisons (5 octobre, `c6735bc`)
 

@@ -22,7 +22,7 @@
 // propose les deux autres (comme le petit train des Pouilles). Pas encore de porte de l'île.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -839,10 +839,8 @@ function mobilier(ctx, rs, { pave, dense }) {
   // les bancs : [x, z, regarde vers x, z]
   const granit = new Lot(), planches = new Lot(), bancs = [];
   for (const [x0, z0, lx, lz] of [[1566, -1150, 1575, -1175], [1586, -1172, 1575, -1180], [1567, -1196, 1575, -1180], [1590, -1028, 1584, -1020], [1660, -960, 1670, -968], ...(orme ? [[orme[0] + 3.2, orme[1], orme[0], orme[1]]] : [])]) {
-    const p = libre(x0, z0, 1.2); if (!p) continue; const [x, z] = p, y = h(x, z), a = Math.atan2(lx - x, lz - z), f = V(Math.sin(a), 0, Math.cos(a)), u = V(f.z, 0, -f.x);
-    for (const sg of [-0.6, 0.6]) granit.bloc(V(x, y + 0.2, z).addScaledVector(u, sg), u.clone().multiplyScalar(0.12), V(0, 0.22, 0), f.clone().multiplyScalar(0.2));
-    planches.bloc(V(x, y + 0.46, z), u.clone().multiplyScalar(0.85), V(0, 0.04, 0), f.clone().multiplyScalar(0.22));
-    planches.bloc(V(x, y + 0.78, z).addScaledVector(f, -0.24), u.clone().multiplyScalar(0.85), V(0, 0.14, 0), f.clone().multiplyScalar(0.03));
+    const p = libre(x0, z0, 1.2); if (!p) continue; const [x, z] = p;
+    poserBanc(granit, planches, x, h(x, z), z, Math.atan2(lx - x, lz - z));
     bancs.push([+x.toFixed(1), +z.toFixed(1)]);
   }
   granit.maille(phMat('granite_tile_03', 1, 1, { color: 0xb4b0a8 }));
@@ -908,6 +906,185 @@ function gensDuBourg(ctx, gens, sol) {
     addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler', fn: () => dialogue(mots.map((text) => ({ who: qui, text }))) });
     BILAN.gens.push({ qui, x: +x.toFixed(1), z: +z.toFixed(1), dit: mots[0] });
   }
+}
+
+// ---------------------------------------------------------------------
+//  La vie des hameaux : tonneaux, bancs, fleurs, oiseaux, bêtes
+// ---------------------------------------------------------------------
+// Eugène, 5 octobre : « dans la Garde et au Pouget, ça manque d'éléments de déco : bancs, tonneaux,
+// fleurs, oiseaux, animaux et troupeaux ». Une seule fabrique, exportée comme le poteau : la
+// Garde-Guérin (ici) et le Pouget (pouget.js) l'appellent avec leurs maisons et leurs rues.
+// Tout est en instances ou fondu par matière (une quinzaine d'appels de dessin pour tout) ; les
+// tonneaux et les bancs ont leur collision (addCap). Les bêtes : la brebis de l'enclos du Pouget
+// et le cheval de la banque (Quaternius, CC0) — il n'y a pas d'autre animal sur le PC.
+
+// le banc : deux pieds de granit, l'assise et le dossier de planches (aussi ceux des places de Villefort)
+function poserBanc(granit, planches, x, y, z, a) {
+  const f = V(Math.sin(a), 0, Math.cos(a)), u = V(f.z, 0, -f.x);
+  for (const sg of [-0.6, 0.6]) granit.bloc(V(x, y + 0.2, z).addScaledVector(u, sg), u.clone().multiplyScalar(0.12), V(0, 0.22, 0), f.clone().multiplyScalar(0.2));
+  planches.bloc(V(x, y + 0.46, z), u.clone().multiplyScalar(0.85), V(0, 0.04, 0), f.clone().multiplyScalar(0.22));
+  planches.bloc(V(x, y + 0.78, z).addScaledVector(f, -0.24), u.clone().multiplyScalar(0.85), V(0, 0.14, 0), f.clone().multiplyScalar(0.03));
+}
+
+// Les seuils : devant chaque maison, le mur le plus proche d'une rue, s'il reste entre lui et la
+// chaussée au moins 1,2 m de libre. Rend { x, z, a (le regard, vers la rue), ux, uz (le long du mur), L }.
+function seuils(maisons, rues, libre) {
+  const pr = rues.flatMap((c) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2]));
+  const rAut = grille(pr, ([x, z, w]) => [x - w - 8, z - w - 8, x + w + 8, z + w + 8]);
+  const dRue = (x, z) => { let d = 99; for (const i of rAut(x, z)) { const [a, b, w] = pr[i]; d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
+  const out = [];
+  for (const m of maisons) {
+    const pts = m.pts, cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    let mieux = null;
+    for (let k = 0; k < pts.length; k++) {
+      const p = pts[k], q = pts[(k + 1) % pts.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 3) continue;
+      const ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L; let nx = -uz, nz = ux; const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
+      if ((mx - cx) * nx + (mz - cz) * nz < 0) { nx = -nx; nz = -nz; }
+      const x = mx + nx * 0.7, z = mz + nz * 0.7, d = dRue(x, z);
+      if (d < 0.6 || d > 7 || !libre(x, z)) continue;
+      if (!mieux || d < mieux.d) mieux = { x, z, a: Math.atan2(nx, nz), ux, uz, L, d };
+    }
+    if (mieux) out.push(mieux);
+  }
+  return out;
+}
+
+// le tonneau : une douelle bombée (LatheGeometry), trois cercles de fer
+function geoTonneau() {
+  const prof = [[0.27, 0], [0.31, 0.12], [0.335, 0.45], [0.31, 0.78], [0.27, 0.9]].map(([r, y]) => new THREE.Vector2(r, y));
+  const corps = new THREE.LatheGeometry(prof, 18); const uv = corps.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * 2.0, uv.getY(k) * 0.9);   // en mètres
+  const fond = new THREE.CircleGeometry(0.27, 18); fond.rotateX(-Math.PI / 2); fond.translate(0, 0.88, 0);
+  const cercles = [0.1, 0.45, 0.8].map((y) => { const r = y === 0.45 ? 0.338 : 0.305, g = new THREE.CylinderGeometry(r, r, 0.05, 18, 1, true); g.translate(0, y, 0); return g; });
+  return { bois: mergeGeometries([corps, fond]), fer: mergeGeometries(cercles) };
+}
+
+// les géraniums en pot : des feuilles rondes, des ombelles rouges, roses ou blanches, sur une carte
+// découpée (alphaTest) ; trois cartes croisées au-dessus d'un pot de terre cuite
+function texGeranium(teinte) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128; const t = c.getContext('2d');
+  for (let k = 0; k < 26; k++) { const x = 20 + Math.random() * 88, y = 55 + Math.random() * 60, r = 9 + Math.random() * 8;
+    t.fillStyle = `hsl(${95 + Math.random() * 25},${40 + Math.random() * 20}%,${18 + Math.random() * 14}%)`; t.beginPath(); t.arc(x, y, r, 0, TAU); t.fill(); }
+  for (let k = 0; k < 7; k++) { const x = 18 + Math.random() * 92, y = 14 + Math.random() * 50;
+    for (let j = 0; j < 14; j++) { const a = Math.random() * TAU, d = Math.random() * 9;
+      t.fillStyle = `hsl(${teinte[0] + Math.random() * 10},${teinte[1]}%,${teinte[2] + Math.random() * 14}%)`; t.beginPath(); t.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, 3.2, 0, TAU); t.fill(); } }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+function geoCartes(l, h, n = 3) {
+  const gs = []; for (let k = 0; k < n; k++) { const g = new THREE.PlaneGeometry(l, h); g.translate(0, h / 2, 0); g.rotateY(k * Math.PI / n); gs.push(g); }
+  return mergeGeometries(gs);
+}
+// une fleur des prés : la petite carte de nature.js (un pétale clair, un cœur jaune), en trois couleurs
+function texFleur(col) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+  g.strokeStyle = '#3e6a2a'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 64); g.quadraticCurveTo(36, 40, 32, 22); g.stroke();
+  for (let k = 0; k < 5; k++) { const a = k * TAU / 5; g.fillStyle = col; g.beginPath(); g.ellipse(32 + Math.cos(a) * 8, 20 + Math.sin(a) * 8, 6.5, 4.5, a, 0, TAU); g.fill(); }
+  g.fillStyle = '#e8b020'; g.beginPath(); g.arc(32, 20, 4, 0, TAU); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// Un vol d'oiseaux : trois maillages en instances (le corps et les deux ailes) ; chaque oiseau tourne
+// sur son cercle autour d'un centre, monte et descend un peu, bat des ailes ou plane. `taille` : son
+// envergure en mètres. Les choucas autour de la tour, les hirondelles au ras des toits, la buse haut.
+function vol({ centre: [cx, cz], y, rayon: [r0, r1], n, taille, vitesse, couleur, battement = 9, plane = 0.3 }) {
+  const corps = new THREE.OctahedronGeometry(0.5, 0); corps.scale(0.22, 0.2, 0.6);
+  const aile = (sg) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.12, sg * 0.5, 0, -0.05, 0, 0, -0.18], 3)); g.computeVertexNormals(); return g; };
+  const mat = new THREE.MeshStandardMaterial({ color: couleur, roughness: 0.85, side: THREE.DoubleSide });
+  const ims = [corps, aile(1), aile(-1)].map((g) => { const m = new THREE.InstancedMesh(g, mat, n); m.frustumCulled = false; scene.add(m); return m; });
+  const B = Array.from({ length: n }, () => ({ a: rand(0, TAU), r: rand(r0, r1), dy: rand(-3, 3), w: (Math.random() < 0.5 ? -1 : 1) * vitesse / ((r0 + r1) / 2) * rand(0.8, 1.2), ph: rand(0, TAU) }));
+  const m4 = new THREE.Matrix4(), mw = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = V(), s = V(taille, taille, taille);
+  return (t, dt) => {
+    B.forEach((b, k) => {
+      b.a += b.w * dt; const x = cx + Math.cos(b.a) * b.r, z = cz + Math.sin(b.a) * b.r, yy = y + b.dy + Math.sin(t * 0.4 + b.ph) * 1.5;
+      const cap = Math.atan2(-Math.sin(b.a) * Math.sign(b.w), Math.cos(b.a) * Math.sign(b.w));    // la tangente au cercle
+      e.set(0, cap, -Math.sign(b.w) * 0.35); q.setFromEuler(e); m4.compose(p.set(x, yy, z), q, s); ims[0].setMatrixAt(k, m4);
+      const glisse = Math.sin(t * 0.3 + b.ph) > 1 - plane * 2, f = glisse ? 0.08 : Math.sin(t * battement + b.ph) * 0.7;
+      for (const [im, sg] of [[ims[1], 1], [ims[2], -1]]) { mw.makeRotationZ(sg * f); im.setMatrixAt(k, m4.clone().multiply(mw)); }
+    });
+    for (const im of ims) im.instanceMatrix.needsUpdate = true;
+  };
+}
+
+// Le cheval de la banque (cheval.glb, cheval_blanc.glb) : chargé et lissé comme dans aveyron.js (dont
+// le chargeur est privé à sa page), à l'échelle des gens du lieu, une boucle d'animation (Eating, Idle)
+async function chevalAuRepos(fichier, x, y, z, yaw, clip) {
+  try {
+    const [L, S, U] = await Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')]);
+    const g = await new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier + '?v=2');
+    g.scene.traverse((o) => { if (!o.isSkinnedMesh) return; let ge = o.geometry.clone(); ge.deleteAttribute('normal'); ge = U.mergeVertices(ge, 1e-4); ge.computeVertexNormals(); o.geometry = ge;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.flatShading = false; m.roughness = 0.82; m.metalness = 0; m.needsUpdate = true; } });
+    g.scene.updateMatrixWorld(true);
+    const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+    const c = S.clone(g.scene); c.scale.setScalar(2.35 / (b.max.y - b.min.y) * G.echelle);
+    c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    c.position.set(x, y, z); c.rotation.y = yaw; scene.add(c);
+    const mix = new THREE.AnimationMixer(c), a = g.animations.find((k) => k.name === clip) || g.animations.find((k) => k.name === 'Idle');
+    if (a) { const act = mix.clipAction(a); act.time = Math.random() * a.duration; act.play(); }
+    return mix;
+  } catch (e) { console.warn('décor : cheval indisponible —', e.message); return null; }
+}
+
+// ctx : { hauteur, bloque } ; o : { maisons [{pts}], rues [{pts, r}], libre(x, z), centre [x, z],
+// pres { rmin, rmax } (où semer fleurs et brebis), oiseaux [params de vol], brebis n, chevaux
+// [[fichier, x, z, yaw, clip]] }. Rend anime(t, dt) (les oiseaux, les chevaux) et un bilan.
+export async function decorDeHameau(ctx, o) {
+  const { hauteur: h } = ctx, t0 = performance.now(), bilan = {};
+  const places = seuils(o.maisons, o.rues, o.libre), pris = [];
+  const libreIci = (x, z, m) => o.libre(x, z) && pris.every(([a, b]) => Math.hypot(a - x, b - z) > m);
+  // devant les maisons : un banc pour une sur trois, un ou deux tonneaux pour une sur trois, des
+  // géraniums pour une sur deux — à côté de la porte, contre le mur
+  const granit = new Lot(), planches = new Lot(), tonneaux = [], pots = []; let bancs = 0;
+  places.forEach((s, k) => {
+    const le = (d, e = 0) => [s.x + s.ux * d + Math.sin(s.a) * e, s.z + s.uz * d + Math.cos(s.a) * e];
+    if (k % 3 === 0 && s.L > 4) { const [x, z] = le(-s.L * 0.22); if (libreIci(x, z, 1.2)) { poserBanc(granit, planches, x, h(x, z), z, s.a); pris.push([x, z]); bancs++;
+      addCap(x - s.ux * 0.85, z - s.uz * 0.85, x + s.ux * 0.85, z + s.uz * 0.85, 0.28, h(x, z) + 0.5); } }
+    // les tonneaux à 85 cm du mur : à 65, le test de place libre (70 cm) les refusait tous
+    if (k % 3 === 1) for (const d of [s.L * 0.3, s.L * 0.3 + 0.75].slice(0, 1 + (k % 2))) { const [x, z] = le(d, 0.15); if (libreIci(x, z, 0.7)) { tonneaux.push([x, z, rand(0, TAU)]); pris.push([x, z]); addCap(x, z, x, z, 0.36, h(x, z) + 0.9); } }
+    if (k % 2 === 0) for (const d of [0.9, -0.9]) { const [x, z] = le(d, 0.1); if (libreIci(x, z, 0.4)) { pots.push([x, z, k]); pris.push([x, z]); } }
+  });
+  granit.maille(phMat('granite_tile_03', 1, 1, { color: 0xb4b0a8 })); planches.maille(phMat('wood_planks', 1, 1, { color: 0x7a6248 }));
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = V(), v = V();
+  if (tonneaux.length) { const g = geoTonneau(), ib = new THREE.InstancedMesh(g.bois, phMat('wood_cabinet_worn_long', 1, 1, { color: 0x8a6a48 }), tonneaux.length), ifr = new THREE.InstancedMesh(g.fer, phMat('metal_plate_02', 1, 1, { color: 0x3a3632, side: THREE.DoubleSide }), tonneaux.length);
+    tonneaux.forEach(([x, z, a], k) => { q.setFromAxisAngle(HAUT, a); m4.compose(v.set(x, h(x, z) - 0.02, z), q, sc.set(1, rand(0.95, 1.08), 1)); ib.setMatrixAt(k, m4); ifr.setMatrixAt(k, m4); });
+    ib.castShadow = ifr.castShadow = true; ib.receiveShadow = true; scene.add(ib, ifr); }
+  if (pots.length) { const pot = new THREE.LatheGeometry([[0.11, 0], [0.13, 0.02], [0.17, 0.26], [0.19, 0.28], [0.19, 0.31], [0.16, 0.31], [0.15, 0.28]].map(([r, y]) => new THREE.Vector2(r, y)), 14);
+    const ip = new THREE.InstancedMesh(pot, phMat('terre_battue', 0.6, 0.6, { color: 0xc07850 }), pots.length);
+    const cartes = geoCartes(0.5, 0.42), teintes = [[2, 78, 42], [340, 70, 58], [0, 0, 82]], imf = teintes.map((tt) => new THREE.InstancedMesh(cartes, new THREE.MeshStandardMaterial({ map: texGeranium(tt), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9 }), pots.length));
+    const nf = [0, 0, 0];
+    pots.forEach(([x, z, k], i) => { q.setFromAxisAngle(HAUT, rand(0, TAU)); m4.compose(v.set(x, h(x, z), z), q, sc.set(1, 1, 1)); ip.setMatrixAt(i, m4);
+      const c = k % 3; m4.compose(v.set(x, h(x, z) + 0.24, z), q, sc.set(1, 1, 1)); imf[c].setMatrixAt(nf[c]++, m4); });
+    imf.forEach((m, c) => { m.count = nf[c]; }); ip.castShadow = true; scene.add(ip, ...imf); }
+  Object.assign(bilan, { seuils: places.length, bancs, tonneaux: tonneaux.length, pots: pots.length });
+
+  // les fleurs des prés : en touffes d'une couleur (une seule fleur par-ci par-là se perdait dans
+  // l'herbe), autour du hameau, là où l'on ne bâtit ni ne marche
+  const [cx, cz] = o.centre, cols = ['#f4f0e4', '#f0d040', '#b080d0'], fl = cols.map(() => []);
+  for (let k = 0, n = 0; k < 3000 && n < (o.touffes ?? 70); k++) {
+    const a = rand(0, TAU), r = rand(o.pres.rmin * 0.3, o.pres.rmax), x0 = cx + Math.cos(a) * r, z0 = cz + Math.sin(a) * r;
+    if (!o.libre(x0, z0) || !o.pre(x0, z0)) continue; n++;
+    for (let j = 0; j < 16; j++) { const b2 = rand(0, TAU), d = Math.sqrt(Math.random()) * 1.8, x = x0 + Math.cos(b2) * d, z = z0 + Math.sin(b2) * d; if (o.libre(x, z)) fl[n % 3].push([x, z]); }
+  }
+  const carte = geoCartes(0.28, 0.32, 2);
+  cols.forEach((c, i) => { if (!fl[i].length) return; const im = new THREE.InstancedMesh(carte, new THREE.MeshStandardMaterial({ map: texFleur(c), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 1 }), fl[i].length);
+    fl[i].forEach(([x, z], k) => { q.setFromAxisAngle(HAUT, rand(0, TAU)); const e = rand(0.7, 1.2); m4.compose(v.set(x, h(x, z) - 0.02, z), q, sc.set(e, e, e)); im.setMatrixAt(k, m4); }); scene.add(im); });
+  bilan.fleurs = fl.reduce((s, l) => s + l.length, 0);
+
+  // les brebis : deux ou trois groupes sur les prés, chacune autour d'un centre de groupe
+  if (o.brebis) { const { modeleBrebis } = await import('./pouget-enclos.js'), mod = await modeleBrebis();
+    if (mod) { const centres = [], ps = [];
+      for (let k = 0; k < 3000 && centres.length < 3; k++) { const a = rand(0, TAU), r = rand(o.pres.rmin, o.pres.rmax), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (o.libre(x, z) && o.pre(x, z) && centres.every(([p, s]) => Math.hypot(p - x, s - z) > 25)) centres.push([x, z]); }
+      for (let k = 0; k < 4000 && ps.length < o.brebis && centres.length; k++) { const [x0, z0] = centres[k % centres.length], a = rand(0, TAU), r = rand(0.5, 8), x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
+        if (o.libre(x, z) && o.pre(x, z) && ps.every(([p, s]) => Math.hypot(p - x, s - z) > 1.4)) ps.push([x, z]); }
+      const im = new THREE.InstancedMesh(mod.geo, mod.mat, ps.length);
+      ps.forEach(([x, z], k) => { const e = rand(0.88, 1.08); q.setFromAxisAngle(HAUT, rand(0, TAU)); m4.compose(v.set(x, h(x, z) - 0.03, z), q, sc.set(e, e, e)); im.setMatrixAt(k, m4); });
+      im.castShadow = im.receiveShadow = true; scene.add(im); bilan.brebis = ps.length; bilan.troupeaux = centres.length; } }
+
+  // les oiseaux, et les chevaux
+  const vols = (o.oiseaux || []).map(vol); bilan.oiseaux = (o.oiseaux || []).reduce((s, b) => s + b.n, 0);
+  // chaque cheval sur une place libre de pré, au plus près de celle voulue (un rond de 25 m)
+  const surPre = (x0, z0) => { for (let r = 0; r < 25; r += 1) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * TAU) * r, z = z0 + Math.sin(k / 16 * TAU) * r; if (o.libre(x, z) && o.pre(x, z) && o.libre(x + 1.2, z) && o.libre(x - 1.2, z)) return [x, z]; } return null; };
+  const mixers = (await Promise.all((o.chevaux || []).map(([f, x0, z0, a, clip]) => { const p = surPre(x0, z0); return p ? chevalAuRepos(f, p[0], h(...p), p[1], a, clip) : null; }))).filter(Boolean); bilan.chevaux = mixers.length;
+  bilan.ms = Math.round(performance.now() - t0); BILAN.decor = bilan;
+  return (t, dt) => { for (const f of vols) f(t, dt); for (const m of mixers) m.update(dt); };
 }
 
 // ---------------------------------------------------------------------
@@ -1049,6 +1226,28 @@ const FICHES = {
       arbres(ctx, { espece: 'pin', n: 450, h: [9, 15], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
         libre: (x, z) => !ctx.bloque(x, z, 3) && FICHES.gardeguerin._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2.5) });
       poteau(ctx, 'gardeguerin');
+      // la vie du village (Eugène, 5 octobre) : devant les maisons, bancs, tonneaux et géraniums ; les
+      // choucas autour de la tour et les hirondelles sur les toits ; sur le plateau, des fleurs, un
+      // troupeau de brebis, et le cheval d'un muletier de la Régordane, au repos à l'entrée du village
+      const tour = BILAN.corps.find((c) => c.sp.tour), enceinte = PLAN.garde.enceinte.map((e) => e.pts);
+      const dansEnceinte = (x, z) => enceinte.some((p) => p.length > 2 && dansPoly(x, z, p));
+      const pente = (x, z) => Math.hypot(ctx.hauteur(x + 1, z) - ctx.hauteur(x - 1, z), ctx.hauteur(x, z + 1) - ctx.hauteur(x, z - 1)) / 2;
+      FICHES.gardeguerin._anime = null;
+      decorDeHameau(ctx, {
+        maisons: BILAN.corps.filter((c) => !c.sp.tour && !c.sp.ruine).map((c) => ({ pts: c.rect })), rues: rs, centre: [1815, -5330], pres: { rmin: 70, rmax: 230 },
+        libre: (x, z) => !ctx.bloque(x, z, 0.7) && FICHES.gardeguerin._sol(x, z) === null,
+        pre: (x, z) => !dansEnceinte(x, z) && pente(x, z) < 0.35 && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2),
+        brebis: 26,
+        oiseaux: [
+          { centre: tour ? [tour.cx, tour.cz] : [1817, -5362], y: (tour ? tour.avt : ctx.hauteur(1817, -5362) + 21) + 6, rayon: [7, 26], n: 14, taille: 0.7, vitesse: 7, couleur: 0x1e1e22, battement: 10, plane: 0.35 },
+          { centre: [1815, -5320], y: ctx.hauteur(1815, -5320) + 11, rayon: [12, 45], n: 10, taille: 0.35, vitesse: 13, couleur: 0x1a2030, battement: 16, plane: 0.2 },
+        ],
+        chevaux: [['cheval.glb', 1857, -5243, Math.atan2(-15, -60) + 1.9, 'Eating']],
+      }).then((f) => { FICHES.gardeguerin._anime = f; });
+    },
+    anime(now) {
+      const t = now / 1000, dt = Math.min(0.1, t - (FICHES.gardeguerin._t || t)); FICHES.gardeguerin._t = t;
+      if (FICHES.gardeguerin._anime) FICHES.gardeguerin._anime(t, dt);
     },
   },
 };
