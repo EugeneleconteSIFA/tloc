@@ -19,7 +19,8 @@ import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import * as ATLAS from './atlas.js';
 import * as PNJ from './pnj.js';
-import { APO, ENCEINTE, PARC_BOIS_R, PONT_Z1, TOWN, bastions, enQuartier, sdEau, sdEnceinte, sdPent, surOuvrage, surPont, townWorld } from './carte.js';
+// (la géométrie de l'arène — tracé, parc, porte, bastions — vient de sa déclaration, game.js)
+import { ENCEINTE, TOWN, sdEau, sdEnceinte, surOuvrage, surPont, townWorld } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { openGate } from './quetes.js';
 import { FAUCHE_DEBUG } from './nature.js';
@@ -173,31 +174,43 @@ function ouvrirDonjon() {
 // =====================================================================
 //  La partie qui se resserre (Eugène, 29 septembre)
 // =====================================================================
-// Plus la manche avance, plus l'aire de jeu se réduit : on finit par se croiser. Trois
-// aires, toutes mesurées au tracé de la citadelle (sdPent) : toute la châtellenie, son parc
-// (jusqu'au bois, PARC_BOIS_R), la citadelle elle-même — et quand on s'y resserre, la herse
-// de la Porte Royale retombe sur le pont. Le calendrier dépend de la règle :
-//   chrono      : le parc quand il reste 5 min, la citadelle quand il reste 2 min 30 ;
-//   match à mort: le parc au bout de 5 min de jeu, la citadelle au bout de 10 ;
-//   drapeaux    : une aire fixe selon la durée (moins de 5 min la citadelle, moins de 10 le
-//                 parc, sinon tout) — la même que celle où tombent les drapeaux.
+// Plus la manche avance, plus l'aire de jeu se réduit : on finit par se croiser. Les aires
+// sont celles de l'ARÈNE du lieu (G.level.arenes, déclarée dans le fichier du lieu : à Lille,
+// game.js), de la plus large à la plus étroite — à Lille, une seule : la citadelle, herse de
+// la Porte Royale baissée. Depuis le 5 octobre, on joue toujours dans la première aire, hors
+// manche et en balade aussi : « toute la châtellenie » éparpillait les joueurs à des centaines
+// de mètres les uns des autres. Le calendrier dépend de la règle (n aires, la dernière la plus
+// étroite ; avec une seule, il n'y a pas de resserrement) :
+//   chrono      : chaque aire suivante quand il reste 2 min 30 de plus que la suivante (à
+//                 Lille : la citadelle à 2 min 30 de la fin) ;
+//   match à mort: une aire de plus toutes les 5 min de jeu ;
+//   drapeaux    : une aire fixe selon la durée (moins de 5 min la plus étroite, puis une aire
+//                 plus large par tranche de 5 min) — la même que celle où tombent les drapeaux.
 // Chaque navigateur la calcule sur le chrono de la manche : rien à arbitrer au serveur.
 // 50 s avant chaque resserrement, une annonce et un rideau de lumière qui se lève à la
 // future limite ; ensuite, hors de l'aire, on perd un demi-cœur toutes les 1,5 s (les bots
 // aussi, et ils rentrent d'eux-mêmes).
-const AIRES = {
-  tout: { r: Infinity, nom: 'toute la châtellenie' },
-  parc: { r: PARC_BOIS_R, nom: 'le parc de la citadelle' },
-  citadelle: { r: 2, nom: 'la citadelle' },
-};
+// Sans arène déclarée (un lieu qui n'en a pas encore), une seule aire sans limite : 'tout'.
+const ARENES = (G.level && G.level.arenes) || [];
+let arene = ARENES[0] || null;
+const AIRES = { tout: { id: 'tout', r: Infinity, nom: 'toute la carte' } };
+const idsAires = () => (arene ? arene.aires.map((a) => a.id) : ['tout']);
+// l'instance dit son arène à l'entrée (bienvenue) ; un lieu qui ne la déclare pas prend la sienne
+function prendreArene(id) {
+  arene = ARENES.find((a) => a.id === id) || ARENES[0] || null;
+  for (const k of Object.keys(AIRES)) if (k !== 'tout') delete AIRES[k];
+  if (arene) for (const a of arene.aires) AIRES[a.id] = a;
+  for (const r of rideaux.values()) scene.remove(r);
+  rideaux.clear();
+}
 const PREAVIS = 50;
 let debutCours = 0;                                   // pour le match à mort, qui n'a pas de chrono
 function calendrierAire() {
   if (!manche) return [];
-  const d = manche.duree || 180;
-  if (regle === 'temps') return [{ t: 0, aire: 'tout' }, { t: d - 300, aire: 'parc' }, { t: d - 150, aire: 'citadelle' }];
-  if (regle === 'survie') return [{ t: 0, aire: 'tout' }, { t: 300, aire: 'parc' }, { t: 600, aire: 'citadelle' }];
-  if (regle === 'drapeaux') return [{ t: 0, aire: d < 300 ? 'citadelle' : d < 600 ? 'parc' : 'tout' }];
+  const d = manche.duree || 180, ids = idsAires(), n = ids.length;
+  if (regle === 'temps') return ids.map((aire, i) => ({ t: i ? d - 150 * (n - i) : 0, aire }));
+  if (regle === 'survie') return ids.map((aire, i) => ({ t: 300 * i, aire }));
+  if (regle === 'drapeaux') return [{ t: 0, aire: ids[Math.max(0, n - 1 - Math.floor(d / 300))] }];
   return [];
 }
 // secondes de jeu dans la manche en cours (null hors manche)
@@ -210,21 +223,24 @@ function tempsManche() {
 // l'aire en vigueur et la prochaine (avec son délai), à l'instant t
 function etatAire(t) {
   const cal = calendrierAire();
-  let cur = 'tout', suiv = null;
+  let cur = idsAires()[0], suiv = null;
   for (const e of cal) { if (e.t <= t) cur = e.aire; else if (!suiv && e.aire !== cur) suiv = { aire: e.aire, dans: e.t - t }; }
   return { cur, suiv };
 }
-const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && sdPent(x, z) > AIRES[aire].r;
+const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && arene.sd(x, z) > AIRES[aire].r;
+const premiereAire = () => idsAires()[0];
+const lieuDepart = () => lieux.find((l) => l.id === (arene ? arene.depart : 'place'));
 
 // le rideau : un ruban vertical le long de la limite, lumière qui monte et ondoie
 const rideaux = new Map();
+prendreArene(arene && arene.id);
 function rideau(aire) {
   if (rideaux.has(aire)) return rideaux.get(aire);
-  const R = AIRES[aire].r, C = [0, 40], N = 220, pts = [];
-  for (let k = 0; k <= N; k++) {                    // le contour sdPent = R, pris par dichotomie sur chaque rayon
+  const R = AIRES[aire].r, C = arene.centre, N = 220, pts = [];
+  for (let k = 0; k <= N; k++) {                    // le contour sd = R, pris par dichotomie sur chaque rayon
     const a = k / N * TAU, ux = Math.cos(a), uz = Math.sin(a);
     let lo = 0, hi = 2500;
-    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (sdPent(C[0] + ux * m, C[1] + uz * m) < R) lo = m; else hi = m; }
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (arene.sd(C[0] + ux * m, C[1] + uz * m) < R) lo = m; else hi = m; }
     const x = C[0] + ux * lo, z = C[1] + uz * lo; pts.push([x, z, getH(x, z)]);
   }
   const contour = pts.map(([x, z]) => [x, z]);       // pour la minicarte et la carte M (PARTAGE.aires)
@@ -233,7 +249,7 @@ function rideau(aire) {
   pts.forEach(([x, z, y], k) => { if (k) s += Math.hypot(x - pts[k - 1][0], z - pts[k - 1][1]); pos.push(x, y - 2, z, x, y + H, z); uv.push(s / 12, 0, s / 12, 1); if (k) { const b = 2 * k; idx.push(b - 2, b - 1, b, b - 1, b + 1, b); } });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
   const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
-    uniforms: { t: { value: 0 }, a: { value: 0 }, c: { value: new THREE.Color(aire === 'citadelle' ? 0xff6a3a : 0xffc860) } },
+    uniforms: { t: { value: 0 }, a: { value: 0 }, c: { value: new THREE.Color(AIRES[aire].lueur || 0xffc860) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: `uniform float t, a; uniform vec3 c; varying vec2 vUv;
       // des raies franches qui montent (une frontière, pas la lumière du soir) et un liseré vif
@@ -245,73 +261,86 @@ function rideau(aire) {
   rideaux.set(aire, mesh); return mesh;
 }
 
-let aireAnnoncee = null, aireEnVigueur = 'tout', brulure = 0;
-// un point sûr pour réapparaître : l'arrivée choisie si elle est dans l'aire, sinon la place
+let aireAnnoncee = null, aireEnVigueur = premiereAire(), brulure = 0;
+// un point sûr pour réapparaître : l'arrivée choisie si elle est dans l'aire, sinon le lieu de
+// départ de l'arène (à Lille, la place d'Armes)
 function pointDansAire(p, aire = aireEnVigueur) {
   if (!p || !horsAire(p.x, p.z, aire)) return p;
-  const pl = lieux.find((l) => l.id === 'place');
+  const pl = lieuDepart();
   return pl ? { x: pl.x, y: getH(pl.x, pl.z), z: pl.z } : p;
 }
+// les annonces : « la herse … retombe » quand l'aire en a une, sinon le resserrement tout court
+const annonceAire = (id) => (AIRES[id].herse ? `${AIRES[id].herse} retombe : on se bat dans ${AIRES[id].nom} !` : `La partie se resserre sur ${AIRES[id].nom} !`);
+const preavisAire = (id, s) => (AIRES[id].herse ? `Dans ${s} s, ${AIRES[id].herse} retombe : rentre dans ${AIRES[id].nom} !`
+  : `Dans ${s} s, la partie se resserre sur ${AIRES[id].nom} : rapproche-toi !`);
+const couleurAire = (id) => AIRES[id].couleur || '#ffd070';
 function tickAire(dt, now) {
   const t = tempsManche();
-  const { cur, suiv } = t === null ? { cur: 'tout', suiv: null } : etatAire(t);
-  // la herse suit l'aire : baissée tant qu'on est resserré sur la citadelle
-  if (PARTAGE.herse) { const h = PARTAGE.herse.userData, but = cur === 'citadelle' ? 1 : 0;
+  // hors manche (la balade, l'attente d'un adversaire), on reste dans la première aire
+  const { cur, suiv } = t === null ? { cur: premiereAire(), suiv: null } : etatAire(t);
+  // la herse suit l'aire : baissée tant qu'on est resserré sur l'aire qui en a une
+  if (PARTAGE.herse) { const h = PARTAGE.herse.userData, but = AIRES[cur].herse ? 1 : 0;
     if (Math.abs(h.f - but) > 0.001) h.poser(but > h.f ? Math.min(but, h.f + dt / 3) : Math.max(but, h.f - dt / 2)); }
   for (const [k, r] of rideaux) r.visible = false;
   // les cartes tracent la limite en vigueur (trait plein) et celle qui s'annonce (tirets)
   PARTAGE.aires = [];
   if (cur !== aireEnVigueur) {
     const avant = aireEnVigueur; aireEnVigueur = cur;
-    if (t !== null && AIRES[cur].r < AIRES[avant].r) {
-      showMessage(cur === 'citadelle' ? 'La herse de la Porte Royale retombe : on se bat dans la citadelle !' : `La partie se resserre sur ${AIRES[cur].nom} !`, 5);
+    if (t !== null && AIRES[avant] && AIRES[cur].r < AIRES[avant].r) {
+      showMessage(annonceAire(cur), 5);
       G.shake = Math.max(G.shake, 0.6); try { SFX.stomp(); } catch (e) {}
     }
   }
-  if (t === null) { aireAnnoncee = null; return; }
+  if (t === null) aireAnnoncee = null;
   // le préavis : l'annonce une fois, le rideau qui se lève à la future limite
-  if (suiv && suiv.dans <= PREAVIS) {
+  else if (suiv && suiv.dans <= PREAVIS) {
     if (aireAnnoncee !== suiv.aire) {
       aireAnnoncee = suiv.aire;
-      showMessage(suiv.aire === 'citadelle' ? `Dans ${Math.round(suiv.dans)} s, la herse de la Porte Royale retombe : rentre dans la citadelle !`
-        : `Dans ${Math.round(suiv.dans)} s, la partie se resserre sur ${AIRES[suiv.aire].nom} : rapproche-toi !`, 6);
+      showMessage(preavisAire(suiv.aire, Math.round(suiv.dans)), 6);
       try { SFX.roar(); } catch (e) {}
     }
     const r = rideau(suiv.aire); r.visible = true;
     r.material.uniforms.t.value = now / 1000;
     r.material.uniforms.a.value = Math.min(1, (PREAVIS - suiv.dans) / 6) * (0.6 + 0.3 * Math.sin(now / 180));
-    PARTAGE.aires.push({ pts: r.userData.contour, couleur: suiv.aire === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: true });
+    PARTAGE.aires.push({ pts: r.userData.contour, couleur: couleurAire(suiv.aire), tirets: true });
   }
   if (AIRES[cur].r !== Infinity) {                   // la limite en vigueur reste visible, plus sage
     const r = rideau(cur); r.visible = true; r.material.uniforms.t.value = now / 1000; r.material.uniforms.a.value = 0.45;   // assez pour se voir de loin (0,28 : on ne le voyait pas)
-    PARTAGE.aires.push({ pts: r.userData.contour, couleur: cur === 'citadelle' ? '#ff9a70' : '#ffd070', tirets: false });
+    PARTAGE.aires.push({ pts: r.userData.contour, couleur: couleurAire(cur), tirets: false });
   }
   // hors de l'aire, ça brûle : moi…
   brulure -= dt;
   if (brulure <= 0) {
     brulure = 1.5;
     const p = player;
-    if (!elimine && horsAire(p.pos.x, p.pos.z, cur)) {
-      const d = Math.hypot(p.pos.x, p.pos.z - 40) || 1;
-      encaisser(1, p.pos.x + p.pos.x / d * 3, p.pos.z + (p.pos.z - 40) / d * 3, null, null, 'aire');
-      showMessage(`Hors de ${AIRES[cur].nom} ! Rentre, ou tu perds des cœurs.`, 1.4);
+    // le coup vient du dehors : le recul pousse vers le centre de l'arène
+    const C = arene ? arene.centre : [0, 0];
+    // pas avant d'avoir choisi son arrivée : on entre devant la Porte Royale, hors de la citadelle
+    if (!elimine && state.apparition && !state.paused && horsAire(p.pos.x, p.pos.z, cur)) {
+      const d = Math.hypot(p.pos.x - C[0], p.pos.z - C[1]) || 1;
+      encaisser(1, p.pos.x + (p.pos.x - C[0]) / d * 3, p.pos.z + (p.pos.z - C[1]) / d * 3, null, null, 'aire');
+      // « hors des abords », « hors de la citadelle » : de + le/les se contractent
+      showMessage(`Hors ${AIRES[cur].nom.replace(/^les /, 'des ').replace(/^le /, 'du ').replace(/^(?!des |du )/, 'de ')} ! Rentre, ou tu perds des cœurs.`, 1.4);
     }
     // … et les bots que je fais vivre
-    for (const b of bots.values()) if (b.pos && !(b.mortT > 0) && horsAire(b.pos.x, b.pos.z, cur)) recevoirPourBot(b.id, { t: 'touche', d: 1, p: [b.pos.x * 1.02, b.pos.z * 1.02], de: null });
+    for (const b of bots.values()) if (b.pos && !(b.mortT > 0) && horsAire(b.pos.x, b.pos.z, cur))
+      recevoirPourBot(b.id, { t: 'touche', d: 1, p: [C[0] + (b.pos.x - C[0]) * 1.02, C[1] + (b.pos.z - C[1]) * 1.02], de: null });
   }
 }
-// un bot hors de l'aire (ou de celle qui s'annonce) rentre vers la place
+// un bot hors de l'aire (ou de celle qui s'annonce) rentre vers le lieu de départ de l'arène
 function botRentre(b) {
-  const t = tempsManche(); if (t === null || !b.pos) return false;
-  const { cur, suiv } = etatAire(t), vise = suiv && suiv.dans <= PREAVIS ? suiv.aire : cur;
+  if (!b.pos) return false;
+  const t = tempsManche();
+  const { cur, suiv } = t === null ? { cur: premiereAire(), suiv: null } : etatAire(t), vise = suiv && suiv.dans <= PREAVIS ? suiv.aire : cur;
   if (!horsAire(b.pos.x, b.pos.z, vise)) return false;
-  const pl = lieux.find((l) => l.id === 'place'); if (!pl) return false;
-  // la citadelle ne s'entre que par le pont de la Porte Royale : hors grille de chemins (elle
-  // n'existe qu'en drapeaux), le bot filait droit sur la place et restait au bord du fossé
-  if (vise === 'citadelle') {
-    const surPontR = Math.abs(b.pos.x) < 3.5 && b.pos.z > APO - 12 && b.pos.z < PONT_Z1 + 3;
-    b.but = surPontR ? { x: 0, z: APO - 14 } : { x: 0, z: PONT_Z1 + 6 };
-    if (Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 3) b.but = surPontR ? { x: pl.x, z: pl.z } : { x: 0, z: PONT_Z1 - 2 };
+  const pl = lieuDepart(); if (!pl) return false;
+  // une aire fermée par une porte ne s'entre que par elle (à Lille, le pont de la Porte
+  // Royale) : hors grille de chemins, le bot filait droit et restait au bord du fossé
+  const P = AIRES[vise].porte;
+  if (P) {
+    const sur = P.sur(b.pos.x, b.pos.z), [bx, bz] = sur ? P.dedans : P.dehors;
+    b.but = { x: bx, z: bz };
+    if (Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 3) b.but = sur ? { x: pl.x, z: pl.z } : { x: P.seuil[0], z: P.seuil[1] };
     return true;
   }
   b.but = { x: pl.x, z: pl.z }; return true;
@@ -555,6 +584,7 @@ function connecter() {
       moi = m.moi;
       estHote = !!m.hote; rdv = m.rdv || null;
       mode = m.mode || 'libre'; enjeu = !!m.enjeu; regle = m.regle || 'balade';
+      if (m.arene && (!arene || m.arene !== arene.id)) { prendreArene(m.arene); aireEnVigueur = premiereAire(); }
       if (m.points) points = m.points;
       if (m.camps) effectifs = m.camps;
       // de retour dans une instance en équipes : on redit son camp au salon
@@ -709,8 +739,20 @@ function praticable(x, z) {
 }
 
 // le point d'arrivée cliqué sur la carte : praticable ET ouvert (cf. ouvert) — le plus proche
-// du clic qui le soit, sans quoi on arrivait dans un recoin entre trois murs
+// du clic qui le soit, sans quoi on arrivait dans un recoin entre trois murs. Un clic hors de
+// l'aire de départ de l'arène est ramené vers son centre, à 15 m en deçà de la limite : on
+// arrive là où les autres jouent (on choisissait sa rue à un kilomètre de tout le monde).
 function praticableOuvert(x, z) {
+  const a0 = premiereAire();
+  if (horsAire(x, z, a0) || (AIRES[a0].r !== Infinity && arene.sd(x, z) > AIRES[a0].r - 15)) {
+    const [cx, cz] = arene.centre;
+    let lo = 0, hi = 1;                               // la part du chemin vers le centre
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (arene.sd(x + (cx - x) * m, z + (cz - z) * m) > AIRES[a0].r - 15) lo = m; else hi = m; }
+    x += (cx - x) * hi; z += (cz - z) * hi;
+  }
+  return praticableOuvertIci(x, z);
+}
+function praticableOuvertIci(x, z) {
   for (const r of [0, 3, 6, 10, 15]) for (let k = 0; k < (r ? 8 : 1); k++) {
     const a = k / 8 * TAU, q = praticable(x + Math.cos(a) * r, z + Math.sin(a) * r);
     if (q && ouvert(q.x, q.z)) return q;
@@ -1079,19 +1121,9 @@ if (actif) {
 // Leur nombre suit la partie (le serveur le fixe au début de chaque manche) : la place
 // d'Armes d'abord, puis, un à un, le point fort le plus éloigné de ceux déjà retenus — à deux
 // ou trois drapeaux, ils étaient tous à moins de cent mètres (Eugène : « plus dispersés »).
-// Les points forts : la place, les casernes, la poterne, et la gorge des cinq bastions (au
-// pied de leur rampe, côté place). Pas le donjon : son enclos a une grille fermée.
-function candidatsDrapeaux() {
-  const place = lieux.find((l) => l.id === 'place');
-  if (!place) return [];
-  const c = [{ id: 'place', nom: place.nom, x: place.x, z: place.z }];
-  for (const l of lieux) if (l.id.startsWith('caserne') || l.id === 'poterne') c.push({ id: l.id, nom: l.nom, x: l.x, z: l.z });
-  bastions.forEach((b, i) => {
-    const gx = (b.S1[0] + b.S2[0]) / 2, gz = (b.S1[1] + b.S2[1]) / 2, d = Math.hypot(place.x - gx, place.z - gz) || 1;
-    c.push({ id: 'bastion' + i, nom: 'le b' + (b.name || 'astion').slice(1), x: gx + (place.x - gx) / d * 22, z: gz + (place.z - gz) / d * 22 });
-  });
-  return c;
-}
+// Les points forts sont déclarés par l'arène (pointsForts : à Lille, la place, les casernes, la
+// poterne et la gorge des bastions), le premier étant le lieu de départ.
+const candidatsDrapeaux = () => (arene && arene.pointsForts ? arene.pointsForts(lieux) : []);
 const RAYON_DRAPEAU = 8;                       // = DRAPEAU_RAYON (app.py)
 const COULEUR_NEUTRE = 0xe6dcc0;
 let drapeaux = [], tenue = { garnison: 0, bourg: 0 }, drapeauxProposes = false, lieuxDrapeauxServeur = 0;
@@ -1113,10 +1145,11 @@ function majMarques() {
 // On attend la grille des chemins (cf. preparerNav) : un emplacement doit être dégagé (le
 // cercle entier libre) et atteignable depuis la place d'Armes — au premier essai, la poterne
 // tombait dans une cour fermée, et le donjon est derrière une grille close. On échantillonne
-// une zone qui grandit avec la durée de la partie (Eugène, 29 septembre) : moins de 5 min, la
-// citadelle seule (à 12 m de ses courtines) — on s'y croise, c'est plus vif ; de 5 à 10 min,
-// son parc jusqu'à la Deûle ; 10 min et plus, toute la châtellenie (à 12 m de l'enceinte de
-// la ville). Toujours à ciel ouvert (pas sous un porche du quartier). On garde ensuite les
+// une zone qui grandit avec la durée de la partie (Eugène, 29 septembre) : l'aire de l'arène
+// où se joue la manche (calendrierAire). À Lille : moins de 5 min, la citadelle seule (à 12 m
+// de ses courtines) — on s'y croise, c'est plus vif ; au-delà, son parc jusqu'à la Deûle
+// (toute la châtellenie n'est plus une aire depuis le 5 octobre). Toujours à ciel ouvert
+// (pas sous un porche du quartier). On garde ensuite les
 // plus écartés : chacun au plus loin des précédents, ils se répartissent sur toute la zone.
 const NB_EMPLACEMENTS = 20;
 function nomEmplacement(x, z, pris, place) {
@@ -1152,8 +1185,8 @@ function proposerDrapeaux() {
   // un cercle dégagé, lu dans la grille : deux couronnes de cases libres
   const anneaux = [];
   for (const r of [3.5, RAYON_DRAPEAU - 1]) for (let k = 0; k < 16; k++) anneaux.push([Math.round(Math.cos(k / 16 * TAU) * r / NAV_PAS), Math.round(Math.sin(k / 16 * TAU) * r / NAV_PAS)]);
-  const zone = manche.duree < 300 ? 'citadelle' : manche.duree < 600 ? 'parc' : 'tout';
-  const parc = zone === 'parc' ? intraDeule(p0) : null;
+  const zone = calendrierAire()[0].aire, A = AIRES[zone], ids = idsAires(), etroite = zone === ids[ids.length - 1];
+  const parc = A.riveDeule ? intraDeule(p0) : null;
   const cands = [];
   for (let j = 0; j < nz; j += 2) for (let i = 0; i < nx; i += 2) {
     const k = j * nx + i;
@@ -1161,7 +1194,9 @@ function proposerDrapeaux() {
     const x = nav.x0 + (i + 0.5) * NAV_PAS, z = nav.z0 + (j + 0.5) * NAV_PAS;
     // à 40 m au moins de la limite du monde : près d'elle, les rues continuent au-delà sans
     // rempart dessiné, et l'on bute contre un « faux mur » en voyant le drapeau (Eugène, 29 sept.)
-    if (zone === 'citadelle' ? sdPent(x, z) > -12 : zone === 'parc' ? !parc[k] || sdPent(x, z) > PARC_BOIS_R || enQuartier(x, z) : sdEnceinte(x, z) > -40) continue;
+    // l'aire la plus étroite : à 14 m en deçà de sa limite (12 m des courtines de la citadelle)
+    if (A.r === Infinity ? sdEnceinte(x, z) > -40 : etroite ? arene.sd(x, z) > A.r - 14
+      : (parc && !parc[k]) || arene.sd(x, z) > A.r || (A.exclut && A.exclut(x, z))) continue;
     if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
   // les plus écartés : la place, puis toujours le point le plus loin de ceux déjà retenus
@@ -1186,8 +1221,8 @@ function proposerDrapeaux() {
 // on inonde la grille en fermant les ponts du relevé (PONTS, carte.js — ceux des fossés de la
 // place n'en font pas partie : citadelle.js les bâtit à part). La frontière suit l'eau telle
 // qu'elle est ; mais le relevé ne ferme pas la Deûle tout autour, et l'inondation filait par la
-// terre jusque dans les rues de Lille : on la borne aussi au bois du parc (PARC_BOIS_R), hors
-// du tissu bâti de la ville (enQuartier) qui l'entame côté Esplanade.
+// terre jusque dans les rues de Lille : on la borne aussi au bois du parc (le rayon de l'aire),
+// hors du tissu bâti de la ville (son `exclut`, enQuartier) qui l'entame côté Esplanade.
 function intraDeule(p0) {
   const { nx, nz, libre } = nav, vu = new Uint8Array(nx * nz), file = new Int32Array(nx * nz);
   const ouvert = (k) => { const i = k % nx, j = (k - i) / nx; return libre[k] && surPont(nav.x0 + (i + 0.5) * NAV_PAS, nav.z0 + (j + 0.5) * NAV_PAS) === null; };
@@ -1346,6 +1381,10 @@ const PLAN_OBJETS = [
   { id: 'cheval-blanc', type: 'cheval', lieu: (L) => L.find((l) => l.id === 'mage'), nom: 'à l’écurie du vieux mage' },
 ];
 const LIEU_OBJET = Object.fromEntries(PLAN_OBJETS.map((p) => [p.id, p.nom]));
+// seulement ceux qui tombent dans l'aire de départ de l'arène : depuis que la partie se joue
+// dans la citadelle (Eugène, 5 octobre), les chevaux du moulin et du mage et l'arc de la
+// chapelle sont dehors — on brûlerait en allant les chercher
+const planObjets = () => PLAN_OBJETS.filter((p) => { const l = p.lieu(lieux); return l && !horsAire(l.x, l.z, premiereAire()); });
 const NOM_TYPE = { armure: 'l’armure', bouclier: 'l’écu', arc: 'l’arc', cheval: 'le cheval' };
 const COULEUR_TYPE = { armure: '#c9ccd2', bouclier: '#d0463a', arc: '#7fbf5a', cheval: '#b07a3e' };
 const ARMURE_PTS = [0, 8, 10, 12];          // demi-cœurs encaissés : cuir clouté (4 cœurs), mailles, plates
@@ -1363,9 +1402,9 @@ const mien = (type) => objets.find((o) => o.type === type && moi && o.porteur ==
 function proposerObjets() {
   if (objetsProposes || !lieux.length || !state.running) return;
   const liste = [];
-  for (const pl of PLAN_OBJETS) {
+  for (const pl of planObjets()) {
     const l = pl.lieu(lieux);
-    if (!l || objets.some((o) => o.id === pl.id)) continue;
+    if (objets.some((o) => o.id === pl.id)) continue;
     const p = pl.type === 'cheval' ? placeEcurie(l) : praticable(l.x, l.z);
     if (p) liste.push({ id: pl.id, type: pl.type, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +getH(p.x, p.z).toFixed(2) });
   }
@@ -1430,12 +1469,16 @@ function majObjets(m) {
       try { SFX.pickup(); } catch (e) {}
     } else showMessage(`${qui} prend ${NOM_TYPE[m.o]} ${LIEU_OBJET[m.id] || ''}.`, 3);
   } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats.`, 4);
-  else if (m.evt === 'raz' && objets.length) showMessage(`Nouvelle manche : armures aux casernes, écu sur la place d’Armes, ${enEquipes() ? '' : 'arcs à la poterne et à la chapelle, '}chevaux à leurs écuries.`, 6);
+  else if (m.evt === 'raz' && objets.length) {
+    // ce que l'arène garde (planObjets), un type par ligne : « l'armure aux casernes, l'écu … »
+    const vus = new Set(), dits = planObjets().filter((p) => !(enEquipes() && p.type === 'arc') && !vus.has(p.type) && vus.add(p.type)).map((p) => `${NOM_TYPE[p.type]} ${p.nom}`);
+    showMessage(`Nouvelle manche : ${dits.join(', ')}.`, 6);
+  }
   peindreArmure();
 }
 
 function tickObjets(now) {
-  if (PLAN_OBJETS.some((pl) => !objets.some((o) => o.id === pl.id))) proposerObjets();
+  if (planObjets().some((pl) => !objets.some((o) => o.id === pl.id))) proposerObjets();
   tickChevaux(now);
   G.armure = armure; G.bouclier = ecu;          // le moteur : la garde et l'aide des touches
   for (const [id, pr] of presentoirs) {
@@ -1760,6 +1803,7 @@ function poserForge() {
   if (!actif || poserForge.fait || !TOWN || TOWN.y === undefined) return;
   poserForge.fait = true;
   const [x, z] = townWorld(4.4, 14);
+  if (horsAire(x, z, premiereAire())) return;        // le bourg est hors de l'arène (5 octobre)
   addInteract({ pos: new THREE.Vector3(x, TOWN.y, z), r: 3.2, prompt: () => 'la forge : renforcer ton équipement', fn: () => {
     const peu = (n) => `il faut d’abord ${n}`;
     BOURSE.boutique('La forge', 'À l’enclume', 'Le forgeron renforce ce que tu portes. Ce qui est brisé ne se répare pas : il faut en reprendre.', [
@@ -2033,12 +2077,15 @@ function preparerNav() {
   // pas avant la fin du chargement : les lieux existent pendant la construction, les murs pas encore tous
   if (!nav && !document.getElementById('loading')?.classList.contains('hidden')) return;
   if (!nav) {
-    // partie courte : les drapeaux restent dans la citadelle, la grille n'en couvre que les
-    // abords (une vingtaine de fois moins de cases) ; sinon toute la châtellenie
+    // partie courte : les drapeaux restent dans l'aire la plus étroite, la grille n'en couvre
+    // que les abords (une vingtaine de fois moins de cases) ; sinon l'aire de la manche, prise
+    // à son contour (à Lille, le parc : quatre fois moins de cases que toute la châtellenie)
     if (!manche || !manche.duree) return;
-    const pts = manche.duree < 300 ? candidatsDrapeaux().map((l) => [l.x, l.z]) : ENCEINTE;
+    const zone = calendrierAire()[0], ids = idsAires(), courte = manche.duree < 300 || !zone || zone.aire === ids[ids.length - 1];
+    const pts = courte ? candidatsDrapeaux().map((l) => [l.x, l.z])
+      : AIRES[zone.aire].r === Infinity ? ENCEINTE : rideau(zone.aire).userData.contour;
     if (!pts.length) return;
-    const marge = manche.duree < 300 ? 90 : 0;
+    const marge = courte ? 90 : 10;
     const xs = pts.map((q) => q[0]), zs = pts.map((q) => q[1]);
     const x0 = Math.min(...xs) - marge, z0 = Math.min(...zs) - marge;
     const nx = Math.ceil((Math.max(...xs) + marge - x0) / NAV_PAS), nz = Math.ceil((Math.max(...zs) + marge - z0) / NAV_PAS);
@@ -2581,8 +2628,8 @@ function orienterArrivee() {
 // tous les bots partaient du point d'arrivée du joueur et se retrouvaient sur lui.
 function pointEparpille(aire, loin, autour = null) {
   // autour du joueur quand on le sait (les bots doivent le trouver en une minute), sinon la place
-  const pl = autour || lieux.find((l) => l.id === 'place') || { x: 0, z: 0 };
-  const R = aire === 'citadelle' ? 110 : aire === 'parc' ? 180 : 200;   // assez près pour se trouver en une minute
+  const pl = autour || lieuDepart() || { x: 0, z: 0 };
+  const R = AIRES[aire].eparpille || 200;            // assez près pour se trouver en une minute
   for (let k = 0; k < 40; k++) {
     const a = Math.random() * TAU, r = R * Math.sqrt(Math.random());
     const q = praticable(pl.x + Math.cos(a) * r, pl.z + Math.sin(a) * r);
@@ -2664,7 +2711,7 @@ function peindreManche() {
   } else if (manche.etat === 'fin') ligne = `Prochaine manche dans ${reste} s`;
   // le préavis du resserrement, compté à rebours
   { const t = tempsManche(), e = t === null ? null : etatAire(t);
-    if (e && e.suiv && e.suiv.dans <= PREAVIS) ligne += `<br><b style="color:${e.suiv.aire === 'citadelle' ? '#ff9a70' : '#ffd070'}">⚠ ${e.suiv.aire === 'citadelle' ? 'La herse retombe' : 'Resserrement sur ' + AIRES[e.suiv.aire].nom} dans ${mmss(Math.max(0, Math.ceil(e.suiv.dans)))}</b>`; }
+    if (e && e.suiv && e.suiv.dans <= PREAVIS) ligne += `<br><b style="color:${couleurAire(e.suiv.aire)}">⚠ ${AIRES[e.suiv.aire].herse ? 'La herse retombe' : 'Resserrement sur ' + AIRES[e.suiv.aire].nom} dans ${mmss(Math.max(0, Math.ceil(e.suiv.dans)))}</b>`; }
   bandeauManche.innerHTML = `${titre}<br>${ligne}`;
 }
 
@@ -2935,6 +2982,6 @@ if (actif) { connecter(); setInterval(() => envoyer({ t: 'ping' }), 25000); }
 requestAnimationFrame(boucle);
 
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
-window.TLOC_MULTI = { autres, bots, envoyer, encaisser, orienterArrivee, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue }),
+window.TLOC_MULTI = { autres, bots, envoyer, encaisser, orienterArrivee, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue, arene: arene && arene.id, aire: aireEnVigueur }),
   nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav, candidatsDrapeaux, terrainDrapeau,
   equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };

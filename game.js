@@ -6,7 +6,7 @@ import {
   THREE, Q, T, blocked, bootLevel, camera, lerpAngle, makeSky, rand, scene, showMessage, state,
 } from './engine.js?v=41';
 import {
-  APO, DEHORS, DONJON, ECH, HOUSE, HOUSE_SMOKE_TOP, MAGE, MOAT_IN, MOAT_OUT, MOUNDS, POTERNE,
+  APO, DEHORS, DONJON, ECH, HOUSE, HOUSE_SMOKE_TOP, MAGE, MOAT_IN, MOAT_OUT, MOUNDS, PONT_Z1, POTERNE,
   TOWN, bastions, haiesIGN, levelBlocked, levelH, nappesLille, pontsLille, sdEau, sdPent, solVille, terrassesDehors,
   voiriesLille,
   zoneName, ambiance,
@@ -76,8 +76,46 @@ function animate(now, dt) {
     f.material.opacity = 0.5 + Math.sin(now / 300 + u.a) * 0.35; }
   T.waterN.offset.x += dt * 0.015; T.waterN.offset.y += dt * 0.01;
 }
+// L'ARÈNE du multi (5 octobre) : où l'on se bat à plusieurs dans ce lieu. tloc-multi.js la lit
+// au lieu de supposer la citadelle ; un autre lieu jouable à plusieurs déclarera la sienne dans
+// son propre fichier, sous la même forme (docs/NOTE-MULTI.md, « Les arènes »).
+// Les aires vont de la plus large à la plus étroite, mesurées par `sd` (négatif dedans) depuis
+// `centre` : la manche part de la première et s'y resserre.
+// À Lille, toute la partie se joue DANS LA CITADELLE (Eugène, 5 octobre). « Toute la
+// châtellenie » (1,6 × 2 km) éparpillait les joueurs ; le parc et le bourg (1,4 km de large)
+// n'y changeaient rien au banc des rencontres. La citadelle fait 530 × 500 m. Le bourg, sa
+// forge, les chevaux du moulin et du mage et l'arc de la chapelle sortent du multi.
+const ARENE_LILLE = {
+  id: 'lille', nom: 'La citadelle de Lille',
+  sd: sdPent, centre: [0, 40],
+  depart: 'place',               // le lieu où l'on revient quand rien d'autre n'est sûr
+  aires: [
+    // la herse de la Porte Royale reste baissée tant qu'on y joue ; un bot resté dehors rentre
+    // par le pont (hors de la grille des chemins, il filait droit et restait au bord du fossé).
+    // `eparpille` : le rayon des départs de manche des bots
+    { id: 'citadelle', nom: 'la citadelle', r: 2, couleur: '#ff9a70', lueur: 0xff6a3a, eparpille: 110,
+      herse: 'la herse de la Porte Royale',
+      porte: { sur: (x, z) => Math.abs(x) < 3.5 && z > APO - 12 && z < PONT_Z1 + 3, dehors: [0, PONT_Z1 + 6], seuil: [0, PONT_Z1 - 2], dedans: [0, APO - 14] } },
+  ],
+  // les points forts, d'où partent les drapeaux : la place, les casernes, la poterne, et la
+  // gorge des cinq bastions (au pied de leur rampe, côté place). Pas le donjon : son enclos a
+  // une grille fermée.
+  pointsForts: (lieux) => {
+    const place = lieux.find((l) => l.id === 'place');
+    if (!place) return [];
+    const c = [{ id: 'place', nom: place.nom, x: place.x, z: place.z }];
+    for (const l of lieux) if (l.id.startsWith('caserne') || l.id === 'poterne') c.push({ id: l.id, nom: l.nom, x: l.x, z: l.z });
+    bastions.forEach((b, i) => {
+      const gx = (b.S1[0] + b.S2[0]) / 2, gz = (b.S1[1] + b.S2[1]) / 2, d = Math.hypot(place.x - gx, place.z - gz) || 1;
+      c.push({ id: 'bastion' + i, nom: 'le b' + (b.name || 'astion').slice(1), x: gx + (place.x - gx) / d * 22, z: gz + (place.z - gz) / d * 22 });
+    });
+    return c;
+  },
+};
+
 const level = {
   name: 'citadel', getH: levelH, blocked: levelBlocked, zoneName, ambiance,
+  arenes: [ARENE_LILLE],
   // Camille et les villageois mesuraient 2,97 m, alors que la citadelle et les 1 975
   // hauteurs relevées sont au 1:1 : une maison de rue lilloise de 9,50 m ne faisait que
   // 3,2 fois sa taille, au lieu de 5,4. Dehors, le personnage est donc ramené à 1,80 m.

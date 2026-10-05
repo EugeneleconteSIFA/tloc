@@ -449,7 +449,7 @@ function peindreInstances(liste) {
     <article class="instance" data-code="${ECH(i.code)}">
       <div class="tete">
         <h4>${ECH(i.nom)} ${encours && encours.code === i.code ? '<span class="pastille vif">rejointe</span>' : ''}
-          ${i.mode === 'equipes' ? '<span class="pastille">en équipes</span>' : ''}${i.regle === 'survie' ? ` <span class="pastille">match à mort · ${i.vies || 1} vie${(i.vies || 1) > 1 ? 's' : ''}</span>` : ''}${i.regle === 'temps' ? ` <span class="pastille">chrono · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.regle === 'drapeaux' ? ` <span class="pastille">drapeaux · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.bots ? ` <span class="pastille">${i.bots} bot${i.bots > 1 ? 's' : ''} · ${NOM_NIVEAU[i.niveau] || i.niveau}</span>` : ''}</h4>
+          ${i.mode === 'equipes' ? '<span class="pastille">en équipes</span>' : ''}${i.regle === 'survie' ? ` <span class="pastille">match à mort · ${i.vies || 1} vie${(i.vies || 1) > 1 ? 's' : ''}</span>` : ''}${i.regle === 'temps' ? ` <span class="pastille">chrono · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.regle === 'drapeaux' ? ` <span class="pastille">drapeaux · ${Math.round((i.duree || 180) / 60)} min</span>` : ''}${i.bots ? ` <span class="pastille">${i.bots} bot${i.bots > 1 ? 's' : ''} · ${NOM_NIVEAU[i.niveau] || i.niveau}</span>` : ''}${Object.keys(ARENES).length > 1 && ARENES[i.arene] ? ` <span class="pastille">${ARENES[i.arene]}</span>` : ''}</h4>
         <span class="places" title="${dedans.length ? 'En jeu : ' + ECH(dedans.join(', ')) : 'Personne en ligne'}">
           <span class="sieges" aria-hidden="true">${sieges}</span>
           ${dedans.length}/${places}
@@ -579,6 +579,11 @@ const modeChoisi = () => (document.querySelector('input[name="modeInstance"]:che
 const niveauChoisi = () => (document.querySelector('input[name="niveauBots"]:checked') || {}).value || 'soldat';
 const regleChoisie = () => (document.querySelector('input[name="regleInstance"]:checked') || {}).value || 'balade';
 const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono', drapeaux: 'prise des drapeaux' };
+// Les arènes prêtes (5 octobre) : chacune est déclarée par son lieu (`arenes`, game.js pour
+// Lille) et acceptée par le serveur (NouvelleInstance.arene). Une seule pour l'instant : pas
+// de choix à montrer, on la dit seulement sur la partie. La deuxième amènera le sélecteur.
+const ARENES = { lille: 'la citadelle de Lille' };
+const areneChoisie = () => 'lille';
 let nbVies = 1;
 // la durée se règle à la minute près (5 par défaut) : quatre cases figées ne laissaient pas
 // le choix (Eugène, 29 septembre). Le serveur accepte d'une à quinze minutes.
@@ -685,7 +690,7 @@ $('creerInstance').onclick = async () => {
   $('creerInstance').disabled = true;
   try {
     const i = await C.creerInstance(nom, modeChoisi(), true,   // bourse toujours en jeu dans les duels
-      nbBots, niveauChoisi(), regleChoisie(), nbVies, dureeChoisie());
+      nbBots, niveauChoisi(), regleChoisie(), nbVies, dureeChoisie(), areneChoisie());
     $('nomInstance').value = '';
     message($('msgInstances'), '');
     // le geste suivant, c'est presque toujours d'envoyer le code aux copains : il est déjà copié

@@ -1,0 +1,35 @@
+{
+ "date": "2026-10-05T08:07:46.799Z",
+ "etiquette": "apres",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 180,
+ "joueurs": 4,
+ "bots": 4,
+ "arene": "lille",
+ "arrivees": [
+  [
+   252,
+   -365
+  ],
+  [
+   378,
+   643
+  ],
+  [
+   252,
+   -365
+  ],
+  [
+   35,
+   -536
+  ]
+ ],
+ "rencontres": {
+  "total": 2,
+  "humains": 1,
+  "mixtes": 0,
+  "bots": 1
+ },
+ "voisinMedianM": 243
+}

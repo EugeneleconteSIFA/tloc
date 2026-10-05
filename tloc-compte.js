@@ -223,8 +223,8 @@ export async function supprimerPartout(id) {
 // =====================================================================
 export const instance = () => lire(CLE_INSTANCE);
 export const poserInstance = (i) => (i ? ecrire(CLE_INSTANCE, i) : localStorage.removeItem(CLE_INSTANCE));
-export const creerInstance = (nom, mode = 'libre', enjeu = false, bots = 0, niveau = 'soldat', regle = 'balade', vies = 1, duree = 180) =>
-  appel('/api/instances', { method: 'POST', body: JSON.stringify({ nom, mode, enjeu, bots, niveau, regle, vies, duree }) });
+export const creerInstance = (nom, mode = 'libre', enjeu = false, bots = 0, niveau = 'soldat', regle = 'balade', vies = 1, duree = 180, arene = 'lille') =>
+  appel('/api/instances', { method: 'POST', body: JSON.stringify({ nom, mode, enjeu, bots, niveau, regle, vies, duree, arene }) });
 /** Les badges d'honneur : tous, avec le nombre de fois où le compte les a gagnés. */
 export const badges = () => appel('/api/badges');
 

@@ -410,3 +410,50 @@ Banc : `banc-drapeaux.mjs` (scratchpad) — compte d'essai, instance à 7 bots v
 serveur à part (port 8120, `TLOC_DB` à part), suivi des drapeaux et des bots toutes les 5 s,
 message de camp tapé, captures (bandeau, cercles vus d'en haut, résultats).
 
+
+### Les arènes (5 octobre)
+
+Eugène : en multi, on ne se croise pas. « Toute la châtellenie » (1,2 km d'un coin à l'autre)
+était l'aire de départ de presque toutes les manches. L'arène est maintenant une notion du
+jeu : **chaque lieu la déclare dans son propre fichier**, sous `arenes` de son objet niveau
+(à Lille, `game.js`, `ARENE_LILLE`), et `tloc-multi.js` la lit au lieu de ses constantes.
+
+    { id, nom,
+      sd(x, z),          // distance signée qui mesure les aires (négative dedans) — Lille : sdPent
+      centre: [x, z],    // d'où partent le rideau, le recul de la brûlure, le recalage de l'arrivée
+      depart: 'place',   // le lieu (E.addLieu) où l'on revient quand rien d'autre n'est sûr
+      aires: [           // de la plus large à la plus étroite ; la manche part de la première
+        { id, nom, r,    // nom avec son article : « Hors des abords… », « rentre dans la citadelle »
+          couleur, lueur,          // trait des cartes, rideau de lumière
+          eparpille,               // rayon des départs de manche des bots
+          herse,                   // « la herse de la Porte Royale » : elle retombe sur cette aire
+          porte: { sur(x, z), dehors, seuil, dedans },   // le seul chemin des bots pour y entrer
+          riveDeule, exclut(x, z) }],                     // bornes des drapeaux dans cette aire
+      pointsForts(lieux) }   // d'où partent les drapeaux ; le premier est le lieu de départ
+
+Lille : **la citadelle seule** (Eugène, 5 octobre), herse de la Porte Royale baissée toute
+la partie. Le banc des rencontres l'a décidé : « toute la châtellenie » (1,6 × 2 km) donnait
+2 rencontres en 3 minutes, voisin le plus proche d'un joueur à 220 m ; le parc et le bourg
+(440 m du tracé, 1,4 km de large) exactement autant (2 rencontres, 243 m). La citadelle fait
+530 × 500 m. Le bourg, sa forge, les chevaux du moulin et du mage et l'arc de la chapelle
+sortent du multi (`planObjets` ne pose que ce qui tombe dans l'aire de départ). On joue
+toujours dans la première aire, hors manche et en balade aussi : on y brûle au-dehors (pas
+avant d'avoir choisi son arrivée — on entre devant la Porte Royale). Le point d'arrivée cliqué
+au loin est ramené vers le centre, 15 m en deçà de la limite. Le calendrier se déduit du
+nombre d'aires (`calendrierAire`) : le chrono passe à l'aire suivante 2 min 30 avant la fin,
+le match à mort toutes les 5 min, les drapeaux de moins de 5 min se jouent dans la plus
+étroite. La grille des chemins ne couvre plus que l'aire de la manche.
+
+L'instance retient son arène : colonne `arene` (app.py, comme `regle`), choisie à la création
+(`creerInstance(…, arene)`), redite dans le `bienvenue`. Le serveur n'accepte que les arènes
+prêtes (`NouvelleInstance.arene`, aujourd'hui `^(lille)$`) ; l'accueil n'affiche pas de choix
+tant qu'il n'y en a qu'une (`ARENES`, accueil.js).
+
+**Ajouter une arène** : la déclarer dans le fichier du lieu, charger `tloc-multi.js` dans sa
+page (aujourd'hui, seul `index.html` le charge), puis l'ouvrir dans `NouvelleInstance.arene`
+et `ARENES`. Les objets du multi (`PLAN_OBJETS`), la forge et les camps restent ceux de Lille :
+à déclarer aussi par l'arène le jour où une deuxième existe.
+
+Banc : `bancs/rencontres.mjs` — comptes de test sur le serveur LOCAL, quatre joueurs sans tête
+qui marchent au hasard, quatre bots, chrono de 10 min observé sur ses 3 premières minutes ; il
+compte les rencontres (deux personnages à moins de 30 m).

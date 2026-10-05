@@ -324,6 +324,9 @@ def init():
             cx.execute("ALTER TABLE instances ADD COLUMN vies INTEGER NOT NULL DEFAULT 1")
         if "duree" not in cols:
             cx.execute("ALTER TABLE instances ADD COLUMN duree INTEGER NOT NULL DEFAULT 180")
+        # l'arène (5 octobre) : où se joue l'instance — les instances d'avant jouaient à Lille
+        if "arene" not in cols:
+            cx.execute("ALTER TABLE instances ADD COLUMN arene TEXT NOT NULL DEFAULT 'lille'")
         # le profil : une photo (petite image en data URL, recadrée par le navigateur) et une devise
         jcols = {r["name"] for r in cx.execute("PRAGMA table_info(joueurs)")}
         if "photo" not in jcols:
@@ -1023,6 +1026,9 @@ class NouvelleInstance(BaseModel):
     regle: str = Field(default="balade", pattern="^(balade|survie|temps|drapeaux)$")
     vies: int = Field(default=1, ge=1, le=5)
     duree: int = Field(default=180, ge=60, le=900)
+    # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) : une seule pour
+    # l'instant ; en ajouter une, c'est l'ajouter ici et dans ARENES (accueil.js)
+    arene: str = Field(default="lille", pattern="^(lille)$")
 
 
 def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
@@ -1033,6 +1039,7 @@ def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
         "connectes": [p.perso for p in salon.humains()] if salon else [],
         "places": places_humains(r["mode"], r["bots"]), "mode": r["mode"], "enjeu": bool(r["enjeu"]),
         "bots": r["bots"], "niveau": r["niveau"], "regle": r["regle"], "vies": r["vies"], "duree": r["duree"],
+        "arene": r["arene"],
     }
 
 
@@ -1044,8 +1051,8 @@ def creer_instance(n: NouvelleInstance, j: sqlite3.Row = Depends(porteur)):
     code = nouveau_code()
     t = time.time()
     with db() as cx:
-        cx.execute("INSERT INTO instances (code, nom, hote, cree, vu, mode, enjeu, bots, niveau, regle, vies, duree) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (code, n.nom.strip() or "Partie entre amis", j["id"], t, t, n.mode, int(n.enjeu), n.bots, n.niveau, n.regle, n.vies, n.duree))
+        cx.execute("INSERT INTO instances (code, nom, hote, cree, vu, mode, enjeu, bots, niveau, regle, vies, duree, arene) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (code, n.nom.strip() or "Partie entre amis", j["id"], t, t, n.mode, int(n.enjeu), n.bots, n.niveau, n.regle, n.vies, n.duree, n.arene))
         cx.execute("INSERT OR IGNORE INTO membres (code, joueur, rejoint) VALUES (?,?,?)", (code, j["id"], t))
         r = cx.execute("SELECT * FROM instances WHERE code = ?", (code,)).fetchone()
     return vue_instance(r, j["pseudo"])
@@ -1743,7 +1750,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         await ws.close(code=4001, reason="connexion requise")
         return
     with db() as cx:
-        inst = cx.execute("SELECT code, nom, hote, rdv, mode, enjeu, bots, niveau, regle, vies, duree FROM instances WHERE code = ?", (code,)).fetchone()
+        inst = cx.execute("SELECT code, nom, hote, rdv, mode, enjeu, bots, niveau, regle, vies, duree, arene FROM instances WHERE code = ?", (code,)).fetchone()
         if not inst:
             await ws.close(code=4004, reason="instance introuvable")
             return
@@ -1782,7 +1789,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         "t": "bienvenue", "code": code, "nom": inst["nom"], "places": places_humains(inst["mode"], inst["bots"]),
         "moi": {"id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso},
         "hote": moi.id == inst["hote"], "rdv": json.loads(inst["rdv"]) if inst["rdv"] else None,
-        "mode": inst["mode"], "enjeu": bool(inst["enjeu"]), "camps": salon.camps(), "points": salon.points,
+        "mode": inst["mode"], "enjeu": bool(inst["enjeu"]), "arene": inst["arene"], "camps": salon.camps(), "points": salon.points,
         "fete": salon.vue_fete(), "bannieres": salon.vue_bannieres(),
         "bourses": [{"id": k, **{c: v for c, v in b.items() if c != "fin"}} for k, b in salon.bourses.items()],
         "objets": salon.vue_objets(),

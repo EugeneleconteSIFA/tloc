@@ -1,0 +1,35 @@
+{
+ "date": "2026-10-05T07:56:40.409Z",
+ "etiquette": "avant",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 180,
+ "joueurs": 4,
+ "bots": 4,
+ "arene": null,
+ "arrivees": [
+  [
+   120,
+   902
+  ],
+  [
+   -295,
+   -402
+  ],
+  [
+   -76,
+   567
+  ],
+  [
+   -352,
+   -264
+  ]
+ ],
+ "rencontres": {
+  "total": 2,
+  "humains": 0,
+  "mixtes": 0,
+  "bots": 2
+ },
+ "voisinMedianM": 220
+}
