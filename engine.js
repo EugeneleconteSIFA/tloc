@@ -2396,7 +2396,24 @@ window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 export const mouse = { attack: false, roll: false, garde: false };
 const canvasEl = document.getElementById('game');
 canvasEl.addEventListener('click', () => { if (!TACTILE && state.running && !menu.active && !G.journal && !state.over && document.pointerLockElement !== canvasEl) { try { canvasEl.requestPointerLock(); } catch (e) {} } });
-document.addEventListener('pointerlockchange', () => { G.mouseLook = document.pointerLockElement === canvasEl; });
+document.addEventListener('pointerlockchange', () => { G.mouseLook = document.pointerLockElement === canvasEl;
+  if (G.mouseLook) try { sessionStorage.removeItem('tloc_souris'); } catch (e) {} });
+// LA SOURIS D'UN LIEU À L'AUTRE (5 octobre, Eugène : « quand j'arrive sur un nouveau lieu, la
+// souris n'est plus la navigation qui change de direction »). Passer une porte charge une autre
+// page, ou ouvre un cadre par-dessus la ville : le navigateur rend le pointeur, et ne le reprend
+// qu'au premier geste dans le jeu. goToLevel note donc si la souris pilotait la caméra
+// (tloc_souris) ; à l'arrivée, le premier geste — une touche de déplacement, un clic n'importe où
+// — la reprend tout seul. Libérée exprès (Échap), elle reste libre : la note est effacée dès que
+// le pointeur est repris, et n'est posée qu'au passage d'une porte.
+function reprendreSouris() {
+  let veut = false; try { veut = sessionStorage.getItem('tloc_souris') === '1'; } catch (e) {}
+  // (pas d'exception pour une cinématique : la touche qui la passe est souvent le premier geste, et la
+  // souris n'y tourne pas la caméra de toute façon — cf. mousemove)
+  if (!veut || TACTILE || document.pointerLockElement === canvasEl || !state.running || menu.active || G.journal) return;
+  try { const r = canvasEl.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+}
+window.addEventListener('keydown', (e) => { if (e.code !== 'Escape') reprendreSouris(); });
+window.addEventListener('mousedown', reprendreSouris);
 window.addEventListener('mousemove', (e) => { if (!G.mouseLook || cut.active || menu.active || G.journal) return; if (Math.abs(e.movementX) + Math.abs(e.movementY) > 0) G.mouseT = state.time; G.camYaw -= e.movementX * 0.0022; G.camPitch = clamp(G.camPitch + e.movementY * 0.0016, -0.3, 0.75); });
 // Le clic droit roule ; avec un bouclier ramassé en multi (G.bouclier, tloc-multi.js), il
 // le lève tant qu'on le tient — la roulade reste sur Maj.
@@ -2729,6 +2746,7 @@ function rentrerEnVille() {
 }
 // changement de niveau : fondu, sauvegarde en visant l'autre page, puis navigation
 export function goToLevel(level, pos, yaw, label) {
+  try { if (G.mouseLook) sessionStorage.setItem('tloc_souris', '1'); } catch (e) {}   // cf. reprendreSouris
   state.paused = true;
   fadeTo(1, () => {
     saveGame(true, { level, pos, yaw });
