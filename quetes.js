@@ -12,8 +12,8 @@ import {
   onBridge, sdPent,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { PARTAGE } from './etat.js';
-import { POTERNE_JEU } from './citadelle.js';
+import { PARTAGE, ETAPES_ACTE1, etapeActe1, passerActe1 } from './etat.js';
+import { POTERNE_JEU, ACTE1_CITADELLE } from './citadelle.js';
 import { geant } from './banque.js';
 import * as PNJ from './pnj.js';
 import * as BOURSE from './bourse.js';
@@ -128,6 +128,7 @@ export function populate() {
     v.scale.setScalar(G.echelle); v.visible = false; scene.add(v); PARTAGE[cle] = v; }
   player.pos.set(1, 0, LYD_Z + 9); player.yaw = Math.PI; G.camYaw = Math.PI;
   player.speed = 11.5;   // la citadelle fait 700 m de large : à 7,2 m/s on la traversait en deux minutes
+  ACTE1_CITADELLE.populate();   // les étapes 9 et 10 de l'acte I : citadelle.js
 }
 
 export const KILLS_TO_OPEN = 10;
@@ -283,6 +284,7 @@ export function update(dt) {
   // le prince riggé : marche quand followActor ou une cinématique lui donne un but
   if (PARTAGE.prince && PARTAGE.prince.visible) PNJ.animeVillageois(PARTAGE.prince, dt, !!PARTAGE.prince.userData.walkTo);
   if (PARTAGE.pralin && !cut.active) { PARTAGE.pralin.userData.tail.rotation.z = -0.8 + Math.sin(state.time * 1.7) * 0.4; }
+  ACTE1_CITADELLE.update(dt);   // les étapes 9 et 10 de l'acte I : citadelle.js
 }
 // LYDÉRIC D'OSIER (STORY.md § 2 ; GAME_DESIGN_BRIEF § 25 : « Lydéric = géant d'osier pendant
 // la crise »). Une matière, pas un modèle : la même silhouette, chaque maillage passé aux
@@ -783,11 +785,13 @@ function finPrologue() {
 // L'étape (state.acte1) porte les noms de DIALOGUES-ACTE1.md : chaque habitant dit la
 // réplique de l'étape la plus récente qui lui en donne une. Les indices entendus
 // (state.ind) font le carnet du journal et le point d'or de la carte.
-const ETAPES = ['grille', 'canne', 'cle', 'lanterne', 'souterrains', 'arc', 'citadelle', 'bombes', 'donjon', 'temple'];
-export const acte1 = () => (state.prologueFait ? (state.acte1 || 'grille') : null);
+// (les étapes et le pas en avant sont dans etat.js depuis le 5 octobre : la chapelle et les
+// galeries, d'autres niveaux, font avancer l'acte elles aussi)
+const ETAPES = ETAPES_ACTE1;
+export const acte1 = () => etapeActe1(state);
 const rang = (e) => ETAPES.indexOf(e);
 const atteint = (e) => acte1() !== null && rang(acte1()) >= rang(e);
-function passerA(e) { if (rang(e) > rang(acte1())) { state.acte1 = e; saveGame(true); } }
+function passerA(e) { if (passerActe1(state, e)) saveGame(true); }
 
 // Le carnet : chaque indice en gras s'y écrit, et se barre quand il a servi (SCENARIO.md § 7,
 // règle 6). `ou` pose la marque de la carte quand on sait où ET comment.

@@ -1726,3 +1726,12 @@ export function buildDetails() {
 // =====================================================================
 //  Village flamand (sud-est de la plaine) : rues pavées, maisons à pignons à redents, place, beffroi, marché, estaminet
 // =====================================================================
+
+// L'ACTE I DANS LA CITADELLE (étapes 9 et 10, docs/DECOUPAGE-ACTE1.md) : la place d'Armes habitée,
+// l'armurerie et les bombes, les trois créatures et leurs clés, le donjon et Phinaert. quetes.js
+// appelle ces deux crochets (à la fin de son populate et de son update) ; ce qui s'y écrit reste
+// dans ce fichier. Vides tant que la session de la citadelle ne les a pas remplis (5 octobre).
+export const ACTE1_CITADELLE = {
+  populate() {},
+  update(dt) {},
+};
