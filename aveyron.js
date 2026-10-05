@@ -294,7 +294,7 @@ function rues({ hauteur, scene, PLAN, CADRE, bloque }) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
     const cle = matiereRue(c, sentier) + '|' + cls.off; if (!par.has(cle)) par.set(cle, []); par.get(cle).push(g.toNonIndexed());
-    LIEU.rues.push({ pts: d, nom: c.nom }); LIEU.rubans.push({ pts: d.map(([x, z]) => [x, hauteur(x, z) + cls.y, z]) });
+    LIEU.rues.push({ pts: d, nom: c.nom, w }); LIEU.rubans.push({ pts: d.map(([x, z]) => [x, hauteur(x, z) + cls.y, z]) });
   }
   for (const [cle, gs] of par) { const [slug, off] = cle.split('|');
     const m = new THREE.Mesh(mergeGeometries(gs), phMat(slug, 1, 1, { color: slug === 'asphalt_02' ? 0xe2dcd2 : 0xa89c86, roughness: 1, vertexColors: true, polygonOffset: true, polygonOffsetFactor: +off, polygonOffsetUnits: +off }));
@@ -302,24 +302,102 @@ function rues({ hauteur, scene, PLAN, CADRE, bloque }) {
   LIEU.nappes.push({ nom: 'rues / relief', ecart: 0.03, decale: true }, { nom: 'rues entre elles (carrefours)', ecart: 0.005, decale: true });
 }
 
+// ---------------------------------------------------------------------
+//  La lisière : là où l'on ne marche plus (le resserrement du 5 octobre)
+// ---------------------------------------------------------------------
+// On ne marche plus que sur le lac et ses rives (PLAN.zone, carte/mondes/fondre-relief-aveyron.py).
+// La limite est celle du pays : le Ségala est clos de murets de pierre sèche doublés de haies de
+// chênes ; un chemin qui sort passe une barrière de pré, fermée, et file dans le bois. Là où la
+// limite tombe dans l'eau (le réservoir de Montézic, à l'ouest du barrage), l'eau suffit.
+// Au-delà, la grille fine continue sur 60 m (la campagne qu'on voit derrière la haie) : on y
+// inscrit une bande que la marche ne passe pas, et arbres() y plante un bois.
+function lisiere({ hauteur, scene, PLAN, inscrire, addInteract }) {
+  const Z = PLAN.zone; if (!Z) return;
+  LIEU.zone = Z;
+  const eaux = (PLAN.eau.plans || []).map((p) => p.pts), dansEau = (x, z) => eaux.some((P) => dansPoly(x, z, P));
+  // la bande hors zone, en quatre rectangles : bloque() de monde.js la refuse désormais
+  const L = 400;
+  for (const P of [[[Z.x0 - L, Z.z0 - L], [Z.x0, Z.z0 - L], [Z.x0, Z.z1 + L], [Z.x0 - L, Z.z1 + L]], [[Z.x1, Z.z0 - L], [Z.x1 + L, Z.z0 - L], [Z.x1 + L, Z.z1 + L], [Z.x1, Z.z1 + L]],
+    [[Z.x0, Z.z0 - L], [Z.x1, Z.z0 - L], [Z.x1, Z.z0], [Z.x0, Z.z0]], [[Z.x0, Z.z1], [Z.x1, Z.z1], [Z.x1, Z.z1 + L], [Z.x0, Z.z1 + L]]])
+    inscrire(P, (P[0][0] + P[2][0]) / 2, (P[0][1] + P[2][1]) / 2);
+  // les quatre côtés : origine, direction, longueur, normale vers l'extérieur
+  const cotes = [[Z.x0, Z.z0, 1, 0, Z.x1 - Z.x0, 0, -1], [Z.x1, Z.z0, 0, 1, Z.z1 - Z.z0, 1, 0], [Z.x1, Z.z1, -1, 0, Z.x1 - Z.x0, 0, 1], [Z.x0, Z.z1, 0, -1, Z.z1 - Z.z0, -1, 0]];
+  // où les rues franchissent la limite : une barrière à la place du muret
+  const barrieres = [];
+  for (const r of LIEU.rues) for (let k = 0; k < r.pts.length - 1; k++) { const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1];
+    for (const [ox, oz, dx, dz, l] of cotes) { const sa = (ax - ox) * dz - (az - oz) * dx, sb = (bx - ox) * dz - (bz - oz) * dx; if ((sa < 0) === (sb < 0) || sa === sb) continue;
+      const t = sa / (sa - sb), x = ax + (bx - ax) * t, z = az + (bz - az) * t, s = (x - ox) * dx + (z - oz) * dz;
+      if (s > -1 && s < l + 1 && !barrieres.some((b) => Math.hypot(b.x - x, b.z - z) < 6)) barrieres.push({ x, z, s, dx, dz, w: r.w + 1.2, nom: r.nom }); } }
+  // le muret : des pierres de 2 m posées sur le relief, sauf dans l'eau et au droit des barrières
+  const pierres = [], E = 0.45;
+  for (const [ox, oz, dx, dz, l, nx, nz] of cotes) for (let s = 1; s < l; s += 2) {
+    const x = ox + dx * s + nx * E, z = oz + dz * s + nz * E;
+    if (dansEau(x, z) || barrieres.some((b) => Math.hypot(b.x - x, b.z - z) < b.w / 2 + 1)) continue;
+    const y = Math.min(hauteur(x - dx, z - dz), hauteur(x + dx, z + dz)), hm = 0.95 + 0.25 * Math.sin(s * 0.37 + ox * 0.01);
+    const g = boxG(2.08, hm + 0.6, 0.6 + 0.1 * Math.sin(s * 1.3)); g.rotateY(Math.atan2(-dz, dx)); g.translate(x, y + (hm - 0.6) / 2, z);
+    const gn = g.toNonIndexed(); gn.computeVertexNormals(); uvMetres(gn); pierres.push(gn); }
+  if (pierres.length) { const m = new THREE.Mesh(mergeGeometries(pierres), phMat('rustic_stone_wall_02', 1, 1, { color: 0x9e968a })); m.castShadow = m.receiveShadow = true; scene.add(m); }
+  // les barrières de pré : deux piliers de granit, cinq lisses de bois grisé et une écharpe, fermées
+  const gr = phMat('granite_tile_03', 1, 1, { color: 0xbab4a8 }), bo = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x8a7a68 });
+  for (const b of barrieres) {
+    const y = hauteur(b.x, b.z), g = new THREE.Group(); g.position.set(b.x, y, b.z); g.rotation.y = Math.atan2(-b.dz, b.dx); scene.add(g);
+    for (const sx of [-1, 1]) g.add(mesh(boxG(0.5, 1.9, 0.5), gr, sx * (b.w / 2 + 0.25), 0.55, 0));
+    for (let k = 0; k < 5; k++) g.add(mesh(boxG(b.w, 0.11, 0.07), bo, 0, 0.3 + k * 0.24, 0));
+    for (const sx of [-1, 1]) g.add(mesh(boxG(0.1, 1.15, 0.08), bo, sx * (b.w / 2 - 0.1), 0.78, 0));
+    const ec = mesh(boxG(Math.hypot(b.w, 0.96), 0.1, 0.06), bo, 0, 0.78, 0.05); ec.rotation.z = Math.atan2(0.96, b.w); g.add(ec);
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    addInteract({ pos: new THREE.Vector3(b.x, y, b.z), r: 3, prompt: () => 'la barrière', fn: () => showMessage('La barrière est fermée au fil de fer. Au-delà, des prés grillés, des bois, et la route qui s’en va.', 5) }); }
+  // la haie de chênes, de 2 à 9 m derrière le muret ; arbres() les plante avec le reste
+  LIEU.haie = [];
+  for (const [ox, oz, dx, dz, l, nx, nz] of cotes) for (let s = 2; s < l; s += 5 + Math.random() * 4) {
+    const e = 2 + Math.random() * 7, x = ox + dx * s + nx * e, z = oz + dz * s + nz * e;
+    if (!dansEau(x, z) && Math.random() < 0.8) LIEU.haie.push([x, z]); }     // des trous, comme une vraie haie
+  LIEU.barrieres = barrieres.map(({ x, z, nom }) => ({ x, z, nom }));
+}
+
 // les arbres, plantés APRÈS le bâti et les rues : monde.js les semait avant, jusque dans les maisons
-function arbres({ hauteur, scene, PLAN, bloque, CADRE }) {
+function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
   const esp = especeGeo('chene'); if (!esp) return;
   const pres = new Set(); for (const r of LIEU.rues) for (let k = 0; k < r.pts.length - 1; k++) { const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 2));
     for (let t = 0; t <= n; t++) pres.add(Math.floor((ax + (bx - ax) * t / n) / 4) + ',' + Math.floor((az + (bz - az) * t / n) / 4)); }
   const lac = PLAN.eau && PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : null;
   const bois = (PLAN.verdure.bois || []), pos = [];
   const libre = (x, z) => !bloque(x, z, 3) && !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !(lac && dansPoly(x, z, lac)) && Math.hypot(x + 120, z - 135) > 8;
-  for (let k = 0; k < 9000 && pos.length < 700; k++) { const x = CADRE.x0 + Math.random() * (CADRE.x1 - CADRE.x0), z = CADRE.z0 + Math.random() * (CADRE.z1 - CADRE.z0), dans = bois.some((b) => dansPoly(x, z, b.pts));
-    if ((dans ? Math.random() < 0.6 : Math.random() < 0.012) && libre(x, z) && pos.every((p) => Math.abs(p[0] - x) > 4 || Math.abs(p[1] - z) > 4)) pos.push([x, z]); }
+  // l'écart de 4 m entre deux arbres, tenu par une grille de cases de 4 m (la haie et le bois de la
+  // lisière font plus de 2 000 arbres : comparer chacun à tous coûtait trop)
+  const cle = (i, j) => i + ',' + j;
+  const cases = new Map(), loin = (x, z) => { const i = Math.floor(x / 4), j = Math.floor(z / 4);
+    for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const [px, pz] of cases.get(cle(i + a, j + c)) || []) if (Math.abs(px - x) <= 4 && Math.abs(pz - z) <= 4) return false; return true; };
+  const planter = (x, z) => { const k = cle(Math.floor(x / 4), Math.floor(z / 4)); if (!cases.has(k)) cases.set(k, []); cases.get(k).push([x, z]); pos.push([x, z]); };
+  // la lisière (le resserrement du 5 octobre) : la haie derrière le muret, puis le bois de la bande
+  // hors zone, où l'on ne marche pas — bloque() y est vrai partout, on n'y regarde que les rues et l'eau
+  const Zn = LIEU.zone, dehors = (x, z) => Zn && (x < Zn.x0 || x > Zn.x1 || z < Zn.z0 || z > Zn.z1);
+  const eaux = (PLAN.eau.plans || []).map((p) => p.pts), dansEau = (x, z) => eaux.some((P) => dansPoly(x, z, P)) || (lac && dansPoly(x, z, lac));
+  const libreDehors = (x, z) => !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !dansEau(x, z);
+  for (const [x, z] of LIEU.haie || []) if (libreDehors(x, z) && loin(x, z)) planter(x, z);
+  // le bois de la bande, par taches (un bruit de 50 m) : uniforme, il dessinait un cadre vu d'avion
+  const tache = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.043 + Math.sin(z * 0.031) * 2) + 0.25 * Math.sin(z * 0.037 + Math.sin(x * 0.029) * 2);
+  if (Zn) for (let k = 0, n = 0; k < 8000 && n < 1200; k++) { const x = CADRE.x0 + Math.random() * (CADRE.x1 - CADRE.x0), z = CADRE.z0 + Math.random() * (CADRE.z1 - CADRE.z0);
+    if (dehors(x, z) && Math.random() < 0.15 + tache(x, z) && libreDehors(x, z) && loin(x, z)) { planter(x, z); n++; } }
+  // l'horizon : la campagne en bocage au-delà de la grille fine, chaque arbre à son altitude
+  // (carte/mondes/fondre-relief-aveyron.py, « les arbres de l'horizon »)
+  for (const [x, z, y] of (PLAN.horizon && PLAN.horizon.arbres) || []) pos.push([x, z, y - H0 - 0.6]);
+  const n0 = pos.length;
+  for (let k = 0; k < 9000 && pos.length - n0 < 700; k++) { const x = CADRE.x0 + Math.random() * (CADRE.x1 - CADRE.x0), z = CADRE.z0 + Math.random() * (CADRE.z1 - CADRE.z0); if (dehors(x, z)) continue;
+    const dans = bois.some((b) => dansPoly(x, z, b.pts));
+    if ((dans ? Math.random() < 0.6 : Math.random() < 0.012) && libre(x, z) && loin(x, z)) planter(x, z); }
   const n = pos.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
-  pos.forEach(([x, z], k) => { const h = 7 + Math.random() * 5; q.setFromAxisAngle(Y, Math.random() * 6.283); s.set(h * (0.85 + Math.random() * 0.35), h, h * (0.85 + Math.random() * 0.35)); m4.compose(v.set(x, hauteur(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
+  pos.forEach(([x, z, y], k) => { const h = 7 + Math.random() * 5; q.setFromAxisAngle(Y, Math.random() * 6.283); s.set(h * (0.85 + Math.random() * 0.35), h, h * (0.85 + Math.random() * 0.35)); m4.compose(v.set(x, y ?? hauteur(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
   tr.castShadow = hp.castShadow = true; scene.add(tr, hp);
 }
 
 // ---------------------------------------------------------------------
 //  Le bourg de Saint-Symphorien-de-Thénières
 // ---------------------------------------------------------------------
+// Depuis le resserrement du 5 octobre, le bourg n'est plus dans la zone jouable (STORY.md ne le
+// nomme pas ; Eugène : « seulement au loin ») : le clocher, le marronnier et le four ne trouvent
+// plus rien à bâtir dans le plan joué. Restent les FONTAINES, dont celle du lac. Le code reste,
+// pour la version complète (carte/mondes/complet/).
 // Les maisons viennent d'OSM (monde.js les bâtit) ; on y ajoute ce qu'OSM ne dessine pas.
 // - le CLOCHER : la nef est dans OSM, pas son clocher. Une tour carrée sous un pavillon de tuiles au
 //   bout ouest de la nef, le clocher le plus courant du Ségala — à reprendre sur une photo de
@@ -510,7 +588,8 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque }) {
       { who: 'L’aïeule', text: 'Le Batut, Beauregard… Ce sont mes petits-enfants, les uns comme les autres.' },
       { who: 'L’aïeule', text: 'Avant, on se retrouvait tous ici, à la Saint-Jean. Maintenant ils se regardent par-dessus le lac.' }]) });
     const [hx, hz] = devant(X, Z, rot, MAISON.W / 2 + 9, -6); cheval(scene, 'cheval.glb', hx, hauteur(hx, hz), hz, rot + 1.9, 'Eating'); rond(hx, hz, 1.3); }
-  // le bourg : quelques villageois à l'ombre du marronnier, sur la place
+  // le bourg : quelques villageois à l'ombre du marronnier, sur la place — hors de la zone jouable
+  // depuis le 5 octobre (bloque() y est vrai) : personne n'y est posé, ils sont à reposer au bord du lac
   if (PNJ.buildVillageois) {
     const place = { x: 3814, z: -434 };
     for (let k = 0, n = 0; k < 40 && n < 4; k++) {
@@ -526,15 +605,18 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque }) {
 
 monde({
   name: 'aveyron', titre: 'Le lac de Saint-Gervais', musique: 'campagne',
-  // le relief et le plan JOUÉS (carte/mondes/fondre-relief-aveyron.py) : le lac ET le bourg de
-  // Saint-Symphorien dans une seule grille de 5 m — monde.js prend la zone jouable dans
-  // l'emprise du relief fin — et le lac à l'étiage de la grande sécheresse. L'horizon : les
-  // environs (14 × 12 km), avec la vallée où se couche le Dormeur.
+  // le relief et le plan JOUÉS (carte/mondes/fondre-relief-aveyron.py) : depuis le resserrement
+  // du 5 octobre (emprise A, Eugène), le lac et ses rives seuls, 810 × 820 m où l'on marche, dans
+  // une grille de 5 m qui déborde de 60 m — et le lac à l'étiage de la grande sécheresse.
+  // Saint-Symphorien et Saint-Gervais ne sont plus qu'à l'horizon : les environs (14 × 12 km),
+  // avec la vallée où se couche le Dormeur. La version complète : carte/mondes/complet/.
   plan: 'aveyron-jeu.json', fin: 'relief-aveyron-jeu.json', loin: 'relief-aveyron-environs.json', h0: 702.9,
   // le soleil au sommet du ciel, qui ne bouge pas : la lumière de midi, la brume chaude
   ciel: [0x4f86c8, 0xb8d0e2, 0xf2e6c8], brume: [0xe8dcc0, 380, 3200], soleil: [20, 400, 30, 3.2], soleilCouleur: 0xfff4dc,
   // l'herbe grillée : la paille, pas le sable — teintée plus grise qu'en version 1, qui lisait désert
-  sol: ['withered_grass', 0xa49a6c], loinSol: ['withered_grass', 0x948a64],
+  // l'horizon un peu PLUS clair que le sol joué : sa texture étirée sur des kilomètres paraît plus
+  // sombre, et depuis le resserrement (5 octobre) la zone jouable s'y découpait en rectangle clair
+  sol: ['withered_grass', 0xa49a6c], loinSol: ['withered_grass', 0xb0a676],
   // le bâti d'OSM dans la pierre et la tuile des maisons Roquette : old_stone_wall_02, étirée sur
   // les grandes façades, se lisait comme du bois en rendu
   murs: ['stone_wall', 0xa8a090], toit: { style: 'deuxPans', slug: 'clay_roof_tiles_02', couleur: 0xd8bca8, pente: 0.3 }, hMurs: [4.6, 6.4],
@@ -550,6 +632,9 @@ monde({
     // le bâti et les rues d'abord : tout ce qui suit cherche sa place libre avec bloque()
     const t0 = performance.now(), duree = (n, t) => { LIEU.durees = LIEU.durees || {}; LIEU.durees[n] = Math.round(performance.now() - t); return performance.now(); };
     let t = t0; bati(ctx); t = duree('bâti', t); rues(ctx); t = duree('rues', t);
+    // la lisière APRÈS les rues (ses barrières se posent où elles sortent) et avant tout ce qui
+    // cherche sa place avec bloque() : la bande hors zone y devient interdite
+    lisiere(ctx); t = duree('lisière', t);
     secheresse(ctx);
     // chaque maison tourne sa façade et sa cour vers le lac : c'est l'eau qu'elles se disputent
     const versLac = (x, z) => Math.atan2(-x, -z);

@@ -19,23 +19,28 @@
 // -vues.png (la planche fixe de 8 vues).
 import { createRequire } from 'module';
 import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+// le Playwright du Mac (Projet-Padel) ou celui du PC (GitHub/tloc/outils), comme bancs/charge.mjs
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+// fileURLToPath et non `.pathname`, qui donne « /C:/… » sous Windows
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Date().toISOString().slice(0, 10);
 const VUES = [   // la planche fixe : une aérienne, une de dessus (emprises OSM en surimpression), trois dans
   // les rues à hauteur de Camille, deux gros plans (façade, sol), une depuis le départ
-  { nom: 'aérienne', cam: [600, 380, 900], at: [1500, 0, -250] },
-  { nom: 'dessus du bourg', cam: [3820, 160, -420], at: [3821, 0, -421], emprises: true },
-  { nom: 'rue : Saint-Symphorien, place', cam: [3838, 1.7, -458], at: [3812, 1.7, -432], sol: true, rue: true },
-  { nom: 'rue : Saint-Symphorien, rue du Four', cam: [3830, 1.7, -330], at: [3822, 1.7, -400], sol: true, rue: true },
-  { nom: 'rue : Saint-Gervais', cam: [-150, 1.7, -560], at: [-110, 1.7, -600], sol: true, rue: true },
+  { nom: 'aérienne', cam: [700, 380, 900], at: [100, 0, 50] },
+  // depuis le resserrement du 5 octobre, le lac seul : Saint-Symphorien et Saint-Gervais sont à l'horizon
+  { nom: 'dessus de Perpignou', cam: [455, 160, -240], at: [456, 0, -241], emprises: true },
+  { nom: 'rue : la route de la rive ouest', cam: [-250, 1.7, 250], at: [-230, 1.7, 330], sol: true, rue: true },
+  { nom: 'lisière : la barrière du sud', cam: [-112, 1.7, 445], at: [-104, 1.0, 470], sol: true, rue: true },
+  { nom: 'lisière : le muret du nord', cam: [60, 1.7, -320], at: [60, 1.0, -360], sol: true },
   { nom: 'façade : le Batut', cam: [-117, 2.2, 143], at: [-131, 3, 163], sol: true },
   { nom: 'sol : la grève', cam: [70, 1.7, 160], at: [55, 0, 140], sol: true },
   { nom: 'depuis le départ', cam: [-123, 2.2, 139], at: [-90, 1.5, 100], sol: true },
 ];
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const erreurs = [];
@@ -63,7 +68,8 @@ try {
     for (const b of PLAN.batiments || []) for (const [x, z] of b.pts) { X0 = Math.min(X0, x); X1 = Math.max(X1, x); Z0 = Math.min(Z0, z); Z1 = Math.max(Z1, z); }
     const R = await (await fetch('carte/mondes/relief-aveyron-jeu.json')).json();
     const CX0 = R.x0 + 8, CX1 = R.x0 + R.pas * (R.nx - 1) - 8, CZ0 = R.z0 + 8, CZ1 = R.z0 + R.pas * (R.nz - 1) - 8;
-    const dansCadre = (x, z) => x > CX0 && x < CX1 && z > CZ0 && z < CZ1;
+    // la zone où l'on marche (le resserrement du 5 octobre) ; à défaut, le cadre de monde.js
+    const Zn = PLAN.zone, dansCadre = Zn ? (x, z) => x > Zn.x0 + 1 && x < Zn.x1 - 1 && z > Zn.z0 + 1 && z < Zn.z1 - 1 : (x, z) => x > CX0 && x < CX1 && z > CZ0 && z < CZ1;
 
     // ---------------- a. praticabilité des rues ----------------
     const lignes = (L.rues || [...(PLAN.routes || []), ...(PLAN.chemins || [])]).filter((c) => !c.surface && c.pts.some(([x, z]) => dansCadre(x, z)));

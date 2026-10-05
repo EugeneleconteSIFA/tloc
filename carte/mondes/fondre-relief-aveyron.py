@@ -14,17 +14,30 @@ et l'eau ne reste que là où elle a plus de 4 m de fond : le lac « bas ». Le 
 contour d'étiage à la place du lac plein, et perd les ruisseaux (à sec). aveyron.json, lui, ne
 change pas : c'est la carte vraie.
 
-    python3 fondre-relief-aveyron.py
+Le RESSERREMENT (Eugène, 5 octobre : emprise « A ») : on ne marche plus que sur le lac et ses
+rives — les trois maisons des Roquette, le barrage du duel, la source des Vergnes et la fontaine
+du lac, 810 × 820 m (ZONE). Saint-Symphorien ne sert pas à l'histoire (STORY.md ne le nomme
+pas) : il quitte la zone jouable et ne reste qu'au loin, dans le relief des environs, comme
+le village de Saint-Gervais. La grille fine déborde de BANDE mètres autour de la zone : c'est
+la campagne qu'on voit derrière la haie (aveyron.js y plante le bois et y ferme la marche), et
+le relief y glisse vers celui des environs, pour que la couture avec l'horizon ne se voie pas.
+La version complète (4,7 × 1,4 km, jusqu'au bourg) est dans complet/.
+
+    py -3 fondre-relief-aveyron.py
 """
 import json, math, os, sys
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 PAS = 5.0
-X0, X1, Z0, Z1 = -525.0, 4200.0, -730.0, 625.0     # le lac, le plateau, le bourg
+# x0, x1, z0, z1 : là où l'on marche. 520 et non 500 à l'est : le chemin de Roubiliergues longe ce
+# bord, à 2 m près, et le franchissait trois fois (trois barrières à la suite)
+ZONE = (-290.0, 520.0, -350.0, 470.0)
+BANDE = 60.0                                       # la campagne derrière la haie
+X0, X1, Z0, Z1 = ZONE[0] - BANDE, ZONE[1] + BANDE, ZONE[2] - BANDE, ZONE[3] + BANDE
 PENTE, FOND, ETIAGE = 8.0, 9.0, 4.0                # cuvette 1/8, 9 m au plus ; eau là où > 4 m
 
 def charge(n):
-    R = json.load(open(os.path.join(ICI, 'relief-aveyron-%s.json' % n)))
+    R = json.load(open(os.path.join(ICI, 'relief-aveyron-%s.json' % n), encoding='utf-8'))
     return R
 
 SOURCES = [charge(n) for n in ('bourg', 'lac', 'monde', 'environs')]
@@ -37,6 +50,14 @@ def alt(x, z):
             u, v, h, n = fx - i, fz - j, R['h'], R['nx']
             return (h[j * n + i] * (1 - u) + h[j * n + i + 1] * u) * (1 - v) + (h[(j + 1) * n + i] * (1 - u) + h[(j + 1) * n + i + 1] * u) * v
     return None
+
+def alt_loin(x, z):
+    # le relief des environs seul (50 m) : monde.js en fait l'horizon, maillé à ses nœuds ;
+    # entre deux nœuds, la maille passe à peu près par l'interpolation bilinéaire
+    R = SOURCES[-1]
+    fx, fz = (x - R['x0']) / R['pas'], (z - R['z0']) / R['pas']
+    i, j = min(int(fx), R['nx'] - 2), min(int(fz), R['nz'] - 2); u, v, h, n = fx - i, fz - j, R['h'], R['nx']
+    return (h[j * n + i] * (1 - u) + h[j * n + i + 1] * u) * (1 - v) + (h[(j + 1) * n + i] * (1 - u) + h[(j + 1) * n + i + 1] * u) * v
 
 def dans(x, z, pts):
     d = False
@@ -54,7 +75,8 @@ def dist_bord(x, z, pts):
         best = min(best, math.hypot(x - ax - t * dx, z - az - t * dz))
     return best
 
-A = json.load(open(os.path.join(ICI, 'aveyron.json')))
+# (encoding='utf-8' partout : sous Windows, open() lit et écrit en cp1252 — les accents du plan sortaient cassés)
+A = json.load(open(os.path.join(ICI, 'aveyron.json'), encoding='utf-8'))
 lac = next(p for p in A['eau']['plans'] if (p.get('nom') or '').startswith('Lac de Saint-Gervais'))
 LP = lac['pts']
 
@@ -63,7 +85,11 @@ h, D = [], [0.0] * (nx * nz)          # D : distance à la rive, dans le lac
 for j in range(nz):
     for i in range(nx):
         x, z = X0 + i * PAS, Z0 + j * PAS
-        h.append(alt(x, z))
+        # dans la bande, le relief fin glisse vers celui des environs (l'horizon de monde.js) :
+        # au bord de la grille, les deux reliefs se rejoignent
+        d = max(ZONE[0] - x, x - ZONE[1], ZONE[2] - z, z - ZONE[3], 0.0)
+        w = min(1.0, d / (BANDE - 10)); w = w * w * (3 - 2 * w)
+        h.append(alt(x, z) * (1 - w) + alt_loin(x, z) * w if w else alt(x, z))
 # la surface du lac plein : la médiane des nœuds DANS le lac (le LiDAR y voit l'eau, plate) —
 # pas celle des sommets du contour, qui tombent sur la berge, 4 m plus haut
 dedans_h = sorted(h[j * nx + i] for j in range(nz) for i in range(nx) if dans(X0 + i * PAS, Z0 + j * PAS, LP))
@@ -117,7 +143,7 @@ json.dump({'note': "relief JOUÉ de l'Aveyron (fondre-relief-aveyron.py) : bourg
                    "repere_aveyron.py ; le lac creusé pour la sécheresse (cuvette 1/8, 9 m au plus)",
            'pas': PAS, 'x0': X0, 'z0': Z0, 'nx': nx, 'nz': nz, 'niveauPlein': round(NIVEAU, 2),
            'niveauBas': round(NIVEAU - ETIAGE, 2), 'min': round(min(h), 2), 'max': round(max(h), 2),
-           'h': [round(v, 2) for v in h]}, open(os.path.join(ICI, 'relief-aveyron-jeu.json'), 'w'), separators=(',', ':'))
+           'h': [round(v, 2) for v in h]}, open(os.path.join(ICI, 'relief-aveyron-jeu.json'), 'w', encoding='utf-8'), separators=(',', ':'))
 J = json.loads(json.dumps(A))
 J['note'] = ("plan JOUÉ de l'Aveyron (fondre-relief-aveyron.py) : aveyron.json pendant la grande sécheresse — "
              "le lac de Saint-Gervais réduit à son contour d'étiage (eau.plans), les ruisseaux à sec (eau.lits), "
@@ -132,8 +158,74 @@ J['eau']['lits'] = J['eau']['cours']; J['eau']['cours'] = []
 J['bati'], J['batiments'] = J['batiments'], []
 J['rues'], J['routes'] = J['routes'], []
 J['sentiers'], J['chemins'] = J['chemins'], []
-json.dump(J, open(os.path.join(ICI, 'aveyron-jeu.json'), 'w'), separators=(',', ':'), ensure_ascii=False)
 
+# ---- le plan recadré sur la grille : ce qui est au-delà n'est plus qu'horizon ----
+G0, G1, H0_, H1_ = X0 + 2, X1 - 2, Z0 + 2, Z1 - 2
+dans_grille = lambda x, z: G0 <= x <= G1 and H0_ <= z <= H1_
+dans_zone = lambda x, z: ZONE[0] <= x <= ZONE[1] and ZONE[2] <= z <= ZONE[3]
+def couper(c):
+    """Une ligne coupée au bord de la grille : ses tronçons dedans. Là où elle sort, le bout est
+    cherché à 2 m près (une rue ne s'arrête pas au sommet d'OSM d'avant, mais au bord même)."""
+    out, cur, pts = [], [], c['pts']
+    for k, (x, z) in enumerate(pts):
+        de = k and dans_grille(*pts[k - 1]); ici = dans_grille(x, z)
+        if k and de != ici:            # on franchit le bord : le dernier point dedans, à 2 m près
+            (px, pz) = pts[k - 1]; n = max(1, math.ceil(math.hypot(x - px, z - pz) / 2))
+            seg = [(px + (x - px) * t / n, pz + (z - pz) * t / n) for t in range(n + 1)]
+            bord = [q for q in seg if dans_grille(*q)]
+            q = bord[-1] if de else bord[0]
+            if de: cur.append([round(q[0], 2), round(q[1], 2)]); out.append(cur); cur = []
+            else: cur = [[round(q[0], 2), round(q[1], 2)]]
+        if ici: cur.append([x, z])
+    if cur: out.append(cur)
+    return [dict(c, pts=t) for t in out if len(t) >= 2]
+for cle in ('rues', 'sentiers'):
+    J[cle] = [t for c in J[cle] for t in couper(c)]
+J['eau']['lits'] = [t for c in J['eau']['lits'] for t in couper(c)]
+J['bati'] = [b for b in J['bati'] if all(dans_zone(x, z) for x, z in b['pts'])]
+J['lieux'] = [l for l in J['lieux'] if dans_zone(l['x'], l['z']) or l.get('k') == 'dormeur']
+touche = lambda p: any(dans_grille(x, z) for x, z in p['pts'])
+for k in J['verdure']: J['verdure'][k] = [p for p in J['verdure'][k] if touche(p)]
+J['eau']['plans'] = [p for p in J['eau']['plans'] if touche(p)]
+J['cadres'] = [{'src': 'fondre-relief-aveyron.py', 'x0': X0, 'x1': X1, 'z0': Z0, 'z1': Z1}]
+J['zone'] = {'x0': ZONE[0], 'x1': ZONE[1], 'z0': ZONE[2], 'z1': ZONE[3],
+             'note': "là où l'on marche (Eugène, 5 octobre : emprise A) ; la grille déborde de %g m : la campagne derrière la haie" % BANDE}
+J['cadrages'] = {'lac': J['cadrages']['lac']}
+
+# ---- les arbres de l'horizon : la campagne autour, en bocage ----
+# Vue d'avion, la zone jouable se lisait comme un rectangle de chênes posé sur une plaine nue :
+# l'horizon de monde.js n'a pas d'arbres. On y sème donc des bosquets (le bois d'OSM, là où les
+# extraits en ont, et ailleurs des taches de bois) et des haies le long d'un parcellaire
+# irrégulier, jusqu'à 1 km de la zone. Chaque arbre porte son altitude (celle de l'horizon) :
+# aveyron.js les plante avec les autres, sans relief fin pour les y poser.
+import random
+rnd = random.Random(5)
+def bruit(x, z, c):
+    """bruit de valeur lissé, cases de c mètres, 0 à 1"""
+    def v(i, j): return random.Random(i * 7919 + j * 104729 + int(c)).random()
+    fx, fz = x / c, z / c; i, j = math.floor(fx), math.floor(fz); u, w = fx - i, fz - j
+    u, w = u * u * (3 - 2 * u), w * w * (3 - 2 * w)
+    return (v(i, j) * (1 - u) + v(i + 1, j) * u) * (1 - w) + (v(i, j + 1) * (1 - u) + v(i + 1, j + 1) * u) * w
+BOIS_OSM = [b['pts'] for b in A['verdure'].get('bois', [])]
+EAUX = [p['pts'] for p in A['eau']['plans']]
+LOIN, horizon, cases = 1000.0, [], set()
+for k in range(120000):
+    if len(horizon) >= 8000: break
+    x = X0 - LOIN + rnd.random() * (X1 - X0 + 2 * LOIN); z = Z0 - LOIN + rnd.random() * (Z1 - Z0 + 2 * LOIN)
+    if X0 - 5 <= x <= X1 + 5 and Z0 - 5 <= z <= Z1 + 5: continue          # la grille fine : aveyron.js
+    if any(dans(x, z, P) for P in EAUX): continue
+    # les haies : le long des lignes d'un parcellaire de 90 à 140 m, tordu par le bruit
+    q = 110 + 30 * bruit(x, z, 400); hx, hz = (x + 40 * bruit(z, x, 170)) % q, (z + 40 * bruit(x + 9, z, 170)) % q
+    haie = min(hx, q - hx, hz, q - hz) < 3 and bruit(x, z, 60) > 0.35
+    p = 0.55 if any(dans(x, z, P) for P in BOIS_OSM) else 0.5 if bruit(x, z, 220) > 0.72 else 0.6 if haie else 0.004
+    if rnd.random() > p: continue
+    c = (math.floor(x / 6), math.floor(z / 6))
+    if any((c[0] + a, c[1] + b) in cases for a in (-1, 0, 1) for b in (-1, 0, 1)): continue
+    cases.add(c); horizon.append([round(x, 1), round(z, 1), round(alt_loin(x, z), 1)])
+J['horizon'] = {'arbres': horizon}
+json.dump(J, open(os.path.join(ICI, 'aveyron-jeu.json'), 'w', encoding='utf-8'), separators=(',', ':'), ensure_ascii=False)
+
+print('horizon : %d arbres' % len(horizon))
 print('relief-aveyron-jeu.json : %d × %d nœuds au pas de %g m, %.0f Ko, de %.0f à %.0f m' % (
     nx, nz, PAS, os.path.getsize(os.path.join(ICI, 'relief-aveyron-jeu.json')) / 1024, min(h), max(h)))
 print('lac : surface %.2f m, %d nœuds creusés ; étiage à %.2f m : %d nappes, %.1f ha d’eau sur %.1f'

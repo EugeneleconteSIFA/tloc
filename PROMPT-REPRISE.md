@@ -1456,6 +1456,35 @@ une vue « carrefour » est ajoutée.
 3. Les deux questions de la nuit restent posées : le bourg doit-il disparaître au profit des bâtiments
    relevés, et le cercle « à droite du Wault » est-il au bon endroit ?
 
+### L'Aveyron resserré (5 octobre, PC) — **fait, vérifié au banc**
+
+Eugène a choisi l'emprise **A** et « Saint-Symphorien seulement au loin » (STORY.md ne nomme pas le
+bourg). On marche sur le lac et ses rives : **810 × 820 m** (x −290 à 520, z −350 à 470), avec les trois
+maisons Roquette, le barrage du duel, la source des Vergnes et la fontaine du lac. Ce n'est pas la
+règle des 400–500 m : le lac fait à lui seul 600 × 700 m, et ses trois maisons sont sur ses rives.
+- `carte/mondes/fondre-relief-aveyron.py` recadre : grille fine de 187 × 189 nœuds (1,7 Mo → 237 Ko),
+  plus large de 60 m que la zone. Dans cette bande, le relief glisse vers celui des environs, pour que la
+  couture avec l'horizon ne se voie pas. Le plan est coupé au bord de la grille : 8 bâtiments au lieu de
+  159, 11 rues au lieu de 64. Une clé `zone` donne la zone jouable, une clé `horizon.arbres` porte
+  7 000 arbres de bocage jusqu'à 1 km, chacun avec son altitude. Les fichiers complets sont dans
+  `carte/mondes/complet/`.
+- `aveyron.js`, `lisiere()` : la bande hors zone est inscrite comme bloquée (`inscrire`). Le long de la
+  limite : un muret de pierre sèche, une haie de chênes à trous, et une barrière de pré fermée là où un
+  chemin sort (5 barrières). Le muret s'interrompt dans le réservoir de Montézic. `arbres()` plante la
+  haie, le bois de la bande par taches, et l'horizon.
+- **Appris** : vu d'avion, une lisière uniforme et un horizon sans arbres dessinaient un rectangle. Il a
+  fallu le bocage de l'horizon, et un `loinSol` plus clair que le sol (`0xb0a676`), parce que la
+  texture étirée sur des kilomètres paraît plus sombre.
+- **Appris (PC)** : sous Windows, `open()` de Python lit et écrit en cp1252. Le JSON sortait avec ses
+  accents cassés. Il faut `encoding='utf-8'` partout. `bancs/lieu-aveyron.mjs` est passé sous Windows
+  comme `charge.mjs`.
+- Mesures (`bancs/tour.sh node bancs/lieu-aveyron.mjs`, `bancs/resultats/lieu-aveyron-2026-10-05-*`) :
+  chargement 4,3 → 3,1–3,8 s ; rues praticables 100 % (8 649 points) ; 18 cibles sur 18 atteintes en
+  marchant. Aucun toit qui déborde ni ruban qui flotte. L'étape « lisière » prend 73–92 ms, « arbres »
+  70–87 ms.
+- Reste : les villageois de la place de Saint-Symphorien ne sont plus posés (hors zone), il faut les
+  remettre au bord du lac (le « jouable »). Le réservoir de Montézic est coupé net au bord de la grille.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
