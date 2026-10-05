@@ -1,0 +1,135 @@
+{
+ "lieu": "villefort",
+ "date": "2026-10-05T10:28:02.446Z",
+ "chargement_s": 3.3,
+ "erreurs": [],
+ "pointsDeRue": 1464,
+ "libres": 1460,
+ "praticable": 99.73,
+ "tropRaides": 9,
+ "bloques": [
+  [
+   1522.8,
+   -1420.2,
+   "Impasse du Lavoir"
+  ],
+  [
+   1540.6,
+   -1420.9,
+   "Rue de la Vignette"
+  ],
+  [
+   1430,
+   -1274.6,
+   "Avenue de la Gare"
+  ],
+  [
+   1596.2,
+   -1420.4,
+   "Route de Mende"
+  ]
+ ],
+ "bati": {
+  "mesure": true,
+  "batiments": 332,
+  "avant": false,
+  "corps": 387,
+  "toitsChezLeVoisin": 0,
+  "toitsQuiCouvrentMal": 0,
+  "soubassementsSup15": 9,
+  "soubassementMax": 5.97,
+  "mursQuiSeChevauchent": 11,
+  "pires": [
+   [
+    "soubassement",
+    142,
+    1.54
+   ],
+   [
+    "soubassement",
+    180,
+    2.05
+   ],
+   [
+    "soubassement",
+    185,
+    1.52
+   ],
+   [
+    "soubassement",
+    204,
+    5.97
+   ],
+   [
+    "soubassement",
+    205,
+    3.15
+   ],
+   [
+    "soubassement",
+    220,
+    3.74
+   ],
+   [
+    "soubassement",
+    230,
+    1.6
+   ],
+   [
+    "soubassement",
+    269,
+    2.24
+   ],
+   [
+    "soubassement",
+    269,
+    3.08
+   ]
+  ]
+ },
+ "sols": {
+  "mesure": true,
+  "echantillons": 3598,
+  "flottent": 100,
+  "enfonces": 39,
+  "ecartMax": 0.359,
+  "combats": 18
+ },
+ "cadre": {
+  "x0": 1420,
+  "x1": 1800,
+  "z0": -1430,
+  "z1": -820
+ },
+ "marche": [
+  {
+   "quoi": "le poteau des vieux chemins",
+   "ok": true,
+   "raison": "",
+   "longueur": 4,
+   "secondes": 0.8
+  },
+  {
+   "quoi": "l’église Saint-Victorin",
+   "ok": true,
+   "raison": "",
+   "longueur": 186,
+   "secondes": 31.2
+  },
+  {
+   "quoi": "devant Chez Fernand",
+   "ok": true,
+   "raison": "",
+   "longueur": 209,
+   "secondes": 35.3
+  },
+  {
+   "quoi": "le pont Saint-Jean",
+   "ok": true,
+   "raison": "",
+   "longueur": 336,
+   "secondes": 57.4
+  }
+ ],
+ "vert": false
+}

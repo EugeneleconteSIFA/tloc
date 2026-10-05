@@ -111,9 +111,12 @@ class Lot {
     else { tv = HAUT.clone().addScaledVector(n, -n.y).normalize(); tu = V().crossVectors(tv, n); }   // v monte la pente : les rangs de lauzes restent horizontaux
     for (const t of pts.length === 4 ? [0, 1, 2, 0, 2, 3] : [0, 1, 2]) { const p = pts[t]; this.p.push(p.x, p.y, p.z); this.u.push(p.dot(tu), p.dot(tv)); }
   }
-  bloc(o, ex, ey, ez) {
+  // `sansFond` : pas de face du côté −ez (celle qui est collée au mur, qu'on ne voit jamais : les
+  // 3 800 fenêtres de Villefort en économisent 46 000 triangles)
+  bloc(o, ex, ey, ez, sansFond = false) {
     const ax = [ex, ey, ez];
     for (let k = 0; k < 3; k++) for (const s of [-1, 1]) {
+      if (sansFond && k === 2 && s < 0) continue;
       const a = ax[(k + 1) % 3], b = ax[(k + 2) % 3], c = o.clone().addScaledVector(ax[k], s);
       this.face([c.clone().sub(a).sub(b), c.clone().add(a).sub(b), c.clone().add(a).add(b), c.clone().sub(a).add(b)], ax[k].clone().multiplyScalar(s));
     }
@@ -211,7 +214,8 @@ const local = (r, x, z) => [x * r.ux + z * r.uz, -x * r.uz + z * r.ux];
 // opts : maisons (les emprises), rues (les tracés), mats, special(b) → { tour, ruine, clocher }
 function batirMaisons(ctx, opts) {
   const { hauteur, inscrire } = ctx, h = ctx.dessin, M = opts.mats;
-  const L = { murs: new Lot(), toits: new Lot(), terre: new Lot(), herbe: new Lot() };
+  // `enduits` : les maisons crépies (opts.enduit(b), Villefort seulement ; la Garde-Guérin n'en a pas)
+  const L = { murs: new Lot(), enduits: new Lot(), toits: new Lot(), terre: new Lot(), herbe: new Lot() };
   const rues = opts.rues.map((c) => ({ pts: densifier(c.pts, 1), w: largeur(c) / 2 }));
   const pointsRue = rues.flatMap((r) => r.pts.map(([x, z]) => [x, z, r.w]));
   const rueAutour = grille(pointsRue, ([x, z, w]) => [x - w - 2, z - w - 2, x + w + 2, z + w + 2]);
@@ -313,7 +317,7 @@ function batirMaisons(ctx, opts) {
   for (const c of corps) {
     const [cx, cz] = [((c.a0 + c.a1) / 2) * c.ux - ((c.b0 + c.b1) / 2) * c.uz, ((c.a0 + c.a1) / 2) * c.uz + ((c.b0 + c.b1) / 2) * c.ux];
     const r = V(c.ux, 0, c.uz), s = V(-c.uz, 0, c.ux), bas = Math.min(c.solMin, c.plancher) - 0.5;
-    L.murs.bloc(V(cx, (bas + c.avt) / 2, cz), r.clone().multiplyScalar((c.a1 - c.a0) / 2), V(0, (c.avt - bas) / 2, 0), s.clone().multiplyScalar((c.b1 - c.b0) / 2));
+    (opts.enduit && opts.enduit(c.b, c.i) ? L.enduits : L.murs).bloc(V(cx, (bas + c.avt) / 2, cz), r.clone().multiplyScalar((c.a1 - c.a0) / 2), V(0, (c.avt - bas) / 2, 0), s.clone().multiplyScalar((c.b1 - c.b0) / 2));
     c.cx = cx; c.cz = cz; c.rect = coins(c);
     inscrire(c.rect, cx, cz);
   }
@@ -359,9 +363,9 @@ function batirMaisons(ctx, opts) {
   }
   for (const c of corps) if (c.sp.tour) crenaux(L, c);
 
-  L.murs.maille(M.murs); L.toits.maille(M.toits); L.terre.maille(M.terre); L.herbe.maille(M.herbe, false);
+  L.murs.maille(M.murs); if (M.enduits) L.enduits.maille(M.enduits); L.toits.maille(M.toits); L.terre.maille(M.terre); L.herbe.maille(M.herbe, false);
   BILAN.batiments += maisons.length;
-  for (const c of corps) BILAN.corps.push({ bat: c.i, rect: c.rect, toit: c.toit, toitEchant: c.toitEchant, plancher: c.plancher, cx: c.cx, cz: c.cz,
+  for (const c of corps) BILAN.corps.push({ bat: c.i, rect: c.rect, toit: c.toit, toitEchant: c.toitEchant, plancher: c.plancher, cx: c.cx, cz: c.cz, avt: c.avt, k: c.b.k, sp: c.sp,
     pied: c.pied.filter(([x, z]) => !autreCorps(c, x, z)).map(([x, z]) => [x, z]), echant: densifier([...coins(c, [-0.3, -0.3, -0.3, -0.3]), coins(c, [-0.3, -0.3, -0.3, -0.3])[0]], 1) });
   // le sol des terre-pleins : on y marche à hauteur du plancher (jamais sous le terrain)
   const plat = plateformes.filter((p) => p.c.marge.some((v) => v > 0.4)), pAutour = grille(plat, (p) => { const xs = p.pts.map((q) => q[0]), zs = p.pts.map((q) => q[1]); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
@@ -586,6 +590,73 @@ function solDuBourg(ctx, rs, { emprise: E, dense, jardins }) {
   return (x, z) => zAut(x, z).some((k) => dansPoly(x, z, zones[k])) ? h(x, z) + HT : null;
 }
 
+// Les façades de Villefort (réalisme, consigne V). Avant, des blocs de pierre aveugles. Maintenant,
+// à chaque niveau (2,9 m), une fenêtre tous les 2,6 m environ :
+// - le vitrage, sombre ;
+// - un encadrement de granit clair (linteau, appui, piédroits), qui donne au mur son épaisseur ;
+// - deux volets de planches peints, ouverts contre le mur (un sur cinq fermé), d'une couleur par
+//   maison : gris-bleu, vert, brun, gris, les teintes qu'on voit aux Cévennes.
+// Une porte au rez-de-chaussée du côté de la rue. Rien sur un mur mitoyen, ni là où le terrain monte
+// plus haut que l'appui (le rez-de-chaussée enterré côté amont). Pas sur la tour, l'église, ni les
+// remises. Tout est fondu par matière : sept maillages pour tout le bourg.
+const VOLETS = [0x5e7480, 0x56705a, 0x6e5644, 0x9a9488];
+function facades(ctx, rs) {
+  const h = ctx.dessin, corps = BILAN.corps, U = (a, b, c) => V(a, b, c);
+  const verre = new Lot(), cadre = new Lot(), portes = new Lot(), volets = VOLETS.map(() => new Lot());
+  const bC = corps.map((c) => { const xs = c.rect.map((p) => p[0]), zs = c.rect.map((p) => p[1]); return [Math.min(...xs) - 1, Math.min(...zs) - 1, Math.max(...xs) + 1, Math.max(...zs) + 1]; });
+  const cAut = grille(corps, (_, i) => bC[i]);
+  const chezVoisin = (c, x, z) => cAut(x, z).some((j) => corps[j] !== c && dansPoly(x, z, corps[j].rect));
+  const pr = rs.flatMap((c) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2]));
+  const rAut = grille(pr, ([x, z, w]) => [x - w - 6, z - w - 6, x + w + 6, z + w + 6]);
+  const dRue = (x, z) => { let d = 9; for (const i of rAut(x, z)) { const [a, b, w] = pr[i]; d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
+  const hache = (i) => (Math.imul(i + 1, 2654435761) >>> 0);
+  let fenetres = 0, nPortes = 0;
+  corps.forEach((c, ci) => {
+    if (c.sp.tour || c.sp.ruine || c.sp.clocher || ['shed', 'garage', 'garages', 'roof', 'church'].includes(c.k)) return;
+    const niveaux = Math.max(1, Math.round((c.avt - c.plancher - 0.5) / 2.9)), teinte = hache(c.bat) % VOLETS.length;
+    let porte = false;
+    // les murs, celui qui donne sur la rue d'abord (il reçoit la porte)
+    const murs = [0, 1, 2, 3].map((k) => { const p = c.rect[k], q = c.rect[(k + 1) % 4], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L;
+      let nx = -uz, nz = ux; const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2; if ((mx - c.cx) * nx + (mz - c.cz) * nz < 0) { nx = -nx; nz = -nz; }
+      return { p, ux, uz, nx, nz, L, rue: dRue(mx + nx * 1.5, mz + nz * 1.5) }; }).sort((a, b) => a.rue - b.rue);
+    for (const m of murs) {
+      if (m.L < 3) continue;
+      const u = U(m.ux, 0, m.uz), n = U(m.nx, 0, m.nz), nc = Math.max(1, Math.floor((m.L - 0.8) / 2.6)), pas = m.L / nc;
+      for (let k = 0; k < nc; k++) {
+        const t = (k + 0.5) * pas, x = m.p[0] + m.ux * t, z = m.p[1] + m.uz * t;
+        if (chezVoisin(c, x + m.nx * 0.6, z + m.nz * 0.6)) continue;
+        const sol = h(x + m.nx * 0.5, z + m.nz * 0.5), o = (y, d) => U(x, y, z).addScaledVector(n, d);
+        for (let s = 0; s < niveaux; s++) {
+          const y0 = c.plancher + s * 2.9;
+          if (s === 0 && !porte && m.rue < 4 && Math.abs(sol - c.plancher) < 0.6 && k === Math.floor(nc / 2)) {
+            porte = true; nPortes++;
+            portes.bloc(o(y0 + 1.05, 0.03), u.clone().multiplyScalar(0.5), U(0, 1.05, 0), n.clone().multiplyScalar(0.03), true);
+            cadre.bloc(o(y0 + 2.2, 0.06), u.clone().multiplyScalar(0.68), U(0, 0.1, 0), n.clone().multiplyScalar(0.06), true);
+            for (const sg of [-1, 1]) cadre.bloc(o(y0 + 1.05, 0.05).addScaledVector(u, sg * 0.58), u.clone().multiplyScalar(0.08), U(0, 1.05, 0), n.clone().multiplyScalar(0.05), true);
+            continue;
+          }
+          const yb = y0 + 0.95, yt = yb + 1.3, W = 0.9;
+          if (yt > c.avt - 0.3 || sol > yb - 0.3) continue;
+          fenetres++;
+          const a = U(x, yb, z).addScaledVector(n, 0.015);
+          verre.face([a.clone().addScaledVector(u, -W / 2), a.clone().addScaledVector(u, W / 2), a.clone().addScaledVector(u, W / 2).setY(yt), a.clone().addScaledVector(u, -W / 2).setY(yt)], n);
+          cadre.bloc(o(yt + 0.09, 0.05), u.clone().multiplyScalar(W / 2 + 0.15), U(0, 0.09, 0), n.clone().multiplyScalar(0.05), true);
+          cadre.bloc(o(yb - 0.04, 0.07), u.clone().multiplyScalar(W / 2 + 0.1), U(0, 0.04, 0), n.clone().multiplyScalar(0.07), true);
+          for (const sg of [-1, 1]) cadre.bloc(o((yb + yt) / 2, 0.04).addScaledVector(u, sg * (W / 2 + 0.06)), u.clone().multiplyScalar(0.06), U(0, 0.65, 0), n.clone().multiplyScalar(0.04), true);
+          const ferme = hache(ci * 31 + k * 7 + s) % 5 === 0;
+          for (const sg of [-1, 1]) volets[teinte].bloc(o((yb + yt) / 2, ferme ? 0.035 : 0.025).addScaledVector(u, sg * (ferme ? W / 4 : W / 2 + 0.12 + W / 4)),
+            u.clone().multiplyScalar(W / 4 - 0.01), U(0, 0.64, 0), n.clone().multiplyScalar(0.018), true);
+        }
+      }
+    }
+  });
+  verre.maille(new THREE.MeshStandardMaterial({ color: 0x20262c, roughness: 0.15, metalness: 0.4 }), false);
+  cadre.maille(phMat('granite_tile_03', 1, 1, { color: 0xd0ccc4 }));
+  portes.maille(phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a4434 }));
+  volets.forEach((l, k) => l.maille(phMat('wood_planks', 1, 1, { color: VOLETS[k] }), false));
+  BILAN.fenetres = fenetres; BILAN.portes = nPortes;
+}
+
 // Les gens du bourg (consigne V, « des lieux jouables ») : Villefort est « l'endroit où l'on parle aux
 // gens » (SCENARIO § 14). Des gens de passage seulement, avec les rôles et villageois de pnj.js : ceux de
 // l'enquête du chien (la boulangère, le chef de gare, les enfants près du lac) attendent Eugène. Ce
@@ -644,7 +715,7 @@ function preparer(ctx, f, rueMat) {
   ctx.dessin = relief(ctx.hauteur, f.grille); BILAN.dessin = ctx.dessin;
   rues(ctx, rueMat);
   const rs = [...ctx.PLAN.routes, ...ctx.PLAN.chemins].filter((c) => dansCadre(ctx.CADRE, c.pts, 20));
-  f._sol = batirMaisons(ctx, { maisons: ctx.PLAN.maisons, rues: rs, mats: matieres(), special: f.special });
+  f._sol = batirMaisons(ctx, { maisons: ctx.PLAN.maisons, rues: rs, mats: f.mats ? f.mats() : matieres(), special: f.special, enduit: f.enduit });
   return rs;
 }
 
@@ -684,10 +755,15 @@ const FICHES = {
       // les rues : l'enrobé pour la route et les rues (r ≥ 2) ; dans le bourg dense, les ruelles dallées
       // de granit ; dehors, les chemins de terre. Le « gravier » d'avant se lisait comme un ruban noir.
       const dense = densite(PLAN.maisons), milieu = (c) => c.pts[Math.floor(c.pts.length / 2)];
+      // la pierre de Villefort, plus sombre que le granit de la Garde-Guérin (« un bourg de pierre
+      // sombre », SCENARIO § 14), et quatre maisons sur dix du bourg dense crépies, comme dans la rue
+      FICHES.villefort.mats = () => ({ ...matieres(), murs: phMat('granit_lozere', 1, 1, { color: 0x9c9a94 }), enduits: phMat('enduit_gris', 1, 1, { color: 0xd8d2c4 }) });
+      FICHES.villefort.enduit = (b, i) => ['house', 'apartments', 'detached', 'hotel', undefined].includes(b.k) && dense(b.pts[0][0], b.pts[0][1]) && (Math.imul(i + 7, 2654435761) >>> 0) % 10 < 4;
       const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['asphalt_02', 0x9a9894] : dense(...milieu(c)) ? ['granite_tile_03', 0xb4b8bc] : ['rocky_trail', 0xb8ab90]);
       const t0s = performance.now();
       const trottoir = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
       BILAN.msSol = Math.round(performance.now() - t0s);   // règle 8 : ≤ 300 ms
+      const t0f = performance.now(); facades(ctx, rs); BILAN.msFacades = Math.round(performance.now() - t0f);
       const terrePlein = FICHES.villefort._sol;
       FICHES.villefort._sol = (x, z) => { const a = terrePlein(x, z), b = trottoir(x, z); return a === null ? b : b === null ? a : Math.max(a, b); };
       voieFerree(ctx);
