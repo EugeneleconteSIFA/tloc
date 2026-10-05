@@ -1,0 +1,677 @@
+{
+ "date": "2026-10-05T13:23:13.085Z",
+ "chargement_s": 6.501,
+ "etapes": {
+  "Chargement…": 2514,
+  "personnages": 28,
+  "collisions": 44,
+  "fusion des décors": 246,
+  "réglages": 90,
+  "préparation du rendu": 171,
+  "préparation du rendu — textures 23/217": 361,
+  "préparation du rendu — textures 168/217": 92,
+  "préparation du rendu — lumières et matières": 1396
+ },
+ "rendu": {
+  "maillages": 561,
+  "triangles": 2216255,
+  "instances": 8466
+ },
+ "durees": {
+  "parois": 2,
+  "voies": 94,
+  "escalier": 6,
+  "jungle": 61,
+  "pilotis": 140,
+  "temples": 1,
+  "ko tapu": 3,
+  "chedi": 1,
+  "passeurs": 35,
+  "pluie": 1,
+  "habitants": 77,
+  "marché": 68,
+  "pêcheurs": 18,
+  "tyroliennes": 4,
+  "bâti": 209,
+  "garde": 15
+ },
+ "erreurs": [],
+ "tot": {
+  "points": 7417,
+  "bloques": 42,
+  "raides": 75,
+  "enMer": 570
+ },
+ "par": {
+  "panyi": {
+   "points": 1462,
+   "bloques": 22,
+   "raides": 0,
+   "enMer": 91
+  },
+  "tapu": {
+   "points": 125,
+   "bloques": 0,
+   "raides": 0,
+   "enMer": 0
+  },
+  "suea": {
+   "points": 614,
+   "bloques": 1,
+   "raides": 17,
+   "enMer": 248
+  },
+  "railay": {
+   "points": 3036,
+   "bloques": 8,
+   "raides": 32,
+   "enMer": 175
+  },
+  "phiphi": {
+   "points": 2180,
+   "bloques": 11,
+   "raides": 26,
+   "enMer": 56
+  }
+ },
+ "pires": [
+  {
+   "m": "suea",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 125,
+   "bloques": 0,
+   "raides": 11,
+   "x": 1210,
+   "z": 275
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 23,
+   "bloques": 8,
+   "raides": 0,
+   "x": 77,
+   "z": 7
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 84,
+   "bloques": 0,
+   "raides": 7,
+   "x": -406,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 53,
+   "bloques": 0,
+   "raides": 7,
+   "x": -290,
+   "z": 1642
+  },
+  {
+   "m": "phiphi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 190,
+   "bloques": 6,
+   "raides": 0,
+   "x": 2215,
+   "z": 1913
+  },
+  {
+   "m": "suea",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 25,
+   "bloques": 0,
+   "raides": 5,
+   "x": 1009,
+   "z": 236
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 83,
+   "bloques": 0,
+   "raides": 5,
+   "x": -309,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 157,
+   "bloques": 5,
+   "raides": 0,
+   "x": -606,
+   "z": 1600
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 188,
+   "bloques": 0,
+   "raides": 5,
+   "x": -364,
+   "z": 1909
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 39,
+   "bloques": 0,
+   "raides": 5,
+   "x": 2298,
+   "z": 1818
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 65,
+   "bloques": 0,
+   "raides": 5,
+   "x": 2298,
+   "z": 1818
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 32,
+   "bloques": 0,
+   "raides": 4,
+   "x": -595,
+   "z": 1745
+  },
+  {
+   "m": "phiphi",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 53,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2192,
+   "z": 1813
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 79,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2441,
+   "z": 1958
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 46,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2449,
+   "z": 1755
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 107,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2588,
+   "z": 2060
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 23,
+   "bloques": 4,
+   "raides": 0,
+   "x": -219,
+   "z": 14
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 36,
+   "bloques": 3,
+   "raides": 0,
+   "x": 2194,
+   "z": 1982
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 182,
+   "bloques": 0,
+   "raides": 2,
+   "x": -489,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 61,
+   "bloques": 2,
+   "raides": 0,
+   "x": -465,
+   "z": 1807
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 29,
+   "bloques": 0,
+   "raides": 2,
+   "x": -603,
+   "z": 1802
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 16,
+   "bloques": 2,
+   "raides": 0,
+   "x": 99,
+   "z": 60
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 19,
+   "bloques": 2,
+   "raides": 0,
+   "x": -170,
+   "z": 28
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 17,
+   "bloques": 2,
+   "raides": 0,
+   "x": -236,
+   "z": 18
+  },
+  {
+   "m": "panyi",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 10,
+   "bloques": 1,
+   "raides": 0,
+   "x": -204,
+   "z": -38
+  }
+ ],
+ "parcours": {
+  "cases": 356389,
+  "reperes": [
+   {
+    "id": "marche",
+    "nom": "le marché flottant",
+    "a": 0
+   },
+   {
+    "id": "quai-panyi",
+    "nom": "le ponton de Somsak",
+    "a": 0
+   },
+   {
+    "id": "nok",
+    "nom": "Nok, devant l’arche",
+    "a": 7
+   },
+   {
+    "id": "porte",
+    "nom": "la porte de l’île",
+    "a": 1
+   },
+   {
+    "id": "mosquee",
+    "nom": "la mosquée de Ko Panyi",
+    "a": 11.045361017187261
+   },
+   {
+    "id": "quai-tapu",
+    "nom": "Khao Phing Kan, le quai de Mali",
+    "a": 0
+   },
+   {
+    "id": "ko-tapu",
+    "nom": "Ko Tapu, le clou",
+    "a": 66.12866246946174
+   },
+   {
+    "id": "quai-suea",
+    "nom": "le grand piton, la grève",
+    "a": 0
+   },
+   {
+    "id": "chedi",
+    "nom": "le chedi doré",
+    "a": 13.038404810405298
+   },
+   {
+    "id": "moines",
+    "nom": "les moines du grand piton",
+    "a": 0
+   },
+   {
+    "id": "escalier-piton",
+    "nom": "l’escalier du grand piton",
+    "a": 0
+   },
+   {
+    "id": "cour-puits",
+    "nom": "la cour du puits",
+    "a": 0
+   },
+   {
+    "id": "quai-railay",
+    "nom": "Railay, la plage de l’ouest",
+    "a": 0
+   },
+   {
+    "id": "cable-railay",
+    "nom": "le câble de Railay",
+    "a": 0
+   },
+   {
+    "id": "railay",
+    "nom": "le village de Railay",
+    "a": 0
+   },
+   {
+    "id": "quai-tonsai",
+    "nom": "Ton Sai, le ponton",
+    "a": 0
+   },
+   {
+    "id": "tonsai",
+    "nom": "le village de Ton Sai",
+    "a": 0
+   },
+   {
+    "id": "belvedere-moines",
+    "nom": "le belvédère des moines",
+    "a": 0
+   },
+   {
+    "id": "pecheur-railay",
+    "nom": "le pêcheur de Railay",
+    "a": 1
+   },
+   {
+    "id": "pecheur-tonsai",
+    "nom": "le pêcheur de Ton Sai",
+    "a": 0
+   }
+  ],
+  "inter": [
+   {
+    "nom": "repasser la porte de l’île",
+    "x": 62,
+    "z": -72,
+    "a": 1
+   },
+   {
+    "nom": "regarder le chedi doré",
+    "x": 946,
+    "z": 340,
+    "a": 0
+   },
+   {
+    "nom": "parler au passeur",
+    "x": 118,
+    "z": 8,
+    "a": 0
+   },
+   {
+    "nom": "parler au passeur",
+    "x": -701,
+    "z": 551,
+    "a": 0
+   },
+   {
+    "nom": "parler au passeur",
+    "x": 985,
+    "z": 491,
+    "a": 0
+   },
+   {
+    "nom": "parler au passeur",
+    "x": -657,
+    "z": 1530,
+    "a": 0
+   },
+   {
+    "nom": "parler au passeur",
+    "x": 2187,
+    "z": 1927,
+    "a": 0
+   },
+   {
+    "nom": "parler à Nok",
+    "x": 70,
+    "z": -70,
+    "a": 0
+   },
+   {
+    "nom": "écouter le moine",
+    "x": 912,
+    "z": 281,
+    "a": 0
+   },
+   {
+    "nom": "écouter le moine",
+    "x": 926,
+    "z": 282,
+    "a": 0
+   },
+   {
+    "nom": "écouter le moine",
+    "x": 938,
+    "z": 285,
+    "a": 0
+   },
+   {
+    "nom": "regarder le balayeur",
+    "x": 909,
+    "z": 333,
+    "a": 0
+   },
+   {
+    "nom": "regarder le balayeur",
+    "x": 915,
+    "z": 346,
+    "a": 1
+   },
+   {
+    "nom": "regarder le balayeur",
+    "x": 898,
+    "z": 350,
+    "a": 0
+   },
+   {
+    "nom": "regarder l’homme figé",
+    "x": -98,
+    "z": -52,
+    "a": 0
+   },
+   {
+    "nom": "regarder la femme figée",
+    "x": -578,
+    "z": 1628,
+    "a": 0
+   },
+   {
+    "nom": "regarder l’homme figé",
+    "x": -572,
+    "z": 1844,
+    "a": 0
+   },
+   {
+    "nom": "regarder la femme figée",
+    "x": 2310,
+    "z": 1818,
+    "a": 0
+   },
+   {
+    "nom": "regarder l’homme figé",
+    "x": 2199,
+    "z": 1901,
+    "a": 0
+   },
+   {
+    "nom": "regarder l’enfant figé",
+    "x": 66,
+    "z": 50,
+    "a": 0
+   },
+   {
+    "nom": "regarder l’enfant figé",
+    "x": -177,
+    "z": -47,
+    "a": 0
+   },
+   {
+    "nom": "regarder la femme figée",
+    "x": -687,
+    "z": 574,
+    "a": 0
+   },
+   {
+    "nom": "regarder le moine figé",
+    "x": 944,
+    "z": 327,
+    "a": 0
+   },
+   {
+    "nom": "regarder le moine figé",
+    "x": 2596,
+    "z": 1796,
+    "a": 0
+   },
+   {
+    "nom": "parler à la marchande",
+    "x": 93,
+    "z": 25,
+    "a": 0
+   },
+   {
+    "nom": "parler à la marchande",
+    "x": 99,
+    "z": 31,
+    "a": 0
+   },
+   {
+    "nom": "parler à la marchande",
+    "x": 91,
+    "z": 37,
+    "a": 0
+   },
+   {
+    "nom": "parler au marchand",
+    "x": 100,
+    "z": 43,
+    "a": 0
+   },
+   {
+    "nom": "parler à la marchande",
+    "x": 92,
+    "z": 46,
+    "a": 0
+   },
+   {
+    "nom": "parler au pêcheur",
+    "x": -302,
+    "z": 1763,
+    "a": 2.23606797749979
+   },
+   {
+    "nom": "parler au pêcheur",
+    "x": -66,
+    "z": 140,
+    "a": 0
+   },
+   {
+    "nom": "parler au pêcheur",
+    "x": -668,
+    "z": 550,
+    "a": 0
+   },
+   {
+    "nom": "parler au pêcheur",
+    "x": 2130,
+    "z": 1919,
+    "a": 0
+   },
+   {
+    "nom": "s’accrocher au câble — vers le grand piton",
+    "x": 2605,
+    "z": 1790,
+    "a": 0
+   },
+   {
+    "nom": "s’accrocher au câble — vers le marché flottant",
+    "x": 948,
+    "z": 322,
+    "a": 0
+   },
+   {
+    "nom": "s’accrocher au câble — vers la plage de Railay",
+    "x": -587,
+    "z": 1920,
+    "a": 0
+   }
+  ]
+ }
+}

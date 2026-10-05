@@ -562,6 +562,7 @@ if __name__ == '__main__':
     # est la terre (recolter-relief-thailande.py) ; on ne garde que les îles fermées.
     baie['cote'].pop('terre', None)
     path = os.path.join(ICI, 'thailande.json')
-    json.dump(baie, open(path, 'w'), separators=(',', ':'), ensure_ascii=False)
+    # en UTF-8 dit : sous Windows, open() écrit en cp1252, et le jeu ne lisait plus le plan (5 octobre)
+    json.dump(baie, open(path, 'w', encoding='utf-8'), separators=(',', ':'), ensure_ascii=False)
     c = baie['cadre']
     print('thailande.json : %.0f Ko — baie x %.0f..%.0f z %.0f..%.0f' % (os.path.getsize(path) / 1024, c['x0'], c['x1'], c['z0'], c['z1']))

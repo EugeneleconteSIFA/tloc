@@ -49,6 +49,9 @@ const VUES_REALISME = [
   { nom: 'Ko Panyi, une ruelle de béton (1,6 m)', cam: [-20, 1.6, 60], at: [-60, 1.4, 20], sol: true },
   { nom: 'Ko Panyi, vu d’une barque', cam: [150, 1.5, 120], at: [60, 2, 60] },
   { nom: 'le grand piton, le plateau (1,6 m)', cam: [930, 115.6, 322], at: [912, 114.5, 360] },     // à 114 m (le sol du plateau), vers la cour du puits
+  // l'escalier du grand piton (5 octobre, au soir) : son pied et ses nagas, puis la 1re volée à hauteur d'yeux
+  { nom: 'l’escalier du grand piton, le pied', cam: [896, 48.6, 289.7], at: [910, 50, 289.7] },
+  { nom: 'l’escalier, dans la 1re volée (1,6 m)', cam: [915, 1.6, 289.7], at: [940, 1.6, 289.7], sol: true },
 ];
 const VUES_BAIE = [
   { nom: 'la baie', cam: [900, 900, 2100], at: [800, 0, 900] },

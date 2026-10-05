@@ -79,7 +79,7 @@ function pilotis({ hauteur, scene, PLAN, inscrire }) {
   [0x9c8a74, 0x7e98a4, 0x8ea890, 0xcabda0].forEach((c, k) => { if (!murs[k].length) return;
     const m = new THREE.Mesh(mergeGeometries(murs[k].map(uvm)), phMat('hinoki_planks', 1, 1, { color: c })); m.castShadow = m.receiveShadow = true; scene.add(m); });
   // la tôle des toits, rouillée par la mer (l'enduit gris d'avant faisait un toit de ciment)
-  if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits.map(uvm)), phMat('metal_plate_02', 1, 1, { color: 0xe0ccb8, roughness: 0.75 })); m.castShadow = true; scene.add(m); }
+  if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits.map(uvm)), tole(0xc8b8a8)); m.castShadow = true; scene.add(m); }
   if (pieux.length) scene.add(new THREE.Mesh(mergeGeometries(pieux), phMat('tree_trunk', 1, 1, { color: 0x5a4838 })));
   // le platelage : partout où le relief de Ko Panyi est à 1,2 m (l'île basse et le long des
   // passerelles, recolter-relief-thailande.py), des planches — le village marche sur l'eau
@@ -264,6 +264,8 @@ function jungle({ hauteur, bloque, CADRE, PLAN }) {
     const px = x + rand(-3, 3), pz = z + rand(-3, 3), h = hauteur(px, pz); if (h < 3.5) continue;
     const pente = Math.max(Math.abs(hauteur(px + 2, pz) - hauteur(px - 2, pz)), Math.abs(hauteur(px, pz + 2) - hauteur(px, pz - 2))) / 4;
     if (pente > 0.75 || (pente > 0.5 && Math.random() < 0.5) || bloque(px, pz, 3) || surChemin(px, pz)) continue;
+    // ni dans l'escalier du grand piton, ni à moins de 4 m (seuls ses parapets sont inscrits dans les collisions)
+    if ([[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]].some(([a, b]) => solEscalier(px + a, pz + b) != null)) continue;
     pts.push([px, pz, h]);
   }
   const n = pts.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n);
@@ -302,6 +304,82 @@ function chedi({ hauteur, scene, addInteract }) {
   addInteract({ pos: new THREE.Vector3(946, hauteur(946, 340), 340), r: 7, prompt: () => 'regarder le chedi doré', fn: () => showMessage('Le chedi du grand piton. Les clochettes de ses anneaux sont arrêtées en plein tintement.', 6) });
 }
 
+// ---------- l'escalier du grand piton ----------
+// Eugène, 5 octobre : « fais l'escalier ». Le replat des moines (47 m, devant le Wat Tham Suea) et
+// le plateau du sommet (114 m) sont séparés par une falaise de 67 m sur 10 : on n'y montait que par
+// le câble de Phi Phi. SCENARIO.md : « escaliers de centaines de marches », comme celui du vrai
+// temple de la grotte du Tigre. Le relief ne peut pas le porter (sa grille de 10 m mêlerait des
+// lacets serrés, et les tuiles Copernicus ne sont pas sur le PC) : c'est un OUVRAGE, maçonné contre
+// la falaise — trois volées et deux paliers qui se replient sur eux-mêmes, chacune un peu plus
+// près de la paroi que la précédente (en plan, rien ne se recouvre : un sol par point suffit), puis
+// un pont de 18 m jusqu'au bord du plateau. 117 m de marches pour 67 m : 30°, sous les 35° du banc.
+// On y marche par solLieu (solEscalier) ; des parapets inscrits dans les collisions en font un
+// couloir — on n'en tombe pas. Les parapets sont les nagas des escaliers thaïs, en écailles vertes.
+const ESC = [];             // { x0, x1, z0, z1, h(x), rampe, parapets: [[côté, de, à]] }
+function solEscalier(x, z) {
+  if (x < 897.5 || x > 958 || z < 287.5 || z > 314.5) return null;
+  for (const E of ESC) if (x >= E.x0 && x <= E.x1 && z >= E.z0 && z <= E.z1) return E.h(x);
+  return null;
+}
+function escalier({ hauteur, inscrire, scene }) {
+  const h0 = hauteur(901, 290), haut = hauteur(929, 314), s = (haut - h0) / 117;
+  const F = (x0, x1, z0, z1, h, rampe, parapets) => ESC.push({ x0, x1, z0, z1, h, rampe, parapets });
+  // les côtés : 's' (z0), 'n' (z1), 'o' (x0), 'e' (x1), avec la portion bordée [de, à] (null : tout le côté)
+  F(904, 952, 288, 291.5, (x) => h0 + (x - 904) * s, true, [['s'], ['n']]);                       // 1re volée, vers l'est
+  F(952, 957.5, 288, 295.5, () => h0 + 48 * s, false, [['s'], ['n'], ['e']]);                     // le palier est
+  F(904, 952, 292, 295.5, (x) => h0 + 48 * s + (952 - x) * s, true, [['s'], ['n']]);              // 2e volée, vers l'ouest
+  F(898, 904, 292, 299.5, () => h0 + 96 * s, false, [['s'], ['n'], ['o']]);                       // le palier ouest
+  F(904, 925, 296, 299.5, (x) => h0 + 96 * s + (x - 904) * s, true, [['s'], ['n']]);              // 3e volée, vers l'est
+  F(925, 933, 296, 314, () => haut, false, [['s'], ['e'], ['o', 299.5, 314]]);                    // le pont, jusqu'au plateau
+  // les collisions : un mur de 30 cm sur chaque bord qui n'ouvre pas sur la suite du chemin
+  const mur = (x0, x1, z0, z1) => inscrire([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], (x0 + x1) / 2, (z0 + z1) / 2);
+  mur(904, 957.8, 287.7, 288); mur(957.5, 957.8, 288, 295.5); mur(898, 952, 291.5, 292); mur(904, 957.8, 295.5, 296);
+  mur(897.7, 898, 292, 299.5); mur(898, 925, 299.5, 299.8); mur(924.7, 925, 299.5, 314); mur(933, 933.3, 296, 314);
+  // la géométrie, en mètres pour les UV
+  const pierre = { p: [], u: [] }, marche = { p: [], u: [] }, naga = { p: [], u: [] };
+  const quad = (G, a, b, c, d, uv) => { G.p.push(...a, ...b, ...c, ...a, ...c, ...d); G.u.push(...uv[0], ...uv[1], ...uv[2], ...uv[0], ...uv[2], ...uv[3]); };
+  // une face verticale le long de x (en z fixe) entre deux lignes de hauteur, ou le long de z (en x fixe)
+  const faceX = (G, z, xa, xb, ya0, yb0, ya1, yb1) => quad(G, [xa, ya0, z], [xb, yb0, z], [xb, yb1, z], [xa, ya1, z], [[xa, ya0], [xb, yb0], [xb, yb1], [xa, ya1]]);
+  const faceZ = (G, x, za, zb, y0, y1) => quad(G, [x, y0, za], [x, y0, zb], [x, y1, zb], [x, y1, za], [[za, y0], [zb, y0], [zb, y1], [za, y1]]);
+  const P = 0.35, HP = 0.85;          // le parapet : 35 cm d'épais, 85 cm au-dessus des marches
+  for (const E of ESC) {
+    let bas = 1e9; for (const x of [E.x0, E.x1]) for (const z of [E.z0, E.z1]) bas = Math.min(bas, hauteur(x, z) - 1);
+    const ya = E.h(E.x0), yb = E.h(E.x1);
+    // la maçonnerie : quatre faces, du pied au dessus des marches
+    faceX(pierre, E.z0, E.x0, E.x1, bas, bas, ya, yb); faceX(pierre, E.z1, E.x0, E.x1, bas, bas, ya, yb);
+    faceZ(pierre, E.x0, E.z0, E.z1, bas, ya); faceZ(pierre, E.x1, E.z0, E.z1, bas, yb);
+    // le dessus : des marches de 30 cm (la hauteur prise au milieu de chaque marche : on marche sur la
+    // rampe, les pieds ne s'écartent pas des marches de plus de 9 cm), ou le dallage d'un palier
+    if (E.rampe) {
+      const n = Math.round((E.x1 - E.x0) / 0.3), w = (E.x1 - E.x0) / n;
+      for (let k = 0; k < n; k++) { const xa = E.x0 + k * w, xb = xa + w, y = E.h(xa + w / 2);
+        quad(marche, [xa, y, E.z0], [xa, y, E.z1], [xb, y, E.z1], [xb, y, E.z0], [[xa, E.z0], [xa, E.z1], [xb, E.z1], [xb, E.z0]]);
+        if (k < n - 1) { const y2 = E.h(xb + w / 2); faceZ(marche, xb, E.z0, E.z1, Math.min(y, y2), Math.max(y, y2)); } }
+    } else quad(marche, [E.x0, ya, E.z0], [E.x0, ya, E.z1], [E.x1, ya, E.z1], [E.x1, ya, E.z0], [[E.x0, E.z0], [E.x0, E.z1], [E.x1, E.z1], [E.x1, E.z0]]);
+    // les parapets
+    for (const [c, de, a] of E.parapets) {
+      if (c === 's' || c === 'n') { const z = c === 's' ? E.z0 : E.z1, zi = c === 's' ? E.z0 + P : E.z1 - P;
+        faceX(naga, z, E.x0, E.x1, ya, yb, ya + HP, yb + HP); faceX(naga, zi, E.x0, E.x1, ya - 0.2, yb - 0.2, ya + HP, yb + HP);
+        quad(naga, [E.x0, ya + HP, z], [E.x1, yb + HP, z], [E.x1, yb + HP, zi], [E.x0, ya + HP, zi], [[E.x0, 0], [E.x1, 0], [E.x1, P], [E.x0, P]]);
+      } else { const x = c === 'o' ? E.x0 : E.x1, xi = c === 'o' ? E.x0 + P : E.x1 - P, za = de ?? E.z0, zb = a ?? E.z1, y = E.h(x);
+        faceZ(naga, x, za, zb, y, y + HP); faceZ(naga, xi, za, zb, y - 0.2, y + HP);
+        quad(naga, [x, y + HP, za], [x, y + HP, zb], [xi, y + HP, zb], [xi, y + HP, za], [[za, 0], [zb, 0], [zb, P], [za, P]]); }
+    }
+  }
+  const pose = (G, m) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(G.p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(G.u, 2)); g.computeVertexNormals();
+    const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; scene.add(o); };
+  pose(pierre, phMat('chaux_craquelee', 3, 3, { color: 0xf0ece0, side: THREE.DoubleSide }));
+  pose(marche, phMat('worn_tile_floor', 1, 1, { color: 0xc4baa8, side: THREE.DoubleSide }));
+  pose(naga, phMat('clay_roof_tiles_02', 0.8, 0.8, { color: 0x4e8a5a, side: THREE.DoubleSide }));
+  // les deux têtes de naga au pied de la 1re volée : le corps se relève et finit en tête dorée
+  const or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.3 }), ecailles = phMat('clay_roof_tiles_02', 0.4, 0.4, { color: 0x4e8a5a });
+  for (const z of [288 + P / 2, 291.5 - P / 2]) {
+    const y = h0 + HP, c = new THREE.CatmullRomCurve3([new THREE.Vector3(905, y, z), new THREE.Vector3(903.6, y + 0.5, z), new THREE.Vector3(903, y + 1.5, z)]);
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.2, 8), ecailles));
+    const t = mesh(new THREE.ConeGeometry(0.28, 0.9, 8), or, 902.8, y + 1.9, z); t.rotation.z = 0.5; t.castShadow = true; scene.add(t);
+  }
+}
+
 // ---------- les temples du grand piton : toits thaïs, chedis ----------
 // OSM ne dit que l'emprise. Un bâtiment rond devient un chedi (la cloche blanche et dorée sur
 // son socle) ; les autres prennent le toit des temples thaïs : deux ou trois pans superposés,
@@ -314,7 +392,13 @@ const TEMPLE = { rouge: [], vert: [], or: [], blanc: [] };
 // ou trois niveaux, terrasse de béton à acrotère ou tôle à faible pente. monde.js coiffait tout
 // d'un toit de tuiles à deux pans. Ici, le toit, et les ouvertures que monde.js ne fait pas :
 // fenêtres à cadre de bois et volets, portes, rideaux de fer des boutiques.
-const BATI = { tuiles: [], tole: [], dalle: [], facades: [] };
+// (5 octobre, Eugène : « oui pour les bungalows de bois ») Railay n'est plus d'enduit blanc sous la tuile —
+// l'air provençal des captures — mais de planches sous la tôle : `toleRailay`, et le bardage de batiIles().
+const BATI = { tuiles: [], tole: [], toleRailay: [], dalle: [], facades: [] };
+// La tôle des toits : metal_plate_02 porte une carte de métal, qui en fait un métal PUR — sans rien à
+// refléter, il sortait noir vu d'en haut (Ko Panyi, Railay, Ton Sai). Une tôle galvanisée ou peinte
+// diffuse : on garde son grain, sa couleur et ses rayures, pas la carte de métal.
+function tole(couleur, extra = {}) { const m = phMat('metal_plate_02', 1, 1, { color: couleur, roughness: 0.7, ...extra }); m.metalnessMap = null; m.metalness = 0.15; return m; }
 function quad(dst, a, b, c, d) { dst.push(...a, ...b, ...c, ...a, ...c, ...d); }
 function toitIle(b, { cx, cz, ux, uz, a0, a1, b0, b1, L, W, haut }) {
   if (b.m !== 'railay' && b.m !== 'phiphi') return false;
@@ -325,7 +409,7 @@ function toitIle(b, { cx, cz, ux, uz, a0, a1, b0, b1, L, W, haut }) {
     // quatre pans : le faîtage court le long du grand côté, à 0,45 de pente ; 60 cm de débord
     const o = 0.6, la = L / 2 + o, lb = W / 2 + o, hf = lb * 0.55, lf = Math.max(0, la - lb);
     const v = [P(-la, -lb, 0), P(la, -lb, 0), P(la, lb, 0), P(-la, lb, 0), P(-lf, 0, hf), P(lf, 0, hf)];
-    const t = BATI.tuiles;
+    const t = b.m === 'railay' ? BATI.toleRailay : BATI.tuiles;
     quad(t, v[0], v[4], v[5], v[1]); quad(t, v[2], v[5], v[4], v[3]);          // les deux longs pans
     t.push(...v[1], ...v[5], ...v[2], ...v[3], ...v[4], ...v[0]);                 // les deux croupes
     return true;
@@ -349,7 +433,7 @@ function toitIle(b, { cx, cz, ux, uz, a0, a1, b0, b1, L, W, haut }) {
 }
 function dansP(x, z, pts) { let d = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, zi] = pts[i], [xj, zj] = pts[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d; } return d; }
 function batiIles({ hauteur, scene }) {
-  const cadres = [], vitres = [], volets = [], portes = [], rideaux = [], balcons = [];
+  const cadres = [], vitres = [], volets = [], portes = [], rideaux = [], balcons = [], bardage = [[], [], []], boisBalcons = [];
   // une boîte posée contre le mur, sa face avant à `ep` du mur : ses cinq faces visibles (le dos est
   // contre le mur) poussées droit dans un tableau. Une BoxGeometry par boîte, convertie puis fondue,
   // coûtait 1 s au chargement pour les 9 000 boîtes de Railay et de Ton Sai (banc du 5 octobre).
@@ -365,10 +449,14 @@ function batiIles({ hauteur, scene }) {
     let solMax = -1e9; for (const [x, z] of P) solMax = Math.max(solMax, hauteur(x, z));
     if (F.sol != null) solMax = F.sol;          // sur pilotis : le plancher, pas la mer en dessous
     const niveaux = Math.max(1, Math.round((F.haut - solMax) / 3)), hN = (F.haut - solMax) / niveaux;
+    // le bardage d'un bungalow de Railay : des planches à 2 cm devant le mur de monde.js (enduit
+    // blanc pour toute la baie), du plancher au toit ; une teinte par maison, du bois clair au teck
+    const bard = F.m === 'railay' ? bardage[Math.floor(Math.random() * 3)] : null;
     for (let i = 0; i < P.length; i++) {
       const [ax, az] = P[i], [bx, bz] = P[(i + 1) % P.length], L = Math.hypot(bx - ax, bz - az); if (L < 2.2) continue;
       const ux = (bx - ax) / L, uz = (bz - az) / L; let nx = uz, nz = -ux;
       const mx = (ax + bx) / 2, mz = (az + bz) / 2; if (dansP(mx + nx * 0.3, mz + nz * 0.3, P)) { nx = -nx; nz = -nz; }   // la normale vers dehors
+      if (bard) boite(bard, mx, solMax - 0.15, mz, ux, uz, nx, nz, L + 0.04, F.haut - solMax + 0.15, 0.02);
       const n = Math.max(1, Math.floor(L / 3.2)), pas = L / n;
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) * pas, cx = ax + ux * t, cz = az + uz * t, yb = Math.max(hauteur(cx, cz), solMax - 0.2);
@@ -392,10 +480,10 @@ function batiIles({ hauteur, scene }) {
       // les balcons des étages, un par façade et par niveau : une dalle d'un mètre, une lisse, des
       // barreaux — les chambres d'hôtel de Railay, les logements au-dessus des boutiques de Ton Sai
       if (L > 4.5) for (let e = 1; e < niveaux; e++) {
-        const y0 = solMax + e * hN, lb = L - 1.2;
-        boite(balcons, mx, y0 - 0.12, mz, ux, uz, nx, nz, lb, 0.12, 1.0);
-        boite(volets, mx + nx * 0.96, y0 + 0.95, mz + nz * 0.96, ux, uz, nx, nz, lb, 0.06, 0.06);
-        for (let t = -lb / 2; t <= lb / 2 + 0.01; t += 1.1) boite(volets, mx + ux * t + nx * 0.96, y0, mz + uz * t + nz * 0.96, ux, uz, nx, nz, 0.05, 0.95, 0.05);
+        const y0 = solMax + e * hN, lb = L - 1.2, dal = bard ? boisBalcons : balcons, gc = bard ? boisBalcons : volets;     // à Railay, la véranda et sa rambarde sont de bois
+        boite(dal, mx, y0 - 0.12, mz, ux, uz, nx, nz, lb, 0.12, 1.0);
+        boite(gc, mx + nx * 0.96, y0 + 0.95, mz + nz * 0.96, ux, uz, nx, nz, lb, 0.06, 0.06);
+        for (let t = -lb / 2; t <= lb / 2 + 0.01; t += 1.1) boite(gc, mx + ux * t + nx * 0.96, y0, mz + uz * t + nz * 0.96, ux, uz, nx, nz, 0.05, 0.95, 0.05);
       }
     }
   }
@@ -409,12 +497,16 @@ function batiIles({ hauteur, scene }) {
   pose(portes, phMat('wood_cabinet_worn_long', 1, 1, { color: 0x7a5a3a }));
   pose(vitres, phMat('metal_plate_02', 1, 1, { color: 0x2a3236, roughness: 0.18, metalness: 0.6 }));
   pose(rideaux, phMat('metal_plate_02', 1, 1, { color: 0x9a9c98, roughness: 0.55 }));
+  [0xb08a62, 0x8a6a4a, 0x6e5440].forEach((c, k) => pose(bardage[k], phMat('hinoki_planks', 1, 1, { color: c }), true));
+  pose(boisBalcons, phMat('wood_planks', 1, 1, { color: 0x8a6a4a }), true);
   // les toits : les UV en mètres, sur le plan (la tuile suit la pente, à peu près)
   const geo = (v) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); const uv = [];
     for (let k = 0; k < v.length; k += 3) uv.push(v[k] / 2, v[k + 2] / 2); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; };
   const toit = (v, m) => { if (!v.length) return; const o = new THREE.Mesh(geo(v), m); o.castShadow = o.receiveShadow = true; scene.add(o); };
   toit(BATI.tuiles, phMat('clay_roof_tiles', 1.2, 1.2, { color: 0x9a6a50, side: THREE.DoubleSide }));
-  toit(BATI.tole, phMat('metal_plate_02', 1, 1, { color: 0x7a8a96, roughness: 0.5, side: THREE.DoubleSide }));
+  toit(BATI.tole, tole(0x9aa6b0, { side: THREE.DoubleSide }));
+  // la tôle des bungalows : un peu rouillée, plus claire que celle de Ton Sai
+  toit(BATI.toleRailay, tole(0xb8a490, { side: THREE.DoubleSide }));
   toit(BATI.dalle, phMat('enduit_gris', 2, 2, { color: 0xc8c0b0, side: THREE.DoubleSide }));
 }
 
@@ -659,9 +751,10 @@ function habitants({ hauteur, bloque, addInteract, PLAN }) {
       addInteract({ pos: new THREE.Vector3(x, hauteur(x, z), z), r: 3.5, prompt: () => 'parler à Nok', fn: parlerNok }); } }
   // les trois moines de l'enquête, devant le Wat Tham Suea, et les balayeurs de la cour
   const M = [
-    [952, 280, '« …la clé du cloître, c’est le balayeur qui l’avait… »'],
-    [930, 292, '« …Somchai balaie toujours la cour du puits… »'],
-    [968, 300, '« …il cache la clé dans sa manche gauche… »'],
+    // (5 octobre) entre le temple et l'escalier, qui a pris la place où ils étaient
+    [912, 281, '« …la clé du cloître, c’est le balayeur qui l’avait… »'],
+    [926, 282, '« …Somchai balaie toujours la cour du puits… »'],
+    [938, 285, '« …il cache la clé dans sa manche gauche… »'],
   ];
   for (const [ax, az, texte] of M) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('moine', x, z, rand(0, TAU), texte); }
   const B = [[905, 335, false], [915, 345, true], [898, 350, false]];
@@ -843,7 +936,7 @@ monde({
   counts: 'La baie des pitons : Ko Panyi et son village sur pilotis, Khao Phing Kan, Railay, Phi Phi, et le grand piton du temple. Les passeurs attendent aux pontons.',
   start: 'La pluie ne tombe pas. Elle est là, en l’air, goutte par goutte. Seule la mer bouge encore.',
   entry: { title: 'La baie des pitons', sub: 'La Cloche des Îles — Thaïlande', cam: [700, 260, 900], at: [0, 20, 0], cam2: [180, 30, 80], at2: [40, 10, -40], dur: 6 },
-  toitSur: toitThai, solLieu: solMarche,
+  toitSur: toitThai, solLieu: (x, z) => solMarche(x, z) ?? solEscalier(x, z),
   // les endroits qui comptent, pour la minicarte et les lieux découverts (la forme commune à tous
   // les mondes, lue par monde.js) — type : 'lieu' | 'pnj' | 'quete' | 'passage'
   reperes: [
@@ -856,7 +949,8 @@ monde({
     { id: 'ko-tapu', nom: 'Ko Tapu, le clou', x: -684, z: 468, r: 95, type: 'lieu' },        // il est dans l'eau : on le découvre depuis la grève, à 75–95 m
     { id: 'quai-suea', nom: 'le grand piton, la grève', x: 985, z: 491, r: 20, type: 'passage' },
     { id: 'chedi', nom: 'le chedi doré', x: 983, z: 344, r: 20, type: 'lieu' },
-    { id: 'moines', nom: 'les moines du grand piton', x: 950, z: 290, r: 25, type: 'quete' },
+    { id: 'moines', nom: 'les moines du grand piton', x: 925, z: 282, r: 25, type: 'quete' },
+    { id: 'escalier-piton', nom: 'l’escalier du grand piton', x: 901, z: 290, r: 10, type: 'passage' },
     { id: 'cour-puits', nom: 'la cour du puits', x: 915, z: 334, r: 22, type: 'quete' },      // le centre, hors des bâtiments (il était dans l'un d'eux)
     { id: 'quai-railay', nom: 'Railay, la plage de l’ouest', x: -657, z: 1530, r: 25, type: 'passage' },
     { id: 'cable-railay', nom: 'le câble de Railay', x: -587, z: 1920, r: 15, type: 'passage' },
@@ -874,7 +968,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
