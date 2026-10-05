@@ -844,9 +844,10 @@ export function batirQuartier() {
         // de la craie jaune à peine posée (0,92) à la pierre noircie par la suie (0,62)
         ? [melange(0.66, 0.94, h2), melange(0.60, 0.88, h2), melange(0.48, 0.74, h2)]
         // l'enduit à la chaux reçoit un badigeon : ocre, crème ou gris rosé, plus ou moins
-        // passé — blanc pur, la longue rangée du quai du Wault (« 30 » au relevé) éblouissait
+        // passé — blanc pur, la longue rangée du quai du Wault (« 30 » au relevé) éblouissait ;
+        // (5 octobre, midi) plus soutenus : à l'ombre, les premiers tons lisaient encore gris-blanc
         : matMur === M.enduit
-        ? [[0.96, 0.82, 0.58], [0.93, 0.88, 0.76], [0.86, 0.77, 0.73]][Math.floor(h3 * 2.999)].map((c) => c * melange(0.78, 1.0, h2))
+        ? [[0.93, 0.74, 0.46], [0.90, 0.83, 0.66], [0.86, 0.69, 0.63]][Math.floor(h3 * 2.999)].map((c) => c * melange(0.70, 0.95, h2))
         : [melange(0.74, 1.14, h2), melange(0.66, 1.02, h2), melange(0.62, 0.96, h2)];
       // PLUS DE ZINC : tuile de terre cuite, ardoise sur les clochers et quelques combles
       let matToit = forme === 'terrasse' ? M.terrasse

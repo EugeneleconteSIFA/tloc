@@ -2388,10 +2388,12 @@ export function voiriesLille() {
   // la chaussée bombée : de l'axe au caniveau, en quatre colonnes
   ajoute(profilGeo(trottoirs, (o) => { const d = bord(o) - 0.45;
     return [[0, 0.205], [d * 0.45, 0.19], [d * 0.8, 0.16], [d, Y_CAN + 0.005]]; }, { couper: null, chaussee: true, memo }), pave);
-  // le caniveau : deux rangs de grès en V, 1 cm de creux — de près, c'est la pierre qui le dit
+  // le caniveau : deux rangs de grès en V, 1 cm de creux — de près, c'est la pierre qui le dit.
+  // (5 octobre, midi) Des pavés de grès plus petits que ceux de la chaussée, et plus sombres :
+  // la photo de rocaille (rock_wall_14) lisait comme de la terre semée de cailloux.
   ajoute(profilGeo(trottoirs, (o) => { const d = bord(o);
     return [[d - 0.45, Y_CAN + 0.005], [d - 0.22, Y_CAN - 0.008], [d, Y_CAN]]; }, { couper: (x, z, o) => surAutreChaussee(x, z, o, -0.2), memo }),
-  phMat('rock_wall_14', 0.6, 0.6, { color: 0xaaa496, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2.4 }));
+  pbrRepeat(cobbles(), 1 / 0.62, 1 / 0.62, { color: 0x9a9286, roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -2.4 }));
   // la bordure : la face vue de la rue (la colonne doublée sépare les deux normales), puis
   // son dessus de 26 cm
   ajoute(profilGeo(trottoirs, (o) => { const d = bord(o);
