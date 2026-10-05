@@ -197,6 +197,53 @@ function uvMetres(g) { const p = g.attributes.position, uv = g.attributes.uv, n 
 // une teinte par bâtiment, à ±7 % : vingt maisons de la même pierre ne font plus un seul aplat
 function teinter(g, t) { const n = g.attributes.position.count, c = new Float32Array(n * 3).fill(t); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; }
 
+// Les OUVERTURES du bâti d'OSM (le réalisme, 5 octobre) : les maisons de Perpignou et de
+// Fariboules étaient des murs aveugles. Celles du Ségala ont des baies hautes encadrées de granit,
+// des volets de bois peints, une porte sur le long côté ; la grange, un grand portail de planches
+// et de rares jours. Tout est fondu par matière (vitre, granit, bois), comme le reste du bâti.
+const OUV = { vitre: [], granit: [], bois: [] };
+const MAT_OUV = {
+  vitre: () => new THREE.MeshStandardMaterial({ color: 0x1b2026, roughness: 0.18, metalness: 0.35 }),
+  granit: () => phMat('granite_tile_03', 1, 1, { color: 0xbab4a8 }),
+  bois: () => phMat('wood_planks', 1, 1, { vertexColors: true }),
+};
+const VOLETS = [[0.71, 0.78, 0.84], [0.78, 0.44, 0.35], [0.69, 0.75, 0.6], [0.55, 0.42, 0.32]];   // gris-bleu, rouge sang-de-bœuf, vert sauge, brun
+function ouvertures(P, sol, hm, grange, i, voisin, hauteur) {
+  const piece = (cle, w, h, d, cx, y, cz, ang, teinte) => { const g = boxG(w, h, d); g.rotateY(ang); g.translate(cx, y, cz); const gn = g.toNonIndexed(); gn.computeVertexNormals(); uvMetres(gn);
+    if (teinte) { const c = new Float32Array(gn.attributes.position.count * 3); for (let k = 0; k < c.length; k += 3) c.set(teinte, k); gn.setAttribute('color', new THREE.BufferAttribute(c, 3)); }
+    OUV[cle].push(gn); };
+  // les niveaux : 4,6 m de murs en font un, 6,4 m deux (au-delà, l'étage passait sous le toit)
+  const niveaux = Math.max(1, Math.floor((hm - 0.4) / 2.9)), couleur = VOLETS[i % VOLETS.length];
+  let porte = -1, lmax = 0; for (let k = 0; k < P.length; k++) { const [ax, az] = P[k], [bx, bz] = P[(k + 1) % P.length], l = Math.hypot(bx - ax, bz - az); if (l > lmax) { lmax = l; porte = k; } }
+  for (let k = 0; k < P.length; k++) {
+    const [ax, az] = P[k], [bx, bz] = P[(k + 1) % P.length], l = Math.hypot(bx - ax, bz - az); if (l < 3) continue;
+    const ex = (bx - ax) / l, ez = (bz - az) / l, mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    let nx = ez, nz = -ex; if (dansPoly(mx + nx * 0.3, mz + nz * 0.3, P)) { nx = -nx; nz = -nz; }       // la normale vers le dehors
+    if (voisin(mx + nx * 0.8, mz + nz * 0.8, i)) continue;                                              // un mur mitoyen n'a pas d'ouverture
+    const ang = Math.atan2(-ez, ex), at = (t, e) => [ax + ex * t + nx * e, az + ez * t + nz * e];
+    const ouvert = (t, y, h) => { const [x, z] = at(t, 0.5); return y - h / 2 > hauteur(x, z) + 0.3; };   // pas d'ouverture enterrée côté amont
+    if (grange) {
+      // le portail de la grange au milieu du long côté, un jour étroit de part et d'autre
+      if (k === porte) { const t = l / 2, h = Math.min(3.2, hm - 0.6); if (ouvert(t, sol + h / 2, h)) { const [x, z] = at(t, 0.05); piece('bois', Math.min(3.4, l - 2), h, 0.12, x, sol + h / 2, z, ang, [0.55, 0.47, 0.4]); const [x2, z2] = at(t, 0.1); piece('granit', Math.min(3.4, l - 2) + 0.5, 0.35, 0.3, x2, sol + h + 0.15, z2, ang); } }
+      for (const t of [l * 0.2, l * 0.8]) if (l > 8 && ouvert(t, sol + hm - 1.2, 0.6)) { const [x, z] = at(t, 0.02); piece('vitre', 0.3, 0.6, 0.06, x, sol + hm - 1.2, z, ang); }
+      continue; }
+    const n = Math.max(1, Math.floor((l - 1.2) / 3.2));
+    for (let j = 0; j < n; j++) { const t = (j + 0.5) * l / n;
+      for (let v = 0; v < niveaux; v++) {
+        const rez = v === 0, estPorte = rez && k === porte && j === Math.floor(n / 2);
+        const w = estPorte ? 1.1 : 0.9, h = estPorte ? 2.15 : rez ? 1.3 : 1.2, y = estPorte ? sol + h / 2 : sol + v * 3 + 1.45;
+        if (!ouvert(t, y, h)) continue;
+        const [x, z] = at(t, 0.02); piece(estPorte ? 'bois' : 'vitre', w, h, 0.06, x, y, z, ang, estPorte ? [0.42, 0.32, 0.25] : null);
+        // l'encadrement de granit : linteau, appui (pas sous une porte), jambages
+        const [gx, gz] = at(t, 0.06); piece('granit', w + 0.4, 0.22, 0.14, gx, y + h / 2 + 0.11, gz, ang);
+        if (!estPorte) piece('granit', w + 0.5, 0.12, 0.2, gx, y - h / 2 - 0.06, gz, ang);
+        for (const sx of [-1, 1]) { const [jx, jz] = at(t + sx * (w / 2 + 0.09), 0.06); piece('granit', 0.18, h, 0.14, jx, y, jz, ang); }
+        // les volets, ouverts contre le mur, à la couleur de la maison
+        if (!estPorte) for (const sx of [-1, 1]) { const [vx, vz] = at(t + sx * (w / 2 + 0.2 + w / 4), 0.05); piece('bois', w / 2, h, 0.05, vx, y, vz, ang, couleur); }
+      } }
+  }
+}
+
 function bati({ hauteur, scene, PLAN, inscrire, CADRE }) {
   const B = (PLAN.bati || []).filter((b) => b.pts.length >= 3 && b.pts.every(([x, z]) => x > CADRE.x0 && x < CADRE.x1 && z > CADRE.z0 && z < CADRE.z1));
   const murs = [], toits = [], alea = (k) => { const s = Math.sin(k * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -212,6 +259,7 @@ function bati({ hauteur, scene, PLAN, inscrire, CADRE }) {
     const gm = new THREE.ExtrudeGeometry(sh, { depth: haut - base, bevelEnabled: false, steps: 1 }); gm.rotateX(-Math.PI / 2); gm.translate(0, base, 0); gm.clearGroups();
     const gn = gm.toNonIndexed(); gn.computeVertexNormals(); uvMetres(gn); murs.push(teinter(gn, t));
     LIEU.murs.push({ pts: P, sol });
+    ouvertures(P, sol, hm, b.k === 'barn', i, voisin, hauteur);
     // le toit
     let D = ailes(P);
     // des ailes calées sur des murs presque d'équerre (à 10–15° près) sortent un peu de l'emprise :
@@ -253,6 +301,7 @@ function bati({ hauteur, scene, PLAN, inscrire, CADRE }) {
     inscrire(P, P.reduce((s, p) => s + p[0], 0) / P.length, P.reduce((s, p) => s + p[1], 0) / P.length);
   });
   const prep = (g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k); if (!g.attributes.normal) g.computeVertexNormals(); return g.index ? g.toNonIndexed() : g; };
+  for (const [cle, gs] of Object.entries(OUV)) if (gs.length) { const m = new THREE.Mesh(mergeGeometries(gs.map(prep)), MAT_OUV[cle]()); m.castShadow = m.receiveShadow = true; scene.add(m); OUV[cle] = []; }
   if (murs.length) { const m = new THREE.Mesh(mergeGeometries(murs.map(prep)), phMat('stone_wall', 1, 1, { color: 0xa8a090, vertexColors: true, side: THREE.DoubleSide })); m.castShadow = m.receiveShadow = true; scene.add(m); }
   if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits.map(prep)), TUILE(1, 1, { vertexColors: true })); m.castShadow = m.receiveShadow = true; scene.add(m); }
 }
@@ -269,6 +318,9 @@ function matiereRue(c, sentier) {
   if (!sentier) return c.r >= 2 ? 'asphalt_02' : 'gravier';
   return c.r === 1 ? 'rocky_trail' : 'terre_battue';
 }
+// la terre des chemins grisée vers l'herbe grillée : rousse, elle se lisait comme une piste de
+// cendrée (planche du regard, 5 octobre) ; l'accotement en gravier sortait presque noir
+const TEINTE_RUE = { asphalt_02: 0xe2dcd2, terre_battue: 0xb0a690, gravier: 0xc8bea8 };
 function rues({ hauteur, scene, PLAN, CADRE, bloque }) {
   const dedans = (x, z) => x > CADRE.x0 - 10 && x < CADRE.x1 + 10 && z > CADRE.z0 - 10 && z < CADRE.z1 + 10;
   const par = new Map();
@@ -285,19 +337,38 @@ function rues({ hauteur, scene, PLAN, CADRE, bloque }) {
     // un sommet par mètre EN TRAVERS aussi (une rue de 6 m sur un bombement s'y enfonçait), et les
     // faces tournées vers le ciel : l'ordre de monde.js (b, b+2, b+1) les tournait vers le bas, et les
     // rubans étaient invisibles d'en haut (PROMPT-REPRISE.md, § 4.E)
-    const pos = [], uv = [], col = [], idx = [], nt = Math.max(2, Math.ceil(w) + 1); let s = 0;
-    for (let k = 0; k < d.length; k++) { const [x, z] = d[k], [xa, za] = d[Math.max(0, k - 1)], [xb, zb] = d[Math.min(d.length - 1, k + 1)];
-      let dx = xb - xa, dz = zb - za; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l; if (k) s += Math.hypot(x - d[k - 1][0], z - d[k - 1][1]);
-      const tv = 0.9 + 0.1 * Math.sin(x * 0.013 + z * 0.017) * Math.sin(x * 0.007 - z * 0.011);      // la teinte varie à grande échelle
-      for (let q = 0; q < nt; q++) { const cs = -1 + 2 * q / (nt - 1), px = x - dz * w / 2 * cs, pz = z + dx * w / 2 * cs; pos.push(px, hauteur(px, pz) + cls.y, pz); uv.push(cs * w / 2, s); col.push(tv, tv, tv); }
-      if (k) for (let q = 0; q < nt - 1; q++) { const b = (k - 1) * nt + q, c = b + nt; idx.push(b, b + 1, c, b + 1, c + 1, c); } }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-    const cle = matiereRue(c, sentier) + '|' + cls.off; if (!par.has(cle)) par.set(cle, []); par.get(cle).push(g.toNonIndexed());
-    LIEU.rues.push({ pts: d, nom: c.nom, w }); LIEU.rubans.push({ pts: d.map(([x, z]) => [x, hauteur(x, z) + cls.y, z]) });
+    // Le réalisme (consigne de nuit, 5 octobre) : le chemin rural du Ségala est une chaussée étroite
+    // et bombée, posée sur un accotement de gravier et de terre qui mange l'herbe de travers ; le
+    // chemin d'exploitation, deux ornières de terre et l'herbe au milieu ; le sentier, une trace dont
+    // la largeur varie. Plus de ruban de largeur fixe à bord franc.
+    const seme = c.pts[0][0] * 0.37 + c.pts[0][1] * 0.11, onde = (s, f) => 0.5 * Math.sin(s * 0.21 * f + seme) + 0.5 * Math.sin(s * 0.57 * f + seme * 2);
+    const poser = (slug, off, larg, centre, y, bombe = 0, bord = 1) => {
+      const pos = [], uv = [], col = [], idx = [], nt = Math.max(2, Math.ceil(larg(0)) + 2); let s = 0;
+      for (let k = 0; k < d.length; k++) { const [x, z] = d[k], [xa, za] = d[Math.max(0, k - 1)], [xb, zb] = d[Math.min(d.length - 1, k + 1)];
+        let dx = xb - xa, dz = zb - za; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l; if (k) s += Math.hypot(x - d[k - 1][0], z - d[k - 1][1]);
+        const tv = 0.9 + 0.1 * Math.sin(x * 0.013 + z * 0.017) * Math.sin(x * 0.007 - z * 0.011), W = larg(s), cc = centre(s);      // la teinte varie à grande échelle
+        for (let q = 0; q < nt; q++) { const cs = -1 + 2 * q / (nt - 1), e = cc + W / 2 * cs, px = x - dz * e, pz = z + dx * e, t = tv * (Math.abs(cs) > 0.99 ? bord : 1);
+          pos.push(px, hauteur(px, pz) + y + bombe * (1 - cs * cs), pz); uv.push(e, s); col.push(t, t, t); }
+        if (k) for (let q = 0; q < nt - 1; q++) { const b = (k - 1) * nt + q, c2 = b + nt; idx.push(b, b + 1, c2, b + 1, c2 + 1, c2); } }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+      const cle = slug + '|' + off; if (!par.has(cle)) par.set(cle, []); par.get(cle).push(g.toNonIndexed()); };
+    const slug = matiereRue(c, sentier), droit = () => 0;
+    if (!sentier) {
+      // l'accotement d'abord, sous la chaussée (décalé en profondeur d'un cran de moins) : 0,4 à 1,1 m de
+      // chaque côté, irrégulier ; puis la chaussée, bombée de 1,5 cm au milieu
+      poser('terre_battue', cls.off + 1, (s) => w + 1.5 + 0.7 * onde(s, 1), (s) => 0.25 * onde(s, 0.6), cls.y - 0.006, 0, 0.82);
+      poser(slug, cls.off, (s) => w * (0.97 + 0.03 * onde(s, 2)), droit, cls.y, 0.015);
+    } else if (c.r === 1 && c.k !== 'steps' && !c.surface) {
+      // deux ornières de 55 cm, espacées comme les roues d'un tracteur, l'herbe entre les deux
+      for (const sg of [-1, 1]) poser('terre_battue', cls.off, (s) => 0.55 + 0.15 * onde(s + sg * 7, 1.5), (s) => sg * (0.8 + 0.06 * onde(s, 0.8)), cls.y, 0, 0.88);
+    } else if (c.k !== 'steps') {
+      poser(slug, cls.off, (s) => w * (0.7 + 0.55 * (0.5 + 0.5 * onde(s, 1.3))), (s) => 0.3 * onde(s, 0.5), cls.y, 0, 0.92);
+    } else poser(slug, cls.off, () => w, droit, cls.y);
+    LIEU.rues.push({ pts: d, nom: c.nom, w }); LIEU.rubans.push({ pts: d.map(([x, z]) => [x, hauteur(x, z) + cls.y + (sentier ? 0 : 0.015), z]) });
   }
   for (const [cle, gs] of par) { const [slug, off] = cle.split('|');
-    const m = new THREE.Mesh(mergeGeometries(gs), phMat(slug, 1, 1, { color: slug === 'asphalt_02' ? 0xe2dcd2 : 0xa89c86, roughness: 1, vertexColors: true, polygonOffset: true, polygonOffsetFactor: +off, polygonOffsetUnits: +off }));
+    const m = new THREE.Mesh(mergeGeometries(gs), phMat(slug, 1, 1, { color: TEINTE_RUE[slug] || 0xa89c86, roughness: 1, vertexColors: true, polygonOffset: true, polygonOffsetFactor: +off, polygonOffsetUnits: +off }));
     m.receiveShadow = true; scene.add(m); }
   LIEU.nappes.push({ nom: 'rues / relief', ecart: 0.03, decale: true }, { nom: 'rues entre elles (carrefours)', ecart: 0.005, decale: true });
 }
@@ -507,11 +578,16 @@ function secheresse({ hauteur, scene, PLAN }) {
   const plein = PLAN.eau && PLAN.eau.lacPlein; if (!plein) return;
   const P = plein.pts, dans = (x, z) => { let d = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d; } return d; };
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [x, z] of P) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  const rive = (x, z) => { let b = null, bd = 1e9;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [ax, az] = P[j], [bx, bz] = P[i], dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l)), px = ax + t * dx, pz = az + t * dz, d = (px - x) ** 2 + (pz - z) ** 2;
+      if (d < bd) { bd = d; b = [px, pz]; } } return b; };
   // la grève : les mailles de 3 m dont un coin est dans le lac plein ; UV en mètres
   const S = 3, pos = [], uv = [];
   for (let x = x0 - S; x < x1 + S; x += S) for (let z = z0 - S; z < z1 + S; z += S) {
     if (!(dans(x, z) || dans(x + S, z) || dans(x, z + S) || dans(x + S, z + S))) continue;
-    const c = [[x, z], [x + S, z], [x + S, z + S], [x, z + S]].map(([a, b]) => [a, hauteur(a, b) + 0.05, b]);
+    // un coin hors du lac plein est ramené sur sa rive : sans cela, le bord de la grève faisait des
+    // marches de 3 m, très visibles en plongée (planche du regard, 5 octobre)
+    const c = [[x, z], [x + S, z], [x + S, z + S], [x, z + S]].map(([a, b]) => dans(a, b) ? [a, b] : rive(a, b)).map(([a, b]) => [a, hauteur(a, b) + 0.05, b]);
     for (const k of [0, 3, 1, 1, 3, 2]) { pos.push(...c[k]); uv.push(c[k][0] / 2, c[k][2] / 2); }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
@@ -526,6 +602,33 @@ function secheresse({ hauteur, scene, PLAN }) {
     const idx = []; for (let k = 0; k < pts.length - 1; k++) { const b = k * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }   // faces vers le ciel
     const gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); gl.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); gl.setIndex(idx); gl.computeVertexNormals(); return gl.toNonIndexed(); });
   for (const gl of lits) { const m = new THREE.Mesh(gl, phMat('rocks_ground_08', 2, 2, { color: 0xb8a890, polygonOffset: true, polygonOffsetFactor: -2 })); m.receiveShadow = true; scene.add(m); }
+}
+
+// ---------------------------------------------------------------------
+//  La source des Vergnes (le jouable, 5 octobre)
+// ---------------------------------------------------------------------
+// Un repère de la minicarte ne doit pas pointer vers le vide : à la source posée par Eugène (carte/
+// mondes/README.md, « bouchée par la bande, le lac baisse »), un griffon de pierre sèche à demi
+// enterré dans la pente, sa bouche murée de pierres entassées, et le lit à sec qui en part.
+// STORY.md (« Les sources : rouvrir des sources bouchées par la bande ») : on la MONTRE bouchée,
+// la quête n'est pas écrite ici.
+function source({ hauteur, scene, inscrire, addInteract, bloque }) {
+  let [x, z] = [470, 440];
+  for (let r = 0; r < 20 && bloque(x, z, 1.6); r += 1) for (let k = 0; k < 12; k++) { const a = k / 12 * 6.283; if (!bloque(470 + Math.cos(a) * r, 440 + Math.sin(a) * r, 1.6)) { x = 470 + Math.cos(a) * r; z = 440 + Math.sin(a) * r; break; } }
+  // tournée vers le bas de la pente : la source sort du coteau
+  const gx = hauteur(x + 1, z) - hauteur(x - 1, z), gz = hauteur(x, z + 1) - hauteur(x, z - 1), rot = Math.atan2(-gx, -gz);
+  const y = hauteur(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = rot; scene.add(g);
+  const pierre = phMat('rustic_stone_wall_02', 1, 1, { color: 0x9e968a });
+  pose(g, boite(2.6, 2.2, 2.0, 'rustic_stone_wall_02', { color: 0x9e968a }), 0, 0.5, -0.6);                 // le griffon, à demi dans la pente
+  pose(g, boite(1.2, 0.18, 0.5, 'granite_tile_03', { color: 0xbab4a8 }), 0, 1.15, 0.45);                     // le linteau de la bouche
+  for (let k = 0; k < 9; k++) { const r = 0.22 + 0.12 * ((k * 37) % 5) / 5, p = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), pierre);
+    p.position.set(-0.45 + (k % 3) * 0.45, 0.15 + Math.floor(k / 3) * 0.32, 0.55 + 0.1 * (k % 2)); p.rotation.set(k, k * 2, 0); g.add(p); }      // la bouche murée
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const c = Math.cos(rot), sn = Math.sin(rot), m = (lx, lz) => [x + lx * c + lz * sn, z - lx * sn + lz * c];
+  inscrire([[-1.3, -1.6], [1.3, -1.6], [1.3, 0.9], [-1.3, 0.9]].map(([a, b]) => m(a, b)), x, z);
+  const [fx, fz] = m(0, 2.2);
+  addInteract({ pos: new THREE.Vector3(fx, hauteur(fx, fz), fz), r: 3, prompt: () => 'la source des Vergnes', fn: () => showMessage('La source des Vergnes. Sa bouche est murée de pierres entassées, trop bien rangées pour être tombées seules.', 6) });
+  LIEU.source = [x, z];
 }
 
 // ---------------------------------------------------------------------
@@ -563,7 +666,7 @@ function personne(scene, role, x, y, z, yaw) {
   const g = PNJ.buildRole(role); if (!g) return null;
   g.scale.setScalar(G.echelle); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g); gens.push(g); return g;
 }
-function habitants({ hauteur, scene, inscrire, addInteract, bloque }) {
+function habitants({ hauteur, scene, inscrire, addInteract, bloque, PLAN }) {
   const devant = (X, Z, rot, d, cote = 0) => [X + Math.sin(rot) * d + Math.cos(rot) * cote, Z + Math.cos(rot) * d - Math.sin(rot) * cote];
   const rond = (x, z, r) => inscrire(Array.from({ length: 8 }, (_, k) => [x + Math.cos(k / 8 * 6.283) * r, z + Math.sin(k / 8 * 6.283) * r]), x, z);
   // un cavalier Roquette devant le portail de sa maison, le cheval tourné vers le lac
@@ -588,18 +691,30 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque }) {
       { who: 'L’aïeule', text: 'Le Batut, Beauregard… Ce sont mes petits-enfants, les uns comme les autres.' },
       { who: 'L’aïeule', text: 'Avant, on se retrouvait tous ici, à la Saint-Jean. Maintenant ils se regardent par-dessus le lac.' }]) });
     const [hx, hz] = devant(X, Z, rot, MAISON.W / 2 + 9, -6); cheval(scene, 'cheval.glb', hx, hauteur(hx, hz), hz, rot + 1.9, 'Eating'); rond(hx, hz, 1.3); }
-  // le bourg : quelques villageois à l'ombre du marronnier, sur la place — hors de la zone jouable
-  // depuis le 5 octobre (bloque() y est vrai) : personne n'y est posé, ils sont à reposer au bord du lac
-  if (PNJ.buildVillageois) {
-    const place = { x: 3814, z: -434 };
-    for (let k = 0, n = 0; k < 40 && n < 4; k++) {
-      const a = k * 2.4, r = 5 + (k % 5) * 1.6, x = place.x + Math.cos(a) * r, z = place.z + Math.sin(a) * r;
-      if (bloque(x, z, 0.8)) continue;
-      const v = PNJ.buildVillageois(n * 3 + 1); if (!v) break;
-      v.scale.setScalar(G.echelle); v.position.set(x, hauteur(x, z), z); v.rotation.y = Math.atan2(place.x - x, place.z - z); scene.add(v); gens.push(v); n++;
-      rond(x, z, 0.4);
-      addInteract({ pos: new THREE.Vector3(x, hauteur(x, z), z), r: 2.5, prompt: () => 'parler', fn: () => showMessage(['Le puits du bourg ne donne plus que de la vase.', 'On dit que les sources se sont bouchées toutes seules. Moi, je n’y crois pas.', 'Le soleil ne bouge plus. Ça fait des jours que c’est midi.', 'Les Roquette vont finir par se battre, pour ce lac.'][n - 1], 5) });
-    }
+  // Les gens du lac (le jouable, 5 octobre) : les villageois de la place de Saint-Symphorien, hors
+  // de la zone depuis le resserrement, sont reposés au bord du lac, avec un pêcheur et un colporteur
+  // de passage. Leurs mots orientent ou racontent le lieu ; rien sur l'histoire que STORY.md ne dise.
+  // Chacun cherche la place libre la plus proche de la sienne (le plan peut bouger).
+  // (l'eau ne bloque pas la marche dans monde.js : on n'y pose personne)
+  const eaux = ((PLAN && PLAN.eau.plans) || []).map((p) => p.pts), sec = (x, z) => !eaux.some((P) => dansPoly(x, z, P));
+  const placer = (x0, z0) => { for (let r = 0; r < 30; r += 1.5) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * 6.283) * r, z = z0 + Math.sin(k / 16 * 6.283) * r; if (!bloque(x, z, 0.9) && sec(x, z)) return [x, z]; } return null; };
+  const parler = (o, x, z, qui, mots) => { const y = hauteur(x, z); o.scale.setScalar(G.echelle); o.position.set(x, y, z); scene.add(o); gens.push(o); rond(x, z, 0.4);
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler', fn: () => dialogue(mots.map((text) => ({ who: qui, text }))) }); };
+  const GENS = [
+    // [rôle ou n° de villageois, x, z, regarde vers, qui, répliques]
+    ['pecheur', -66, 97, [0, 60], 'Le pêcheur', ['Le lac a perdu plus d’un mètre. Les poissons se serrent au fond, là où il reste de l’eau.', 'Le barrage est au nord-ouest, au bout de la rive. On y passe à pied, sur la crête.']],
+    ['colporteur', -175, -325, [-175, -300], 'Le colporteur', ['Je descends de Saint-Gervais, en haut. Là-haut aussi, les puits sont à sec.', 'Le Pouget est à l’est, dans les prés. L’aïeule y reçoit tout le monde.']],
+    [1, 452, -228, [470, -240], 'Une femme de Perpignou', ['Le puits du hameau ne donne plus que de la vase.']],
+    [4, 462, -212, [470, -240], 'Un homme de Perpignou', ['Le soleil ne bouge plus. Ça fait des jours que c’est midi.']],
+    [7, 290, 30, [400, 150], 'Un homme de Fariboules', ['Beauregard, c’est la grande maison sur la pente, au sud-est. De chez eux, on voit tout le lac.']],
+    [10, -262, -330, [-269, -339], 'Une femme, à la fontaine', ['On dit que les sources se sont bouchées toutes seules. Moi, je n’y crois pas.', 'Celle des Vergnes, au bout du lac, au sud-est, ne coule plus non plus.']],
+    [13, -205, -55, [-222, -75], 'Un homme, sur le barrage', ['Les Roquette vont finir par se battre, pour ce lac.']],
+  ];
+  for (const [qui0, x0, z0, [lx, lz], qui, mots] of GENS) {
+    const p = placer(x0, z0); if (!p) continue; const [x, z] = p;
+    const o = typeof qui0 === 'string' ? PNJ.buildRole(qui0) : PNJ.buildVillageois && PNJ.buildVillageois(qui0); if (!o) continue;
+    o.rotation.y = Math.atan2(lx - x, lz - z); parler(o, x, z, qui, mots);
+    LIEU.gens = LIEU.gens || []; LIEU.gens.push({ qui, x: +x.toFixed(1), z: +z.toFixed(1), dit: mots[0] });
   }
 }
 
@@ -624,6 +739,20 @@ monde({
   chemin: ['rocky_trail', 0x8a7c66],
   arbres: null,           // plantés par arbres(), après le bâti (monde.js les semait avant, jusque dans les maisons)
   depart: { x: -120, z: 135, yaw: Math.atan2(120, -135) },
+  // les repères de la minicarte, comptés comme lieux découverts (monde.js, 4 octobre)
+  reperes: [
+    { id: 'batut', nom: 'Le Batut', x: -135, z: 170, r: 30, type: 'lieu' },
+    { id: 'beauregard', nom: 'Beauregard', x: 400, z: 150, r: 30, type: 'lieu' },
+    { id: 'pouget', nom: 'La grande maison du Pouget', x: 185, z: -315, r: 30, type: 'lieu' },
+    { id: 'barrage', nom: 'Le barrage', x: -230, z: -95, r: 30, type: 'lieu' },
+    { id: 'vergnes', nom: 'La source des Vergnes', x: 470, z: 440, r: 15, type: 'lieu' },
+    { id: 'fontaine', nom: 'La fontaine du lac', x: -269, z: -339, r: 15, type: 'lieu' },
+    { id: 'perpignou', nom: 'Perpignou', x: 462, z: -232, r: 30, type: 'lieu' },
+    { id: 'fariboules', nom: 'Fariboules', x: 283, z: 12, r: 22, type: 'lieu' },
+    { id: 'pecheur', nom: 'Le pêcheur', x: -66, z: 97, r: 8, type: 'pnj' },
+    { id: 'colporteur', nom: 'Le colporteur', x: -175, z: -325, r: 8, type: 'pnj' },
+    { id: 'porte', nom: 'La porte de l’île', x: -126, z: 146, r: 8, type: 'passage' },
+  ],
   portes: [{ x: -126, z: 146, rot: 0.7, prompt: 'repasser la porte de l’île', vers: ['temple', [20.35, 0, 11.75], Math.atan2(-20.35, -11.75)], label: 'Retour à l’île du temps…' }],
   counts: 'Le lac de Saint-Gervais, dans l’Aveyron de la grande sécheresse. Les trois grandes maisons des Roquette sont autour. La porte de l’île, derrière toi.',
   start: 'Le soleil est au sommet du ciel, et il n’en bouge pas. Le lac est bas.',
@@ -641,6 +770,7 @@ monde({
     grandeMaison(ctx, -135, 170, versLac(-135, 170), 'la grande maison du Batut', 'Le Batut. Les volets sont fermés au soleil ; derrière, on entend parler d’eau.', { volets: 0xb4c8d6, fermes: true });
     grandeMaison(ctx, 400, 150, versLac(400, 150), 'Beauregard', 'Beauregard, sur sa hauteur : de là, on voit tout le lac, et ce qu’il en reste.', { volets: 0xc8705a, fermes: false });
     bourg(ctx);
+    source(ctx);
     habitants(ctx);
     grandeMaison(ctx, 185, -315, versLac(185, -315), 'la grande maison du Pouget', 'Le Pouget, la grande maison. La plus vieille des trois.', { volets: 0xb0c09a, fermes: false });
     t = duree('le reste (maisons Roquette, bourg, gens, sécheresse)', t);

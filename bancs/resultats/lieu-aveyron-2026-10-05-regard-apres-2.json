@@ -1,0 +1,273 @@
+{
+ "date": "2026-10-05T09:24:08.515Z",
+ "chargement_s": 3.202,
+ "erreurs": [],
+ "praticabilite": {
+  "points": 8649,
+  "libres": 8649,
+  "part": 100,
+  "tropRaides": 0,
+  "bloques": []
+ },
+ "cibles": [
+  {
+   "nom": "départ",
+   "x": -120,
+   "z": 135,
+   "atteinte": true,
+   "resteA": 0.25,
+   "arrets": 0
+  },
+  {
+   "nom": "repasser la porte de l’île",
+   "x": -126,
+   "z": 146,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -188.896,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -104.13777581641659,
+   "z": 470,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 332.9016194331984,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": 147.0847352024922,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -290,
+   "z": -189.02941176470588,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": -316.6085057471265,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": -122.4034316912701,
+   "z": 163.78578509838118,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "la grande maison du Batut",
+   "x": -130.6468249947889,
+   "z": 164.51822406751194,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 390.2153600944035,
+   "z": 139.92275722641315,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "Beauregard",
+   "x": 393.44569575701667,
+   "z": 147.54213590888125,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la fontaine",
+   "x": -262.48235367508653,
+   "z": -336.04470768750133,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la source des Vergnes",
+   "x": 470.9303480237268,
+   "z": 438.00639709200965,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": -122.4241610960568,
+   "z": 149.3396932292362,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 1.01,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": 376.47472941357773,
+   "z": 144.38202493458573,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler à l’aïeule",
+   "x": 181.6576157597993,
+   "z": -309.30891332073935,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -66,
+   "z": 97,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -175,
+   "z": -325,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 452,
+   "z": -228,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 462,
+   "z": -212,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 291.5,
+   "z": 30,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -262,
+   "z": -330,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -205,
+   "z": -55,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 173.39472728392232,
+   "z": -307.0875006991809,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la grande maison du Pouget",
+   "x": 181.45504701796895,
+   "z": -308.96399897654175,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  }
+ ],
+ "bati": {
+  "batiments": 11,
+  "toitsQuiDebordent": 0,
+  "toitsSurVoisin": 0,
+  "soubassementsPlus15": 0,
+  "chevauchements": 0,
+  "pires": {
+   "debords": [],
+   "soubassements": []
+  }
+ },
+ "sols": {
+  "echantillons": 43244,
+  "flottePlus5cm": 32,
+  "part": 0.1,
+  "enfoncePlus2cm": 0,
+  "zFighting": []
+ },
+ "source": "déclaré par le lieu (window.__lieu)",
+ "durees": {
+  "bâti": 33,
+  "rues": 57,
+  "lisière": 69,
+  "le reste (maisons Roquette, bourg, gens, sécheresse)": 201,
+  "arbres": 70
+ }
+}

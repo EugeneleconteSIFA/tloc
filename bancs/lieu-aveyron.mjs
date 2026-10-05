@@ -27,7 +27,21 @@ const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Pad
 const { chromium } = createRequire(PW)('playwright');
 // fileURLToPath et non `.pathname`, qui donne « /C:/… » sous Windows
 const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Date().toISOString().slice(0, 10);
-const VUES = [   // la planche fixe : une aérienne, une de dessus (emprises OSM en surimpression), trois dans
+// `… lieu-aveyron.mjs <origine> regard <étiquette>` : la planche du REGARD (consigne de nuit, 5 octobre)
+// — les endroits que le joueur traverse, à hauteur d'yeux (1,6 m) et en plongée, pour comparer
+// au vrai lieu ; sortie lieu-aveyron-<date>-regard-<étiquette>.*
+const REGARD = process.argv[3] === 'regard', ETIQUETTE = REGARD ? '-regard' + (process.argv[4] ? '-' + process.argv[4] : '') : '';
+const VUES_REGARD = [
+  { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
+  { nom: 'plongée : Beauregard', cam: [345, 45, 195], at: [400, 0, 150] },
+  { nom: 'yeux : le Pouget, la cour', cam: [175, 1.6, -268], at: [185, 4, -312], sol: true },
+  { nom: 'plongée : le Pouget', cam: [140, 45, -250], at: [185, 0, -315] },
+  { nom: 'yeux : le barrage, le duel', cam: [-232, 1.6, -30], at: [-222, 1.2, -100], sol: true, rue: true },
+  { nom: 'plongée : le barrage', cam: [-170, 40, -40], at: [-225, 0, -90] },
+  { nom: 'yeux : Perpignou, la rue', cam: [440, 1.6, -205], at: [470, 3, -240], sol: true, rue: true },
+  { nom: 'yeux : le chemin de la rive nord', cam: [60, 1.6, -265], at: [0, 1.4, -275], sol: true, rue: true },
+];
+const VUES = REGARD ? VUES_REGARD : [   // la planche fixe : une aérienne, une de dessus (emprises OSM en surimpression), trois dans
   // les rues à hauteur de Camille, deux gros plans (façade, sol), une depuis le départ
   { nom: 'aérienne', cam: [700, 380, 900], at: [100, 0, 50] },
   // depuis le resserrement du 5 octobre, le lac seul : Saint-Symphorien et Saint-Gervais sont à l'horizon
@@ -197,9 +211,19 @@ try {
     return cv.toDataURL('image/png');
   }, images);
 
-  const nom = DIR + 'lieu-aveyron-' + JOUR;
+  // la minicarte (planche du regard) : Camille posée devant chaque repère, pour qu'il soit découvert,
+  // puis à Perpignou ; on garde le carré de la minicarte tel qu'il est dessiné
+  let minicarte = null;
+  if (REGARD) minicarte = await page.evaluate(async () => {
+    try { TLOC.cutAdvance(true); } catch (e) {}
+    const T = TLOC, poser = (x, z) => { T.player.pos.set(x, T.getH(x, z), z); };
+    for (const [x, z] of [[-135, 170], [-66, 97], [-230, -95], [-269, -339], [-175, -325], [185, -315], [283, 12], [400, 150], [470, 440], [462, -232]]) { poser(x, z); await new Promise((r) => setTimeout(r, 400)); }
+    poser(420, -190); await new Promise((r) => setTimeout(r, 1200));
+    const c = document.getElementById('minimap'); return c ? c.toDataURL('image/png') : null; });
+  const nom = DIR + 'lieu-aveyron-' + JOUR + ETIQUETTE;
   fs.writeFileSync(nom + '-carte.png', Buffer.from(res.carte.split(',')[1], 'base64'));
   fs.writeFileSync(nom + '-vues.png', Buffer.from(planche.split(',')[1], 'base64'));
+  if (minicarte) fs.writeFileSync(nom + '-minicarte.png', Buffer.from(minicarte.split(',')[1], 'base64'));
   delete res.carte;
   const sortie = { date: new Date().toISOString(), chargement_s: charge, erreurs: erreurs.slice(0, 20), ...res };
   fs.writeFileSync(nom + '.json', JSON.stringify(sortie, null, 1));
