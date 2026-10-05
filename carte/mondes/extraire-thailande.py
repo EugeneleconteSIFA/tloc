@@ -244,6 +244,32 @@ def resserrer(o, m):
         o['lieux'].append({'k': 'belvedere', 'm': 'phiphi', 'x': ESCALIER[-1][0], 'z': ESCALIER[-1][1], 'nom': 'le belvédère des moines'})
     return bouts
 
+def sous_bati(o):
+    """Les voies qui courent SOUS un bâtiment (un accès couvert d'OSM, une rampe de garage) :
+    le jeu les bloque — le bâtiment est plein. Une voie dont les quatre cinquièmes des points,
+    pris tous les mètres, tombent dans un même bâtiment est retirée (Ton Sai, 5 octobre : une
+    impasse de 20 m tout entière dans un hôtel, 22 points bloqués au banc)."""
+    def dans(q, pts):
+        d, j = False, len(pts) - 1
+        for i in range(len(pts)):
+            (xi, zi), (xj, zj) = pts[i], pts[j]
+            if (zi > q[1]) != (zj > q[1]) and q[0] < (xj - xi) * (q[1] - zi) / (zj - zi) + xi: d = not d
+            j = i
+        return d
+    n = 0
+    for k in ('routes', 'chemins'):
+        garde = []
+        for e in o[k]:
+            p, ech = e['pts'], []
+            for a, b in zip(p, p[1:]):
+                s = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1])))
+                ech += [(a[0] + (b[0] - a[0]) * t / s, a[1] + (b[1] - a[1]) * t / s) for t in range(s)]
+            sous = any(sum(dans(q, B['pts']) for q in ech) >= 0.8 * len(ech) for B in o['batiments'] if B['m'] == e['m']) if ech else False
+            if sous: n += 1
+            else: garde.append(e)
+        o[k] = garde
+    return n
+
 CLS_ROUTE = {'primary': 3, 'secondary': 3, 'tertiary': 2, 'tertiary_link': 2, 'residential': 2,
              'living_street': 2, 'unclassified': 2, 'pedestrian': 1, 'service': 1}
 CLS_CHEMIN = {'track': 1, 'footway': 0, 'path': 0, 'steps': 0}
@@ -524,6 +550,7 @@ if __name__ == '__main__':
             g = garde_de(m); M.update(x0=g[0], x1=g[1], z0=g[2], z1=g[3], coeur=list(COEURS[m]['coeur']), mode=COEURS[m]['mode'])
         baie['morceaux'][m] = M
     baie['bouts'] = bouts
+    print('voies sous un bâtiment, retirées : %d' % sous_bati(baie))
     cs = baie['morceaux'].values()
     baie['cadre'] = {'x0': min(c['x0'] for c in cs) - 300, 'x1': max(c['x1'] for c in cs) + 300,
                      'z0': min(c['z0'] for c in cs) - 300, 'z1': max(c['z1'] for c in cs) + 300}

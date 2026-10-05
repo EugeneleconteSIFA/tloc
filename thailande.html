@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>The Legend of Camille — La baie des pitons</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- sans icône déclarée, le navigateur demandait /favicon.ico : un 404 à chaque chargement -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script>if (location.hostname.startsWith('tloc-dev')) addEventListener('DOMContentLoaded', () => { document.querySelector('link[rel="icon"]').href = 'favicon-dev.svg'; });</script>
 <style>
   html, body { margin:0; height:100%; overflow:hidden; background:#0b1020; font-family: "Trebuchet MS", "Segoe UI", sans-serif; }
   canvas#game { display:block; width:100%; height:100%; }

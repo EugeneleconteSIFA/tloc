@@ -40,7 +40,9 @@ const PASSEUR = {
 function pilotis({ hauteur, scene, PLAN, inscrire }) {
   const ile = PLAN.cote.iles.find((i) => i.nom === 'Ko Panyi');
   const dansP = (x, z, pts) => { let d = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, zi] = pts[i], [xj, zj] = pts[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d; } return d; };
-  const murs = [], toits = [], pieux = [], poses = [];
+  // les murs en quatre lots : à Ko Panyi, les planches des maisons sont peintes, et la peinture a
+  // passé au sel — bleu, vert d'eau, crème, ou le bois nu
+  const murs = [[], [], [], []], toits = [], pieux = [], poses = [];
   const voies = [...PLAN.chemins, ...PLAN.ponts].filter((c) => c.m === 'panyi' && c.pts.length >= 2);
   // toutes les passerelles, segment par segment : une maison ne se pose pas EN TRAVERS d'une autre
   // (banc lieu-thailande, 2 octobre : 195 points de passerelle bloqués par des maisons voisines)
@@ -58,32 +60,54 @@ function pilotis({ hauteur, scene, PLAN, inscrire }) {
       if (ile && !dansP(x, z, ile.pts) && Math.random() < 0.35) continue;
       poses.push([x, z]);
       const ang = Math.atan2(uz, ux), hm = rand(2.6, 3.4), y0 = 1.3;
-      const g = new THREE.BoxGeometry(w, hm, d); g.rotateY(-ang); g.translate(x, y0 + hm / 2, z); murs.push(g.toNonIndexed());
+      const g = new THREE.BoxGeometry(w, hm, d); g.rotateY(-ang); g.translate(x, y0 + hm / 2, z); murs[Math.floor(Math.random() * murs.length)].push(g.toNonIndexed());
       // un toit de tôle à deux pans, faîtage le long de la passerelle
-      const t = new THREE.CylinderGeometry(d * 0.62, d * 0.62, w + 0.8, 3, 1); t.rotateZ(Math.PI / 2); t.rotateX(Math.PI / 2); t.scale(1, 0.45, 1);
+      // (rotateX de −π/2 : avec +π/2, l'arête du prisme pointait vers le BAS — des toits en V, sur
+      // toutes les captures de Ko Panyi jusqu'au 5 octobre)
+      const t = new THREE.CylinderGeometry(d * 0.62, d * 0.62, w + 0.8, 3, 1); t.rotateZ(Math.PI / 2); t.rotateX(-Math.PI / 2); t.scale(1, 0.45, 1);
       t.rotateY(-ang); t.translate(x, y0 + hm + d * 0.14, z); toits.push(t.toNonIndexed());
       for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = new THREE.CylinderGeometry(0.12, 0.14, 4, 5); p.translate(x + px * w * 0.42, y0 - 1.9, z + pz * d * 0.42); pieux.push(p.toNonIndexed()); }
       const ca = Math.cos(ang), sa = Math.sin(ang), coin = (p, q) => [x + p * ca - q * sa, z + p * sa + q * ca];
-      inscrire([coin(-w / 2, -d / 2), coin(w / 2, -d / 2), coin(w / 2, d / 2), coin(-w / 2, d / 2)], x, z);
+      const coins = [coin(-w / 2, -d / 2), coin(w / 2, -d / 2), coin(w / 2, d / 2), coin(-w / 2, d / 2)];
+      inscrire(coins, x, z);
+      BATI.facades.push({ pts: coins, haut: y0 + hm, m: 'panyi', sol: y0 });        // fenêtres et portes : batiIles()
     }
   }
   const uvm = (g) => { g.deleteAttribute('uv'); g.computeVertexNormals(); const p = g.attributes.position, n = g.attributes.normal, uv = [];
     for (let k = 0; k < p.count; k++) uv.push(p.getX(k) * Math.abs(n.getZ(k)) + p.getZ(k) * Math.abs(n.getX(k)) + (Math.abs(n.getY(k)) > 0.7 ? p.getX(k) : 0), Math.abs(n.getY(k)) > 0.7 ? p.getZ(k) : p.getY(k));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g; };
-  if (murs.length) { const m = new THREE.Mesh(mergeGeometries(murs.map(uvm)), phMat('hinoki_planks', 1, 1, { color: 0x9c8a74 })); m.castShadow = m.receiveShadow = true; scene.add(m); }
-  if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits.map(uvm)), phMat('enduit_gris', 1, 1, { color: 0xa88a78, roughness: 0.75 })); m.castShadow = true; scene.add(m); }
+  [0x9c8a74, 0x7e98a4, 0x8ea890, 0xcabda0].forEach((c, k) => { if (!murs[k].length) return;
+    const m = new THREE.Mesh(mergeGeometries(murs[k].map(uvm)), phMat('hinoki_planks', 1, 1, { color: c })); m.castShadow = m.receiveShadow = true; scene.add(m); });
+  // la tôle des toits, rouillée par la mer (l'enduit gris d'avant faisait un toit de ciment)
+  if (toits.length) { const m = new THREE.Mesh(mergeGeometries(toits.map(uvm)), phMat('metal_plate_02', 1, 1, { color: 0xe0ccb8, roughness: 0.75 })); m.castShadow = true; scene.add(m); }
   if (pieux.length) scene.add(new THREE.Mesh(mergeGeometries(pieux), phMat('tree_trunk', 1, 1, { color: 0x5a4838 })));
   // le platelage : partout où le relief de Ko Panyi est à 1,2 m (l'île basse et le long des
   // passerelles, recolter-relief-thailande.py), des planches — le village marche sur l'eau
-  const v = [], pas = 2.5;
+  const v = [], pas = 2.5, plat = new Set();
   for (let z = -440; z < 420; z += pas) for (let x = -260; x < 200; x += pas) {
     const hs = [hauteur(x, z), hauteur(x + pas, z), hauteur(x, z + pas), hauteur(x + pas, z + pas)];
     // une case dont un coin est sur le platelage : la planche déborde au-dessus de l'eau, comme au bord d'une vraie passerelle
-    if (hs.some((h) => h > 1.0 && h < 1.45) && hs.every((h) => h < 1.45)) v.push(x, 0, z, x, 0, z + pas, x + pas, 0, z, x + pas, 0, z, x, 0, z + pas, x + pas, 0, z + pas);
+    if (hs.some((h) => h > 1.0 && h < 1.45) && hs.every((h) => h < 1.45)) { v.push(x, 0, z, x, 0, z + pas, x + pas, 0, z, x + pas, 0, z, x, 0, z + pas, x + pas, 0, z + pas); plat.add(x + ',' + z); }
   }
   if (v.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
     const uv = []; for (let k = 0; k < v.length; k += 3) uv.push(v[k], v[k + 2]); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
     const m = new THREE.Mesh(g, phMat('wood_planks', 1, 1, { color: 0xb8a080, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 })); m.position.y = 1.28; m.receiveShadow = true; scene.add(m); }
+  // le bord du platelage, là où il donne sur l'eau : un chant de 35 cm (la poutre de rive) et, tous
+  // les 2,5 m, un pieu de béton qui descend dans la mer. Vu d'une barque ou du marché, le village
+  // n'était qu'une feuille posée sur l'eau ; un vrai village sur pilotis montre ses jambes.
+  const rive = [], pieu = [];
+  for (const k of plat) { const [x, z] = k.split(',').map(Number);
+    for (const [dx, dz, a, b] of [[0, -pas, [x, z], [x + pas, z]], [0, pas, [x + pas, z + pas], [x, z + pas]], [-pas, 0, [x, z + pas], [x, z]], [pas, 0, [x + pas, z], [x + pas, z + pas]]]) {
+      if (plat.has((x + dx) + ',' + (z + dz)) || hauteur((a[0] + b[0]) / 2 + dx * 0.4, (a[1] + b[1]) / 2 + dz * 0.4) > 0.9) continue;     // un voisin de planches, ou la terre : pas de rive
+      rive.push(a[0], 1.30, a[1], b[0], 1.30, b[1], b[0], 0.95, b[1], a[0], 1.30, a[1], b[0], 0.95, b[1], a[0], 0.95, a[1]);
+      pieu.push([a[0], a[1]]);
+    } }
+  if (rive.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(rive, 3));
+    const uv = []; for (let k = 0; k < rive.length; k += 3) uv.push(rive[k] + rive[k + 2], rive[k + 1]); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, phMat('hinoki_planks', 1, 1, { color: 0x7a6248, side: THREE.DoubleSide })); m.receiveShadow = true; scene.add(m); }
+  if (pieu.length) { const g = new THREE.CylinderGeometry(0.13, 0.15, 3.2, 6); g.translate(0, -0.65, 0);
+    const im = new THREE.InstancedMesh(g, phMat('enduit_gris', 1, 1, { color: 0x8a8a84 }), pieu.length), m4 = new THREE.Matrix4();
+    pieu.forEach(([x, z], k) => { im.setMatrixAt(k, m4.makeTranslation(x, 0, z)); }); scene.add(im); }
 }
 
 // ---------- les voies : ce qu'on a sous les pieds ----------
@@ -121,9 +145,23 @@ function voies({ hauteur, PLAN, CADRE, scene }) {
   // les rubans de monde.js sont retirés : sinon, le jour où ils se verront d'en haut, deux voies
   // l'une sur l'autre
   for (const o of [...scene.children]) if (o.isMesh && o.material && o.material.userData.ph === 'rocky_trail' && o.material.polygonOffset) scene.remove(o);
-  const H = solMaille(hauteur, CADRE), G = { dalle: [], carreaux: [], souple: [], marches: [] };
+  const H = solMaille(hauteur, CADRE), G = { dalle: [], carreaux: [], souple: [], marches: [], beton: [], planches: [] };
+  // Ko Panyi : les ruelles du village sont des dalles de béton coulées sur pilotis, larges de deux
+  // mètres (OSM : 1,3 km de béton, 110 m de planches). Le platelage (pilotis()) est à 1,28 m : la
+  // ruelle s'y pose, 4 cm plus haut — sans elle, le village n'était qu'un plancher brun d'un
+  // seul tenant, sans une rue où marcher.
+  const HP = (x, z) => Math.max(1.28, H(x, z));
   for (const c of [...PLAN.chemins, ...PLAN.routes]) {
-    if (c.surface || c.m === 'panyi' || c.pts.length < 2) continue;      // Ko Panyi : ses passerelles sont le platelage
+    if (c.surface || c.pts.length < 2) continue;
+    if (c.m === 'panyi') {
+      const g = c.s === 'wood' ? 'planches' : 'beton', pts = [];
+      for (let k = 0; k < c.pts.length - 1; k++) { const [a, b] = [c.pts[k], c.pts[k + 1]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2));
+        for (let t = 0; t < n; t++) pts.push([a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n]); }
+      pts.push(c.pts[c.pts.length - 1]);
+      let cur = []; const fin = () => { if (cur.length > 1) G[g].push(ruban3(cur, g === 'planches' ? 1.6 : 2.0, g, HP)); cur = []; };
+      for (const q of pts) { if (hauteur(q[0], q[1]) > 0.9) cur.push(q); else fin(); }
+      fin(); continue;
+    }
     const g = genreVoie(c), w0 = c.r >= 2 ? 4.2 : c.r === 1 ? 2.6 : c.k === 'steps' ? 2.2 : g === 'souple' ? 1.6 : 1.9;
     // un point tous les mètres (35 cm pour les marches), sur la terre seulement
     const pas = g === 'marches' ? 0.35 : 1;          // les marches : assez de points pour marquer chaque contremarche
@@ -139,6 +177,10 @@ function voies({ hauteur, PLAN, CADRE, scene }) {
     carreaux: phMat('worn_tile_floor', 1, 1, { color: 0xc8b8a0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     souple: phMat('gravier', 2, 2, { color: 0xd8c098, transparent: true, depthWrite: false, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
     marches: phMat('old_stone_wall_02', 1, 1, { color: 0xb8b0a0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    // le béton des ruelles de Ko Panyi : gris clair, taché d'eau ; les planches, plus pâles que le
+    // platelage, posées en travers (les UV : le long de la ruelle, s)
+    beton: phMat('enduit_gris', 2, 2, { color: 0xb4b2aa, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+    planches: phMat('wood_planks', 1.2, 1.2, { color: 0xa89070, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
   };
   for (const [k, l] of Object.entries(G)) if (l.length) { const m = new THREE.Mesh(mergeGeometries(l), M[k]); m.receiveShadow = true; if (k === 'souple') m.renderOrder = 1; scene.add(m); }
 }
@@ -146,6 +188,8 @@ function voies({ hauteur, PLAN, CADRE, scene }) {
 function ruban3(pts, w0, genre, H) {
   const pos = [], uv = [], col = [], idx = []; let s = 0, prec = null;
   const coupe = genre === 'souple' ? [[-1.25, -0.02, 0], [-0.6, 0.03, 1], [0, 0.04, 1], [0.6, 0.03, 1], [1.25, -0.02, 0]]
+    // sur le platelage de Ko Panyi : une dalle mince, à plat (on y marche à 1,2 m ; plus épaisse, les pieds s'y enfonçaient)
+    : genre === 'beton' || genre === 'planches' ? [[-1, -0.01, 1], [-1, 0.04, 1], [0, 0.045, 1], [1, 0.04, 1], [1, -0.01, 1]]
     : [[-1, -0.04, 1], [-1, 0.06, 1], [0, 0.08, 1], [1, 0.06, 1], [1, -0.04, 1]];     // la dalle : chant, dessus bombé, chant
   const n = coupe.length;
   for (let k = 0; k < pts.length; k++) {
@@ -253,7 +297,9 @@ function chedi({ hauteur, scene, addInteract }) {
   for (let k = 0; k < 7; k++) { const a = mesh(new THREE.TorusGeometry(1.25 - k * 0.12, 0.22, 6, 18), or, 0, 12.4 + k * 0.55, 0); a.rotation.x = Math.PI / 2; g.add(a); }
   g.add(mesh(new THREE.ConeGeometry(0.55, 7, 12), or, 0, 19.6, 0));
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  addInteract({ pos: new THREE.Vector3(x, y, z), r: 12, prompt: () => 'le chedi doré', fn: () => showMessage('Le chedi du grand piton. Les clochettes de ses anneaux sont arrêtées en plein tintement.', 6) });
+  // le chedi coiffe une seconde bosse du sommet, qu'un ravin de 30 m sépare du plateau : on le
+  // regarde depuis le bord du plateau, en face (parcours du 5 octobre : à son pied, on n'arrivait pas)
+  addInteract({ pos: new THREE.Vector3(946, hauteur(946, 340), 340), r: 7, prompt: () => 'regarder le chedi doré', fn: () => showMessage('Le chedi du grand piton. Les clochettes de ses anneaux sont arrêtées en plein tintement.', 6) });
 }
 
 // ---------- les temples du grand piton : toits thaïs, chedis ----------
@@ -317,6 +363,7 @@ function batiIles({ hauteur, scene }) {
     const P = F.pts[0][0] === F.pts[F.pts.length - 1][0] && F.pts[0][1] === F.pts[F.pts.length - 1][1] ? F.pts.slice(0, -1) : F.pts;
     let sol = 1e9; for (const [x, z] of P) sol = Math.min(sol, hauteur(x, z));
     let solMax = -1e9; for (const [x, z] of P) solMax = Math.max(solMax, hauteur(x, z));
+    if (F.sol != null) solMax = F.sol;          // sur pilotis : le plancher, pas la mer en dessous
     const niveaux = Math.max(1, Math.round((F.haut - solMax) / 3)), hN = (F.haut - solMax) / niveaux;
     for (let i = 0; i < P.length; i++) {
       const [ax, az] = P[i], [bx, bz] = P[(i + 1) % P.length], L = Math.hypot(bx - ax, bz - az); if (L < 2.2) continue;
@@ -499,9 +546,14 @@ const VENDEURS = [];
 // Les îles resserrées (4 octobre) : les anciens départs, le belvédère 2 de Phi Phi et celui de
 // Railay, sont hors des cœurs. Phi Phi part du haut de l'escalier des moines (extraire-thailande.py,
 // ESCALIER) ; Railay, du haut du sentier qui monte au sud du village.
+// Le 5 octobre, le parcours au banc (une recherche de chemin depuis le départ) : l'arrivée en
+// (976, 322) était à mi-falaise (74 m, une pente de 4,8 m par mètre) et le départ vers le marché au
+// bord du plateau — le sommet, ses balayeurs et la clé du cloître ne s'atteignaient qu'en grimpant
+// la paroi. Les deux sont sur le plateau (110–119 m) ; l'arrivée au nord, pour que la corde passe
+// à 49 m du second chedi (Phra Chedi Khiri, (997, 383)) au lieu de le traverser.
 const CABLES = [
-  { nom: 'vers le grand piton', de: [2605, 1790], a: [976, 322] },          // le belvédère des moines, Phi Phi (~131 m) → le flanc du sommet du grand piton (~66 m), à côté du départ du câble suivant
-  { nom: 'vers le marché flottant', de: [972, 330], a: [96, 32] },          // le sommet, à côté du chedi (104 m) → les barques de Ko Panyi
+  { nom: 'vers le grand piton', de: [2605, 1790], a: [915, 362] },          // le belvédère des moines, Phi Phi (~131 m) → le nord du plateau du sommet (~113 m)
+  { nom: 'vers le marché flottant', de: [948, 322], a: [96, 32] },          // le plateau, au sud de la cour du puits (~112 m) → les barques de Ko Panyi
   { nom: 'vers la plage de Railay', de: [-587, 1920], a: [-650, 1534] },     // le haut du sentier de Railay (51 m) → Ao Rai Le
 ];
 const PENDU = 2.1;            // de la poulie aux pieds de Camille
@@ -584,12 +636,22 @@ function cle() { const g = new THREE.Group(), or = new THREE.MeshStandardMateria
 function figer(role, x, z, yaw, texte, extra = {}) {
   const g = PNJ.buildRole(role, extra.haut ?? null); if (!g) return null;
   g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(g);
+  // un enfant : pnj.js n'en a pas (Demandes pour pnj.js) ; le rôle de Nok ramené à 1,1 m
+  if (extra.enfant) g.scale.setScalar(0.72);
   const F = { g, x, z, texte, t0: rand(0.3, 2.5), pose: false, ...extra };
   if (role === 'balayeur') PNJ.socket(g, g.userData.perso, 'hand_r', balai(), [0, 0.05, 0.02], [0.3, 0, 0]);
   if (extra.cle) { F.objetCle = cle(); PNJ.socket(g, g.userData.perso, 'hand_l', F.objetCle, [0, 0.12, 0.03], [0, 0, 0]); }
   FIGES.push(F); return F;
 }
-function habitants({ hauteur, bloque, addInteract }) {
+// le point de chemin (OSM) le plus proche, à 25 m au plus : un passant posé « à peu près là » finissait
+// dans une cour fermée ou au milieu des fourrés (le parcours du 5 octobre : deux figés de Railay
+// hors d'atteinte). À la même hauteur seulement : un moine du plateau ne descend pas au pied de la falaise.
+function surChemin(PLAN, hauteur, x0, z0) {
+  let b = [x0, z0], d = 25; const h0 = hauteur(x0, z0);
+  for (const c of [...PLAN.chemins, ...PLAN.routes]) for (const [x, z] of c.pts) { const e = Math.hypot(x - x0, z - z0); if (e < d && Math.abs(hauteur(x, z) - h0) < 4) { d = e; b = [x, z]; } }
+  return b;
+}
+function habitants({ hauteur, bloque, addInteract, PLAN }) {
   // Nok, devant la grotte de la porte, au pied du rocher de Ko Panyi
   { const [x, z] = poserLibre(bloque, hauteur, 70, -62);
     NOK = PNJ.buildRole('nok');
@@ -606,18 +668,26 @@ function habitants({ hauteur, bloque, addInteract }) {
   for (const [ax, az, bon] of B) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('balayeur', x, z, rand(0, TAU), null, { cle: bon && !state.cleCloitre, balayeur: true, bon }); }
   // les habitants des îles, figés comme les moines au milieu d'un geste et d'une phrase : le gong
   // la leur fait finir. Ce qu'ils disaient mène quelque part (un quai, un câble, un temple).
-  for (const [role, haut, ax, az, desc, texte] of HABITANTS) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer(role, x, z, rand(0, TAU), texte, { haut, desc, qui: role === 'nok' ? 'La femme' : 'L’homme' }); }
+  for (const [role, haut, ax, az, desc, texte, enfant] of HABITANTS) { const [x, z] = poserLibre(bloque, hauteur, ...surChemin(PLAN, hauteur, ax, az));
+    figer(role, x, z, rand(0, TAU), texte, { haut, desc, enfant, qui: enfant ? 'L’enfant' : role === 'nok' ? 'La femme' : haut == null ? 'Le moine' : 'L’homme' }); }
   for (const F of FIGES) { F.g.position.y = hauteur(F.x, F.z);
-    addInteract({ pos: F.g.position, r: 3, prompt: () => F.balayeur ? 'regarder le balayeur' : F.desc ? 'regarder ' + (F.qui === 'La femme' ? 'la femme figée' : 'l’homme figé') : 'écouter le moine', fn: () => parlerFige(F) }); }
+    addInteract({ pos: F.g.position, r: 3, prompt: () => F.balayeur ? 'regarder le balayeur' : F.desc ? 'regarder ' + ({ 'La femme': 'la femme figée', 'L’enfant': 'l’enfant figé', 'Le moine': 'le moine figé' }[F.qui] || 'l’homme figé') : 'écouter le moine', fn: () => parlerFige(F) }); }
   if (state.gongThai) AIDE.extra.push(['K', 'frapper le gong']);
   TOUCHES.KeyK = frapperGong;
 }
 const HABITANTS = [
   ['moine', 0x3a5a7a, -95, -50, 'Un homme figé devant la mosquée, la main tendue vers la mer.', '« …les passeurs ? Ils vivent sur l’eau, maintenant. Ils n’osent plus accoster… »'],
-  ['nok', 0xb04a3a, -560, 1600, 'Une femme figée sur le seuil de sa boutique, un sac de riz sur l’épaule.', '« …les barques accostent à la plage de l’ouest, au ponton… »'],
-  ['moine', 0x6a5a3a, -540, 1860, 'Un homme figé au pied du sentier, le pied levé sur une marche.', '« …ce sentier monte jusqu’au câble des moines, au-dessus du village… »'],
+  ['nok', 0xb04a3a, -578, 1627, 'Une femme figée sur le seuil de sa boutique, un sac de riz sur l’épaule.', '« …les barques accostent à la plage de l’ouest, au ponton… »'],
+  ['moine', 0x6a5a3a, -572, 1845, 'Un homme figé au pied du sentier, le pied levé sur une marche.', '« …ce sentier monte jusqu’au câble des moines, au-dessus du village… »'],
   ['nok', 0x3a7a8a, 2320, 1830, 'Une femme figée au milieu de la rue, un panier de noix de coco dans les bras.', '« …l’escalier des moines, derrière le village, tout en haut de la colline… »'],
   ['moine', 0x7a3a3a, 2205, 1905, 'Un homme figé près du ponton, une corde à la main.', '« …de là-haut, on voit toutes les îles de la baie… »'],
+  // le 5 octobre : les enfants de Ko Panyi, un moine à chaque bout de câble, une vendeuse devant
+  // Ko Tapu. Des gens de passage : ils disent le lieu, ou mènent quelque part ; aucun secret.
+  ['nok', 0xd8b040, 66, 44, 'Un enfant figé au bord de la passerelle, les bras en l’air, prêt à sauter dans l’eau.', '« …le dernier dans l’eau a perdu !… »', true],
+  ['nok', 0x5a7aa0, -186, -52, 'Un enfant figé devant l’école, les mains sur les yeux.', '« …quatre-vingt-dix-huit, quatre-vingt-dix-neuf, cent ! J’arrive !… »', true],
+  ['nok', 0xc06a3a, -676, 562, 'Une vendeuse figée sur la grève, un collier de coquillages tendu vers le large.', '« …Ko Tapu, le clou ! Un jour, la mer le fera tomber, mais pas aujourd’hui… »'],
+  ['moine', null, 944, 327, 'Un moine figé près du câble, une corbeille de riz à ses pieds.', '« …le câble descend jusqu’au marché flottant. On n’y monte jamais : on ne fait que descendre… »'],
+  ['moine', null, 2596, 1796, 'Un moine figé au bout de l’escalier, la main sur la poulie.', '« …accroche-toi bien : le câble porte jusqu’au grand piton… »'],
 ];
 function parlerNok() {
   if (!state.gongThai) dialogue([
@@ -725,10 +795,20 @@ function passeurs({ hauteur, addInteract }) {
 // disent où l'on est et où aller (les îles, elles, ne répondent plus).
 const PECHEURS = [
   { nom: 'Railay', barque: [-294, 1760], rive: [-302, 1763], dit: ['Railay. On n’y vient qu’en barque : les falaises ferment tout le reste.', 'Le sentier au sud du village monte jusqu’au câble des moines. Il redescend sur la plage de l’ouest, au ponton.'] },
+  { nom: 'Ko Panyi', pres: [-30, 140], dit: ['Ko Panyi. Tout le village tient sur des pieux, au-dessus de l’eau.', 'Les maisons ne bougent plus. Nous, on pêche quand même : la mer, elle, n’a rien vu.', 'La porte de pierre est au pied du rocher, au nord. La petite Nok traîne par là.'] },
+  { nom: 'Khao Phing Kan', pres: [-668, 545], dit: ['Le clou de pierre, là, dans l’eau ? C’est Ko Tapu.', 'Mali n’aime pas rester près des pitons. Elle dit qu’ils mangent le temps. Moi, je reste dans ma barque.'] },
   { nom: 'Ton Sai', barque: [2126, 1927], rive: [2130, 1919], dit: ['Ton Sai. Avant, ça criait partout : les bateaux, le marché. Maintenant, plus rien.', 'L’escalier des moines est derrière le village, sur la colline de l’est. En haut, un câble part vers le grand piton.'] },
 ];
-function pecheurs({ hauteur, addInteract }) {
+function pecheurs({ hauteur, bloque, addInteract }) {
   for (const P of PECHEURS) {
+    // sans place relevée : le premier bord praticable près de `pres` qui a de l'eau à 8 m
+    if (!P.barque) trouve: for (let r = 0; r < 45; r += 1.5) for (let k = 0; k < 16; k++) {
+      const a = k / 16 * TAU, x = P.pres[0] + Math.cos(a) * r, z = P.pres[1] + Math.sin(a) * r;
+      if (bloque(x, z, 0.6) || hauteur(x, z) < 0.9) continue;
+      for (let q = 0; q < 12; q++) { const b = q / 12 * TAU, bx = x + Math.cos(b) * 8, bz = z + Math.sin(b) * 8;
+        if (hauteur(bx, bz) < -0.3 && hauteur(x + Math.cos(b) * 4, z + Math.sin(b) * 4) < 0.3) { P.rive = [x, z]; P.barque = [bx, bz]; break trouve; } }
+    }
+    if (!P.barque) continue;
     barque(P.barque[0], P.barque[1], Math.atan2(P.barque[0] - P.rive[0], P.barque[1] - P.rive[1]) + 1.2, ['pecheur', 0x6a5a48]);
     addInteract({ pos: new THREE.Vector3(P.rive[0], hauteur(...P.rive), P.rive[1]), r: 7, prompt: () => 'parler au pêcheur', fn: () => dialogue(P.dit.map((text) => ({ who: 'Le pêcheur', text }))) });
   }
@@ -748,8 +828,11 @@ function traverser(D, hauteur) {
 monde({
   name: 'thailande', titre: 'La baie des pitons', musique: 'eau', h0: 0,
   plan: 'thailande.json', fin: 'relief-thailande.json',
-  // la mousson arrêtée : un ciel bas et laiteux, une lumière sans ombre franche, la brume chaude
-  ciel: [0x6a7884, 0xaab4b4, 0xd4d8cc], brume: [0xbcc6c0, 260, 3200], soleil: [-120, 260, 80, 2.2], soleilCouleur: 0xf4ecdc,
+  // la mousson arrêtée : un ciel bas et laiteux, une lumière sans ombre franche, la brume chaude.
+  // La brume ne commence qu'à 700 m : à 260, la vue d'ensemble de la baie (îles à 1,5–2,5 km) n'était
+  // plus qu'un voile blanc. Elle finit à 3 200 m, là où la caméra coupe (engine.js) : rien ne s'y
+  // découpe net.
+  ciel: [0x6a7884, 0xaab4b4, 0xd4d8cc], brume: [0xbcc6c0, 700, 3200], soleil: [-120, 260, 80, 2.2], soleilCouleur: 0xf4ecdc,
   sol: ['grass_ground', 0x8aa070], mer: 0, merCouleur: 0x2e7a78, merPoli: 0.12, merMetal: 0.55,
   murs: ['chaux_craquelee', 0xe4dccc], toit: { style: 'deuxPans', slug: 'clay_roof_tiles_02', couleur: 0xa84a2a, pente: 0.9, hMax: 4.5 }, hMurs: [3.2, 4.6],
   chemin: ['rocky_trail', 0xb8a888],
@@ -770,17 +853,20 @@ monde({
     { id: 'porte', nom: 'la porte de l’île', x: 61.5, z: -71.9, r: 10, type: 'passage' },
     { id: 'mosquee', nom: 'la mosquée de Ko Panyi', x: -117, z: -75, r: 25, type: 'lieu' },
     { id: 'quai-tapu', nom: 'Khao Phing Kan, le quai de Mali', x: -701, z: 551, r: 25, type: 'passage' },
-    { id: 'ko-tapu', nom: 'Ko Tapu, le clou', x: -684, z: 468, r: 40, type: 'lieu' },
+    { id: 'ko-tapu', nom: 'Ko Tapu, le clou', x: -684, z: 468, r: 95, type: 'lieu' },        // il est dans l'eau : on le découvre depuis la grève, à 75–95 m
     { id: 'quai-suea', nom: 'le grand piton, la grève', x: 985, z: 491, r: 20, type: 'passage' },
     { id: 'chedi', nom: 'le chedi doré', x: 983, z: 344, r: 20, type: 'lieu' },
     { id: 'moines', nom: 'les moines du grand piton', x: 950, z: 290, r: 25, type: 'quete' },
-    { id: 'cour-puits', nom: 'la cour du puits', x: 906, z: 343, r: 20, type: 'quete' },
+    { id: 'cour-puits', nom: 'la cour du puits', x: 915, z: 334, r: 22, type: 'quete' },      // le centre, hors des bâtiments (il était dans l'un d'eux)
     { id: 'quai-railay', nom: 'Railay, la plage de l’ouest', x: -657, z: 1530, r: 25, type: 'passage' },
     { id: 'cable-railay', nom: 'le câble de Railay', x: -587, z: 1920, r: 15, type: 'passage' },
     { id: 'railay', nom: 'le village de Railay', x: -500, z: 1700, r: 60, type: 'lieu' },
     { id: 'quai-tonsai', nom: 'Ton Sai, le ponton', x: 2187, z: 1927, r: 25, type: 'passage' },
     { id: 'tonsai', nom: 'le village de Ton Sai', x: 2350, z: 1820, r: 70, type: 'lieu' },
     { id: 'belvedere-moines', nom: 'le belvédère des moines', x: 2605, z: 1790, r: 15, type: 'passage' },
+    // les pêcheurs dans leur barque, à portée de voix (pecheurs()) : ceux dont la place est relevée
+    { id: 'pecheur-railay', nom: 'le pêcheur de Railay', x: -302, z: 1763, r: 12, type: 'pnj' },
+    { id: 'pecheur-tonsai', nom: 'le pêcheur de Ton Sai', x: 2130, z: 1919, r: 12, type: 'pnj' },
   ],
   plus(ctx) {
     // la mousson : un ciel couvert éclaire de partout, le soleil ne fait qu'une ombre molle —
@@ -791,7 +877,8 @@ monde({
     for (const [nom, fn] of [['parois', parois], ['voies', voies], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
-    window.__lieu = { durees };
+    // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
+    window.__lieu = { durees, quais: Object.values(QUAIS).map((Q) => Q.ici), cables: CABLES.filter((c) => c.p0).map((c) => [c.de, c.a]) };
   },
   anime(now) {
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;

@@ -13,13 +13,19 @@
 // une planche fixe de 8 vues, les mêmes avant et après une retouche (4 octobre : les îles resserrées).
 //
 //   TLOC_ETIQUETTE=avant bancs/tour.sh node bancs/lieu-thailande.mjs [http://127.0.0.1:8000]
+//   TLOC_VUES=realisme : la planche à hauteur d’yeux ; TLOC_PARCOURS=1 : le parcours d’un joueur
 //
 // Sortie : bancs/resultats/lieu-thailande-<date>[-<étiquette>].json et -vues.png
 import { createRequire } from 'module';
 import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
-const { chromium } = createRequire(`${process.env.HOME}/Documents/Projet-Padel/package.json`)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+// le Playwright du Mac (Projet-Padel) ou celui du PC (GitHub/tloc/outils), comme bancs/charge.mjs
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
+const { chromium } = createRequire(PW)('playwright');
+// fileURLToPath et non `.pathname`, qui donne « /C:/… » sous Windows
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Date().toISOString().slice(0, 10);
 const NOM = DIR + 'lieu-thailande-' + JOUR + (process.env.TLOC_VUES ? '-' + process.env.TLOC_VUES : '') + (process.env.TLOC_ETIQUETTE ? '-' + process.env.TLOC_ETIQUETTE : '');
 // la planche : la baie d'en haut, les quatre cœurs vus du ciel, puis trois vues à hauteur de
 // Camille sur les bords des cœurs (là où une rue coupée finirait dans le vide)
@@ -38,6 +44,11 @@ const VUES_REALISME = [
   { nom: 'l’escalier des moines (1,6 m)', cam: [2528, 1.6, 1845], at: [2560, 12, 1700], sol: true, rue: true },
   { nom: 'le marché flottant (1,6 m)', cam: [96, 2.1, 22], at: [96, 1.2, 60] },
   { nom: 'Ton Sai, le ponton (1,6 m)', cam: [2187, 1.6, 1927], at: [2160, 1.2, 2040], sol: true },
+  // le 5 octobre (consigne T) : les ruelles et les maisons de Ko Panyi, son platelage sur pieux, le
+  // plateau du grand piton où arrive le câble — ajoutées APRÈS les douze premières, qui restent comparables
+  { nom: 'Ko Panyi, une ruelle de béton (1,6 m)', cam: [-20, 1.6, 60], at: [-60, 1.4, 20], sol: true },
+  { nom: 'Ko Panyi, vu d’une barque', cam: [150, 1.5, 120], at: [60, 2, 60] },
+  { nom: 'le grand piton, le plateau (1,6 m)', cam: [930, 115.6, 322], at: [912, 114.5, 360] },     // à 114 m (le sol du plateau), vers la cour du puits
 ];
 const VUES_BAIE = [
   { nom: 'la baie', cam: [900, 900, 2100], at: [800, 0, 900] },
@@ -56,7 +67,7 @@ const VUES_BAIE = [
 ];
 const VUES = process.env.TLOC_VUES === 'realisme' ? VUES_REALISME : VUES_BAIE;
 
-const b = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const b = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 try {
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const erreurs = [];
@@ -103,6 +114,41 @@ try {
     const tot = Object.values(par).reduce((s, P) => ({ points: s.points + P.points, bloques: s.bloques + P.bloques, raides: s.raides + P.raides, enMer: s.enMer + P.enMer }), { points: 0, bloques: 0, raides: 0, enMer: 0 });
     return { tot, par, pires: pires.slice(0, 25) };
   });
+  // ---------------- le parcours d'un joueur (TLOC_PARCOURS=1) ----------------
+  // La consigne T (5 octobre) : « parcours chaque île comme un joueur, du départ à chaque repère ».
+  // Une recherche de chemin sur une grille de 1 m, depuis le départ, avec les règles du jeu
+  // (level.blocked au rayon de Camille, 0,5 m) et la pente de confort du banc (35°) ; un passeur
+  // relie tous les quais, un câble descend de son départ à son arrivée (window.__lieu). Rend chaque
+  // repère (découvrable ou non) et chaque interaction (atteinte à sa portée ET à moins de 3 m de
+  // hauteur, comme engine.js). Une vingtaine de secondes.
+  let parcours = null;
+  if (process.env.TLOC_PARCOURS) parcours = await p.evaluate(async () => {
+    const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v=')));
+    const L = E.G.level, H = (x, z) => L.getH(x, z), D = window.__lieu || {}, vus = new Set(), file = [], cle = (i, j) => i + ',' + j;
+    const ok = (x, z) => !L.blocked(x, z, 0.5), marche = Math.tan(35 * Math.PI / 180) + 0.05;
+    const semer = (x0, z0) => { const i = Math.round(x0), j = Math.round(z0);
+      for (let r = 0; r < 6; r++) for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const k = cle(i + a, j + b); if (vus.has(k)) return; if (ok(i + a, j + b)) { vus.add(k); file.push([i + a, j + b]); return; } } };
+    const fouiller = () => { while (file.length) { const [i, j] = file.pop(), h = H(i, j);
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = cle(i + a, j + b); if (vus.has(k) || !ok(i + a, j + b) || Math.abs(H(i + a, j + b) - h) > marche) continue; vus.add(k); file.push([i + a, j + b]); } } };
+    const pres = (x, z, r, y = null) => { let m = null; const R = Math.ceil(r);
+      for (let a = -R; a <= R; a++) for (let b = -R; b <= R; b++) { if (a * a + b * b > r * r) continue; const X = Math.round(x) + a, Z = Math.round(z) + b;
+        if (vus.has(cle(X, Z)) && (y == null || Math.abs(H(X, Z) - y) < 3)) m = Math.min(m ?? 1e9, Math.hypot(a, b)); } return m; };
+    semer(E.player.pos.x, E.player.pos.z);
+    for (let tour = 0; tour < 6; tour++) { fouiller();
+      if ((D.quais || []).some(([x, z]) => pres(x, z, 9) != null)) for (const [x, z] of D.quais) semer(x, z);
+      for (const [d, a] of D.cables || []) if (pres(d[0], d[1], 4) != null) semer(a[0], a[1]); }
+    fouiller();
+    const reperes = E.lieux.filter((l) => l.id.startsWith('thailande:')).map((l) => ({ id: l.id.slice(10), nom: l.nom, a: pres(l.x, l.z, l.r) }));
+    const inter = E.interactables.map((it) => { let nom = '?'; try { nom = typeof it.prompt === 'function' ? it.prompt() : it.prompt; } catch (e) { /* une invite qui lit l'état */ }
+      return { nom, x: Math.round(it.pos.x), z: Math.round(it.pos.z), a: pres(it.pos.x, it.pos.z, Math.max(1, it.r || 2), it.pos.y) }; });
+    return { cases: vus.size, reperes, inter };
+  });
+  if (parcours) {
+    const r = parcours.reperes.filter((x) => x.a == null), i = parcours.inter.filter((x) => x.a == null);
+    console.log(`parcours : ${parcours.cases} m² atteints ; repères ${parcours.reperes.length - r.length}/${parcours.reperes.length} découvrables, interactions ${parcours.inter.length - i.length}/${parcours.inter.length} atteintes`);
+    for (const x of r) console.log('   repère hors d’atteinte :', x.id, '—', x.nom);
+    for (const x of i) console.log('   interaction hors d’atteinte :', x.nom, `(${x.x}, ${x.z})`);
+  }
   // ---------------- la planche fixe de 8 vues ----------------
   await p.evaluate(() => { for (const id of ['hud', 'overlay', 'msg', 'prompt', 'zone']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; } });
   const images = [];
@@ -151,6 +197,6 @@ try {
   console.log('baie :', pc(res.tot));
   for (const [m, P] of Object.entries(res.par)) console.log('  ' + m.padEnd(7), pc(P));
   console.log('pires tronçons :'); for (const t of res.pires.slice(0, 10)) console.log('  ', JSON.stringify(t));
-  fs.writeFileSync(NOM + '.json', JSON.stringify({ date: new Date().toISOString(), chargement_s: charge, etapes, rendu, durees, erreurs: erreurs.slice(0, 20), ...res }, null, 1));
+  fs.writeFileSync(NOM + '.json', JSON.stringify({ date: new Date().toISOString(), chargement_s: charge, etapes, rendu, durees, erreurs: erreurs.slice(0, 20), ...res, parcours }, null, 1));
   console.log('→ ' + NOM + '.json, -vues.png');
 } finally { await b.close(); }
