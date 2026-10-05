@@ -1826,6 +1826,17 @@ National » ; « un chef de gare descendu au bourg, c'est bien »)** — `lozere
 - Mesures : devantures et mobilier 24 ms ; chargement 3,2 s ; rues praticables 100 %, quatre cibles sur
   quatre. Captures : `bancs/resultats/villefort-2026-10-05-vitrines-*.jpg`.
 
+**Suite (Eugène : « une barre de chargement sur villefort.html » ; « assure-toi qu'un lien entre le
+Pouget, la Garde-Guérin et Villefort est possible »)** :
+- `villefort.html` a la barre de thailande.html (`#loadbar`, que `peindreCharge` fait avancer).
+- **Le Pouget n'avait pas de poteau** : on n'en repartait que par la porte de l'île. `poteau` est
+  maintenant exporté par lozere.js, et pouget.js le plante sur le bas-côté de son arrivée, devant
+  le muret (`ARRIVEES.pouget.poteau`). C'est le même poteau que dans les deux autres lieux, pas un
+  système à part.
+- **Vérifié en vrai**, par les menus des poteaux : Villefort → le Pouget → la Garde-Guérin →
+  Villefort, sans erreur, chaque fois à la place d'arrivée. Captures :
+  `bancs/resultats/vieux-chemins-2026-10-05-*.jpg`.
+
 #### Lille, suite en autonomie (5 octobre, pause de midi d'Eugène) — **publié (f49035f, a9d9381, puis la bordure)**
 - **Une porte au milieu de chaque boutique** (garde, brasseur, drapier) : l'étal encadrait la porte de la
   maison inventée ; sur la façade relevée, il ne restait qu'un mur nu entre ses deux baies.
@@ -1929,8 +1940,10 @@ arrivée (`window.__lieu.quais`, `.cables`). Il rend chaque repère (découvrabl
   aucune erreur au chargement) ;
 - les points bloqués : une impasse de Ton Sai tout entière dans un hôtel, et une passerelle de Ko Panyi sous
   le bâtiment « Panyee » (47 × 28 m). `sous_bati()` dans extraire-thailande.py retire une voie dont 80 % des
-  points tombent dans un même bâtiment, et a été appliquée au thailande.json en place : **les .osm de la
-  Thaïlande ne sont pas sur le PC** (restés sur le Mac), l'extraction ne peut pas être relancée ici ;
+  points tombent dans un même bâtiment, et a été appliquée au thailande.json en place (CORRIGÉ le soir : les
+  .osm de la Thaïlande SONT sur le PC, dans carte/mondes/ : `PYTHONIOENCODING=utf-8 py -3 extraire-thailande.py`
+  redonne le même plan à l'octet près, depuis qu'il écrit en UTF-8 — en cp1252, le plan devenait illisible ;
+  c'est le relief qui ne peut pas se refaire ici — ni les tuiles Copernicus, ni tifffile) ;
 - la brume : 260 → **700 m** (elle finit à 3 200 m, là où la caméra coupe). La vue d'arrivée montre les îles ;
   la vue de très haut (900 m) reste voilée au-delà de 2 km, c'est voulu (la mousson).
 
@@ -1993,7 +2006,8 @@ d'une barque, le plateau du sommet) ; la baie : `…-point-vues.png` / `…-apre
 - pnj.js : un rôle d'enfant (les enfants sont ici le rôle de Nok à l'échelle 0,72) ;
 - assets_back : une tôle ondulée Poly Haven (`corrugated_iron`, CC0, 512 px) pour les toits de Ko Panyi et
   de Ton Sai, faits de `metal_plate_02` ;
-- les .osm de la Thaïlande (`carte/mondes/thailande-*.osm`) à rapporter du Mac, pour relancer l'extraction.
+- les tuiles Copernicus de la Thaïlande (`carte/mondes/copernicus/`, 85 Mo) et `tifffile` à installer sur le PC,
+  pour pouvoir relancer recolter-relief-thailande.py (les .osm, eux, y sont).
 
 **Questions pour Eugène** : Railay en bungalows de bois sous la tôle, ça te va ? Et l'escalier du grand piton
 (la terrasse des moines → le plateau) : le veux-tu, ou le câble suffit-il pour le sommet ?

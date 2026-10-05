@@ -47,11 +47,13 @@ export const BILAN = { batiments: 0, corps: [], rubans: [] };
 //  Les vieux chemins : où l'on arrive dans chaque lieu
 // ---------------------------------------------------------------------
 // [x, y, z] et l'angle de Camille à l'arrivée ; le poteau est planté à côté. Le Pouget : l'arrivée
-// de pouget.js (la route du nord-est, face au hameau) — c'est Eugène qui pose l'entrée de ce côté.
+// de pouget.js (la route du nord-est, face au hameau) — c'est Eugène qui pose l'entrée de ce côté ;
+// son poteau, sur le bas-côté (1,2 m, devant le muret), est planté par pouget.js (Eugène, 5 octobre : « assure-toi
+// qu'un lien entre le Pouget, la Garde-Guérin et Villefort est possible »).
 export const ARRIVEES = {
   villefort:   { titre: 'Villefort',         pos: [1582, 0, -1132], yaw: Math.atan2(100, 157), poteau: [1584.5, -1129.5] },
   gardeguerin: { titre: 'La Garde-Guérin',   pos: [1852, 0, -5236], yaw: Math.atan2(-15, -60), poteau: [1850.5, -5233.8] },
-  pouget:      { titre: 'Le Pouget',         pos: [52.6, 0, -104],  yaw: Math.atan2(42 - 52.6, -54 + 104) },
+  pouget:      { titre: 'Le Pouget',         pos: [52.6, 0, -104],  yaw: Math.atan2(42 - 52.6, -54 + 104), poteau: [53.8, -103.75] },
 };
 const RECIT = {
   villefort: 'Le chemin descend vers le bourg, le long de l’Altier.',
@@ -439,8 +441,9 @@ function mur(ctx, pts, { haut, ep, mat, ouvert = () => false, bas = 1.5 }) {
 }
 
 // le poteau indicateur des vieux chemins : un piquet de châtaignier, une planchette fléchée
-// par destination, le nom gravé et passé au blanc ; on lui parle pour partir
-function poteau(ctx, ici) {
+// par destination, le nom gravé et passé au blanc ; on lui parle pour partir. Exporté : le Pouget
+// (pouget.js) plante le même. ctx : { hauteur, scene, addInteract }
+export function poteau(ctx, ici) {
   const { hauteur, scene, addInteract } = ctx, [x, z] = ARRIVEES[ici].poteau, y = hauteur(x, z);
   const autres = Object.keys(ARRIVEES).filter((k) => k !== ici);
   const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);

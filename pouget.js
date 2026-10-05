@@ -16,6 +16,7 @@ import { especeGeo } from './foret.js';
 import { construireHameau, potagers, murets, panneau, graine } from './pouget-bati.js';
 import { planterArbresDePres } from './pouget-arbres.js';
 import { enclos } from './pouget-enclos.js';
+import { poteau } from './lozere.js';
 import { PARTAGE } from './etat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -232,6 +233,10 @@ async function build() {
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     addInteract({ pos: new THREE.Vector3(PORTE.x, y, PORTE.z), r: 3, prompt: () => 'repasser la porte de l’île',
       fn: () => goToLevel('temple', [-20.35, 0, -11.75], Math.atan2(20.35, 11.75), 'Retour à l’île du temps…') }); }
+
+  // ---------- le poteau des vieux chemins : vers Villefort et la Garde-Guérin (lozere.js, le même
+  // qu'à Villefort et à la Garde-Guérin ; sans lui, on ne repartait du Pouget que par la porte) ----------
+  poteau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), scene, addInteract }, 'pouget');
 }
 
 function populate() { player.pos.set(DEPART.x, hauteur(DEPART.x, DEPART.z), DEPART.z); player.yaw = DEPART.yaw; G.camYaw = DEPART.yaw; }
