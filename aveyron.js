@@ -4,7 +4,7 @@
 // maisons des Roquette — le Batut, Beauregard, la grande maison du Pouget — posées là où la
 // session des mondes les a proposées et Eugène validées (carte/mondes/README.md).
 import { monde } from './monde.js';
-import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, addRamp, player, world } from './engine.js?v=41';
+import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, addRamp, addHelix, player, world } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as PNJ from './pnj.js';
@@ -205,7 +205,9 @@ function interieur(g, monde, y0, BAS) {
         if (dur) capW(ax + ux * a, az + uz * a, ax + ux * b, az + uz * b, r, yb);
       };
       let t0 = 0;
-      for (const p of [...portes].sort((a, b) => a.t - b.t)) { const a = p.t - p.w / 2, b = p.t + p.w / 2; bout(t0, a, pied, h, true); bout(a, b, p.h ?? 2.5, h, false); t0 = b; }
+      // (etage : { y, h } — la même porte, au-dessus, à l'étage ; entre les deux, l'épaisseur du plancher)
+      for (const p of [...portes].sort((a, b) => a.t - b.t)) { const a = p.t - p.w / 2, b = p.t + p.w / 2; bout(t0, a, pied, h, true);
+        if (p.etage) { bout(a, b, p.h ?? 2.5, p.etage.y, false); bout(a, b, p.etage.h, h, false); } else bout(a, b, p.h ?? 2.5, h, false); t0 = b; }
       bout(t0, L, pied, h, true);
     },
     // le sol d'une pièce (un parquet, des tomettes) et son plafond, dans le repère de la maison
@@ -413,16 +415,20 @@ function batut({ hauteur, scene, addInteract, inscrire }, X, Z, rot) {
   const I = interieur(g, monde, y0), M = mobilier(I, g), E = { slug: 'enduit_gris', opt: ENDUIT, dedans: { slug: 'enduit_gris', opt: { color: 0xece4d4 } } };
   const socle = (ax, az, bx, bz, nx, nz) => { const L = Math.hypot(bx - ax, bz - az); pose(g, boite(L + 0.1, 0.9, 0.08, 'rustic_stone_wall_02', { color: 0x9e968a }), (ax + bx) / 2 + nx * 0.04, 0.2, (az + bz) / 2 + nz * 0.04, -Math.atan2(bz - az, bx - ax)); };
   I.mur(-4.5, 4.7, 4.5, 4.7, { ...E, h: 9.6, cote: -1 }); I.mur(-4.5, -4.7, 4.5, -4.7, { ...E, h: 9.6, cote: 1 });
-  I.mur(-4.2, -5, -4.2, 5, { ...E, h: 9.6, cote: -1, portes: [{ t: 2.2, w: 1.9, h: 2.5 }] });     // (vers le fond : l'escalier longe ce mur) I.mur(4.2, -5, 4.2, 5, { ...E, h: 9.6, cote: 1, portes: [{ t: 5, w: 1.9, h: 2.5 }] });
+  // (la porte de la bibliothèque vers le fond : l'escalier longe ce mur ; au-dessus de chaque passage
+  // d'un corps à l'autre, la même porte à l'étage — on passe de la chambre aux étages des corps bas)
+  I.mur(-4.2, -5, -4.2, 5, { ...E, h: 9.6, cote: -1, portes: [{ t: 2.2, w: 1.9, h: 2.5, etage: { y: 3.22, h: 5.4 } }] });
+  I.mur(4.2, -5, 4.2, 5, { ...E, h: 9.6, cote: 1, portes: [{ t: 5, w: 1.9, h: 2.5, etage: { y: 3.22, h: 5.6 } }] });
   I.mur(-11.5, 3.2, -4.5, 3.2, { ...E, h: 5.6, cote: -1 }); I.mur(-11.5, -4.2, -4.5, -4.2, { ...E, h: 5.6, cote: 1 }); I.mur(-11.2, -4.5, -11.2, 3.5, { ...E, h: 5.6, cote: -1 });
   I.mur(4.5, 3.7, 14.5, 3.7, { ...E, h: 6.0, cote: -1, portes: [{ t: 5, w: 1.9, h: 2.45 }] }); I.mur(4.5, -4.2, 14.5, -4.2, { ...E, h: 6.0, cote: 1 }); I.mur(14.2, -4.5, 14.2, 4, { ...E, h: 6.0, cote: 1 });
   I.mur(11.0, -3.9, 11.0, 3.4, { ep: 0.2, h: 3.1, slug: 'enduit_gris', opt: { color: 0xece4d4 }, portes: [{ t: 2.0, w: 1.6, h: 2.3 }] });
   for (const [ax, az, bx, bz, nx, nz] of [[-4.5, 5, 4.5, 5, 0, 1], [-11.5, 3.5, -4.5, 3.5, 0, 1], [4.5, 4, 8.5, 4, 0, 1], [10.5, 4, 14.5, 4, 0, 1], [-11.5, -4.5, 14.5, -4.5, 0, -1], [-11.5, -4.5, -11.5, 3.5, -1, 0], [14.5, -4.5, 14.5, 4, 1, 0]]) socle(ax, az, bx, bz, nx, nz);
   // ---- le dedans : le grand salon au centre, la bibliothèque dans le corps bas, la salle à manger et la cuisine dans l'aile ----
   I.sol(-3.9, 3.9, -4.4, 4.4, 'wood_planks', 0xa07a52, { nom: 'le grand salon', trou: [-3.9, -2.55, -1.8, 3.6] });
-  I.sol(-10.9, -4.5, -3.9, 2.9, 'wood_planks', 0x8a6a4a, { nom: 'la bibliothèque', plafond: 3.0, sombre: true });
-  I.sol(4.5, 10.9, -3.9, 3.4, 'worn_tile_floor', 0xc8b8a4, { nom: 'la salle à manger', plafond: 3.0 });
-  I.sol(11.1, 13.9, -3.9, 3.4, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.0, sombre: true });
+  // (3,10 m sous plafond, comme le corps central : les étages des trois corps sont au même niveau)
+  I.sol(-10.9, -4.5, -3.9, 2.9, 'wood_planks', 0x8a6a4a, { nom: 'la bibliothèque', plafond: 3.1, sombre: true });
+  I.sol(4.5, 10.9, -3.9, 3.4, 'worn_tile_floor', 0xc8b8a4, { nom: 'la salle à manger', plafond: 3.1 });
+  I.sol(11.1, 13.9, -3.9, 3.4, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.1, sombre: true });
   // (les passages entre corps : le sol continue sous l'épaisseur du mur)
   for (const [x0, x1, z0, z1] of [[-4.5, -3.9, -3.75, -1.85], [3.9, 4.5, -0.95, 0.95], [8.55, 10.45, 3.4, 4.0]]) pose(g, boite(x1 - x0, 0.05, z1 - z0, 'wood_planks', { color: 0x9a7650 }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
   cheminee2(I, g, 0, -4.05, 0, { w: 2.4 });
@@ -444,7 +450,25 @@ function batut({ hauteur, scene, addInteract, inscrire }, X, Z, rot) {
     I2.sol(-3.9, 3.9, -4.4, 4.4, 'wood_planks', 0x9a7650, { nom: 'la chambre', plafond: 2.9 });
     M2.lit(1.6, -3.0, 0); M2.armoire(3.45, 2.4, -Math.PI / 2); I2.meuble(-1.2, -3.9, 1.1, 0.5, 0.7, M2.BOIS, M2.CLAIR); M2.fauteuil(2.6, 0.4, -Math.PI / 2); M2.tapis(1.2, -0.6, 2.4, 1.8, 0, 0x5a4a6a);
     I2.chandelle(-1.2, 0.7, -3.9);
-    const [cx2, cz2] = monde(1.6, -0.9); LIEU.etages = (LIEU.etages || []).concat([{ pos: new THREE.Vector3(cx2, y0 + 3.22, cz2), r: 2.2, prompt: () => 'la chambre du Batut', fn: () => showMessage('La chambre du maître, sous le toit du corps central. Par la fenêtre, le lac, et Beauregard en face.', 6) }]); }
+    const [cx2, cz2] = monde(1.6, -0.9); LIEU.etages = (LIEU.etages || []).concat([{ pos: new THREE.Vector3(cx2, y0 + 3.22, cz2), r: 2.2, prompt: () => 'la chambre du Batut', fn: () => showMessage('La chambre du maître, sous le toit du corps central. Par la fenêtre, le lac, et Beauregard en face.', 6) }]);
+    // ---- l'étage des corps bas (5 octobre) : on y passe de la chambre, par les portes percées au-dessus
+    // de celles du rez-de-chaussée. Au-dessus de la bibliothèque, la chambre des enfants, sous le toit
+    // (2,2 m sous plafond : le corps bas n'a que 5,6 m de murs) ; au-dessus de la salle à manger, la
+    // chambre d'amis ; au-dessus de la cuisine, le grenier.
+    I.etage([[-10.9, -4.5, -3.9, 2.9], [-4.5, -3.9, -3.75, -1.85], [4.5, 13.9, -3.9, 3.4], [3.9, 4.5, -0.95, 0.95]], 3.22, null);
+    I2.sol(-10.9, -4.5, -3.9, 2.9, 'wood_planks', 0x8a6a4a, { nom: 'la chambre des enfants', plafond: 2.2 });
+    I2.sol(4.5, 10.9, -3.9, 3.4, 'wood_planks', 0x9a7650, { nom: 'la chambre d’amis', plafond: 2.6 });
+    I2.sol(11.1, 13.9, -3.9, 3.4, 'wood_planks', 0x7a5a3a, { nom: 'le grenier', plafond: 2.6, sombre: true });
+    for (const [x0, x1, z0, z1] of [[-4.5, -3.9, -3.75, -1.85], [3.9, 4.5, -0.95, 0.95]]) pose(g2, boite(x1 - x0, 0.04, z1 - z0, 'wood_planks', { color: 0x9a7650 }), (x0 + x1) / 2, 0.02, (z0 + z1) / 2).castShadow = false;
+    I2.mur(11.0, -3.9, 11.0, 3.4, { ep: 0.2, h: 2.6, pied: 0, slug: 'enduit_gris', opt: { color: 0xd8d0c0 }, portes: [{ t: 2.0, w: 1.6, h: 2.3 }] }); I2.porte(11.0, -2.7, 11.0, -1.1);
+    // la chambre des enfants : deux petits lits sous la pente, un coffre à jouets, une chaise
+    I2.meuble(-9.9, -2.6, 0.9, 1.9, 0.5, 'wool_boucle', 0xb8c8b0); I2.meuble(-7.6, -2.6, 0.9, 1.9, 0.5, 'wool_boucle', 0xc8b8a8); I2.meuble(-5.6, 2.3, 1.0, 0.5, 0.55, M2.BOIS, M2.CLAIR); I2.chandelle(-5.6, 0.55, 2.3);
+    // la chambre d'amis : le lit, l'armoire, la table de toilette
+    M2.lit(7.6, -3.0, 0, 0xd0c8b8); M2.armoire(5.0, 2.6, Math.PI / 2); I2.meuble(9.8, 2.9, 1.0, 0.5, 0.8, M2.BOIS, M2.CLAIR);
+    // le grenier : des malles, des sacs, des tonneaux vides, des caisses
+    for (const [x, z, w, d, h] of [[13.3, -3.3, 1.1, 0.7, 0.7], [12.2, -3.4, 0.9, 0.6, 0.55], [13.4, 2.7, 0.8, 0.8, 0.9], [12.4, 2.9, 0.7, 0.7, 0.6]]) I2.meuble(x, z, w, d, h, 'wood_planks', 0x7a5a3a);
+    M2.tonneau(13.3, 0.4);
+    const [gx2, gz2] = monde(12.4, 0.6); LIEU.etages.push({ pos: new THREE.Vector3(gx2, y0 + 3.22, gz2), r: 2.0, prompt: () => 'le grenier', fn: () => showMessage('Le grenier du Batut : des malles, des sacs de grain presque vides. Il fait une chaleur de four sous les lauzes.', 6) }); }
 
   // ---- le lierre, du pied jusqu'au premier étage, autour des baies ----
   lierre(g, [[-11.5, -4.5, 3.5], [-4.5, 4.5, 5], [4.5, 14.5, 4]],
@@ -743,8 +767,12 @@ function beauregard(ctx, X, Z, rot) {
   { const N = 28, ep = 0.5, rm = R - ep / 2, larg = 2 * rm * Math.sin(Math.PI / N) + 0.08, pres = (a, b) => Math.abs(((a - b + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
     for (let k = 0; k < N; k++) { const a = (k + 0.5) / N * 2 * Math.PI, x = Math.sin(a) * rm, z = tz + Math.cos(a) * rm, ouvert = pres(a, 0) < 0.48 || pres(a, Math.PI) < 0.5;
       const pan = (ya, yb) => pose(g, boite(larg, yb - ya, ep, 'granit_lozere', GR), x, (ya + yb) / 2, z, a);
-      if (ouvert) pan(2.65, Ht); else pan(-5, Ht);
-      if (!ouvert) { const a0 = k / N * 2 * Math.PI, a1 = (k + 1) / N * 2 * Math.PI; I.cap(Math.sin(a0) * rm, tz + Math.cos(a0) * rm, Math.sin(a1) * rm, tz + Math.cos(a1) * rm, ep / 2 + 0.03, Ht); } } }
+      // (côté hall, la tour s'ouvre aussi à l'étage, où débouche la vis ; au-dessus de la porte
+      // d'entrée, elle est fermée : de la vis, on serait sorti dans le vide)
+      const derriere = pres(a, Math.PI) < 0.5, a0 = k / N * 2 * Math.PI, a1 = (k + 1) / N * 2 * Math.PI;
+      if (derriere) { pan(2.65, 3.32); pan(5.75, Ht); } else if (ouvert) pan(2.65, Ht); else pan(-5, Ht);
+      if (!ouvert) I.cap(Math.sin(a0) * rm, tz + Math.cos(a0) * rm, Math.sin(a1) * rm, tz + Math.cos(a1) * rm, ep / 2 + 0.03, Ht);
+      else if (!derriere) I.cap(Math.sin(a0) * rm, tz + Math.cos(a0) * rm, Math.sin(a1) * rm, tz + Math.cos(a1) * rm, ep / 2 + 0.03, Ht, 2.6); } }
   emprise(monde, [-R, R, tz - R, tz + R], y0);
   const cone = new THREE.ConeGeometry(R + 0.45, 5.2, 28, 1, true); poserPiece(C.lauze, cone, 0, Ht + 2.6, tz);
   poserPiece(C.granit, new THREE.CylinderGeometry(R + 0.12, R + 0.12, 0.25, 28), 0, Ht, tz);
@@ -778,13 +806,32 @@ function beauregard(ctx, X, Z, rot) {
   I.sol(-L / 2 + 0.6, -2.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0xa8845c, { nom: 'le salon', plafond: 3.2 });
   I.sol(2.6, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la salle à manger', plafond: 3.2 });
   pose(g, boite(3.0, 0.05, 0.9, 'worn_tile_floor', { color: 0xd8d0c4 }), 0, 0.03, W / 2 - 0.3).castShadow = false;
-  // la tour : son dallage, le noyau de la vis, les marches qui montent par la gauche (on passe à droite)
+  // ---- la tour : son dallage, le noyau, et la VIS, praticable (5 octobre) ----
+  // Elle monte en deux volées tournantes (addHelix, comme la tour du Batut de batut.js) :
+  // - la première part à gauche du passage vers le hall, tourne par la gauche et passe au-dessus de
+  //   la porte d'entrée à 2,65 m (au ras du linteau) ;
+  // - la seconde, plus douce, tourne par la droite au-dessus de qui passe, et arrive à l'étage
+  //   (3,32 m) côté hall, où la tour s'ouvre sur le palier.
+  // Au rez-de-chaussée, on passe à droite, sous la vis ; sous les marches basses de la gauche, des
+  // butées (on ne traverse pas l'escalier par-dessous), basses assez pour que qui monte passe dessus.
+  // (les angles a sont ceux de la maison : 0 la porte d'entrée, π le hall, π/2 la droite)
   { pose(g, new THREE.Mesh(new THREE.CylinderGeometry(R - 0.45, R - 0.45, 0.05, 28), phMat('granite_tile_03', 4, 4, { color: 0xb0aa9e })), 0, 0.03, tz).castShadow = false;
     pose(g, new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, Ht, 12), phMat('granite_tile_03', 1.9, Ht, { color: 0xa8a294 })), 0, Ht / 2, tz); I.cap(0, tz, 0, tz, 0.35, Ht);
-    for (let k = 0; k < 14; k++) { const a = Math.PI + 0.65 + k * 0.155, y = 0.2 * (k + 1), rmm = (0.3 + R - 0.5) / 2;
-      pose(g, boite(R - 0.8, 0.18, 0.62, 'granite_tile_03', { color: 0xa8a294 }), Math.sin(a) * rmm, y - 0.09, tz + Math.cos(a) * rmm, a + Math.PI / 2); }
-    I.cap(Math.sin(Math.PI + 0.8) * 1.2, tz + Math.cos(Math.PI + 0.8) * 1.2, Math.sin(2 * Math.PI - 0.95) * 1.2, tz + Math.cos(2 * Math.PI - 0.95) * 1.2, 0.75, 1.9);
-    DEDANS.push({ pts: [[-R, tz - R], [R, tz - R], [R, tz + R], [-R, tz + R]].map(([a, b]) => monde(a, b)), plafond: y0 + 6, nom: 'la tour' }); }
+    const Cw = monde(0, tz), th = (a) => { const [x, z] = monde(Math.sin(a), tz + Math.cos(a)); return Math.atan2(z - Cw[1], x - Cw[0]); };
+    const d = th(0.1) - th(0), cw = Math.atan2(Math.sin(d), Math.cos(d)) < 0;            // la maison tournée renverse-t-elle le sens ?
+    const VOLEES = [[Math.PI + 0.55, Math.PI - 0.55, 0, 2.65], [2 * Math.PI, Math.PI, 2.65, 0.67]];   // [départ, balayage, hauteur, montée]
+    const rmv = (0.35 + R - 0.5) / 2;
+    for (const [aD, bal, base, mont] of VOLEES) {
+      addHelix(Cw[0], Cw[1], 0.4, R - 0.55, y0 + base, mont * 2 * Math.PI / bal, bal / (2 * Math.PI), th(aD), cw);
+      const n = Math.max(3, Math.round(mont / 0.19)), da = bal / n;
+      for (let k = 0; k < n; k++) { const a = aD + (k + 0.5) * da, y = base + (k + 1) * mont / n;
+        pose(g, boite(R - 0.8, 0.18, rmv * da * 1.12, 'granite_tile_03', { color: 0xa8a294 }), Math.sin(a) * rmv, y - 0.09, tz + Math.cos(a) * rmv, a + Math.PI / 2);
+        // les butées sous les marches de 1,35 à 1,8 m : arrêtent qui passe dessous, pas qui monte (1 m sous
+        // la marche, 35 cm de rayon — plus larges et plus hautes, elles arrêtaient Camille au bas de la vis : sonde)
+        if (base === 0 && y >= 1.35 && y <= 1.8) I.cap(Math.sin(a) * rmv, tz + Math.cos(a) * rmv, Math.sin(a) * rmv, tz + Math.cos(a) * rmv, 0.35, y - 1.0); } }
+    // le palier de l'étage, à la sortie de la vis : par-dessus l'épaisseur du mur, jusqu'au palier du hall
+    pose(g, boite(1.4, 0.05, 1.2, 'wood_planks', { color: 0x9a7650 }), 0, 3.34, W / 2 - 0.1).castShadow = false;
+    DEDANS.push({ pts: [[-R, tz - R], [R, tz - R], [R, tz + R], [-R, tz + R]].map(([a, b]) => monde(a, b)), plafond: y0 + Ht, bas: y0 - 0.6, nom: 'la tour' }); }
   cheminee2(I, g, -L / 2 + 0.95, 0, Math.PI / 2, { w: 2.4 }); M.tapis(-5.2, 0, 2.6, 3.4, 0, 0x7a3e32); M.canape(-4.0, 0, -Math.PI / 2, 0x6a3a2e);
   M.fauteuil(-6.0, 2.6, Math.PI); M.fauteuil(-6.0, -2.6, 0); M.rayonnage(-5.4, -W / 2 + 0.85, 3.6, 0);
   M.table(5.4, 0, 2.6, 1.0, Math.PI / 2, 6); M.buffet(5.4, -W / 2 + 0.9, 2.4, 0); M.horloge(7.6, W / 2 - 0.9, Math.PI);
@@ -795,7 +842,7 @@ function beauregard(ctx, X, Z, rot) {
   // ---- l'étage : la vis de la tour reste un décor (elle barrait le passage du bas, de la porte au
   // hall, sur tous les tracés essayés) ; on monte par l'escalier droit du hall ----
   I.escalier(0, -3.2, 0.8, 1.3, 3.32);
-  I.etage([[-L / 2 + 0.6, -0.7, -W / 2 + 0.6, W / 2 - 0.6], [0.7, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6], [-0.7, 0.7, 0.8, W / 2 - 0.6]], 3.32, null);
+  I.etage([[-L / 2 + 0.6, -0.7, -W / 2 + 0.6, W / 2 - 0.6], [0.7, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6], [-0.7, 0.7, 0.8, W / 2 + 0.1]], 3.32, null);     // (le palier va jusqu'à la vis, par-dessus le mur)
   { const g2 = new THREE.Group(); g2.position.y = 3.32; g.add(g2); const I2 = interieur(g2, monde, y0 + 3.32, -0.4), M2 = mobilier(I2, g2);
     for (const sx of [-1, 1]) I2.mur(sx * 2.5, -W / 2 + 0.6, sx * 2.5, W / 2 - 0.6, { ...Cl, h: 2.9, pied: 0, portes: [{ t: 4.9, w: 1.7, h: 2.3 }] });
     for (const sx of [-1, 1]) I2.porte(sx * 2.5, 0.15, sx * 2.5, 1.85);

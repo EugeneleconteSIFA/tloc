@@ -35,8 +35,8 @@ const VUES_REGARD = [
   { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
   { nom: 'yeux : le Batut, depuis le départ', cam: [-116.7, 1.6, 143.8], at: [-135, 5, 170], sol: true },
   { nom: 'yeux : le Pouget, depuis la grille', cam: [169, 1.6, -287], at: [185, 6, -315], sol: true },
-  { nom: 'plongée : la cour et le pré de Beauregard', cam: [455, 28, 120], at: [420, 0, 165] },
-  { nom: 'yeux : le barrage, le duel', cam: [-205, 1.6, -40], at: [-235, 1.2, -110], sol: true, rue: true },
+  { nom: 'dedans : la vis de Beauregard', cam: [395.34, 5.94, 149.32], at: [394.14, 6.84, 146.84] },
+  { nom: 'dedans : le Batut, l’étage de l’aile', cam: [-139.2, 18.78, 165.64], at: [-146.11, 17.88, 163.09] },
   { nom: 'dedans : le Batut, le grand salon', cam: [-135.0, 1.6, 165.9], at: [-136.0, 1.2, 173.7], sol: true },
   { nom: 'dedans : le Pouget, le salon', cam: [180.4, 1.6, -313.5], at: [180.1, 1.2, -321.4], sol: true },
   { nom: 'dedans : Beauregard, de la tour au hall', cam: [393.6, 1.6, 148.2], at: [403.3, 1.2, 151.2], sol: true },
@@ -233,6 +233,13 @@ try {
       batut: [-135, 170, [[9.5, 9], [9.5, 2], [6.5, 0.5], [3, 0], [3.1, 2.4], [-1.8, 2.4], [-1.9, 3.5], [-3.25, 3.5], [-3.25, -2.4], [-1.5, -2.6], [1.6, -0.9]]],
       pouget: [185, -315, [[0, 10], [0, 3.6], [0, 2.0], [0.4, 1.0], [1.4, 0.9], [1.4, -3.4], [0, -3.4], [0, 1.45], [-1.0, 1.45], [-1.4, 0.6], [-3.4, 0.6], [-6.5, -0.8]]],
       beauregard: [400, 150, [[0, 11], [0, 8.6], [0, 7.5], [0.9, 6.6], [0.9, 5.0], [0.15, 3.9], [0.15, 3.2], [1.5, 2.6], [1.5, -3.2], [0, -3.2], [0, 1.8], [1.3, 1.8], [1.6, 1.0], [3.6, 1.0], [5.2, 1.4]]],
+      // la vis de la tour (5 octobre) : de la porte, par la droite jusqu'au hall, puis tout le tour de la
+      // vis, à 1,2 m du noyau, jusqu'au palier de l'étage
+      'beauregard-vis': [400, 150, [[0, 11], [0, 8.6], [0, 7.5], [0.9, 6.6], [0.9, 5.0], [0.15, 4.0], [-0.6, 4.75],
+        ...Array.from({ length: 23 }, (_, k) => { const a = Math.PI + 0.75 + k * 0.2; return [Math.sin(a) * 1.2, 5.875 + Math.cos(a) * 1.2]; }), [0, 4.0], [0, 3.4], [0, 2.2]]],
+      // l'étage des corps bas du Batut, depuis la chambre du maître
+      'batut-enfants': [-135, 170, [[1.6, -0.9], [-3.2, -2.8], [-5.5, -2.8], [-7.6, -0.5]]],
+      'batut-grenier': [-135, 170, [[1.6, -0.9], [3.0, -1.0], [3.6, -0.3], [5.5, -0.3], [10.0, -0.3], [10.0, -1.9], [12.4, -1.9], [12.4, 0.6]]],
     };
     const res = {};
     for (const [nom, [X, Z, pts]] of Object.entries(MAISONS)) {
