@@ -1450,7 +1450,7 @@ une vue « carrefour » est ajoutée.
   (rien dans ce lot ne change l'eau ni les collisions de la route).
 
 **Questions pour Eugène** :
-1. Les répliques des passants (ci-dessus) te vont-elles ? Elles orientent sans rien ajouter à l'histoire.
+1. ~~Les répliques des passants te vont-elles ?~~ Oui (Eugène, 5 octobre).
 2. Le garde du guet est à (−88 ; 907), à la porte coupée la plus proche de la rue du Gros Gérard, un peu au
    nord. Veux-tu qu'il garde plutôt une porte sur le chemin même (au bout de la rue Saint-Martin) ?
 3. Les deux questions de la nuit restent posées : le bourg doit-il disparaître au profit des bâtiments
@@ -1528,6 +1528,119 @@ d'avant : `carte/mondes/complet/lozere-villefort.json`, `complet/relief-lozere-v
   correction.
 - **Reste** : le réalisme et le jouable de Villefort (consigne V, point 3) : des gens à qui parler, et
   des `reperes`.
+
+#### Compte rendu de la session Aveyron (5 octobre, PC)
+
+**Publié** : `4ef658d` (le resserrement seul), puis `b7b4fa1` (le réalisme et le jouable). Ce compte
+rendu n'est pas publié : PROMPT-REPRISE.md porte aussi des ajouts d'une autre session.
+
+**Réalisme, fait (dans aveyron.js seulement).** La planche du regard, `bancs/tour.sh node bancs/lieu-aveyron.mjs
+http://127.0.0.1:8000 regard <étiquette>`, montre 8 vues à hauteur d'yeux et en plongée (Beauregard, le
+Pouget, le barrage, Perpignou, la rive nord). Les écarts, du plus visible au moins visible :
+1. le bord de la grève en marches de 3 m : les coins hors du lac plein sont ramenés sur la rive ;
+2. des routes en rubans à bord franc : la chaussée est bombée de 1,5 cm et posée sur un accotement de terre
+   irrégulier (0,4 à 1,1 m de chaque côté) ;
+3. le chemin d'exploitation : deux ornières de terre, l'herbe au milieu. Le sentier a une largeur qui
+   varie, et sa terre est grisée vers l'herbe grillée ;
+4. les maisons d'OSM aveugles : `ouvertures()` ajoute des baies encadrées de granit, des volets à la
+   couleur de chaque maison (gris-bleu, sang-de-bœuf, sauge, brun) et une porte sur le long côté. Les
+   granges ont un portail de planches. Un mur mitoyen ou une baie enterrée côté amont n'ont pas
+   d'ouverture.
+
+Captures avant/après : `bancs/resultats/lieu-aveyron-2026-10-05-regard-avant-vues.png`,
+`…-regard-apres-2-vues.png`, la minicarte `…-regard-apres-2-minicarte.png`, et l'aérienne dans
+`…-apres-resserrement-3-vues.png` (vue 1).
+
+**Le jouable.** 11 `reperes` dans `aveyron.js` : le Batut, Beauregard, la grande maison du Pouget, le
+barrage, la source des Vergnes, la fontaine du lac, Perpignou, Fariboules, le pêcheur, le colporteur et la
+porte de l'île. La source des Vergnes existe maintenant en jeu : un griffon de pierre sèche, la bouche
+murée de pierres entassées. On la MONTRE bouchée, la quête « Les sources » n'est pas écrite. Les gens posés
+(`window.__lieu.gens`) :
+- **le pêcheur** (rôle `pecheur`), sur la rive près du départ (−66 ; 97) : « Le lac a perdu plus d'un
+  mètre… » ; le barrage est au nord-ouest ;
+- **le colporteur** (rôle `colporteur`), à la sortie vers Saint-Gervais (−175 ; −325) : « Là-haut aussi,
+  les puits sont à sec » ; le Pouget est à l'est ;
+- **deux habitants de Perpignou** (villageois), vers (452 ; −228) et (462 ; −212) : le puits à vase, le
+  soleil qui ne bouge plus ;
+- **un homme de Fariboules**, vers (290 ; 30) : Beauregard est sur la pente, au sud-est ;
+- **une femme à la fontaine du lac**, vers (−262 ; −330) : les sources bouchées, celle des Vergnes ;
+- **un homme sur le barrage**, vers (−205 ; −55) : « Les Roquette vont finir par se battre, pour ce lac. »
+
+Ces répliques sont celles des villageois de Saint-Symphorien, plus des indications de direction. Rien sur
+les Roquette au-delà de STORY.md.
+
+**Mesures** (`bancs/lieu-aveyron.mjs`) : chargement de 3,1 à 3,8 s (4,3 s avant le resserrement) ;
+étapes du lieu : bâti 37 ms, rues 57 ms, lisière 68 ms, le reste 205 ms, arbres 76 ms. Aucune étape
+nouvelle au-delà de 300 ms. Rues praticables 100 %, 26 cibles sur 26 atteintes en marchant, 0 toit qui
+déborde, rubans flottants 0,1 %. Contrôle de publication : somme 8,7 s sur 17.
+
+**Demandes pour monde.js** (pas le droit d'y écrire) :
+- la minicarte ne trace pas les rues de l'Aveyron : `TRAITS` ne lit que `PLAN.routes` et
+  `PLAN.chemins`, alors que l'Aveyron les range sous `rues` et `sentiers` pour les bâtir lui-même. Il
+  faudrait lire aussi `PLAN.rues` / `PLAN.sentiers`, ou un crochet `f.traits` ;
+- l'eau des lacs (`eau.plans`) ne bloque pas la marche : on entre dans le lac jusqu'au fond. Il faudrait
+  un `bloque` sur l'eau profonde (le lac d'étiage), comme `f.mer` ;
+- le réservoir de Montézic est coupé net au bord de la grille fine (`dansCadre` le dessine en entier, à
+  plat, mais le relief s'arrête) ;
+- toujours valables : `apresBati(ctx)` et `sol.patine` (§ 4.E, « suite »).
+
+**Reste** : le sol (`withered_grass` uniforme : des prés clos, des murets de parcelles, des
+affleurements de schiste) ; la végétation (chênes seuls : des châtaigniers et des genêts, typiques du
+Ségala) ; les maisons Roquette, déjà soignées.
+
+**Questions pour Eugène** :
+1. La zone fait 810 × 820 m : j'ai repoussé le bord est de 20 m pour que le chemin de Roubiliergues ne
+   sorte pas trois fois. Ça te va ?
+2. La lisière (muret, haie de chênes, barrières de pré fermées) se lit-elle comme naturelle en jeu ?
+3. Faut-il que la fontaine du lac ou la source des Vergnes deviennent une quête (« Les sources ») ? Je n'ai
+   rien écrit de l'histoire.
+
+### Lille — le bourg cède la place au bâti relevé (5 octobre, après-midi) — **fait, vérifié en rendu, publié (1a828a4, 85feb37)**
+
+Réponses d'Eugène aux questions du matin : les répliques des passants et le poste du garde du guet lui
+vont ; le cercle « à droite du Wault » est au bon endroit ; **le bourg disparaît au profit des bâtiments
+relevés, et ses éléments s'insèrent dans le vrai quartier** ; beffroi et chapelle restent sur place.
+- **La voie des combattants** (promenade.js, 1a828a4) : bords fondus (`rubanGeo`, `fondu`), ornières moins
+  rectilignes, teintes adoucies.
+- **Le bâti relevé revient dans l'îlot du bourg** (quartier.js) : il ne cède plus qu'aux monuments gardés —
+  beffroi, chapelle avec porche et parvis, cimetière (`MONUMENTS`, village.js ; `PARTAGE.batiBourg`). Le
+  cimetière a reculé de 1,6 unité vers le nord, le chantier de la chapelle est passé entre le cimetière et la
+  nef. Au passage, deux grands bâtiments relevés qui traversaient déjà la chapelle et le cimetière ne sont
+  plus élevés.
+- **Les douze maisons inventées sont parties.** Le relevé dit pourquoi le bourg avait deux rangées : il n'en
+  a qu'une. La « Façade de l'Esplanade » est une rangée de maisons au nord, l'Esplanade ouverte au sud.
+- **Les commerces dans les façades** (`COMMERCES`, `poserCommerce`, village.js) : en élevant chaque mur,
+  quartier.js demande s'il est réservé (`PARTAGE.facadeBourg`) ; si oui, pas de rez-de-chaussée percé, et le
+  commerce se pose sur ce mur tel qu'il est DESSINÉ (le relevé et les murs diffèrent d'un mètre par
+  endroits), dans un repère tourné (`cadre`). Un commerce qu'aucun mur ne porte se pose quand même sur
+  l'ancien plan, avec un avertissement (`facadeBourgFin`).
+  - **la salle de la garde** passe à la façade relevée de l'ouest (lx −21,2), puisqu'il n'y a pas de maison
+    relevée sur l'Esplanade ; le prologue la suit (tout y part de `PARTAGE.ecole`) ;
+  - **l'estaminet** est à lx −4,3 : en −11, une courée relevée traverse l'îlot et quartier.js y laisse le
+    passage ouvert, et le seul mur qui regarde la rue entre elle et la rue du beffroi va de −6,9 à −1,7. Sa
+    porte, sa terrasse resserrée, son enseigne ; **sa sortie passe par la sauvegarde**
+    (`state.sortieEstaminet`, lue par tavern.js) : l'estaminet s'ouvre dans sa propre page et ne voit pas
+    `PARTAGE` ;
+  - **le brasseur** (lx 10,5) et **le drapier** (lx 17) sur la façade relevée à l'est ;
+  - **la forge** garde sa place sur l'Esplanade (le multi y pose un objet) et s'adosse à un mur de brique
+    qui porte l'étal du forgeron.
+- Recalés : l'étal aux légumes, le poids public, deux bannières et des caisses, qui tombaient dans les
+  maisons relevées ; un réverbère et la roue, qui bouchaient la porte de l'estaminet. Le linge part des
+  façades et finit sur un mât. Les fanions du prologue finissent sur des mâts de fête (quetes.js), et
+  l'objectif « Gustave, à l'estaminet » suit la vraie porte. Le lieu « l'estaminet » de la carte aussi.
+
+**Vérifié** : prologue joué en headless sans erreur, il part de la nouvelle salle de la garde (foule,
+fanions et mâts) ; aller-retour dans l'estaminet (on ressort devant la porte, face à la place) ; accès 27
+interactions, 0 hors d'atteinte. **A/B** (`charge-2026-10-05-ab3-*.json`) : 13,8 / 13,8 s → 12,5 / 14,0 s,
+pas d'écart ; fusion des décors −0,45 s, tas −25 Mo. Captures : `bancs/resultats/bourg-releve-2026-10-05-*.jpg`
+(vue d'ensemble, garde, estaminet, brasseur et drapier, forge, place, nord, prologue, sortie de l'estaminet).
+
+**Ce qui reste** :
+- **La moitié sud de la boîte du bourg** (l'Esplanade) reste un grand socle de terre battue où se tiennent le
+  marché et la forge : il faudrait y rendre l'herbe de l'Esplanade hors du marché (le sol plat du bourg,
+  `solBourg`, couvre toute la boîte : à reprendre avec `TOWN_BOITE` et le relief cuit).
+- Les rez-de-chaussée réservés sont aveugles derrière les étals : entre deux baies d'un étal, on voit le mur
+  nu de la maison relevée.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
