@@ -2012,6 +2012,74 @@ d'une barque, le plateau du sommet) ; la baie : `…-point-vues.png` / `…-apre
 **Questions pour Eugène** : Railay en bungalows de bois sous la tôle, ça te va ? Et l'escalier du grand piton
 (la terrasse des moines → le plateau) : le veux-tu, ou le câble suffit-il pour le sommet ?
 
+### Thaïlande — l'escalier du grand piton et les bungalows de Railay (5 octobre, soir) — **faits, vérifiés en rendu et au banc, publiés (06be33a)**
+
+Eugène : « oui pour les bungalows de bois, et fais l'escalier ».
+- **L'escalier** (`escalier()`, thailande.js) : le relief ne pouvait pas le porter (grille de 10 m, lacets
+  trop serrés ; et ni les tuiles Copernicus ni tifffile ne sont sur le PC). C'est un ouvrage maçonné contre
+  la falaise sud, entre le temple et la paroi : trois volées et deux paliers qui se replient, chacune plus
+  près de la paroi que la précédente (rien ne se recouvre en plan : `solEscalier` donne un seul sol par
+  point), puis un pont de 18 m jusqu'au bord du plateau. 117 m de marches de 30 cm pour 67 m : 30°.
+  Parapets de nagas (écailles vertes, `clay_roof_tiles_02`), deux têtes dorées au pied ; les bords sont
+  inscrits dans les collisions (`inscrire`) : on n'en tombe pas. Le parcours SANS le câble de Phi Phi atteint
+  le plateau, la cour du puits et les balayeurs. Les trois moines de l'enquête sont descendus au pied de
+  l'escalier (leur place était sous les volées) ; un repère `passage` au pied. La jungle s'écarte de 4 m.
+- **Railay** : bardage de planches à 2 cm devant les murs de monde.js (trois teintes, du bois clair au
+  teck), toits à quatre pans en tôle, vérandas et rambardes de bois aux étages.
+- **La tôle des toits** (Ko Panyi, Railay, Ton Sai) sortait noire vue d'en haut : `metal_plate_02` porte une
+  carte de métal qui en fait un métal pur, sans rien à refléter. `tole()` garde sa couleur et son grain, sans
+  la carte.
+- **extraire-thailande.py écrit en UTF-8** : sous Windows, `open(path, 'w')` écrivait le plan en cp1252, et le
+  jeu ne l'aurait plus lu. Relancée sur le PC, l'extraction redonne le plan à l'octet près.
+
+Mesures : parcours 20 repères sur 20, 36 interactions sur 36 ; praticabilité 98,4 % ; A/B entrelacé (3 + 3,
+machine chargée) sans écart, 2 984 → 2 989 ms ; l'escalier coûte 6 ms. Captures :
+`bancs/resultats/lieu-thailande-2026-10-05-realisme-escalier-vues.png` (vues 16 et 17 : le pied de l'escalier,
+la 1re volée).
+
+Reste : thailande.html porte depuis ce soir les lignes du multi d'une autre session (l'arène de Thaïlande,
+`thailande-arene.js`), pas publiées : laissées à cette session. Les temples du plateau restent pris dans la
+jungle ; le haut de l'escalier ne se voit pas bien depuis la mer.
+
+#### Aveyron : les intérieurs des trois maisons (5 octobre, `c6735bc`)
+
+Eugène : « fais les intérieurs des trois maisons, en exploitant ce qui a été fait pour le mode multi ».
+`batut.js` (le multi) est un niveau à part, avec deux manoirs de 30 × 36 m. On y a repris ses leçons, sans
+y toucher, mais DANS les maisons d'aveyron.js, à leurs vraies dimensions : on passe la porte qu'on voit.
+- **Pourquoi pas une page à part** : `PAGES` (engine.js) ne la connaîtrait pas, et une sauvegarde faite
+  dedans ramènerait à Lille à la reprise.
+- **Les terre-pleins** (`fondre-relief-aveyron.py`, `J['replats']`) : le relief est mis de niveau sous
+  chaque maison, plus une maille de 5 m (sans elle, l'interpolation remontait dans la maison), puis
+  raccordé sur 7 m. Le moteur ne sait pas poser un plancher sous une maison tournée (`addPlatform` est
+  aligné sur les axes) : le sol de la maison est le relief.
+- **`interieur()`** : des murs creux de 60 cm (la face extérieure sur l'emprise), percés de portes. Leur
+  collision est une capsule du moteur (`addCap`) qui s'arrête au linteau. S'y ajoutent l'enduit du
+  dedans, les sols et les plafonds à poutres (3 à 3,2 m), et les meubles (capsules couchées : la
+  maison est tournée). `mobilier()` fournit canapé, fauteuil, table et chaises, buffet, armoire,
+  rayonnage, tapis, horloge, tonneau, lit, piano ; `cheminee2()` la cheminée.
+- **Les maisons ne sont plus inscrites dans la grille de monde.js** (on n'y entrerait pas). Leurs emprises
+  (`EMPRISES`, `dansUneMaison`) écartent arbres, rochers, brebis, passants et dépendances.
+- **Les portes d'entrée font 1,9 m**, vantaux ouverts dedans : Camille a 0,5 m de rayon. La porte
+  cintrée du Batut, la porte bleue du Pouget et celle de la tour de Beauregard ont été élargies. Les
+  trois marches du Pouget sont devenues un seuil : un perron ferait marcher Camille dans le plancher.
+- **Le plan** :
+  - le Batut : le grand salon et sa cheminée au centre, la bibliothèque dans le corps bas, la salle à
+    manger et la cuisine dans l'aile ;
+  - le Pouget : le vestibule dans la tour carrée, le hall dallé, le salon, la salle à manger et sa
+    longue table de famille, la cuisine dans l'aile basse ;
+  - Beauregard : la tour d'escalier (28 pans de pierre, le noyau et les marches de la vis, on passe à
+    droite), le hall, le salon et sa cheminée, la salle à manger.
+- **La caméra** (`anime`) : dans une pièce (`DEDANS`), elle reste sous le plafond et se rapproche ;
+  dehors, elle reprend le champ de monde.js. **Le jour** : un aplat clair sur la face intérieure de
+  chaque fenêtre.
+- **Le banc** voit trois objets à regarder au fond des pièces (les livres du Batut, la table de famille
+  du Pouget, la cheminée de Beauregard) : 30 cibles sur 30 atteintes en marchant depuis le départ. Les
+  rues restent praticables à 100 %. « Maisons Roquette » 238 ms. Planche :
+  `…-regard-interieurs-2-vues.png` (vues 6 à 8 : les trois intérieurs).
+- **Reste** : les étages (escaliers praticables, `addRamp` et `addHelix` comme au Batut du multi :
+  sans plancher tourné, il faudra des capsules à plancher) ; les portes qu'on ferme ; la pénombre ;
+  l'aïeule dans sa salle à manger.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
