@@ -11,16 +11,22 @@ import {
   mergeParts, mesh, mouldingRun, pbr, pbrRepeat, phMat, pickups, pilaster, player, pointInPoly, rand,
   rboxG, saveGame, scene, setQuest, showMessage, sky, spawnGaufre, sphG, state, stoneMat, uvMeters,
   wallBox, world, etape,
+  // l'acte I dans la place (ACTE1_CITADELLE, en fin de fichier)
+  G, AIDE, KINDS, TOUCHES, animeCreature, arrows, cut, cutscene, damagePlayer, enemies, hitEnemy, lerp,
+  makeCorbeau, makeFantome, makeMoule, makePrince, readSave, setAnimHook, setMaker, shockwaves, spawnEnemy,
 } from './engine.js?v=41';
+import * as PNJ from './pnj.js';
+import * as BOURSE from './bourse.js';
 import {
   APO, BAST_H, COBBLE_M, COS36, COURTINES, DONJON, FOSSE_IN, GATE_HW, GATE_I, HOUSE, MARCHE_R,
   FERME, MOAT_IN, MOAT_OUT, PLAINE_R, PONT_LONG, PONT_Z1, POTERNE, R, TOWN, TRACE, WALL_H, WALL_T, bastionAt, bastions, eauMat, placerRampes, townWorld,
   cobbles, cuireRelief, maillagePlaine, nearHouse, normale, normals, offsetPoly, patinerMat,
   disqueTrace, pentShape, placerButtes, polyShape, sdPent, solPlaine, tapisForestier, nappeProche, LILLE,
+  EAU_Y, sdEau,
 } from './carte.js';
 import { makeDoor } from './menuiserie.js';
 import { carteForet } from './foret.js';
-import { PARTAGE } from './etat.js';
+import { PARTAGE, atteintActe1, etapeActe1, passerActe1 } from './etat.js';
 import { buildHouse, buildMaisonMage, buildCountryside } from './campagne.js';
 import { buildTown } from './village.js';
 import { buildMountains, buildNature, buildVegetation, flowerTexture, perf } from './nature.js';
@@ -789,6 +795,29 @@ function unitePorteCadre() {
 // Une seule recette pour les casernes et pour les corps de garde : le contour décide de
 // tout. Le corps descend 3,2 m sous sa base, ce qui évite qu'un angle posé en limite de
 // terre-plein de bastion ne se retrouve en l'air.
+// Façade principale : la plus longue arête qui regarde la place — ou la direction
+// imposée par `regard`, quand le bâtiment a une orientation voulue (corps de garde).
+// À part depuis le 5 octobre : l'acte I doit trouver la porte d'un bâtiment (l'armurerie,
+// la caserne des soldats cachés) là où poserBatiment l'a mise, pas la deviner.
+// Rend l'arête, le milieu de la porte au sol et la normale vers l'extérieur.
+function facadePrincipale(p, regard) {
+  const c = CENTRE(p);
+  const vers = regard || [PLACE_C[0] - c[0], PLACE_C[1] - c[1]];
+  const vl = Math.hypot(vers[0], vers[1]) || 1;
+  let i0 = 0, meilleur = -1e9;
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (L < 4.5) continue;
+    const nx = (b[1] - a[1]) / L, nz = -(b[0] - a[0]) / L;
+    const note = L * 0.25 + 30 * (nx * vers[0] + nz * vers[1]) / vl;
+    if (note > meilleur) { meilleur = note; i0 = i; }
+  }
+  const a = p[i0], b = p[(i0 + 1) % p.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+  return { i: i0, L, ux, uz, nx: uz, nz: -ux, x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2 };
+}
+
 function poserBatiment(ch, p, opt = {}) {
   const M = materiauxBati();
   const base = opt.base || 0, etages = opt.etages || 2, teinte = (opt.teinte || 0) % 4;
@@ -815,20 +844,7 @@ function poserBatiment(ch, p, opt = {}) {
   // toiture à croupes
   poseMesh(nappe(egout, faite, yE, yE + roofH, true), opt.ardoise ? M.ardoise : M.tuile[(teinte + 2) % 4]);
 
-  // Façade principale : la plus longue arête qui regarde la place — ou la direction
-  // imposée par `opt.regard`, quand le bâtiment a une orientation voulue (corps de garde).
-  const c = CENTRE(p);
-  const vers = opt.regard || [PLACE_C[0] - c[0], PLACE_C[1] - c[1]];
-  const vl = Math.hypot(vers[0], vers[1]) || 1;
-  let principale = 0, meilleur = -1e9;
-  for (let i = 0; i < p.length; i++) {
-    const a = p[i], b = p[(i + 1) % p.length];
-    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (L < 4.5) continue;
-    const nx = (b[1] - a[1]) / L, nz = -(b[0] - a[0]) / L;
-    const note = L * 0.25 + 30 * (nx * vers[0] + nz * vers[1]) / vl;
-    if (note > meilleur) { meilleur = note; principale = i; }
-  }
+  const principale = facadePrincipale(p, opt.regard).i;
 
   // percements, arête par arête
   for (let i = 0; i < p.length; i++) {
@@ -1730,8 +1746,641 @@ export function buildDetails() {
 // L'ACTE I DANS LA CITADELLE (étapes 9 et 10, docs/DECOUPAGE-ACTE1.md) : la place d'Armes habitée,
 // l'armurerie et les bombes, les trois créatures et leurs clés, le donjon et Phinaert. quetes.js
 // appelle ces deux crochets (à la fin de son populate et de son update) ; ce qui s'y écrit reste
-// dans ce fichier. Vides tant que la session de la citadelle ne les a pas remplis (5 octobre).
-export const ACTE1_CITADELLE = {
-  populate() {},
-  update(dt) {},
+// dans ce fichier.
+//
+// Ce qui tient d'une partie à l'autre est dans `state.a1c` (saveGame sérialise toute clé de
+// state) : qui a parlé, la porte de l'armurerie, les créatures mortes, les clés ramassées, les
+// cadenas, Phinaert. `state.bombes` et `state.nbBombes` : les bombes. On ne compte pas sur
+// l'instantané des ennemis (engine.js le rend par indice, et nos créatures naissent après le
+// chargement) : une créature morte ne renaît pas parce que `state.a1c.morts` le dit.
+//
+// Une ancienne sauvegarde (sans state.prologueFait) n'entre jamais ici : etapeActe1 rend null,
+// et les dix monstres, la clé du donjon et le prince libéré restent ce qu'ils étaient.
+const A1C = { pret: false, lieux: null, gens: {}, aFaire: [], cre: {}, cles: {}, bombes: [], crachats: [],
+  decor: null, retires: false, vuNuit: false, msgT: 0, cloche: null, porteLumiere: null };
+const a1 = () => etapeActe1(state);
+const atteint = (e) => atteintActe1(state, e);
+const A = () => (state.a1c = state.a1c || { morts: {}, cles: {}, clesPos: {}, cadenas: 0 });
+const avancer = (e) => { if (passerActe1(state, e)) saveGame(true); };
+// LA NUIT vient du lit de Camille (house.js, « jusqu'au soir » : state.nuit ; quetes.js peint la
+// ville en nuit). Le Capitaine ne fait sa ronde que la nuit.
+const deNuit = () => !!state.nuit;
+const dit = (who, text, fn) => ({ who, text, fn });
+
+// ---------- le bestiaire de l'acte : complète KINDS sans toucher à engine.js ----------
+// La Moule-Reine ne bouge pas (elle trône dans le fossé), la Corbelle tourne trop haut pour
+// voir Camille (aggro 0 : c'est nous qui la menons), la corde de la cloche est une « bête » pour
+// que la visée de l'arc la trouve et qu'une flèche la coupe — la machine de l'arc, telle quelle.
+Object.assign(KINDS, {
+  mouleReine:    { hp: 8,  speed: 0,   dmg: 2, range: 3.2, aggro: 18, windup: 0.8, cd: 2.4, fly: 0,    r: 2.0, label: 'La Moule-Reine', barY: 4.4 },
+  capitaine:     { hp: 10, speed: 3.6, dmg: 2, range: 2.6, aggro: 22, windup: 0.6, cd: 1.4, fly: 0.35, r: 0.8, label: 'Le Capitaine sans tête', barY: 4.6 },
+  soldatRonde:   { hp: 4,  speed: 4.0, dmg: 1, range: 2.1, aggro: 18, windup: 0.5, cd: 1.3, fly: 0.35, r: 0.6, label: 'Soldat de la ronde', barY: 3.3 },
+  corbelle:      { hp: 6,  speed: 0,   dmg: 2, range: 0,   aggro: 0,  windup: 1,   cd: 1,   fly: 15,   r: 1.7, label: 'La Grande Corbelle', barY: 2.8 },
+  cordeCloche:   { hp: 2,  speed: 0,   dmg: 0, range: 0,   aggro: 0,  windup: 1,   cd: 1,   fly: 5,    r: 0.5, label: 'La corde de la cloche', barY: 1.2 },
+});
+Object.assign(BOURSE.PRIMES, { mouleReine: 20, capitaine: 20, corbelle: 20, soldatRonde: 3 });
+// les gabarits : les bêtes de la maison, plus grandes, et le fantôme sans sa tête
+const anime = (kind) => (e, dt, speed) => { animeCreature({ ...e, kind, state: e.ouverte ? 'windup' : e.state }, e.mesh, dt, speed); return true; };
+setMaker('mouleReine', () => { const g = makeMoule(); g.scale.setScalar(2.6); g.userData.anim = true; return g; });
+setMaker('corbelle', () => { const g = makeCorbeau(); g.scale.setScalar(3.2); g.userData.anim = true; return g; });
+setMaker('soldatRonde', () => { const g = makeFantome(); g.userData.anim = true; return g; });
+setMaker('capitaine', () => {
+  const g = makeFantome(), habit = g.children.find((o) => o.isMesh && Math.abs(o.position.y - 1.72) < 0.01);
+  // sans tête : on ôte le crâne, la mâchoire, les orbites, le tricorne — on garde le col
+  for (const o of [...g.children]) if (o.isMesh && o.position.y > 2.1 && o.material !== (habit && habit.material)) g.remove(o);
+  // une lueur froide au-dessus du col, là où devrait être la tête
+  g.add(mesh(sphG(0.16, 10), new THREE.MeshBasicMaterial({ color: 0x8ab0ff, transparent: true, opacity: 0.55, depthWrite: false }), 0, 2.36, 0));
+  g.scale.setScalar(1.45); g.userData.anim = true; return g;
+});
+setMaker('cordeCloche', () => { const g = new THREE.Group(); g.userData.dynamic = true; return g; });
+setAnimHook('mouleReine', anime('moule'));
+setAnimHook('corbelle', anime('corbeau'));
+setAnimHook('soldatRonde', anime('fantome'));
+setAnimHook('capitaine', anime('fantome'));
+
+// ---------- où se joue l'acte ----------
+function lieuxA1() {
+  if (A1C.lieux) return A1C.lieux;
+  const L = {}, P = POTERNE_JEU || POTERNE, dP = (k) => Math.hypot(k.c[0] - P.x, k.c[1] - P.z);
+  // la caserne des soldats cachés : la plus proche de la poterne, par où Camille arrive
+  let kS = null;
+  for (const k of CASERNES) if (!k.bastion && k.aire > 300 && !surCouloirRampe(k.poly) && (!kS || dP(k) < dP(kS))) kS = k;
+  L.caserne = facadePrincipale(kS.poly);
+  // l'armurerie : le magasin du bastion du Roy (SCENARIO.md, « L'armurerie »), le plus grand des siens
+  let kA = null;
+  for (const k of CASERNES) if (k.bastion && /Ro[iy]/.test(k.bastion.name) && !surCouloirRampe(k.poly) && (!kA || k.aire > kA.aire)) kA = k;
+  L.armurerie = { ...facadePrincipale(kA.poly), y: kA.base };
+  // la pointe de Turenne : on ne marche que sur une bande du terre-plein, de l'arrivée de la rampe
+  // vers le saillant, jusqu'aux pièces d'artillerie (sonde du 5 octobre : 117 cases sur 2 097, et
+  // le saillant à 43 m de la dernière — hors de portée d'arc). On suit donc cette bande depuis la
+  // rampe tant qu'elle est libre : là où elle s'arrête, Camille se tient (`pied`, où tombera la
+  // clé), et la Corbelle tourne huit mètres plus loin vers la pointe.
+  { const b = bastions.find((q) => /Turenne/.test(q.name)) || bastions[1];
+    const s0 = (b.sPalier ?? 0) + 3, t0 = b.tRampe ?? 0, at = (s) => [b.V[0] + b.u[0] * s + b.v[0] * t0, b.V[1] + b.u[1] * s + b.v[1] * t0];
+    let s = s0;
+    while (s < s0 + 120) { const [x, z] = at(s + 1); if (!bastionAt(x, z) || E.blocked(x, z, 0.6, false, BAST_H + 0.1)) break; s += 1; }
+    const [px, pz] = at(Math.max(s0, s - 2)), [cx, cz] = at(s + 8);
+    L.corbelle = { x: cx, z: cz, R: 8, pied: [px, pz] }; }
+  // le fossé de la Porte Royale : de l'eau franche à l'est du pont, à portée de bombe depuis le
+  // tablier (ses parapets n'arrêtent ni bombe ni flèche) ; à quarante mètres de la porte, loin de
+  // ses ouvrages — tout près, getH trouvait le dessus d'une maçonnerie et la Reine trônait à 3,5 m
+  L.reine = { x: 11, z: APO + 40 };
+  for (let z = APO + 34; z < APO + 70; z += 2) { if (sdEau(11, z) < -4 && getH(11, z) < -2.5) { L.reine = { x: 11, z }; break; } }
+  // la ronde du Capitaine : le long de la courtine du nord-ouest, à 22 m en dedans — la rue du
+  // rempart. À 12 m (là où l'ancienne histoire mettait ses fantômes), la ronde traversait une
+  // caserne : la sonde du 5 octobre y trouve 134 m de rue droite joignable, de -62 à +70 m autour
+  // du milieu de la courtine ; on en prend quarante, au milieu
+  { const c = COURTINES[0], tx = -c.nz, tz = c.nx, d = 22, cx = c.mx - c.nx * d + tx * 4, cz = c.mz - c.nz * d + tz * 4;
+    L.ronde = { a: [cx - tx * 20, cz - tz * 20], b: [cx + tx * 20, cz + tz * 20], x: cx, z: cz }; }
+  // le donjon : la corde de la cloche pend le long de la face sud, à droite de la porte ; la
+  // dalle (où s'ouvrira la porte de lumière) devant la porte ; Eugène, attaché à côté
+  { const D = DONJON; L.corde = { x: D.x + 3.2, z: D.z + D.half + 0.9 }; L.dalle = { x: D.x, z: D.z + D.half + 9 };
+    L.eugene = { x: D.x - 3.6, z: D.z + D.half + 2.2 }; L.tireur = { x: D.x + 6.4, z: D.z + D.half + 2.2 }; }   // à côté de la corde, pas devant : on la voit
+  return (A1C.lieux = L);
+}
+
+// ---------- le décor de l'acte, posé au peuplement (avant la fusion : tout est mobile) ----------
+const dyn = (o) => { o.userData.dynamic = true; return o; };
+function decorA1() {
+  const L = lieuxA1(), D = { };
+  const bois = pbrRepeat(T.plank, 1, 1), fer = IRON();
+  // la barricade de l'armurerie : des planches en croix sur la porte, et la poudre contre le mur
+  { const f = L.armurerie, g = dyn(new THREE.Group()), y = f.y;
+    g.position.set(f.x + f.nx * 0.35, y, f.z + f.nz * 0.35); g.rotation.y = Math.atan2(f.nx, f.nz); scene.add(g);
+    for (const [r, h] of [[0.5, 2.0], [-0.5, 2.3], [0, 1.4], [0, 3.0]]) { const pl = mesh(boxG(r ? 3.0 : 2.6, 0.22, 0.08), bois, 0, h + 1.05, 0); pl.rotation.z = r; g.add(pl); }
+    D.barricade = g;
+    // trois tonneaux de poudre (deux empilés : à hauteur d'une flèche tirée droit)
+    const t = new THREE.Group(), tg = new THREE.CylinderGeometry(0.5, 0.45, 1.2, 12), tm = pbrRepeat(T.plank, 2, 1, { color: 0x9a7048 });
+    for (const [dx, dy] of [[0, 0], [0, 1.2], [1.05, 0]]) { t.add(mesh(tg, tm, dx, dy + 0.6, 0)); for (const yy of [0.25, 0.95]) t.add(mesh(new THREE.TorusGeometry(0.5, 0.04, 6, 14), fer, dx, dy + yy, 0).rotateX(Math.PI / 2)); }
+    const px = f.x + f.nx * 1.05 + f.ux * 2.6, pz = f.z + f.nz * 1.05 + f.uz * 2.6;   // contre le soubassement
+    t.position.set(px, y, pz); dyn(t); scene.add(t); D.poudre = t; D.poudreP = { x: px, z: pz, y };
+    D.poudreCap = addCap(px, pz, px + f.ux * 1.05, pz + f.uz * 1.05, 0.55, y + 2.4); }
+  // les caisses derrière lesquelles se cachent les soldats
+  { const f = L.caserne, cm = phMat('wood_cabinet_worn_long', 1, 1, { color: 0xb89a70 });
+    for (const [s, d, h] of [[-2.6, 3.4, 0], [-1.5, 3.9, 0], [-1.9, 3.6, 1.0], [2.4, 3.5, 0], [3.3, 3.2, 0]]) {
+      const x = f.x + f.ux * s + f.nx * d, z = f.z + f.uz * s + f.nz * d;
+      const c = dyn(mesh(boxG(1.0, 1.0, 1.0), cm, x, getH(x, z) + h + 0.5, z)); c.rotation.y = Math.atan2(f.nx, f.nz) + s * 0.1; scene.add(c);
+      if (!h) addCap(x, z, x, z, 0.6, getH(x, z) + 1.1);
+    } }
+  // les trois cadenas, accrochés à la grille du donjon (ils tournent avec elle)
+  { const g = PARTAGE.donjonGate, laiton = GOLD(); D.cadenas = [];
+    for (const dx of [1.6, 2.5, 3.4]) {
+      const c = new THREE.Group(); c.add(mesh(boxG(0.34, 0.3, 0.14), laiton, 0, 0, 0));
+      const anse = mesh(new THREE.TorusGeometry(0.11, 0.03, 6, 12, Math.PI), fer, 0, 0.15, 0); c.add(anse);
+      // cachés d'abord : l'ancienne histoire ouvre cette grille au dixième monstre, sans cadenas
+      c.position.set(dx, 1.3, 0.12); c.visible = false; g.add(c); D.cadenas.push(c); } }
+  // la cloche du donjon : une potence de chêne au parapet sud, la cloche, la corde jusqu'au sol
+  { const Dj = DONJON, H = Dj.h, cx = L.corde.x, cz = L.corde.z, g = dyn(new THREE.Group());
+    const chene = pbrRepeat(T.plank, 1, 3, { color: 0x6a5038 });
+    g.add(mesh(boxG(0.3, 3.6, 0.3), chene, cx, H + 1.8, Dj.z + Dj.half - 0.6));
+    g.add(mesh(boxG(0.26, 0.26, 2.2), chene, cx, H + 3.5, Dj.z + Dj.half + 0.3));
+    const joug = new THREE.Group(); joug.position.set(cx, H + 3.3, cz); g.add(joug);
+    const bronze = phMat('metal_plate_02', 0.5, 0.5, { color: 0xb88a48, roughness: 0.42, metalness: 0.8 });
+    const prof = [[0.05, 0], [0.32, -0.08], [0.4, -0.5], [0.52, -0.95], [0.62, -1.1], [0.6, -1.15]].map(([r, y]) => new THREE.Vector2(r, y));
+    joug.add(mesh(new THREE.LatheGeometry(prof, 18), bronze, 0, 0, 0));
+    scene.add(g); A1C.cloche = joug;
+    const corde = mesh(new THREE.CylinderGeometry(0.045, 0.045, H + 2.0, 6), mat(0x8a7350, { roughness: 1 }), cx, (H + 2.2) / 2 + 0.2, cz);
+    dyn(corde); scene.add(corde); D.corde = corde;
+    const tas = dyn(mesh(new THREE.TorusGeometry(0.4, 0.07, 6, 16), mat(0x8a7350, { roughness: 1 }), cx + 0.6, getH(cx, cz) + 0.08, cz + 0.8));
+    tas.rotation.x = Math.PI / 2; tas.visible = false; scene.add(tas); D.cordeTombee = tas; }
+  // la dalle gravée devant le donjon, et la porte de lumière qui s'y ouvrira
+  { const d = L.dalle, y = getH(d.x, d.z);
+    const dalle = dyn(mesh(new THREE.CylinderGeometry(4.2, 4.4, 0.16, 12), phMat('old_stone_wall_02', 3, 3, { color: 0xbab0a0 }), d.x, y + 0.08, d.z)); dalle.receiveShadow = true; scene.add(dalle);
+    const lum = new THREE.Group(); lum.position.set(d.x, y + 0.16, d.z); dyn(lum);
+    const voile = new THREE.MeshBasicMaterial({ color: 0xe6dcff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
+    const halo = new THREE.MeshBasicMaterial({ color: 0xb8a0e0, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+    // à la taille de Phinaert (onze mètres) : à six, il y entrait plié en deux
+    const arche = new THREE.Shape(); arche.moveTo(-3.6, 0); arche.lineTo(-3.6, 8.6); arche.absarc(0, 8.6, 3.6, Math.PI, 0, true); arche.lineTo(3.6, 0); arche.closePath();
+    lum.add(new THREE.Mesh(new THREE.ShapeGeometry(arche, 12), voile));
+    const ext = new THREE.Mesh(new THREE.ShapeGeometry(arche, 12), halo); ext.scale.set(1.35, 1.15, 1); ext.position.z = -0.02; lum.add(ext);
+    lum.scale.set(1, 0.001, 1); lum.visible = false; scene.add(lum); A1C.porteLumiere = lum; }
+  A1C.decor = D;
+}
+
+// ---------- les habitants de la place : nés après le chargement, un par image ----------
+const NOMS_A1 = { caporal: 'le caporal', tambour: 'le tambour', vieux: 'le vieux soldat', armurier: 'l’armurier' };
+function naitreA1() {
+  const qui = A1C.aFaire.shift(), L = lieuxA1();
+  let v = qui === 'caporal' ? PNJ.buildRole('houtland', 0x7a2a2a) : qui === 'tambour' ? PNJ.buildRole('prince', 0x2a3a6a)
+    : qui === 'vieux' ? PNJ.buildVillageois(3) : PNJ.buildRole('aubergiste', 0x4a3b2c);
+  v = v || makePrince();
+  let x, z, yaw;
+  if (qui === 'armurier') { const f = L.armurerie; x = f.x + f.nx * 1.8 - f.ux * 1.2; z = f.z + f.nz * 1.8 - f.uz * 1.2; yaw = Math.atan2(f.nx, f.nz); }
+  else { const f = L.caserne, s = { caporal: 0, tambour: -1.7, vieux: 1.7 }[qui], d = qui === 'caporal' ? 1.9 : 1.4;
+    x = f.x + f.ux * s + f.nx * d; z = f.z + f.uz * s + f.nz * d; yaw = Math.atan2(f.nx, f.nz); }
+  v.position.set(x, getH(x, z, (qui === 'armurier' ? L.armurerie.y : 0) + 0.5), z); v.rotation.y = yaw; v.scale.setScalar(G.echelle);
+  v.userData.dynamic = true; scene.add(v); A1C.gens[qui] = v; addCap(x, z, x, z, 0.4);
+  if (qui === 'tambour') { const t = mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.42, 14), mat(0xb02a2a, { roughness: 0.7 }), x + Math.cos(yaw) * 0.7, v.position.y + 0.21, z - Math.sin(yaw) * 0.7); dyn(t); scene.add(t); }
+  addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible && atteint('citadelle'), prompt: () => `parler ${NOMS_A1[qui].replace(/^le /, 'au ').replace(/^l’/, 'à l’')}`,
+    fn: () => { v.rotation.y = Math.atan2(player.pos.x - v.position.x, player.pos.z - v.position.z); v.userData.talk = 4;
+      dialogue(repliquesA1(qui), () => { v.userData.talk = 0; }); } });
+}
+
+// LES RÉPLIQUES (DIALOGUES-ACTE1.md, « La citadelle — les trois cadenas », mot pour mot ; le gras
+// est celui du fichier, sauf ce qui promettrait une chose qui n'existe pas encore — dit en note)
+function repliquesA1(qui) {
+  const s = A();
+  switch (qui) {
+    case 'caporal':
+      if (atteint('donjon')) return [dit('Le caporal', '« La grille ! **Le donjon est ouvert.** Va, on tient la place. »')];
+      return [dit('Le caporal', '« Trois de ses créatures ont les clés des cadenas du donjon : **la Moule-Reine dans les fossés, le Capitaine sans tête sur les remparts, la Corbelle à la pointe de Turenne.** »', () => { s.caporal = true; saveGame(true); })];
+    case 'tambour':
+      return [dit('Le tambour', '« Le Capitaine, personne ne le voit. On l’entend marcher sur les remparts, **seulement la nuit**. **Avec de la lumière**, peut-être… »', () => { s.tambour = true; saveGame(true); })];
+    case 'vieux':
+      if (state.bombes) return [dit('Le vieux soldat', '« Des bombes ! Ne les lance pas trop près de toi, petite. J’ai vu des moustaches partir pour moins que ça. »')];
+      if (s.vieux && state.bow) return [dit('Le vieux soldat', '« La porte est barricadée. Mais **il y a un tonneau de poudre contre le mur : une flèche, et boum.** »', () => { s.poudre = true; saveGame(true); })];
+      return [dit('Le vieux soldat', '« La Moule, rien ne l’ouvre. Il faudrait des bombes. **L’armurier s’est barricadé dans l’armurerie**, avec toute sa réserve. »', () => { s.vieux = true; saveGame(true); })];
+    case 'armurier':
+      if (state.bombes) return [dit('L’armurier', '« Reviens quand tu veux, j’en fabrique. J’ai que ça à faire. »', () => {
+        if ((state.nbBombes || 0) < 10) { state.nbBombes = 10; SFX.pickup(); showMessage('L’armurier remplit ton sac : 10 bombes.', 3); saveGame(true); } })];
+      return [dit('L’armurier', '« Qui a fait sauter ma porte ? … La garde ! Enfin ! »'),
+        dit('L’armurier', '« Prends ça. Les murs fendus cèdent à une bombe. Et **la coquille de la Reine** aussi, si tu la lances quand elle s’ouvre pour cracher. »', donnerBombes)];
+  }
+  return [dit('…', '« … »')];
+}
+function donnerBombes() {
+  state.bombes = true; state.nbBombes = 10; avancer('bombes'); SFX.win(); saveGame(true);
+  burst(player.pos.x, player.pos.y + 1.5, player.pos.z, 0xffe070, 24, 3, 1.2, 2, 1.2);
+  showMessage('Les BOMBES ! Touche V pour en lancer une, devant toi. L’armurier en refait quand le sac est vide.', 7);
+}
+
+// ---------- les bombes (touche V) ----------
+let GB = null;
+function lancerBombe() {
+  if (!a1() || !state.bombes || cut.active || player.sleeping > 0) return;
+  if ((state.nbBombes || 0) <= 0) { showMessage('Plus de bombes. L’armurier en refait, sur le bastion du Roy.', 3); return; }
+  state.nbBombes--;
+  GB = GB || { g: sphG(0.27, 12), m: phMat('metal_plate_02', 0.4, 0.4, { color: 0x2a2a2e, roughness: 0.5, metalness: 0.7 }), f: new THREE.MeshBasicMaterial({ color: 0xffb040 }) };
+  const b = new THREE.Group(); b.add(new THREE.Mesh(GB.g, GB.m)); b.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.18, 5), mat(0x6a5a40), 0, 0.32, 0));
+  const etin = new THREE.Mesh(sphG(0.06, 6), GB.f); etin.position.y = 0.42; b.add(etin); dyn(b); scene.add(b);
+  const s = Math.sin(player.yaw), c = Math.cos(player.yaw);
+  A1C.bombes.push({ m: b, etin, x: player.pos.x + s * 0.8, y: player.pos.y + 1.5, z: player.pos.z + c * 0.8, vx: s * 9.5, vz: c * 9.5, vy: 6, t: 0 });
+  SFX.roll();
+}
+TOUCHES.KeyV = lancerBombe;
+function exploser(x, y, z) {
+  SFX.stomp(); G.shake = Math.max(G.shake, Math.max(0.2, 0.9 - Math.hypot(player.pos.x - x, player.pos.z - z) / 30));
+  burst(x, y + 0.4, z, 0xffa040, 36, 7, 0.7, 6, 1.6); burst(x, y + 0.8, z, 0x4a4440, 18, 3, 1.6, -1, 2.4);
+  for (const e of enemies) {
+    if (e.dead || e.caged) continue;
+    const d = Math.hypot(e.pos.x - x, e.pos.z - z);
+    if (d > 3.6 + e.k.r || y < e.pos.y - 2.5 || y > e.pos.y + e.k.barY + 2.5) continue;   // tout le corps de la bête, pas ses pieds
+    if (e.a1 === 'reine') {
+      if (e.ouverte || e.fendue) { if (!e.fendue) { e.fendue = true; showMessage('La coquille se fend ! Encore une bombe, ou deux.', 3.5); } hitEnemy(e, 3, x, z); }
+      else showMessage('La coquille a tenu. Attends qu’elle s’ouvre pour cracher.', 3.5);
+    } else hitEnemy(e, 3, x, z);
+  }
+  if (Math.hypot(player.pos.x - x, player.pos.z - z) < 2.6 && Math.abs(player.pos.y - y) < 2) damagePlayer(2, x, z);
+  const P = A1C.decor && A1C.decor.poudreP;
+  if (P && !A().porte && Math.hypot(P.x - x, P.z - z) < 3.5) sauterPorte();
+}
+function bombesTick(dt) {
+  for (let i = A1C.bombes.length - 1; i >= 0; i--) {
+    const b = A1C.bombes[i]; b.t += dt;
+    b.vy -= 14 * dt;
+    const nx = b.x + b.vx * dt, nz = b.z + b.vz * dt;
+    // un mur l'arrête, pas une main courante : à plus d'un mètre du sol, elle passe par-dessus
+    // (le garde-corps du pont la renvoyait aux pieds de Camille)
+    if (b.y < getH(nx, nz, b.y) + 1.1 && E.blocked(nx, nz, 0.2, true, b.y)) { b.vx *= -0.25; b.vz *= -0.25; } else { b.x = nx; b.z = nz; }
+    b.y += b.vy * dt;
+    // l'eau d'un fossé porte la bombe à sa surface (elle grésille, elle n'y coule pas)
+    const sol = Math.max(getH(b.x, b.z, b.y + 0.3), sdEau(b.x, b.z) < -1 ? EAU_Y : -99);
+    if (b.y < sol + 0.27) { b.y = sol + 0.27; b.vy = Math.abs(b.vy) > 3 ? -b.vy * 0.3 : 0; b.vx *= 0.55; b.vz *= 0.55; }
+    b.m.position.set(b.x, b.y - 0.1, b.z); b.etin.visible = (b.t * 12 | 0) % 2 === 0;
+    // lancée dans la coquille ouverte, elle y éclate : la mèche (1,8 s) dure plus que l'ouverture
+    const R = A1C.cre.reine;
+    if (R && !R.dead && R.ouverte && Math.hypot(R.pos.x - b.x, R.pos.z - b.z) < R.k.r + 0.9) b.t = 9;
+    if (b.t > 1.8) { scene.remove(b.m); A1C.bombes.splice(i, 1); exploser(b.x, b.y, b.z); }
+  }
+}
+
+// ---------- l'armurerie : une flèche dans la poudre ----------
+function sauterPorte() {
+  const s = A(); if (s.porte) return;
+  s.porte = true; saveGame(true);
+  const P = A1C.decor.poudreP;
+  SFX.stomp(); SFX.roar(); G.shake = 1.2;
+  burst(P.x, P.y + 1, P.z, 0xffa040, 60, 9, 0.9, 7, 2.2); burst(P.x, P.y + 1.5, P.z, 0x3a3430, 30, 4, 2.2, -1, 3);
+  setTimeout(() => {
+    if (!A1C.gens.armurier) return;
+    const v = A1C.gens.armurier; v.visible = true; v.userData.talk = 3;
+    dialogue([dit('L’armurier', '« Qui a fait sauter ma porte ? … La garde ! Enfin ! »')], () => { v.userData.talk = 0; showMessage('Parle à l’armurier (Entrée).', 3); });
+  }, 1400);
+}
+function poudreTick() {
+  const D = A1C.decor, s = A();
+  D.barricade.visible = D.poudre.visible = !s.porte; D.poudreCap.r = s.porte ? 0 : 0.55;
+  if (A1C.gens.armurier) A1C.gens.armurier.visible = !!s.porte;
+  if (s.porte) return;
+  // la flèche est cherchée ici, après qu'engine.js l'a fait voler : sans collision sur le tonneau
+  // (l'arc ne s'arrêterait pas assez tôt pour qu'on la voie), on prend celle qui le traverse
+  const P = D.poudreP;
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const p = arrows[i].mesh.position;
+    if (Math.hypot(p.x - P.x, p.z - P.z) < 1.4 && p.y > P.y - 0.2 && p.y < P.y + 2.6) { scene.remove(arrows[i].mesh); arrows.splice(i, 1); sauterPorte(); return; }
+  }
+}
+
+// ---------- les trois créatures ----------
+function naitreCreature(qui) {
+  const L = lieuxA1();
+  let e;
+  if (qui === 'reine') {
+    const fond = getH(L.reine.x, L.reine.z, EAU_Y);
+    e = spawnEnemy('mouleReine', L.reine.x, L.reine.z, 'fosses', fond);
+    // à demi sortie de l'eau, quelle que soit la profondeur du fossé. La hauteur est tenue ici
+    // (creaturesTick) : engine.js pose toute bête volante (fly > 1) sur un sol à 0 au moins, et la
+    // Reine flottait à 3,5 m au-dessus de l'eau
+    e.k = { ...e.k, fly: 0.5 }; e.flotte = EAU_Y - 0.6; e.cycle = 0;
+  } else if (qui === 'corbelle') {
+    e = spawnEnemy('corbelle', L.corbelle.x + L.corbelle.R, L.corbelle.z, 'bastions');
+    e.k = { ...e.k }; e.ang = 0; e.pique = 0; e.prochain = 6;
+  } else if (qui === 'capitaine') {
+    e = spawnEnemy('capitaine', L.ronde.x, L.ronde.z, 'remparts');
+    A1C.ronde = [];
+    for (let i = 0; i < 5; i++) { const a = i / 5 * TAU, s = spawnEnemy('soldatRonde', L.ronde.x + Math.cos(a) * 5, L.ronde.z + Math.sin(a) * 5, 'remparts'); s.a1 = 'soldat'; A1C.ronde.push(s); }
+    e.parle = false;
+  }
+  e.a1 = qui; A1C.cre[qui] = e;
+}
+function creaturesTick(dt) {
+  const s = A(), L = lieuxA1();
+  for (const qui of ['reine', 'corbelle', 'capitaine']) {
+    if (s.morts[qui] || A1C.cre[qui]) continue;
+    // le Capitaine ne sort que la nuit, et ne se voit qu'à la lanterne (STORY.md, « La nuit »)
+    if (qui === 'capitaine' && !(deNuit() && state.lanterne)) {
+      if (!A1C.vuNuit && s.tambour && Math.hypot(player.pos.x - L.ronde.x, player.pos.z - L.ronde.z) < 30) { A1C.vuNuit = true; showMessage('Personne sur la ronde. Le tambour l’a dit : seulement la nuit.', 4); }
+      continue;
+    }
+    naitreCreature(qui); return;   // une par image
+  }
+  // la Moule-Reine : fermée, rien ne la blesse ; elle s'ouvre pour cracher, et c'est le moment
+  { const e = A1C.cre.reine;
+    if (e && !e.dead) {
+      e.pos.y = e.flotte; e.mesh.position.y = e.flotte;
+      if (!e.fendue && e.hp < e.k.hp) { e.hp = e.k.hp; if (A1C.msgT <= 0) { A1C.msgT = 4; showMessage('La coquille est trop dure. Il faudrait des bombes.', 3); } }
+      const d = Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z);
+      e.cycle += dt;
+      if (e.ouverte) {
+        if (!e.crache && e.cycle > 0.6) { e.crache = true; cracher(e); }
+        if (e.cycle > 2.2) { e.ouverte = false; e.cycle = 0; }
+      } else if (d < 24 && e.cycle > 3.0) { e.ouverte = true; e.crache = false; e.cycle = 0; }
+    } }
+  // la Grande Corbelle tourne au-dessus de la pointe ; toutes les six secondes, elle pique
+  { const e = A1C.cre.corbelle;
+    if (e && !e.dead) {
+      const C = L.corbelle, d = Math.hypot(player.pos.x - C.x, player.pos.z - C.z);
+      if (e.pique > 0) {
+        e.pique += dt; const t = e.pique;
+        const cible = e.cible, haut = 15;
+        if (t < 1.3) { const k = t / 1.3; e.pos.x = lerp(e.depart.x, cible.x, k); e.pos.z = lerp(e.depart.z, cible.z, k); e.k.fly = lerp(haut, 1.6, k * k); }
+        else if (t < 1.6) { if (!e.frappe && Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z) < 2.2) { e.frappe = true; damagePlayer(e.k.dmg, e.pos.x, e.pos.z); } }
+        else if (t < 3.0) { const k = (t - 1.6) / 1.4; e.k.fly = lerp(1.6, haut, k); }
+        else { e.pique = 0; e.prochain = 6 + Math.random() * 2; }
+      } else {
+        e.ang += dt * 0.25; e.pos.x = C.x + Math.cos(e.ang) * C.R; e.pos.z = C.z + Math.sin(e.ang) * C.R; e.k.fly = 15;
+        e.yaw = Math.atan2(-Math.sin(e.ang), Math.cos(e.ang));
+        if (d < 24 && (e.prochain -= dt) <= 0) { e.pique = 0.001; e.frappe = false; e.depart = { x: e.pos.x, z: e.pos.z }; e.cible = { x: player.pos.x, z: player.pos.z }; SFX.roar(); }
+      }
+      e.state = 'idle'; e.target = null; e.t = 9;
+    } }
+  // le Capitaine : sa ronde le long de la courtine, et ses mots quand la lanterne le trouve
+  { const e = A1C.cre.capitaine;
+    if (e && !e.dead) {
+      if (e.state === 'idle') { const k = 0.5 + 0.5 * Math.sin(state.time * 0.12); e.home.set(lerp(L.ronde.a[0], L.ronde.b[0], k), e.home.y, lerp(L.ronde.a[1], L.ronde.b[1], k)); }
+      if (!e.parle && Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z) < 20 && !cut.active) {
+        e.parle = true;
+        dialogue([dit('Le Capitaine sans tête', '« Qui marche sur ma ronde ? … Une lumière. Je n’aime pas la lumière. »')]);
+      }
+    } }
+  // les crachats de la Reine
+  for (let i = A1C.crachats.length - 1; i >= 0; i--) {
+    const c = A1C.crachats[i]; c.t += dt;
+    c.m.position.x += c.vx * dt; c.m.position.y += c.vy * dt; c.m.position.z += c.vz * dt;
+    const p = c.m.position;
+    if (Math.hypot(player.pos.x - p.x, player.pos.z - p.z) < 1.0 && Math.abs(player.pos.y + 1 - p.y) < 1.3) { damagePlayer(1, p.x, p.z); c.t = 99; }
+    if (c.t > 2.4) { burst(p.x, p.y, p.z, 0x8ab0c8, 6, 2, 0.4); scene.remove(c.m); A1C.crachats.splice(i, 1); }
+  }
+}
+let GC = null;
+function cracher(e) {
+  GC = GC || { g: sphG(0.3, 10), m: new THREE.MeshStandardMaterial({ color: 0x9ab8c8, roughness: 0.2, transparent: true, opacity: 0.8 }) };
+  const m = dyn(new THREE.Mesh(GC.g, GC.m)), y0 = e.pos.y + 1.6;
+  m.position.set(e.pos.x, y0, e.pos.z); scene.add(m);
+  const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z, dy = player.pos.y + 1 - y0, d = Math.hypot(dx, dz, dy) || 1;
+  A1C.crachats.push({ m, t: 0, vx: dx / d * 13, vy: dy / d * 13, vz: dz / d * 13 });
+  SFX.hit();
+}
+
+// une créature tombée lâche sa clé ; ramassée, la clé vient avec un billet d'Eugène
+const BILLETS = {
+  reine: '« Il dit que Lydéric l’a vaincu, avant. Avant quoi ? »',
+  capitaine: '« Il parle d’une tour. Il dit qu’il aura besoin de quelqu’un pour sonner. »',
+  corbelle: '« Il m’a demandé si tu étais courageuse. J’ai dit oui. Il a eu l’air content. Je n’aurais pas dû. »',
 };
+const NOM_CLE = { reine: 'la clé de la Moule-Reine', capitaine: 'la clé du Capitaine', corbelle: 'la clé de la Corbelle' };
+let GK = null;
+function poserCle(qui, x, z) {
+  if (A1C.cles[qui]) return;
+  GK = GK || GOLD();
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.TorusGeometry(0.16, 0.05, 6, 14), GK, 0, 0.42, 0));
+  g.add(mesh(boxG(0.07, 0.5, 0.07), GK, 0, 0.05, 0));
+  g.add(mesh(boxG(0.18, 0.06, 0.07), GK, 0.08, -0.12, 0)); g.add(mesh(boxG(0.14, 0.06, 0.07), GK, 0.06, 0.0, 0));
+  dyn(g); g.scale.setScalar(1.5);
+  const y = getH(x, z, 40);
+  g.position.set(x, y + 1.1, z); scene.add(g);
+  A1C.cles[qui] = { m: g, x, z, y };
+}
+function clesTick(dt) {
+  const s = A();
+  for (const qui of ['reine', 'capitaine', 'corbelle']) if (s.morts[qui] && !s.cles[qui] && !A1C.cles[qui] && s.clesPos[qui]) poserCle(qui, ...s.clesPos[qui]);
+  for (const [qui, k] of Object.entries(A1C.cles)) {
+    if (s.cles[qui]) { if (k.m.parent) scene.remove(k.m); continue; }
+    k.m.rotation.y += dt * 2; k.m.position.y = k.y + 1.1 + Math.sin(state.time * 2.5) * 0.15;
+    if (!cut.active && Math.hypot(player.pos.x - k.x, player.pos.z - k.z) < 1.8 && Math.abs(player.pos.y - k.y) < 2.2) {
+      s.cles[qui] = true; scene.remove(k.m); SFX.pickup(); setTimeout(() => SFX.win(), 200); saveGame(true);
+      burst(k.x, k.y + 1.2, k.z, 0xffe070, 20, 3, 1, 2, 1.2);
+      const n = Object.keys(s.cles).length;
+      dialogue([{ text: `Tu as ${NOM_CLE[qui]} ! (${n}/3) Un billet est roulé autour.` }, dit('Billet d’Eugène', BILLETS[qui])],
+        () => showMessage(n === 3 ? 'Les trois clés ! La grille du donjon, au centre de la place.' : `Encore ${3 - n} clé${3 - n > 1 ? 's' : ''} pour les cadenas du donjon.`, 4));
+    }
+  }
+}
+
+// ---------- la grille du donjon : trois cadenas ----------
+function ouvrirCadenas() {
+  const s = A(), n = Object.keys(s.cles).length;
+  if (n <= s.cadenas) { showMessage(s.cadenas ? `Encore ${3 - s.cadenas} cadenas. Leurs clés sont aux créatures de Phinaert.` : 'Trois cadenas ferment la grille. Leurs clés sont aux créatures de Phinaert.', 4); SFX.hit(); return; }
+  s.cadenas = n; SFX.pickup(); saveGame(true);
+  if (s.cadenas < 3) { showMessage(`La clé tourne : un cadenas tombe. Encore ${3 - s.cadenas}.`, 3.5); return; }
+  avancer('donjon');
+  cutscene([
+    { cam: [DONJON.x + 10, 4, DONJON.gateZ + 12], at: [DONJON.x, 2, DONJON.gateZ], dur: 3, text: 'Le dernier cadenas tombe. La grille du donjon s’ouvre.', fn: () => { SFX.roar(); ouvrirGrille(); G.shake = 0.8; } },
+  ], () => showMessage('Phinaert est dans l’enclos. Eugène aussi.', 4));
+}
+function ouvrirGrille() {
+  state.gateOpen = true; const g = PARTAGE.donjonGate.userData; g.open = true; g.cap.r = 0;
+}
+
+// ---------- Phinaert (étape 10) ----------
+// Il ne meurt pas à l'acte I (STORY.md : « il part avant de pouvoir être vaincu »). À mi-vie il
+// va sonner la cloche du donjon : le sol tremble, et on coupe la corde à l'arc. À un quart, il
+// s'arrête, pose la main d'Eugène sur la dalle, et la porte de lumière s'ouvre.
+const boss = () => enemies.find((e) => e.k.boss) || A1C.bossHors;
+// Hors de la liste, engine.js ne l'anime plus : on rend aussi sa teinte, sinon le rouge d'un coup
+// reçu à l'instant de sortir lui restait (updateEnemy l'efface d'habitude à l'image suivante)
+function sortir(e) {
+  const i = enemies.indexOf(e); if (i < 0) return;
+  enemies.splice(i, 1); A1C.bossHors = e; e.bar.visible = false; e.flash = 0;
+  e.mesh.traverse((o) => { if (o.isMesh && o.material && o.material.emissive && o.material.userData.em !== undefined) o.material.emissive.setHex(o.material.userData.em); });
+}
+function rentrer(e) { if (!enemies.includes(e)) enemies.push(e); A1C.bossHors = null; }
+function phinaertTick(dt) {
+  const s = A(), e = boss(), L = lieuxA1();
+  // Eugène, attaché devant le donjon, tant que Phinaert ne l'a pas emmené
+  const eu = PARTAGE.prince;
+  if (eu && !state.princeFreed && !A1C.eugeneJoue) {
+    eu.visible = !s.parti; if (eu.visible) { eu.scale.setScalar(G.echelle); eu.position.set(L.eugene.x, getH(L.eugene.x, L.eugene.z), L.eugene.z); eu.rotation.y = 0; }
+  }
+  if (!e) return;
+  // pendant la fin, hors de la liste des ennemis : c'est nous qui l'animons
+  if (A1C.finJoue && !s.parti) { e.state = 'idle'; animeCreature(e, e.mesh, dt, e.mesh.userData.walkTo ? 3 : 0); return; }
+  if (s.parti) { if (enemies.includes(e)) sortir(e); e.mesh.visible = false; e.caged = true; return; }
+  if (!atteint('donjon')) { e.caged = true; return; }
+  if (!state.gateOpen) ouvrirGrille();
+  const dans = Math.abs(player.pos.x - DONJON.x) < DONJON.fence && player.pos.z > DONJON.z - DONJON.fence && player.pos.z < DONJON.gateZ - 1;
+  if (!s.vu) {
+    e.caged = true;
+    if (dans && !cut.active) { s.vu = true; saveGame(true);
+      cutscene([
+        { cam: [DONJON.x + 8, 3, DONJON.gateZ - 6], at: [e.pos.x, 7, e.pos.z], dur: 2.5, title: 'PHINAERT', sub: 'le Maître du Temps', fn: () => SFX.roar() },
+        { say: '« La petite de la garde. Tu as fait vite. Plus vite que je ne pensais. »', who: 'Phinaert' },
+      ], () => { e.caged = false; e.state = 'chase'; showMessage('Esquive son onde de choc avec une roulade (Maj) ou saute par-dessus (Espace) !', 5); }); }
+    return;
+  }
+  // la cloche : de mi-vie jusqu'à ce que la corde soit coupée
+  if (!s.cloche && (A1C.sonne || (e.hp <= e.k.hp / 2 && dans))) { clocheTick(e, dt); return; }
+  if (!s.cloche) return;
+  if (e.hp <= e.k.hp / 4 && dans && !cut.active) finPhinaert(e);
+}
+function clocheTick(e, dt) {
+  const L = lieuxA1();
+  if (!A1C.sonne) {
+    A1C.sonne = { t: 0, coup: 0.5 }; e.caged = true; sortir(e);
+    // la corde devient une cible pour l'arc (KINDS.cordeCloche)
+    const c = spawnEnemy('cordeCloche', L.corde.x, L.corde.z, 'donjon'); c.a1 = 'corde'; A1C.corde = c;
+    cutscene([
+      { cam: [L.tireur.x + 9, 5, L.tireur.z + 12], at: [L.corde.x, 9, L.corde.z], dur: 2.2, actor: e.mesh, to: [L.tireur.x, L.tireur.z], speed: 6 },
+      { say: '« Écoute. Une cloche, ça ne sert qu’à une chose. »', who: 'Phinaert', cam: [L.tireur.x + 7, 4, L.tireur.z + 10], at: [L.corde.x, 12, L.corde.z] },
+    ], () => showMessage('La cloche fait trembler le sol ! Saute les ondes (Espace) et coupe la corde à l’arc (C).', 6));
+    return;
+  }
+  const S = A1C.sonne; S.t += dt;
+  // il tire la corde : on le tient là, face au donjon, le bras levé
+  if (!cut.active) { e.pos.set(L.tireur.x, getH(L.tireur.x, L.tireur.z), L.tireur.z); e.mesh.position.copy(e.pos); }
+  e.yaw = Math.PI; e.mesh.rotation.y = Math.PI; e.state = Math.sin(S.t * 3) > 0 ? 'windup' : 'cool'; animeCreature(e, e.mesh, dt, 0);
+  if (A1C.cloche) A1C.cloche.rotation.z = Math.sin(S.t * 3) * 0.55;
+  if (!cut.active && (S.coup -= dt) <= 0) {
+    S.coup = 1.9; SFX.stomp(); G.shake = Math.max(G.shake, 0.5);
+    const y = getH(L.corde.x, L.dalle.z), rm = new THREE.Mesh(new THREE.RingGeometry(0.75, 1, 48), new THREE.MeshBasicMaterial({ color: 0xffd080, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    rm.rotation.x = -Math.PI / 2; rm.position.set(L.corde.x, y + 0.15, L.dalle.z - 4); scene.add(rm);
+    shockwaves.push({ x: L.corde.x, z: L.dalle.z - 4, y, r: 2, t: 0, hit: false, mesh: rm });
+  }
+}
+function cordeCoupee() {
+  const s = A(), e = A1C.bossHors, D = A1C.decor;
+  s.cloche = true; saveGame(true); A1C.sonne = null;
+  D.corde.visible = false; D.cordeTombee.visible = true; if (A1C.cloche) A1C.cloche.rotation.z = 0;
+  burst(D.corde.position.x, 5, D.corde.position.z, 0xd8c098, 14, 3, 0.8);
+  showMessage('La corde tombe. La cloche se tait.', 3.5);
+  if (e) { rentrer(e); e.caged = false; e.state = 'chase'; }
+}
+function finPhinaert(e) {
+  A1C.finJoue = true; e.caged = true; sortir(e);
+  const L = lieuxA1(), s = A(), eu = PARTAGE.prince, lum = A1C.porteLumiere, d = L.dalle;
+  A1C.eugeneJoue = true;
+  cutscene([
+    { say: '« Assez. Tu m’es plus utile debout. »', who: 'Phinaert', cam: [d.x + 10, 4, d.z + 12], at: [e.pos.x, 7, e.pos.z] },
+    { cam: [d.x + 11, 5, d.z + 9], at: [d.x, 3, d.z - 2], dur: 3, actor: e.mesh, to: [d.x + 2.5, d.z - 1.5], speed: 5, text: 'Phinaert va prendre Eugène.' },
+    { cam: [d.x + 9, 3, d.z + 7], at: [d.x, 2, d.z], dur: 2.6, actor: eu, to: [d.x - 0.8, d.z], speed: 2.2 },
+    { say: '« Le sang de Lydéric. Il fallait bien qu’il serve à quelque chose. »', who: 'Phinaert', cam: [d.x - 6, 2.4, d.z + 6], at: [d.x, 1.4, d.z] },
+    { cam: [d.x + 8, 3, d.z + 10], at: [d.x, 3, d.z], dur: 3.2, shake: 0.6, text: 'La dalle s’illumine. Une porte de lumière s’ouvre dans la pierre.', fn: () => { SFX.roar(); lum.visible = true; A1C.lumT = 0; } },
+    { cam: [d.x + 6, 3, d.z + 10], at: [d.x, 3, d.z], dur: 3.4, text: 'Phinaert y entre, et il emmène Eugène.', fn: () => { e.mesh.userData.walkTo = { x: d.x, z: d.z, speed: 3 }; if (eu) eu.userData.walkTo = { x: d.x, z: d.z, speed: 3 }; A1C.entrent = true; } },
+  ], () => {
+    e.mesh.visible = false; if (eu) eu.visible = false; A1C.entrent = false; s.parti = true; saveGame(true);
+    showMessage('Suis-les : la porte de lumière, devant le donjon (Entrée).', 6);
+  });
+}
+function lumiereTick(dt) {
+  const s = A(), lum = A1C.porteLumiere; if (!lum) return;
+  if (s.parti) lum.visible = true;
+  if (!lum.visible) return;
+  A1C.lumT = (A1C.lumT ?? 1) + dt;
+  lum.scale.y = Math.min(1, Math.max(0.001, A1C.lumT / 1.6));
+  lum.children[0].material.opacity = 0.7 + Math.sin(state.time * 2.2) * 0.12;
+  lum.rotation.y = Math.atan2(player.pos.x - lum.position.x, player.pos.z - lum.position.z);
+  // pendant qu'ils y entrent : on les fait avancer (cutTick ne mène que l'acteur de l'étape)
+  if (A1C.entrent) { const e = A1C.bossHors, eu = PARTAGE.prince;
+    for (const a of [e && e.mesh, eu]) if (a && a.userData.walkTo) E.actorWalk(a, dt);
+    for (const a of [e && e.mesh, eu]) if (a && Math.hypot(a.position.x - lum.position.x, a.position.z - lum.position.z) < 0.8) a.visible = false; }
+}
+
+// ---------- l'objectif du journal et le point d'or ----------
+// quetes.js (suiteActe1) ne connaît pas la citadelle : on lui donne ce qu'il faut dire ici
+function objectifA1() {
+  if (!atteint('citadelle')) return null;
+  const s = A(), L = lieuxA1(), pt = (o) => ({ x: o.x, z: o.z });
+  if (s.parti) return ['Suis Phinaert dans la porte de lumière, devant le donjon', pt(L.dalle)];
+  if (atteint('donjon')) return ['Affronte Phinaert dans l’enclos du donjon', pt(L.dalle)];
+  if (!s.caporal) return ['Des soldats se cachent devant une caserne, près de la poterne : parle-leur', pt(L.caserne)];
+  if (!state.bombes) {
+    if (s.porte) return ['Parle à l’armurier, sur le bastion du Roy', pt(L.armurerie)];
+    if (s.poudre) return ['Une flèche dans le tonneau de poudre de l’armurerie (bastion du Roy)', pt(L.armurerie)];
+    if (s.vieux) return ['L’armurier s’est barricadé dans l’armurerie, sur le bastion du Roy', pt(L.armurerie)];
+    return ['Demande au vieux soldat comment ouvrir la Moule-Reine', pt(L.caserne)];
+  }
+  const reste = ['reine', 'capitaine', 'corbelle'].filter((q) => !s.cles[q]), n = 3 - reste.length;
+  if (!reste.length) return ['Ouvre les trois cadenas de la grille du donjon', { x: DONJON.x, z: DONJON.gateZ }];
+  // il ne reste que le Capitaine, et il fait jour : la nuit se prend dans son lit
+  if (reste.length === 1 && reste[0] === 'capitaine' && !deNuit()) return ['Le Capitaine ne sort que la nuit : dors chez toi jusqu’au soir, puis va sur les remparts de l’ouest avec la lanterne', { x: HOUSE.x, z: HOUSE.z }];
+  const ou = { reine: [L.reine, 'la Moule-Reine (le fossé, devant la Porte Royale)'], capitaine: [L.ronde, 'le Capitaine sans tête (les remparts de l’ouest, la nuit)'], corbelle: [L.corbelle, 'la Grande Corbelle (la pointe de Turenne)'] };
+  const proche = reste.map((q) => ou[q]).sort((a, b) => Math.hypot(a[0].x - player.pos.x, a[0].z - player.pos.z) - Math.hypot(b[0].x - player.pos.x, b[0].z - player.pos.z))[0];
+  return [`Les clés des cadenas (${n}/3) : ${reste.map((q) => ou[q][1]).join(' ; ')}`, pt(proche[0])];
+}
+
+// ---------- les trois crochets : peupler, faire vivre, et la mise à terre ----------
+// Les dix monstres de l'ancienne histoire (fossés, remparts, bastions) n'ont pas leur place dans
+// l'acte I : la grille du donjon y tombe aux cadenas, pas au dixième monstre. On les retire du
+// jeu — l'indice des ennemis reste le même à la sauvegarde et au chargement (on les retire AVANT
+// que loadGame relise l'instantané, en lisant la sauvegarde nous-mêmes) ; les corbeaux du champ
+// d'Émile restent, c'est une quête du bourg.
+function retirerAnciens() {
+  if (A1C.retires) return;
+  A1C.retires = true;
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    if (e.k.boss || e.zone === 'champ' || e.a1) continue;
+    scene.remove(e.mesh); scene.remove(e.bar); enemies.splice(i, 1);
+  }
+}
+export const ACTE1_CITADELLE = {
+  populate() {
+    // une partie de l'acte I qu'on reprend : on le sait avant loadGame (cf. retirerAnciens)
+    let sv = null; try { sv = readSave(); } catch (e) {}
+    const reprise = sessionStorage.getItem('tloc_auto') !== 'new' && sv && sv.flags && sv.flags.prologueFait;
+    if (reprise) retirerAnciens();
+    decorA1();
+    addInteract({ pos: new THREE.Vector3(DONJON.x, 0, DONJON.gateZ + 1.6), r: 3,
+      enabled: () => atteint('citadelle') && !state.gateOpen,
+      prompt: () => { const s = A(), n = Object.keys(s.cles).length; return n > s.cadenas ? 'ouvrir les cadenas de la grille' : `trois cadenas — ${s.cadenas}/3 ouverts`; },
+      fn: ouvrirCadenas });
+    addInteract({ pos: new THREE.Vector3(lieuxA1().dalle.x, 0, lieuxA1().dalle.z), r: 3,
+      enabled: () => !!(state.a1c && state.a1c.parti),
+      prompt: () => 'suivre Phinaert dans la lumière',
+      fn: () => { avancer('temple'); saveGame(true); goToLevel('temple', [0, 0, 23.5], Math.PI, 'Camille passe la porte de lumière…'); } });
+    // PASSERELLE, en attendant quetes.js et hud.js (tenus par d'autres sessions le 5 octobre) : la
+    // mise à terre de quetes.js compterait nos créatures pour l'ancienne grille, son objectif ne
+    // connaît pas la citadelle, et le bandeau de hud.js compte encore « 0 / 10 monstres ». Demandé
+    // dans PROMPT-REPRISE.md : que quetes.js appelle ACTE1_CITADELLE.onKill et .objectif, et que
+    // hud.js prenne ACTE1_CITADELLE.bandeau ; ces lignes partiront alors.
+    const lv = G.level;
+    if (lv && !lv.a1c) { lv.a1c = true;
+      const k0 = lv.onKill, o0 = lv.objective, c0 = lv.counts;
+      lv.onKill = (e) => { if (!ACTE1_CITADELLE.onKill(e) && k0) k0(e); };
+      lv.objective = () => { const o = ACTE1_CITADELLE.objectif(); return o ? o[0] : (o0 ? o0() : ''); };
+      lv.counts = () => ACTE1_CITADELLE.bandeau() ?? (c0 ? c0() : ''); }
+  },
+  update(dt) {
+    if (!a1()) return;
+    retirerAnciens();
+    if (!atteint('citadelle')) return;
+    // Camille est sortie des galeries par la poterne : la grille en reste levée
+    if (!state.galleryOpen) { state.galleryOpen = true; saveGame(true); }
+    if (!A1C.pret) { A1C.pret = true; A1C.aFaire = ['caporal', 'tambour', 'vieux', 'armurier']; }
+    if (A1C.aFaire.length) naitreA1();
+    const c = E.camera.position;
+    for (const v of Object.values(A1C.gens)) if (v.visible && Math.abs(v.position.x - c.x) + Math.abs(v.position.z - c.z) < 60) PNJ.animeVillageois(v, dt, false);
+    A1C.msgT -= dt;
+    poudreTick();
+    if (state.bombes) { if (!AIDE.extra.some((x) => x[0] === 'V')) AIDE.extra.push(['V', 'lancer une bombe']); }
+    bombesTick(dt);
+    creaturesTick(dt);
+    clesTick(dt);
+    { const n = A().cadenas; A1C.decor.cadenas.forEach((p, i) => { p.visible = i >= n; }); }
+    phinaertTick(dt);
+    lumiereTick(dt);
+    if (!cut.active) { const o = objectifA1(); if (o) PARTAGE.repere = o[1]; }
+  },
+  // vrai si la mise à terre est de l'acte I (et donc traitée ici)
+  onKill(e) {
+    if (!e.a1 || !a1()) return false;
+    BOURSE.prime(e);
+    const s = A();
+    if (e.a1 === 'corde') { cordeCoupee(); return true; }
+    if (e.a1 === 'soldat') return true;
+    s.morts[e.a1] = true;
+    // la clé tombe là où la bête est tombée ; celle de la Corbelle, là où Camille se tenait sous elle
+    const L = lieuxA1(), p = e.a1 === 'corbelle' ? L.corbelle.pied : e.a1 === 'reine' ? cleDeLaReine() : [e.pos.x, e.pos.z];
+    s.clesPos[e.a1] = p; saveGame(true);
+    if (e.a1 === 'capitaine') for (const x of A1C.ronde || []) if (!x.dead) hitEnemy(x, 99, x.pos.x, x.pos.z);
+    setTimeout(() => poserCle(e.a1, ...p), 700);
+    showMessage({ reine: 'La Moule-Reine coule. Quelque chose brille sur la berge.', capitaine: 'Le Capitaine se défait en fumée. Sa ronde avec lui.', corbelle: 'La Corbelle tombe sur la pointe du bastion.' }[e.a1], 4);
+    return true;
+  },
+  objectif: objectifA1,
+  lieux: lieuxA1,   // pour les bancs (bancs/acte1-citadelle.mjs)
+  // le bandeau du haut de l'écran (hud.js, counts) pendant les étapes de la citadelle : les clés
+  // des cadenas et les bombes au lieu des dix monstres de l'ancienne histoire ; null avant
+  bandeau() {
+    const o = objectifA1(); if (!o) return null;
+    const s = A(), n = Object.keys(s.cles).length;
+    return `Clés des cadenas <b>${atteint('donjon') ? 3 : n}</b> / 3 &nbsp; ` + (state.bow ? 'Arc ✓ &nbsp; ' : '') +
+      (state.bombes ? `Bombes <b>${state.nbBombes || 0}</b> &nbsp; ` : '') +
+      `Lieux <b>${lieux.filter((l) => E.estDecouvert(l.id)).length}</b> / ${lieux.length}` +
+      `<br><small>Objectif : ${o[0]}</small>` + BOURSE.ligneHUD();
+  },
+};
+// la clé de la Reine ne peut pas rester au fond du fossé : on la pose sur le pont, au bout du
+// tablier le plus proche (le pont est à x = 0, ses parapets à ±3 m)
+function cleDeLaReine() { const L = lieuxA1(); return [1.6, L.reine.z]; }

@@ -1,0 +1,183 @@
+{
+ "date": "2026-10-05T15:50:10.743Z",
+ "etapes": [
+  {
+   "nom": "l’ancienne garnison de monstres est retirée (restent le champ et Phinaert)",
+   "ok": true,
+   "detail": "corbeau:champ, corbeau:champ, corbeau:champ, corbeau:champ, phinaert:donjon, mouleReine:fosses, corbelle:bastions"
+  },
+  {
+   "nom": "l’objectif parle des soldats cachés",
+   "ok": true,
+   "detail": "Des soldats se cachent devant une caserne, près de la poterne : parle-leur"
+  },
+  {
+   "nom": "le caporal, le tambour et le vieux soldat sont là",
+   "ok": true,
+   "detail": "{\"parler au caporal\":[74.53684293046048,0,107.83214311558378],\"parler au tambour\":[74.50590705217742,0,109.60387756843917],\"parler au vieux soldat\":[75.52207200323802,0,106.35928070715795],\"parler à l’armurier\":[110.4705045663596,3,203.85090168546935]}"
+  },
+  {
+   "nom": "parler au caporal",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "parler au tambour",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "parler au vieux",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "parler au vieux (revenu)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "les soldats ont tout dit (créatures, nuit, armurier, poudre)",
+   "ok": true,
+   "detail": "{\"morts\":{},\"cles\":{},\"clesPos\":{},\"cadenas\":0,\"caporal\":true,\"tambour\":true,\"vieux\":true,\"poudre\":true}"
+  },
+  {
+   "nom": "l’objectif mène à la poudre de l’armurerie",
+   "ok": true,
+   "detail": "Une flèche dans le tonneau de poudre de l’armurerie (bastion du Roy)"
+  },
+  {
+   "nom": "la barricade et la poudre sont posées",
+   "ok": true,
+   "detail": "[113.98417166061752,3,202.22098035278822]"
+  },
+  {
+   "nom": "un endroit d’où tirer dans la poudre",
+   "ok": true,
+   "detail": "[108.99535398680224,205.55440175090584,6]"
+  },
+  {
+   "nom": "la flèche fait sauter la porte de l’armurerie",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’armurier sort",
+   "ok": true,
+   "detail": "[110.4705045663596,3,203.85090168546935]"
+  },
+  {
+   "nom": "les bombes (étape bombes)",
+   "ok": true,
+   "detail": "bombes, 10 bombes"
+  },
+  {
+   "nom": "la Moule-Reine est dans le fossé",
+   "ok": true,
+   "detail": "[11,-1.15,207.8]"
+  },
+  {
+   "nom": "une bombe lancée quand elle crache fend la coquille",
+   "ok": true,
+   "detail": "{\"hp\":5,\"fendue\":true,\"dead\":false}"
+  },
+  {
+   "nom": "la Moule-Reine est vaincue",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "sa clé est ramassée, avec le billet d’Eugène",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la Grande Corbelle tourne au-dessus de Turenne",
+   "ok": true,
+   "detail": "[-7.166559391254916,17.826245241782896,-133.73469971907977]"
+  },
+  {
+   "nom": "la Corbelle tombe à l’arc",
+   "ok": true,
+   "detail": "3 flèches tirées"
+  },
+  {
+   "nom": "sa clé est ramassée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "de jour, la ronde est vide",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "de jour, l’objectif envoie dormir",
+   "ok": true,
+   "detail": "Le Capitaine ne sort que la nuit : dors chez toi jusqu’au soir, puis va sur les remparts de l’ouest avec la lanterne"
+  },
+  {
+   "nom": "le Capitaine fait sa ronde (à la lanterne)",
+   "ok": true,
+   "detail": "[-60.808790796532314,0,-18.63959612741864]"
+  },
+  {
+   "nom": "il parle quand la lanterne le trouve",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "le Capitaine et sa ronde tombent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "sa clé est ramassée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’objectif : les trois cadenas",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la grille du donjon s’ouvre (étape donjon)",
+   "ok": true,
+   "detail": "donjon, cadenas 3"
+  },
+  {
+   "nom": "Phinaert parle à l’entrée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "à mi-vie, il sonne la cloche (la corde est une cible)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "une flèche coupe la corde, la cloche se tait",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "Phinaert emmène Eugène dans la porte de lumière",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’objectif : suivre Phinaert",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "on passe à l’île du temps, l’acte I est fini (étape temple)",
+   "ok": true,
+   "detail": "{\"acte1\":\"temple\",\"ou\":\"temple.html\"}"
+  }
+ ],
+ "erreurs": [
+  "Cannot set properties of undefined (setting 'visible')"
+ ]
+}

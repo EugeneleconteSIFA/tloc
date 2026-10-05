@@ -282,11 +282,20 @@ L'armurerie est le bâtiment bas du bastion du Roi (`SCENARIO.md`, acte I).
 | `bombes` | I | *(à chaque visite, ouvre l'atelier)* « Montre-moi ton épée. Hum. **Avec quelques écus, je te la rends deux fois plus tranchante.** Et ton arc aussi, si tu veux tirer plus loin. » | bombes, arc |
 | `bombes` | I | *(sans assez d'écus)* « Pas de quoi payer ? **Le banquier de la grand-place** garde les bourses de la garde. » | — |
 
+*Codé le 5 octobre (`citadelle.js`)* : la première visite (les deux premières lignes, les bombes), et
+« Reviens quand tu veux… » ensuite, qui remplit le sac. **Sans gras pour l'instant** : « Les murs
+fendus cèdent à une bombe » (la quête des murs fendus n'existe pas encore), et pas encore l'atelier ni
+le banquier (rien à acheter) — le gras ne promet que ce qu'on peut faire.
+
 ### Le vieux soldat, après les bombes
 
 | étape | type | réplique | besoin |
 |---|---|---|---|
 | `bombes` | I | « L'armurier t'a donné ses bombes ? Alors il t'a à la bonne. **Retourne le voir avec des écus : il affûte les lames et retend les arcs.** » | — |
+| `bombes` | A | « Des bombes ! Ne les lance pas trop près de toi, petite. J'ai vu des moustaches partir pour moins que ça. » | — |
+
+*Codé le 5 octobre* : la réplique d'ambiance (ajoutée) tant que l'atelier de l'armurier n'existe pas ;
+l'indice en gras viendra avec lui.
 
 ### Le Capitaine sans tête, avant le combat
 

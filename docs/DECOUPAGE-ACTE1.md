@@ -18,7 +18,7 @@ l'enlèvement, Camille relevée sur le pont, Lydéric d'osier, la grande grille 
 | 6 | `cle` → `lanterne` | l'énigme du guetteur | **la lanterne** | le sommet du beffroi, la nuit | Désiré |
 | 7 | `lanterne` → `souterrains` | la crypte est noire | le passage | la crypte, derrière l'autel de la chapelle | le gardien de la chapelle |
 | 8 | `souterrains` → `arc` → `citadelle` | une grille au levier trop haut ; la porte secrète fermée | **l'arc** (puits aux chauves-souris), **la clé du Rat-Roi** | les galeries de Vauban (cave.html), sortie par la poterne (121 ; 139) | le fantôme de Bastien |
-| 9 | `citadelle` → `bombes` → `donjon` | trois cadenas sur la grille du donjon | **les bombes**, puis les **trois clés** | la place d'Armes, l'armurerie (bastion du Roi, −190 ; −12), les fossés, les remparts (la nuit), la pointe de Turenne | les trois soldats, l'armurier ; la Moule-Reine, le Capitaine sans tête, la Grande Corbelle |
+| 9 | `citadelle` → `bombes` → `donjon` | trois cadenas sur la grille du donjon | **les bombes**, puis les **trois clés** | la place d'Armes, l'armurerie (bastion du Roy, 118 ; 212), le fossé de la Porte Royale, les remparts de l'ouest (la nuit), la pointe de Turenne | les trois soldats, l'armurier ; la Moule-Reine, le Capitaine sans tête, la Grande Corbelle |
 | 10 | `donjon` → `temple` | Phinaert | la fin de l'acte : la porte du Temple, le premier vers de la prophétie | le donjon (0 ; −18), puis l'île du temps (temple.html) | Phinaert, Eugène, le vieux mage |
 
 Durée visée (`SCENARIO.md`, « Le chronomètre ») : 16 min pour 1 à 7, 14 pour 8, 20 pour 9,
@@ -140,12 +140,53 @@ la Moule-Reine (les fossés, à la bombe), le Capitaine sans tête (les remparts
 lanterne, avec cinq soldats), la Grande Corbelle (pointe de Turenne, trois flèches). Chacune
 lâche une clé de cadenas et un billet d'Eugène.
 
+**Comme c'est bâti** (5 octobre, B3, tout dans `citadelle.js`, `ACTE1_CITADELLE`) :
+- **Les soldats** se cachent derrière des caisses, devant la porte de la caserne la plus proche de
+  la poterne (celle par où l'on sort des galeries) : le caporal (les trois créatures), le tambour
+  (la nuit, la lumière), le vieux soldat (l'armurier ; si l'on revient, le tonneau de poudre).
+- **L'armurerie** est le magasin du **bastion du Roy** (emprise n° 8, 698 m², 118 ; 212), à deux pas
+  de la poterne — et non l'emprise n° 6 (−190 ; −12), que `SCENARIO.md` disait « du Roi » : le relevé
+  la met sur le bastion de la Reine. Planches en croix sur la porte, trois tonneaux de poudre contre
+  le soubassement (deux empilés : une flèche tirée droit les trouve). Une flèche (ou une bombe) :
+  la porte saute, l'armurier sort, il donne **dix bombes** (touche **V** : lancée devant soi,
+  mèche de 1,8 s ; il en refait quand le sac est vide).
+- **La Moule-Reine** trône dans le fossé, à l'est du pont de la Porte Royale (11 ; 214), à demi
+  sortie de l'eau. Fermée, rien ne la blesse. Toutes les trois secondes elle s'ouvre et crache vers
+  Camille : une bombe qui arrive dans la coquille ouverte y éclate et la fend ; fendue, deux bombes
+  de plus. On l'attaque depuis le pont (les flèches s'arrêtent au garde-corps : c'est l'affaire des
+  bombes). Sa clé tombe sur le tablier.
+- **Le Capitaine sans tête** ne sort que **la nuit** (`state.nuit`, le lit de Camille) et à la
+  lanterne : sa ronde longe la courtine du nord-ouest, à 22 m en dedans (la rue du rempart ; à 12 m,
+  elle traversait une caserne), avec ses cinq soldats. « Qui marche sur ma ronde ?… » Tombé, sa ronde
+  tombe avec lui. De jour, la ronde est vide et l'objectif renvoie au lit.
+- **La Grande Corbelle** tourne à 15 m au-dessus de la pointe de Turenne. Seule une bande du
+  terre-plein se marche (de la rampe jusqu'au magasin du bastion) : elle tourne au bout de cette
+  bande, à portée d'arc ; toutes les six à huit secondes elle pique sur Camille. Trois flèches. Sa clé
+  tombe là où l'on se tient.
+- **Les clés** se ramassent en passant ; chacune vient avec son billet d'Eugène (n° 4, 5, 6). Les
+  **trois cadenas** pendent à la grille du donjon : Entrée devant la grille, chaque clé en ouvre un ;
+  au troisième, la grille s'ouvre (`donjon`).
+- **Les dix monstres de l'ancienne histoire** (fossés, remparts, bastions) sont retirés dès que
+  l'acte I commence : la grille du donjon y tombait au dixième. Les corbeaux du champ d'Émile restent.
+
 ### 10. Le donjon et le Temple
 
 Le combat existe (Phinaert, la masse, l'onde de choc). À mi-vie, la cloche du donjon (on
 coupe la corde à l'arc) ; à un quart, il s'arrête, pose la main d'Eugène sur la dalle, la
 porte de lumière s'ouvre, il y entre avec Eugène. Camille le suit : l'île du temps
 (`temple.html`), le mage, le premier vers de la prophétie, la porte du Midi entrouverte.
+
+**Comme c'est bâti** (5 octobre, B3) : Eugène attend, attaché devant la porte du donjon, dès qu'on
+entre dans la place. La grille ouverte, Phinaert se tient dans l'enclos ; il parle quand Camille y
+entre (« La petite de la garde… »). **À mi-vie**, il va tirer la corde de **la cloche du donjon**
+(une potence de chêne au parapet sud, la corde jusqu'au sol, à droite de la porte) : le sol tremble
+— une onde toutes les deux secondes, qu'on saute —, et Phinaert ne prend plus de coups. Une flèche
+coupe la corde (elle est une cible de l'arc comme une bête) : la cloche se tait, le combat reprend.
+**À un quart**, il s'arrête (« Assez… »), va prendre Eugène, pose sa main sur **la dalle gravée**
+devant le donjon (« Le sang de Lydéric… ») : une porte de lumière violette, à sa taille (12 m), s'y
+lève ; ils y entrent. Phinaert ne meurt pas. Entrée devant la porte : `temple`, et l'île du temps.
+**Reste à `temple.js`** (une autre session) : l'arrivée scénarisée — le mage, le premier vers, la
+porte du Midi entrouverte (demande écrite dans `PROMPT-REPRISE.md`).
 
 ## Qui écrit quoi — les fichiers
 
@@ -156,7 +197,7 @@ porte de lumière s'ouvre, il y entre avec Eugène. Camille le suit : l'île du 
 | 6 | `village.js` (Désiré au sommet) | l'énigme : `atlas.js` (réutiliser ses devinettes) |
 | 7 | — | `chapelle.js` : l'escalier derrière l'autel |
 | 8 | — | `cave.js` : Bastien, l'arc au puits, le Rat-Roi et la clé |
-| 9, 10 | `citadelle.js` (les intérieurs, l'armurerie, les créatures), `quetes.js` | `engine.js` : trois ennemis nouveaux (Moule-Reine, Capitaine, Corbelle) ; `temple.js` (interdit à cette session) : l'arrivée de la fin de l'acte |
+| 9, 10 | `citadelle.js` seul (`ACTE1_CITADELLE` : les soldats, l'armurerie, les bombes, les créatures — `KINDS` complété depuis citadelle.js —, les cadenas, la cloche, Phinaert) | `temple.js` : l'arrivée de la fin de l'acte ; `quetes.js` et `hud.js` : appeler `ACTE1_CITADELLE.onKill`, `.objectif`, `.bandeau` (une passerelle les branche en attendant) ; `engine.js` : le `bowBack` de `loadGame` |
 
 ## Comment chaque étape est vérifiée
 
@@ -185,6 +226,7 @@ Banc de B1 : `bancs/acte1-b1.mjs` joue les étapes 2 à 6 de bout en bout dans u
 témoins de l'enquête ; `bancs/acte1-outils.mjs`, les gestes communs (une partie au prologue
 passé, parler, filmer sans mur devant).
 | 7, 8 | **codées, jouées en headless de bout en bout** (5 octobre, B2 : `bancs/acte1-souterrains.mjs` : 26 pas sur 28, les deux autres sont le défaut ci-dessous ; une capture par moment clé) : la crypte, Bastien, l'arc, le levier, le Rat-Roi, la clé, la porte de la poterne ; l'ancienne histoire intacte. **Un défaut hors B2** : avec l'arc en poche, la page de la citadelle se fige au chargement (`loadGame`, engine.js:2687, écrit dans le `bowBack` que la Camille riggée n'a pas) — `cave.js` et `chapelle.js` s'en gardent, `index.html` non |
+| 9, 10 | **codées, jouées en headless de bout en bout** (5 octobre, B3 : `bancs/acte1-citadelle.mjs`, 35 vérifications sur 35, une capture par moment clé, `bancs/resultats/acte1-citadelle-…`) : les soldats, la flèche dans la poudre, l'armurier et les bombes, la Moule-Reine à la bombe, la Corbelle à l'arc, le Capitaine la nuit (vide de jour), les clés et les billets, les cadenas, Phinaert, la cloche et la corde, la porte de lumière, l'île du temps (`temple`). Tous les lieux joignables à pied depuis la place (sonde sur une grille de 2 m). La seule erreur de page est le `bowBack` d'`engine.js` ci-dessus, au chargement de l'île (le banc donne l'arc après le chargement de la ville pour l'éviter). **Pas encore** : l'arrivée sur l'île (`temple.js`), les répliques de la ville à l'étape `citadelle` (crieur, Hermès, la marchande : B1), les intérieurs des casernes |
 
 ## Bilan du 2 octobre au soir — arrêté en cours d'étape 2, à reprendre ici
 
