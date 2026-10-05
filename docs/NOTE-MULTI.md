@@ -498,6 +498,23 @@ fichier même, comme aveyron.js — sans quoi phMat rendait un gris uni. Charge 
 Banc : 3 rencontres en 60 s à 2 joueurs et 2 bots, voisin à 16 m. À faire : un étage où l'on
 monte, des meubles moins carrés, des portes qu'on ferme.
 
+**Le Batut, deuxième version (5 octobre, le soir)** — Eugène, sur une capture : les salles
+« beaucoup trop petites pour être des salles de manoir », l'étage par l'escalier de la tour, et
+des portes où l'on n'entre pas. La cause des portes : Camille a 0,5 m de rayon de collision
+quelle que soit son échelle (engine.js, `tryMove`) ; une porte de 1,20 m entre deux murs dont la
+capsule déborde de 0,18 m ne laissait rien. Les portes font 2 à 2,4 m. Le corps de logis passe à
+30 × 36 m sur deux niveaux (4,20 m sous plafond en bas, 3,60 m en haut ; voir l'en-tête de
+batut.js) ; la tour ronde, collée au fond, porte une vis (`addHelix`, trois quarts de tour) de
+la cuisine et de la cour à la galerie haute ; l'escalier droit du vestibule (`addRamp`) fait le
+second chemin. Pièges payés : à l'étage, une boîte du moteur (`addBox`) n'a pas de dessous — les
+meubles d'en haut sont des capsules à plancher (`bottom`) ; les murs d'étage aussi ; un pan de la
+tour voisin d'une porte décentrée barrait le seuil (ouverture élargie à ±0,45 rad) ; entre le
+palier de la tour et le plancher de l'étage, l'épaisseur du mur n'avait pas de sol (on tombait).
+Vérifié par une sonde qui marche avec `tryMove` et `getH` du moteur : jardin → vestibule → salon
+→ galerie → cuisine → tour → vis → galerie haute → grande chambre → escalier droit → vestibule,
+sans un blocage. Une aire peut avoir sa propre mesure (`sd` d'aire, tloc-multi.js : `sdAire`) :
+le jardin n'est pas le domaine rétréci. Un objet d'arène peut donner son étage (`y`).
+
 **Les objets par arène (5 octobre, fin d'après-midi)** : une arène peut déclarer `objets`
 ({ id, type, x, z, nom }) au lieu de ceux de Lille (`PLAN_OBJETS`). Le Batut : l'armure dans
 chaque chambre, l'arc dans chaque bibliothèque, l'écu au bord du bassin ; la Garde-Guérin et le

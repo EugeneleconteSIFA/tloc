@@ -262,7 +262,9 @@ function etatAire(t) {
   for (const e of cal) { if (e.t <= t) cur = e.aire; else if (!suiv && e.aire !== cur) suiv = { aire: e.aire, dans: e.t - t }; }
   return { cur, suiv };
 }
-const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && arene.sd(x, z) > AIRES[aire].r;
+// une aire peut avoir sa propre mesure (`sd`) : au Batut, le jardin n'est pas le domaine rétréci
+const sdAire = (id) => AIRES[id].sd || arene.sd;
+const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && sdAire(aire)(x, z) > AIRES[aire].r;
 const premiereAire = () => idsAires()[0];
 // `depart` : l'identifiant d'un lieu (E.addLieu), ou directement un point { x, z }
 const lieuDepart = () => { const d = arene ? arene.depart : 'place'; return d && typeof d === 'object' ? d : lieux.find((l) => l.id === d); };
@@ -276,7 +278,7 @@ function rideau(aire) {
   for (let k = 0; k <= N; k++) {                    // le contour sd = R, pris par dichotomie sur chaque rayon
     const a = k / N * TAU, ux = Math.cos(a), uz = Math.sin(a);
     let lo = 0, hi = 2500;
-    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (arene.sd(C[0] + ux * m, C[1] + uz * m) < R) lo = m; else hi = m; }
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (sdAire(aire)(C[0] + ux * m, C[1] + uz * m) < R) lo = m; else hi = m; }
     const x = C[0] + ux * lo, z = C[1] + uz * lo; pts.push([x, z, getH(x, z)]);
   }
   const contour = pts.map(([x, z]) => [x, z]);       // pour la minicarte et la carte M (PARTAGE.aires)
@@ -792,10 +794,10 @@ function praticable(x, z) {
 // arrive là où les autres jouent (on choisissait sa rue à un kilomètre de tout le monde).
 function praticableOuvert(x, z) {
   const a0 = premiereAire();
-  if (horsAire(x, z, a0) || (AIRES[a0].r !== Infinity && arene.sd(x, z) > AIRES[a0].r - 15)) {
+  if (horsAire(x, z, a0) || (AIRES[a0].r !== Infinity && sdAire(a0)(x, z) > AIRES[a0].r - 15)) {
     const [cx, cz] = arene.centre;
     let lo = 0, hi = 1;                               // la part du chemin vers le centre
-    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (arene.sd(x + (cx - x) * m, z + (cz - z) * m) > AIRES[a0].r - 15) lo = m; else hi = m; }
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (sdAire(a0)(x + (cx - x) * m, z + (cz - z) * m) > AIRES[a0].r - 15) lo = m; else hi = m; }
     x += (cx - x) * hi; z += (cz - z) * hi;
   }
   return praticableOuvertIci(x, z);
@@ -1260,8 +1262,8 @@ function proposerDrapeaux() {
     // à 40 m au moins de la limite du monde : près d'elle, les rues continuent au-delà sans
     // rempart dessiné, et l'on bute contre un « faux mur » en voyant le drapeau (Eugène, 29 sept.)
     // l'aire la plus étroite : à 14 m en deçà de sa limite (12 m des courtines de la citadelle)
-    if (A.r === Infinity ? horsEnceinte(x, z) > -40 : etroite ? arene.sd(x, z) > A.r - 14
-      : (parc && !parc[k]) || arene.sd(x, z) > A.r || (A.exclut && A.exclut(x, z))) continue;
+    if (A.r === Infinity ? horsEnceinte(x, z) > -40 : etroite ? sdAire(zone)(x, z) > A.r - 14
+      : (parc && !parc[k]) || sdAire(zone)(x, z) > A.r || (A.exclut && A.exclut(x, z))) continue;
     if (anneaux.every(([di, dj]) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < nx && b < nz && libre[b * nx + a]; })) cands.push([x, z]);
   }
   // les plus écartés : la place, puis toujours le point le plus loin de ceux déjà retenus
@@ -1453,7 +1455,7 @@ const LIEU_OBJET = new Proxy({}, { get: (_, id) => (planObjets().find((p) => p.i
 // Une arène peut déclarer les siens (`objets` : { id, type, x, z, nom }) : au Batut, l'arc dans
 // la bibliothèque, l'armure dans la chambre ; sans quoi, ceux de Lille.
 const planObjets = () => (arene && arene.objets
-  ? arene.objets.map((o) => ({ id: o.id, type: o.type, nom: o.nom, lieu: () => ({ x: o.x, z: o.z }) }))
+  ? arene.objets.map((o) => ({ id: o.id, type: o.type, nom: o.nom, y: o.y, lieu: () => ({ x: o.x, z: o.z }) }))
   : PLAN_OBJETS.filter((p) => { const l = p.lieu(lieux); return l && !horsAire(l.x, l.z, premiereAire()); }));
 const NOM_TYPE = { armure: 'l’armure', bouclier: 'l’écu', arc: 'l’arc', cheval: 'le cheval' };
 const COULEUR_TYPE = { armure: '#c9ccd2', bouclier: '#d0463a', arc: '#7fbf5a', cheval: '#b07a3e' };
@@ -1479,7 +1481,8 @@ function proposerObjets() {
     const l = pl.lieu(lieux);
     if (objets.some((o) => o.id === pl.id)) continue;
     const p = pl.type === 'cheval' ? placeEcurie(l) : praticable(l.x, l.z);
-    if (p) liste.push({ id: pl.id, type: pl.type, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +getH(p.x, p.z).toFixed(2) });
+    // `y` : l'étage, quand l'arène le donne (au Batut, sous un plancher, getH rendait l'étage)
+    if (p) liste.push({ id: pl.id, type: pl.type, p: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +(pl.y ?? getH(p.x, p.z)).toFixed(2) });
   }
   objetsProposes = true;
   if (liste.length) envoyer({ t: 'objets-lieux', objets: liste });
