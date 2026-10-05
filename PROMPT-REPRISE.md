@@ -1683,6 +1683,145 @@ recette (granit, tour ronde), alors que SCENARIO.md décrit le Batut d'après le
   d'après photos : une tour carrée au centre sous un dôme de lauzes, un toit de lauzes à quatre pans,
   une grille et une allée de gravier. Beauregard attend une description d'Eugène.
 
+#### Aveyron, suite (5 octobre, PC) : le Pouget et Beauregard
+
+Eugène : « rebâtis le Pouget d'après les photos », puis pour Beauregard, « je n'ai aucune inspiration
+précise, trouve une inspiration aveyronnaise du coin ; une heure, en prenant des décisions ».
+- **L'atelier** (`aveyron.js`) : le granit gris et la lauze sont inscrits dans `PH`
+  (`granit_lozere`, `lauze_lozere`, les fichiers de la Lozère). Pièces communes : `chantier()` et
+  `finirChantier()` (une maille par matière), `toitCroupes()` (quatre pans et coyau), `toit2Pans()`,
+  `fenetre()` (blanche à petits carreaux, volets pleins), `cheminee()`, `lucarne()`, `nappe()`
+  (pelouse, allée ou cour posée sur le relief), `lierre()` (partagé avec le Batut).
+- **Le Pouget** (`pouget()`), d'après les photos décrites dans SCENARIO.md :
+  - un corps de 20 × 10 m, 7 m à l'égout, sous un toit de lauzes à quatre pans, cassé en bas,
+    avec deux grandes cheminées ;
+  - la tour carrée centrale, plus haute que le faîtage, sous un dôme de lauzes en cloche et un
+    clocheton ; la porte-fenêtre bleue sur son balcon de fer forgé et l'oculus au-dessus ;
+  - deux lucarnes ; trois fenêtres par étage de chaque côté ; des volets bleu-gris ;
+  - la porte bleue, trois marches qui descendent dans la pente, des hortensias et deux pots ;
+  - le lierre sur la droite et le mur qui la prolonge ; l'aile basse à gauche, derrière un arbre ;
+  - l'entrée : le mur, deux piliers à boules, la grille ouverte, l'allée de gravier entre deux pelouses
+    grillées, bordée d'une haie basse.
+
+  L'aïeule est maintenant au pied des marches.
+- **Beauregard** (`beauregard()`), une décision de la session : un manoir du Carladez, voisin du lac
+  (Messilhac, les maisons fortes de la Truyère). C'est :
+  - un corps de logis de granit de 17 × 9 m, sous un toit de lauzes très pentu entre deux pignons à
+    cheminée ;
+  - une tour d'escalier ronde hors-œuvre en poivrière, avec sa porte cintrée et des jours qui
+    tournent avec la vis ;
+  - des croisées à meneaux à l'étage (la maison noble), des baies aux volets rouges au
+    rez-de-chaussée ;
+  - la cour en terrasse sur le lac, avec son puits à sec ;
+  - un pigeonnier carré à randière, accolé à l'angle de la cour (le droit de colombier, privilège du
+    seigneur).
+- **Les toits** : la lauze pour le Pouget (les photos) et pour Beauregard (le nord de l'Aveyron couvre
+  en lauze ; la tuile canal est une toiture du sud). Le Batut, les granges et le bâti d'OSM gardent la
+  tuile canal choisie le 2 octobre. **Question pour Eugène** : tout passer en lauze, par cohérence ?
+- **Collisions, appris** : un muret fait d'un tronçon par côté laisse une encoche de 35 cm à l'angle
+  extérieur. Chaque tronçon dépasse maintenant ses bouts de l'épaisseur du mur. Le banc, lui,
+  traversait un muret de 70 cm vu en biais entre deux cases de 2 m (il ne testait que le milieu) :
+  il teste trois points par pas, et dit où la marche s'arrête (`arreteeA`).
+- Mesures : chargement 4,0 s ; étape « maisons Roquette » 255 ms (au plus près des 300 ms) ; rues
+  praticables 100 % (9 409 points), 25 cibles sur 25 atteintes. Le banc compte 6 « toits sur un
+  voisin » : ce sont les grands toits qui débordent au-dessus des toits bas, de la tour et des ailes,
+  comme sur les vraies maisons. Planche : `bancs/resultats/lieu-aveyron-2026-10-05-regard-maisons-5-vues.png`.
+- `grandeMaison()` ne sert plus que pour la version complète : les trois maisons ont chacune leur
+  recette.
+
+### Villefort — le réalisme et le jouable (5 octobre, PC, consigne V, point 3) — **faits, vérifiés en rendu, publiés**
+
+Tout est dans `lozere.js`, pour Villefort seul. Le code commun (`batirMaisons`, `rues`, `Lot.bloc`)
+n'a reçu que des options facultatives (`enduit`, `mats`, `fondu`, `sansFond`) : la Garde-Guérin donne
+les mêmes mesures au banc avant et après (`lieu-gardeguerin-2026-10-05-apres-facades.*`).
+
+**Les commits, dans l'ordre** : `4e36f77` le resserrement ; `a94bf46` le jouable ; `de2f8aa` le sol ;
+`9cdc4df` les façades ; `4dc5a97` les chemins ; `4a46b63` la lisière sur les quatre bords ;
+`c21afd8` le mobilier.
+
+**Les écarts relevés** (`bancs/resultats/villefort-2026-10-05-regard-avant-*.jpg`, à hauteur d'yeux
+et en plongée : Bosquet, Bourgade, Portalet, église, pont), du plus visible au moins visible, tous traités :
+1. **De l'herbe jusqu'au pied des façades**, en plein bourg. → `solDuBourg` : un enrobé de mur à
+   mur dans le bourg dense (3,5 m autour du bâti, 3 m le long des rues, pas dans les jardins d'OSM).
+   Son contour est découpé au pas de 1,25 m (marching squares). Hors du bourg, un accotement de 1,6 m
+   le long des routes et des rues.
+2. **Les rues** : le « gravier » se lisait comme un ruban noir, et la rue de la Bourgade comme un
+   chemin de terre. → Enrobé usé (`asphalt_02`) pour r ≥ 2 ; ruelles du bourg dallées de granit
+   (`granite_tile_03`) ; trottoirs de 14 cm et 1,6 m, avec leur bordure, le long de la départementale
+   seule (route de Mende, avenue des Cévennes), coupés aux carrefours. On y marche à leur hauteur
+   (`solLieu`).
+3. **Les façades aveugles, le granit trop clair.** → `facades` : 3 814 fenêtres (vitrage, encadrement
+   de granit, volets de planches gris-bleu, vert, brun ou gris, un sur cinq fermé) et 203 portes côté
+   rue. Rien sur les murs mitoyens ni sous le terrain. Pierre plus sombre (`0x9c9a94`), et quatre
+   maisons sur dix du bourg crépies (`enduit_gris`).
+4. **Les chemins en ruban net.** → Hors du bourg, largeur qui ondule et frange de 70 cm fondue dans
+   l'herbe (alpha aux sommets, `fondu`).
+5. **Rien sur les places.** → Le bosquet de charmes de la place du Bosquet ; l'ormeau de la place de
+   l'Ormeau (un chêne : la forêt du jeu n'a pas d'orme) ; six bancs ; cinquante lanternes de fer, au
+   verre à peine lumineux, sans lumière nouvelle.
+
+**Les bords** : la lisière (débord de 60 m bloqué et boisé, mur et portail au bout de chaque rue
+coupée) est maintenant sur les quatre côtés. À l'est et au sud, le relief du débord vient du relief
+« monde », interpolé (`recoudre-relief-lozere.py`). Captures : `villefort-2026-10-05-bord4-*.jpg`.
+
+**Les gens** (huit passants, rôles et villageois existants, `GENS_VILLEFORT`) :
+- le vieux de la place du Bosquet, près du poteau : « Ce poteau, c'est le départ des vieux chemins. »
+- le cafetier de Chez Fernand : « Chez Fernand, tout le bourg passe un jour ou l'autre. »
+- le sacristain de Saint-Victorin : « On l'a bâtie avec le granit de la vallée, comme tout le bourg. »
+- une femme au lavoir du pont Saint-Jean : « L'eau de l'Altier est froide, même en plein été. »
+- le pêcheur du pont, sur son banc de granit : « Plus haut, il y a le lac du barrage. Avant, il n'y
+  avait que la rivière. »
+- l'hôtelière du Balme : les voyageurs du train et les marcheurs de la Régordane.
+- un homme de la place de l'Ormeau : « La rue de la Bourgade, c'est l'ancienne Régordane. »
+- un homme de la place du Portalet : le granit et les lauzes.
+Huit `reperes` (Bosquet, poteau, Portalet, église, Ormeau, pont et lavoir, Chez Fernand, le Balme).
+Captures : `villefort-2026-10-05-jouable-minicarte.jpg` (la minicarte nomme le poteau),
+`-jouable-dialogue.jpg`, `-jouable-pecheur.jpg`.
+
+**Mesures** (`bancs/tour.sh node bancs/lieu-lozere.mjs villefort <étape>`, `lieu-villefort-2026-10-05-*`) :
+chargement 2,6 à 3,4 s (3,6 avant le resserrement) ; étapes nouvelles, chronométrées dans `BILAN` :
+passants 20 ms, sol 140–165 ms, façades 105–115 ms, mobilier 10 ms (toutes sous 300 ms). Rues
+praticables 100 % ; le poteau, l'église, Chez Fernand et le pont sont atteints en marchant.
+
+**Appris** :
+- **Un maillage aux normales nulles noircit TOUT l'écran** (NaN au shader, étalé par le flou du
+  post-traitement). C'est arrivé avec deux faces opposées sur les mêmes sommets (la bordure), et c'est
+  un risque avec les triangles plats d'un découpage. Pour trouver le coupable : masquer les maillages
+  par moitiés jusqu'au noir.
+- `PNJ.buildRole('pecheur')` est un rôle ASSIS : il lui faut quelque chose sous lui. Son origine est
+  à la hanche, pas aux pieds.
+- Le serveur a été arrêté et relancé par une autre session pendant le travail : un banc qui échoue
+  sur `ERR_CONNECTION_REFUSED`, on revérifie le serveur avant de chercher plus loin.
+
+**Reste, et questions pour Eugène** :
+- La boulangère, le chef de gare et les enfants près du lac (l'enquête du chien, SCENARIO § 14) ne
+  sont PAS posés : ils appartiennent à l'histoire. La gare et le lac sont hors de l'emprise : où les
+  veux-tu ? Un chef de gare « descendu au bourg », ou la gare remise dans le lieu ?
+- 9 points de rue à plus de 35° : des bords de terre-plein sur des sentiers (149 avant le resserrement).
+- Une lanière d'herbe reste entre deux rues près du pont Saint-Jean (un jardin d'OSM, sans doute).
+- Les rez-de-chaussée n'ont pas de vitrines (Chez Fernand, le Balme) : un café et un hôtel devraient
+  se reconnaître de la rue.
+- Pas encore de barre de chargement sur villefort.html (le § 4.E le note pour les mondes).
+
+#### Lille, suite en autonomie (5 octobre, pause de midi d'Eugène) — **publié (f49035f, a9d9381, puis la bordure)**
+- **Une porte au milieu de chaque boutique** (garde, brasseur, drapier) : l'étal encadrait la porte de la
+  maison inventée ; sur la façade relevée, il ne restait qu'un mur nu entre ses deux baies.
+- **Les bords des pavés du bourg s'effritent** sur un mètre dans la terre battue (`paved`, alpha de sommet
+  et bord bruité) : d'en haut, ce n'est plus un plan de géomètre.
+- **La marchande et le brasseur font les cent pas** sur leur trottoir rue du Gros Gérard (`va`,
+  `userData.route` : game.js les anime comme les villageois du bourg) ; vérifié, ~7 m en 12 s chacun.
+- **Le caniveau en petits pavés de grès** (`pbrRepeat(cobbles(), 1/0.62…)`, teinte sombre) : la photo de
+  rocaille lisait comme de la terre semée de cailloux. **Les badigeons plus soutenus** : la longue rangée
+  enduite du Wault lisait encore gris-blanc à l'ombre.
+- **Plus de bordure sud** en travers du marché ; la bordure nord en pierre de bordure (marble_rock_02).
+- Vérifié : accès 27 interactions, 0 hors d'atteinte ; prologue sans erreur ; A/B
+  (`charge-2026-10-05-ab4-*.json`) 8,2 / 8,7 → 8,5 / 8,5 s, pas d'écart. Captures :
+  `bourg-portes-2026-10-05-*.jpg`, `ville-L-midi-*.jpg` et `ville-L-midi2-*.jpg`.
+- **« chaussée coupée sur 331–359 m (eau) »** : vérifié en A/B, il existait déjà avant le 5 octobre
+  (34fa442). C'est la vieille route de campagne du pont « au village » (campagne.js, `roadPts`), qui file
+  vers l'ouest jusqu'à (−171 ; 554) et finit dans un canal : elle date du bourg d'avant, et ne mène plus au
+  bourg (200 ; 660). À revoir avec Eugène : la recaler sur le chemin du pont au bourg, ou la raccourcir.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
