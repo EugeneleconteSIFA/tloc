@@ -509,3 +509,42 @@ bancs/acces.mjs, bancs/sauts.mjs, bancs/resultats/ (tes fichiers), PROMPT-REPRIS
 INTERDITS : la citadelle et ECH, tloc-multi.js, engine.js, pnj.js, quetes.js, monde.js,
 les fichiers des autres lieux.
 ```
+
+### Consigne T — Thaïlande : faire le point sur la nuit, puis le réalisme et les passants
+
+```
+(début commun ci-dessus)
+
+Tâche : finir la Thaïlande. Le resserrement des îles est publié (bfa3fea, § 4.Z de PROMPT-REPRISE.md).
+Le travail de la nuit du 4 au 5 (réalisme et « lieux jouables », consigne de nuit § 4) est arrivé du
+Mac dans le transfert ba002ab, NON CONTRÔLÉ et SANS COMPTE RENDU : thailande.js (+300 lignes),
+monde.js, extraire-thailande.py, thailande.json, et des captures realisme-avant / -apres dans
+bancs/resultats/.
+1. Fais d'abord le point : lis le diff de ba002ab pour ces fichiers (git show ba002ab -- thailande.js
+   monde.js …), dis-moi ce qui a été fait, et vérifie-le au banc (bancs/tour.sh node
+   bancs/lieu-thailande.mjs : praticabilité ≥ 95 %, chargement de thailande.html) et en rendu, à
+   hauteur d'yeux. Écris dans PROMPT-REPRISE.md le compte rendu de nuit qui manque.
+2. Les repères : thailande.js déclare ses `reperes` ; monde.js les affiche. Vérifie qu'ils sont tous
+   sur la minicarte et comptés comme lieux découverts, et que plus rien ne pointe hors des cœurs.
+3. Puis le réalisme, dans l'ordre de la consigne de nuit (§ 4) : sous les pieds d'abord (ruelles de
+   planches et de béton de Ko Panyi, pontons, sentiers de Railay et de Phi Phi, grèves), puis les
+   maisons sur pilotis, les temples, le reste.
+4. Et le jouable : des gens à qui parler dans chaque coin qui compte (marchands du marché flottant,
+   pêcheurs, moines, enfants, passeurs), avec les rôles et villageois existants (nok, moine,
+   balayeur, pecheur, villageois) ; répliques courtes qui orientent ou racontent le lieu ; STORY.md
+   fait foi, n'invente ni quête ni secret. Parcours chaque île au banc comme un joueur, du départ à
+   chaque repère, et note ce qui manque.
+5. Défauts déjà connus : la brume mange la vue d'ensemble de la baie (`brume: [.., 260, 3200]`) ;
+   deux 404 au chargement (sans doute l'icône) ; 40 points bloqués à Ko Panyi (34 ; 26) et 22 à
+   Phi Phi (2349 ; 1918).
+Règles de fabrication de la consigne de nuit : Poly Haven via phMat (jamais d'aplat mat(0x…)),
+textures 512 px, pas de lumière ni d'ombre nouvelles, rien de nouveau au-delà de 300 ms. Mesure en
+A/B entrelacé quand les autres sessions chargent la machine (PROMPT-REPRISE.md, § 5). Ne modifie
+aucun fichier de ton lot pendant que publier-dev.sh tourne.
+Fichiers AUTORISÉS : thailande.js, thailande.html, carte/mondes/extraire-thailande.py,
+carte/mondes/recolter-relief-thailande.py (sans relancer de récolte réseau),
+carte/mondes/thailande.json, carte/mondes/relief-thailande.json, carte/mondes/complet/,
+bancs/lieu-thailande.mjs, bancs/resultats/ (tes fichiers), PROMPT-REPRISE.md (ajouts).
+INTERDITS : monde.js (ce qui y manque s'écrit dans PROMPT-REPRISE.md, « Demandes pour monde.js »),
+engine.js, pnj.js, quetes.js, tloc-multi.js, les fichiers des autres lieux.
+```
