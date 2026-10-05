@@ -384,3 +384,128 @@ soit JOUABLE, pas seulement beau. Une fois le resserrement publié, mène les de
 Dans ton compte rendu de nuit, ajoute la liste des PNJ posés (où, qui, ce qu'ils disent en
 une ligne) et une capture de la minicarte.
 ```
+
+## 5. Le 5 octobre, sur le PC — Villefort, Aveyron, Lille
+
+Le travail passe sur le PC Windows (CLAUDE.md, encadré du 5 octobre). Où en est le plan : la
+Thaïlande, Lille (resserrement) et les trois villes des Pouilles sont publiées (`9eb4a4d`) ;
+les Pouilles n'ont pas de compte rendu dans PROMPT-REPRISE.md. `monde.js` lit déjà les
+`reperes` (minicarte et lieux découverts). Les arènes du multi (consigne 4) attendent.
+
+Trois sessions en même temps, chacune ouverte sur le dossier du jeu lui-même (pas de
+worktree) : **V. Villefort**, **A. Aveyron**, **L. Lille, le réalisme et les passants**.
+Personne ne touche à `monde.js`, `engine.js`, `pnj.js`, `quetes.js` ni `tloc-multi.js` :
+ce qui y manque s'écrit dans PROMPT-REPRISE.md, sous « Demandes pour monde.js » ou
+« Demandes pour d'autres fichiers ».
+
+### Début commun aux trois consignes
+
+```
+Tu es sur le PC Windows : lis d'abord CLAUDE.md (encadré du 5 octobre), PROMPT-REPRISE.md
+et PLAN-2026-10-04-CARTES.md (§ 1, 2, 4 et 5). Trois sessions tournent en même temps
+(Villefort, Aveyron, Lille), chacune sur ses fichiers : n'écris que dans les tiens.
+- Les scripts .sh se lancent dans Git Bash ; Python, c'est `py -3`.
+- Le serveur : vérifie s'il répond déjà (curl -s -o /dev/null -w "%{http_code}"
+  http://127.0.0.1:8000/index.html). S'il répond, ne lance pas de second serveur ; sinon,
+  ./lancer.sh en arrière-plan.
+- Chaque banc Chrome passe par bancs/tour.sh (un Chrome de test à la fois pour les trois
+  sessions) : bancs/tour.sh node bancs/lieu-….mjs
+- Publie par petits lots cohérents, seulement tes chemins :
+  echo o | ./publier-dev.sh 'message' <tes chemins>. Si le contrôle échoue parce que
+  les autres sessions chargent la machine, réessaie plus tard, ne force jamais.
+- Point d'avancement bref toutes les 15 minutes : fait / mesuré / reste.
+- Avant de t'arrêter, ajoute (sans réécrire) ton compte rendu dans PROMPT-REPRISE.md :
+  commits, captures à regarder, mesures, ce qui reste, questions pour Eugène.
+```
+
+### Consigne V — Villefort
+
+```
+(début commun ci-dessus)
+
+Tâche : la consigne 5 du plan (Villefort seulement), puis la consigne de nuit (§ 4 :
+réalisme, et le complément « des lieux jouables ») dans Villefort seulement.
+1. Le resserrement d'abord, exactement comme la consigne 5 : inventaire, emprise proposée
+   sur une capture du plan, et ATTENDS MON ACCORD avant de toucher au code. Garde-Guérin et
+   le Pouget sont à la bonne taille : on n'y touche pas, et ce qui les relie à Villefort
+   (routes, Régordane, passages, panneaux, retours de carte) doit continuer de marcher.
+2. Publie le resserrement seul, avant la suite.
+3. Puis le réalisme et le jouable dans Villefort : des gens à qui parler (rôles et
+   villageois existants), et des `reperes` déclarés dans lozere.js pour la partie Villefort
+   (monde.js les affiche déjà). Les règles de fabrication de la consigne de nuit
+   s'appliquent toutes (Poly Haven via phMat, textures 512 px, rien de nouveau au-delà de
+   300 ms au chargement).
+Fichiers AUTORISÉS : lozere.js (la partie Villefort), villefort.js, villefort.html,
+carte/mondes/lozere-villefort.json, carte/mondes/relief-lozere-villefort.json,
+carte/mondes/plans-lieux-lozere.py, carte/mondes/extraire-lozere.py,
+carte/mondes/recolter-relief-lozere.py (sans relancer de récolte réseau : on découpe ce
+qu'on a), carte/mondes/recoudre-relief-lozere.py, carte/mondes/complet/,
+bancs/lieu-lozere.mjs, bancs/resultats/ (tes fichiers), PROMPT-REPRISE.md (ajouts).
+INTERDITS : garde-guerin.js, pouget.js, pouget-*.js et leurs fichiers de carte,
+monde.js, et tout ce qui n'est pas dans la liste.
+Vérifie en rendu Villefort, ET que Garde-Guérin et le Pouget démarrent et se présentent
+comme avant (mêmes captures du banc).
+```
+
+### Consigne A — Aveyron
+
+```
+(début commun ci-dessus)
+
+Tâche : la consigne 6 du plan (le lac de Saint-Gervais), puis la consigne de nuit (§ 4 :
+réalisme, et le complément « des lieux jouables ») dans l'Aveyron seulement.
+1. Le resserrement d'abord, exactement comme la consigne 6 : inventaire (dis-moi si
+   Saint-Symphorien sert à l'histoire, STORY.md fait foi), emprise proposée sur une capture
+   du plan, et ATTENDS MON ACCORD avant de toucher au code. Le Dormeur sur le mur de l'ouest
+   reste visible au loin.
+2. Publie le resserrement seul, avant la suite.
+3. Puis le réalisme et le jouable dans l'Aveyron : des gens à qui parler (rôles et
+   villageois existants ; les Roquette appartiennent à l'histoire, n'invente rien sur eux),
+   et des `reperes` déclarés dans aveyron.js (monde.js les affiche déjà). PROMPT-REPRISE.md
+   note que aveyron.js bâtit lui-même son bâti, ses rues et ses arbres, et que ses toits
+   débordaient (§ 4.E, « À faire dans monde.js, suite ») : corrige ce qui est dans
+   aveyron.js, note le reste pour monde.js. Les règles de fabrication de la consigne de nuit
+   s'appliquent toutes.
+Fichiers AUTORISÉS : aveyron.js, aveyron.html, carte/mondes/*aveyron* (dont
+extraire-aveyron.py, fondre-relief-aveyron.py, recolter-relief-aveyron.py sans relancer de
+récolte réseau), carte/mondes/complet/, bancs/lieu-aveyron.mjs, bancs/resultats/ (tes
+fichiers), PROMPT-REPRISE.md (ajouts).
+INTERDITS : monde.js, et tout ce qui n'est pas dans la liste.
+```
+
+### Consigne L — Lille : le réalisme et les passants
+
+```
+(début commun ci-dessus)
+
+Tâche : finir Lille après son resserrement (publié le 5 au matin, c7ef2e9). Lis dans
+PROMPT-REPRISE.md la section « Lille — la ville resserrée » : les correctifs de réalisme et
+de passants qu'elle décrit étaient écrits (patch-routes.py, patch-passants.py) mais sont
+restés sur le Mac et sont PERDUS. Refais-les, puis continue la liste des écarts.
+1. Regarde avant de toucher : bancs/regard-ville.mjs (à hauteur d'yeux et en plongée : garde,
+   place, chemin, rue, wault) ; les captures « avant » de la nuit sont dans bancs/resultats/.
+2. Les rues de la ville : trottoirs montés de 14 cm avec une bordure visible, caniveau de
+   grès, trottoir coupé au droit des carrefours, bombé de chaussée ; le cœur des îlots
+   n'est plus un sol brun uni.
+3. Le chemin du pont au bourg : plus de ruban brun à bords francs dans le bois.
+4. Le quai du Wault : un quai de pierre (bassin de ville du XVIIIe, quais pavés), des
+   façades moins blanches et moins pareilles.
+5. Le dallage flou et étiré du bourg (écart n° 1, village.js) : village.js t'est ouvert
+   POUR CELA SEULEMENT. Le bourg ne disparaît pas (question encore posée à Eugène).
+6. Les passants : une lavandière au quai du Wault, une marchande, un brasseur rue du Gros
+   Gérard, un garde du guet à une porte coupée (rôles et villageois existants, addInteract,
+   dialogue ; répliques courtes qui orientent ou racontent le lieu ; STORY.md fait foi).
+   Le quai du Wault devient un lieu découvert (E.addLieu).
+7. La minicarte et la carte M (hud.js) tracent encore les rues coupées comme ouvertes :
+   n'y dessine que l'emprise (dansVille), ou grise ce qui est hors d'elle.
+Mesure le chargement avant et après chaque lot (bancs/tour.sh node bancs/charge.mjs, somme
+des étapes, budget 17 s), et vérifie l'accès (bancs/acces.mjs index : 0 hors d'atteinte) et
+le prologue en headless.
+Fichiers AUTORISÉS : quartier.js, carte.js (ce qui borde et dessine la ville seulement),
+nature.js, campagne.js, village.js (le dallage seulement), hud.js (le tracé de la ville sur
+la minicarte et la carte M seulement), bancs/regard-ville.mjs, bancs/charge.mjs,
+bancs/acces.mjs, bancs/sauts.mjs, bancs/resultats/ (tes fichiers), PROMPT-REPRISE.md
+(ajouts).
+INTERDITS : la citadelle et ECH, tloc-multi.js, engine.js, pnj.js, quetes.js, monde.js,
+les fichiers des autres lieux.
+```

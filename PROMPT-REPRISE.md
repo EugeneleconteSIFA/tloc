@@ -1294,7 +1294,7 @@ les unes par rapport aux autres. Plans et reliefs complets d'avant : `carte/mond
 - **Défauts vus et pas corrigés** : la vue d'ensemble de la baie est mangée par la brume
   (`brume: [.., 260, 3200]`) ; deux 404 au chargement, sans requête visible (sans doute l'icône).
 
-### Lille — la ville resserrée (nuit du 4 au 5 octobre) — **faite et vérifiée, PAS ENCORE PUBLIÉE**
+### Lille — la ville resserrée (nuit du 4 au 5 octobre) — **faite et vérifiée, publiée le 5 octobre (c7ef2e9, envoyé avec 9eb4a4d depuis le PC)**
 
 **Ce qui est fait** (en local, `carte.js` et `quartier.js`) :
 - **L'emprise** (`VILLE`, `sdVille`, `dansVille`, carte.js) : le bourg et 200 m autour (accord

@@ -4,6 +4,14 @@ Mini-jeu d'aventure 3D (Three.js, modules ES). `./lancer.sh` puis `http://localh
 un seul serveur (serveur/app.py) sert le jeu ET l'API des comptes et du multi, sans cache.
 `python3 -m http.server` ne sert que les fichiers : accueil, comptes et multi n'y marchent pas.
 
+**Depuis le 5 octobre, le travail se fait sur le PC Windows** (`C:\Users\eleconte\Documents\GitHub\tloc\the_legend_of_camille`) :
+le Mac ne sert plus pour ce dépôt, ce dossier-ci est le seul exemplaire du travail en cours.
+Les scripts `.sh` se lancent dans **Git Bash**, pas dans PowerShell. `python3` et `python` n'y sont
+que des raccourcis du Microsoft Store : le vrai Python est `py -3`. Playwright est dans
+`..\outils` (hors du dépôt) ; les bancs utilisent le Chrome du PC. Quand ce fichier ou
+`PROMPT-REPRISE.md` parlent du Mac (sa puce, sa charge), c'est l'historique : la contrainte des
+textures à 512 px reste, pour les petites machines.
+
 ## À lire en premier
 
 `PROMPT-REPRISE.md` : l'état du chantier, ce qui reste à faire, et ce que le code a appris.
@@ -34,7 +42,7 @@ langage, palettes, musique, sons, ce qu'il ne faut pas faire).
 7. Ne pas relancer `carte/ign-recolte.py` (vingt minutes, et la récolte est bonne).
 8. **Le chargement passe avant les nouveautés.** Toute évolution se mesure avant et après
    avec `node bancs/charge.mjs` (et `bancs/profil.mjs` pour trouver le coupable). On juge
-   sur la **somme des étapes** (le total bouge de ±3 s avec la charge du Mac) : budget
+   sur la **somme des étapes** (le total bouge de ±3 s avec la charge de la machine) : budget
    **17 s** au banc headless (15 à 17 s le 25 septembre), aucune étape nouvelle au-delà de
    300 ms sans le dire, aucun écran figé sans barre qui avance. Ce
    qu'on voit à améliorer se note tout de suite dans `PROMPT-REPRISE.md`, § 4.E.
