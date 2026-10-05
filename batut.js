@@ -192,12 +192,13 @@ function maison(cle) {
   meuble(mx(5.4), -4.2, 0.6, 1.4, 0.9, BOIS, CLAIR);
   // la galerie : deux coffres, une horloge
   meuble(mx(7.5), -4.5, 1.0, 0.6, 0.6, BOIS, SOMBRE); meuble(mx(7.5), 4.5, 1.0, 0.6, 0.6, BOIS, SOMBRE); meuble(mx(8.6), -10.8, 0.5, 0.5, 2.1, BOIS, SOMBRE);
-  // la bibliothèque : trois rayonnages en épis (2,2 m : on ne voit pas par-dessus), une table de lecture
+  // la bibliothèque : trois rayonnages en épis (2,2 m : on ne voit pas par-dessus), une table de lecture ;
+  // les dos des livres en bois teinté (la laine bouclée et le tissu à motif faisaient du tartan)
   const livres = [0x6a2a24, 0x2a4a3a, 0x3a3a5a, 0x7a5a2a, 0x4a2a3a];
   for (const [k, v] of [[0, 6.2], [1, 8.4], [2, 10.6]]) {
     const ua = 11.2, ub = 17.2, x = (mx(ua) + mx(ub)) / 2, w = ub - ua;
     meuble(x, v, w, 0.45, 2.2, 'wood_planks', 0x4a3424);
-    for (let r = 0; r < 4; r++) for (const sd of [-1, 1]) poser(boite(w - 0.3, 0.32, 0.06, 'wool_boucle', { color: livres[(k + r) % 5] }), x, 0.35 + r * 0.5, v + sd * 0.24).castShadow = false;
+    for (let r = 0; r < 4; r++) for (const sd of [-1, 1]) poser(boite(w - 0.3, 0.32, 0.06, 'wood_cabinet_worn_long', { color: livres[(k + r) % 5] }), x, 0.35 + r * 0.5, v + sd * 0.24).castShadow = false;
   }
   meuble(mx(18.5), 6, 1.0, 1.8, 0.78, BOIS, SOMBRE);
   // la cuisine : la grande cheminée du fond, la table, le vaisselier, des tonneaux

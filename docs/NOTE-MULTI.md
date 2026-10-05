@@ -498,6 +498,24 @@ fichier même, comme aveyron.js — sans quoi phMat rendait un gris uni. Charge 
 Banc : 3 rencontres en 60 s à 2 joueurs et 2 bots, voisin à 16 m. À faire : un étage où l'on
 monte, des meubles moins carrés, des portes qu'on ferme.
 
+**Les objets par arène (5 octobre, fin d'après-midi)** : une arène peut déclarer `objets`
+({ id, type, x, z, nom }) au lieu de ceux de Lille (`PLAN_OBJETS`). Le Batut : l'armure dans
+chaque chambre, l'arc dans chaque bibliothèque, l'écu au bord du bassin ; la Garde-Guérin et le
+Pouget en ont aussi. La pose attend d'être entré au salon (`moi`, ws ouvert) : au Batut, qui
+charge en 2,5 s, la partie tournait avant la réponse du serveur, l'envoi se perdait et
+`objetsProposes` interdisait de recommencer. La carte M (`state.carteBeffroi`) n'est plus
+donnée hors de Lille : c'est l'atlas de la châtellenie. Les minicartes du Batut et du Pouget
+tracent la limite de l'aire (PARTAGE.aires) ; celle de Garde-Guérin (monde.js) pas encore.
+
+**Reste à faire, dans l'ordre** :
+1. Jouer les quatre arènes pour de vrai, à deux onglets (les bancs n'ont que des marcheurs au hasard).
+2. Le Batut : un étage où l'on monte (l'escalier de la tour), des portes qu'on ferme, des
+   meubles moins carrés (armoire, lit, buffet) ; la pénombre des pièces du fond.
+3. En équipes, une arrivée relevée en (33, 2), devant la façade de Beauregard au lieu du
+   vestibule, sur un banc : pas reproduit à un joueur seul — à surveiller.
+4. La minicarte de Garde-Guérin (monde.js, partagé : à faire avec la session qui le tient).
+5. Hors de Lille : la forge, les bannières et la fête de la moisson restent ceux de Lille.
+
 Banc : `bancs/rencontres.mjs` — comptes de test sur le serveur LOCAL, quatre joueurs sans tête
 qui marchent au hasard, quatre bots, chrono de 10 min observé sur ses 3 premières minutes ; il
 compte les rencontres (deux personnages à moins de 30 m).
