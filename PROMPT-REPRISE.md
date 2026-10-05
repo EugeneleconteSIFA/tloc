@@ -1636,11 +1636,52 @@ pas d'écart ; fusion des décors −0,45 s, tas −25 Mo. Captures : `bancs/res
 (vue d'ensemble, garde, estaminet, brasseur et drapier, forge, place, nord, prologue, sortie de l'estaminet).
 
 **Ce qui reste** :
-- **La moitié sud de la boîte du bourg** (l'Esplanade) reste un grand socle de terre battue où se tiennent le
-  marché et la forge : il faudrait y rendre l'herbe de l'Esplanade hors du marché (le sol plat du bourg,
-  `solBourg`, couvre toute la boîte : à reprendre avec `TOWN_BOITE` et le relief cuit).
+- ~~La moitié sud de la boîte du bourg reste un grand socle de terre battue.~~ **Fait (95c8399)** : le socle
+  est en deux nappes, l'herbe de l'Esplanade partout et la terre battue seulement sous la grand-rue, le
+  marché, la forge, le séchoir et le colporteur (`terreBourg`, village.js) ; la rue nord-sud est pavée
+  jusqu'au bout du marché. Le sol marchable (`solBourg`) n'a pas bougé. Captures :
+  `bancs/resultats/bourg-esplanade-2026-10-05-*.jpg`.
 - Les rez-de-chaussée réservés sont aveugles derrière les étals : entre deux baies d'un étal, on voit le mur
   nu de la maison relevée.
+
+#### Aveyron, suite (5 octobre, PC) : le Batut, les domaines, le sol, la végétation
+
+Eugène : « oui pour le bord est », puis le sol et la végétation, et deux remarques sur le Batut :
+« des proportions réalistes » et « un peu au milieu de nulle part ». Le dépôt ne dit nulle part que le
+Batut est « impressionnant par sa taille ». Le jeu bâtissait les trois maisons Roquette sur la même
+recette (granit, tour ronde), alors que SCENARIO.md décrit le Batut d'après le dessin de P. Gaillac.
+- **Le Batut** (`batut()`) est bâti d'après ce dessin :
+  - trois corps accolés : au centre 9 × 10 m, trois niveaux, 9,6 m à l'égout, avec un oculus au pignon ;
+    à gauche un corps bas, en retrait ; à droite l'aile aux baies et à la porte cintrées, avec ses
+    oculus et sa lucarne ;
+  - un enduit clair (`enduit_gris` éclairci : `chaux_craquelee` se lisait comme des moellons), du
+    lierre jusqu'au premier, des persiennes ouvertes ;
+  - le grand hêtre à gauche, le muret bas dans sa haie, une allée de gravier.
+
+  Mesures : 3 m par niveau, baies de 1 × 1,6 m, porte de 1,2 × 2,3 m. Le banc compte 3 « toits sur
+  un voisin » : c'est le toit haut du corps central qui déborde au-dessus des toits bas, comme sur une
+  vraie maison.
+- **Les domaines** (`domaine()`, `cheminsDAcces()`) : chaque maison reçoit
+  - un chemin d'accès en ornières vers la route la plus proche. Il contourne la maison par le côté :
+    tracé droit, il la traversait (21 points de chemin bloqués) ;
+  - une grange-étable de 16 × 9 m, un potager clos et quatre grands arbres. Les places sont dans
+    `window.__lieu.domaines`.
+- **Le sol** (`sol()`) : une patine par sommet sur la maille du relief fin de monde.js :
+  - des prés de 60 m, chacun sa teinte ;
+  - plus vert et plus sombre dans les creux et à moins de 20 m du lac ;
+  - plus terreux sur les talus.
+
+  À cela s'ajoutent 162 affleurements de roche claire sur les pentes de plus de 18°. C'est un
+  palliatif : il reste à faire `sol.patine` dans monde.js.
+- **La végétation** (`arbres()`) : 6 166 chênes (horizon compris), 1 970 hêtres (dans les creux),
+  129 bouleaux (sur les crêtes), 223 charmes et 451 fourrés, au bord des chemins et dans les haies.
+  **Demande pour foret.js** : le châtaignier et le genêt, les deux essences du Ségala qui manquent.
+- Mesures : chargement 3,9 s ; étapes du lieu : maisons 186 ms, domaines 67 ms, arbres 90 ms,
+  sol 115 ms. Rues praticables 100 % (9 350 points), 26 cibles sur 26 atteintes. Planche :
+  `bancs/resultats/lieu-aveyron-2026-10-05-regard-sol-batut-3-vues.png`.
+- Reste : Beauregard et le Pouget ont encore la recette commune. SCENARIO.md décrit le Pouget
+  d'après photos : une tour carrée au centre sous un dôme de lauzes, un toit de lauzes à quatre pans,
+  une grille et une allée de gravier. Beauregard attend une description d'Eugène.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
