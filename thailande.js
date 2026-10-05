@@ -374,7 +374,7 @@ function escalier({ hauteur, inscrire, scene }) {
   mur(904, 957.8, 287.7, 288); mur(957.5, 957.8, 288, 295.5); mur(898, 952, 291.5, 292); mur(904, 957.8, 295.5, 296);
   mur(897.7, 898, 292, 299.5); mur(898, 925, 299.5, 299.8); mur(924.7, 925, 299.5, 314); mur(933, 933.3, 296, 314);
   // la géométrie, en mètres pour les UV
-  const pierre = { p: [], u: [] }, marche = { p: [], u: [] }, naga = { p: [], u: [] };
+  const pierre = { p: [], u: [] }, marche = { p: [], u: [] }, naga = { p: [], u: [] }, crete = { p: [], u: [] };
   const quad = (G, a, b, c, d, uv) => { G.p.push(...a, ...b, ...c, ...a, ...c, ...d); G.u.push(...uv[0], ...uv[1], ...uv[2], ...uv[0], ...uv[2], ...uv[3]); };
   // une face verticale le long de x (en z fixe) entre deux lignes de hauteur, ou le long de z (en x fixe)
   const faceX = (G, z, xa, xb, ya0, yb0, ya1, yb1) => quad(G, [xa, ya0, z], [xb, yb0, z], [xb, yb1, z], [xa, ya1, z], [[xa, ya0], [xb, yb0], [xb, yb1], [xa, ya1]]);
@@ -399,9 +399,13 @@ function escalier({ hauteur, inscrire, scene }) {
       if (c === 's' || c === 'n') { const z = c === 's' ? E.z0 : E.z1, zi = c === 's' ? E.z0 + P : E.z1 - P;
         faceX(naga, z, E.x0, E.x1, ya, yb, ya + HP, yb + HP); faceX(naga, zi, E.x0, E.x1, ya - 0.2, yb - 0.2, ya + HP, yb + HP);
         quad(naga, [E.x0, ya + HP, z], [E.x1, yb + HP, z], [E.x1, yb + HP, zi], [E.x0, ya + HP, zi], [[E.x0, 0], [E.x1, 0], [E.x1, P], [E.x0, P]]);
+        const zc = (z + zi) / 2; quad(crete, [E.x0, ya + HP + 0.1, zc - 0.07], [E.x1, yb + HP + 0.1, zc - 0.07], [E.x1, yb + HP + 0.1, zc + 0.07], [E.x0, ya + HP + 0.1, zc + 0.07], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+        faceX(crete, zc - 0.07, E.x0, E.x1, ya + HP, yb + HP, ya + HP + 0.1, yb + HP + 0.1); faceX(crete, zc + 0.07, E.x0, E.x1, ya + HP, yb + HP, ya + HP + 0.1, yb + HP + 0.1);
       } else { const x = c === 'o' ? E.x0 : E.x1, xi = c === 'o' ? E.x0 + P : E.x1 - P, za = de ?? E.z0, zb = a ?? E.z1, y = E.h(x);
         faceZ(naga, x, za, zb, y, y + HP); faceZ(naga, xi, za, zb, y - 0.2, y + HP);
-        quad(naga, [x, y + HP, za], [x, y + HP, zb], [xi, y + HP, zb], [xi, y + HP, za], [[za, 0], [zb, 0], [zb, P], [za, P]]); }
+        quad(naga, [x, y + HP, za], [x, y + HP, zb], [xi, y + HP, zb], [xi, y + HP, za], [[za, 0], [zb, 0], [zb, P], [za, P]]);
+        const xc = (x + xi) / 2; quad(crete, [xc - 0.07, y + HP + 0.1, za], [xc - 0.07, y + HP + 0.1, zb], [xc + 0.07, y + HP + 0.1, zb], [xc + 0.07, y + HP + 0.1, za], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+        faceZ(crete, xc - 0.07, za, zb, y + HP, y + HP + 0.1); faceZ(crete, xc + 0.07, za, zb, y + HP, y + HP + 0.1); }
     }
   }
   const pose = (G, m) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(G.p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(G.u, 2)); g.computeVertexNormals();
@@ -409,6 +413,26 @@ function escalier({ hauteur, inscrire, scene }) {
   pose(pierre, phMat('chaux_craquelee', 3, 3, { color: 0xf0ece0, side: THREE.DoubleSide }));
   pose(marche, phMat('worn_tile_floor', 1, 1, { color: 0xc4baa8, side: THREE.DoubleSide }));
   pose(naga, phMat('clay_roof_tiles_02', 0.8, 0.8, { color: 0x4e8a5a, side: THREE.DoubleSide }));
+  // la crête dorée des nagas, sur chaque parapet : de la mer, c'est elle qui dessine l'escalier — des
+  // lignes d'or qui zigzaguent jusqu'au sommet sur la maçonnerie blanche (sans elle, un pan beige muet)
+  pose(crete, new THREE.MeshStandardMaterial({ color: 0xe0b050, metalness: 0.7, roughness: 0.3, emissive: 0x3a2808, side: THREE.DoubleSide }));
+  // la sala du haut de l'escalier (Eugène, 5 octobre : « fais que le haut de l'escalier se voie depuis
+  // la mer »). L'escalier est sur la face NORD du plateau (z croît vers le sud), côté pleine mer et
+  // Ko Panyi ; de là, on n'en voyait que la maçonnerie, des pans blancs muets. Au bout du pont, un
+  // pavillon ouvert comme à la tête des escaliers des temples thaïs : six colonnes blanches sur les
+  // parapets, des poutres de bois laqué rouge, et le toit des temples du sommet (toitThai : deux
+  // étages rouge et vert, pignons dorés, chofa). Le faîtage court d'est en ouest, en travers du pont :
+  // le long, il ne montrait à la mer qu'un pignon de chant, perdu sur la maçonnerie de l'escalier ;
+  // en travers, ce sont ses grands pans rouge et vert qui regardent le nord. Une flèche dorée au
+  // milieu du faîtage, comme celle des chedis : elle accroche la lumière de loin.
+  { const yC = haut + 6.5, col = phMat('chaux_craquelee', 1, 1, { color: 0xf4f0e6 }), laque = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x9a3020 });
+    for (const x of [925.2, 932.8]) for (const z of [302, 308, 313.8]) { const c = mesh(new THREE.CylinderGeometry(0.26, 0.3, yC - haut - HP, 10), col, x, haut + HP + (yC - haut - HP) / 2, z); c.castShadow = true; scene.add(c); }
+    for (const x of [925.2, 932.8]) scene.add(mesh(boxG(0.4, 0.45, 13), laque, x, yC, 307.9));
+    for (const z of [302, 313.8]) scene.add(mesh(boxG(8, 0.45, 0.4), laque, 929, yC, z));
+    toitThai({ m: 'suea', pts: [[922, 300.5], [936, 300.5], [936, 315.5], [922, 315.5], [922, 300.5]] }, { cx: 929, cz: 308, ux: 1, uz: 0, a0: -7, a1: 7, b0: -7.5, b1: 7.5, L: 14, W: 15, haut: yC + 0.2 });
+    // la flèche : posée sur le faîtage du second étage (toitThai : 1,6 m plus haut, 1,35 × la demi-largeur + 1)
+    const yF = yC + 0.2 + 1.6 + (15 / 2 + 1 - 0.6) * 1.35, f = mesh(new THREE.ConeGeometry(0.75, 12, 10), new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.28 }), 929, yF + 5.8, 308);
+    f.castShadow = true; scene.add(f); }
   // les deux têtes de naga au pied de la 1re volée : le corps se relève et finit en tête dorée
   const or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.3 }), ecailles = phMat('clay_roof_tiles_02', 0.4, 0.4, { color: 0x4e8a5a });
   for (const z of [288 + P / 2, 291.5 - P / 2]) {
