@@ -1201,10 +1201,11 @@ function passantsDeVille() {
     { qui: 'La lavandière', kind: 2, p: auQuai(-152, 735, 1.4),
       dit: ['« Les bateaux déchargent le grain au bout du bassin. Moi, je rince mon linge ici, où l’eau est calme. »',
         '« Le bourg ? Prends la rue qui monte du quai, puis tout droit vers le soleil levant. Tu verras le beffroi. »'] },
-    { qui: 'La marchande', kind: 0, p: trottoir(route('Rue du Gros Gérard'), 0.04, 1),
+    // (la marchande et le brasseur font les cent pas sur leur trottoir : `va`, de t0 à t1 du tracé)
+    { qui: 'La marchande', kind: 0, p: trottoir(route('Rue du Gros Gérard'), 0.04, 1), va: [0.02, 0.22, 1],
       dit: ['« Du beurre, des œufs, du maroilles ! Tout vient des fermes d’à côté, ce matin même. »',
         '« Le quai du Wault ? Suis cette rue vers le couchant, jusqu’à l’eau. Le bourg, c’est de l’autre côté, vers le beffroi. »'] },
-    { qui: 'Le brasseur', kind: 1, p: trottoir(route('Rue du Gros Gérard'), 0.5, -1),
+    { qui: 'Le brasseur', kind: 1, p: trottoir(route('Rue du Gros Gérard'), 0.5, -1), va: [0.42, 0.62, -1],
       dit: ['« Ici, on brasse la bière de garde. Elle dort tout l’hiver dans le tonneau avant qu’on la boive. »',
         '« Au bout des rues, les portes sont fermées. Le guet y veille : ne perds pas ton temps à pousser. »'] },
     { qui: 'Le garde du guet', kind: 3, p: devantPorte,
@@ -1212,13 +1213,18 @@ function passantsDeVille() {
         '« Tu te perds ? Le bourg est derrière toi. Et le quai du Wault, vers l’eau. »'] },
   ];
   let poses = 0;
-  for (const { qui, kind, p: p0, dit } of ici) {
+  for (const { qui, kind, p: p0, dit, va } of ici) {
     const p = p0 && libre(p0);
     if (!p) { console.warn('passants : pas de place pour', qui); continue; }
     const v = makeVillager(kind);
     v.position.set(p.x, p.y, p.z); v.rotation.y = p.regard; v.scale.setScalar(E.G.echelle); E.scene.add(v);
     v.userData.anim = Math.random() * 10; v.userData.name = qui; PARTAGE.villagers.push(v);
-    addCap(p.x, p.z, p.x, p.z, 0.5, p.y + 1.9);
+    // celui qui marche suit une ronde (game.js, comme les villageois du bourg : il s'arrête quand on
+    // lui parle et contourne ce qui le bloque) ; une capsule fixe l'aurait laissé derrière lui
+    if (va) { const o = route('Rue du Gros Gérard'), pts = [];
+      for (const t of [va[0], (va[0] + va[1]) / 2, va[1]]) { const q = trottoir(o, t, va[2]); if (q) pts.push(new THREE.Vector3(q.x, p.y, q.z)); }
+      v.userData.route = pts.concat(pts.slice(1, -1).reverse()); v.userData.wp = 0; v.userData.pause = Math.random() * 3; }
+    else addCap(p.x, p.z, p.x, p.z, 0.5, p.y + 1.9);
     E.addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible, prompt: () => 'parler ' + (qui.startsWith('La ') ? 'à la ' + qui.slice(3).toLowerCase() : 'au ' + qui.slice(3).toLowerCase()),
       fn: () => { v.userData.talk = 4; v.rotation.y = Math.atan2(E.player.pos.x - v.position.x, E.player.pos.z - v.position.z);
         E.dialogue(dit.map((text) => ({ who: qui, text })), () => { v.userData.talk = 0; }); } });

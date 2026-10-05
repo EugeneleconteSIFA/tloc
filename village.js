@@ -1192,7 +1192,11 @@ const COMMERCES = [
 ];
 // Ce que chaque commerce pose dans son repère : la façade à z = 0, la rue vers +z.
 function poserCommerce(ctx, id, fr) {
-  const w = 5, d = 7, devant = (m, extra = {}) => devanture(fr, { hx: 0, hz: -d / 2, yaw: 0, w, d, metier: m, ...extra });
+  // l'étal encadrait la porte de la maison inventée : dans la façade relevée, il n'y avait plus
+  // entre ses deux baies qu'un mur nu. La porte de la boutique revient au milieu.
+  const w = 5, d = 7, devant = (m, extra = {}) => { const r = devanture(fr, { hx: 0, hz: -d / 2, yaw: 0, w, d, metier: m, ...extra });
+    const dg = makeDoor(1.3, 2.55, { color: DOOR_COLORS[COMMERCES.findIndex((c) => c.id === id) % DOOR_COLORS.length], arc: true, pierre: PIERRE_TAILLE() });
+    dg.position.set(0, 0, 0.05); fr.scene.add(dg); return r; };
   if (id === 'garde') {
     devant('garde');
     // la claie aux morions, les sacs, le balai : posés pour une rue en −z, d'où le demi-tour
@@ -1441,9 +1445,19 @@ export function buildTown() {
   // altitude, elles se disputaient le z-buffer et la place virait aux taches bleutées.
   let pavY = 0.040;
   // drapés sur le sol marchable (cf. draper) : ils suivent la pente du bord de la boîte
+  // (5 octobre) LES BORDS DU PAVAGE. Chaque nappe était un rectangle franc posé sur la terre
+  // battue, et d'en haut le bourg lisait comme un plan de géomètre. Le pavé s'effrite maintenant
+  // sur son dernier mètre, d'un bord irrégulier : des pavés manquent, la terre remonte entre eux.
   const paved = (x0, z0, w, d) => {
     const geo = new THREE.PlaneGeometry(w, d, Math.ceil(w), Math.ceil(d)).rotateX(-Math.PI / 2).translate(tx + x0, 0, tz + z0);
-    const m = new THREE.Mesh(draper(geo, pavY += 0.0006), pbrRepeat(C, w / COBBLE_TILE, d / COBBLE_TILE, { roughness: 0.9 })); m.receiveShadow = true; scene.add(m); };
+    const po = geo.attributes.position, col = [];
+    for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i);
+      const e = Math.min(x - (tx + x0 - w / 2), tx + x0 + w / 2 - x, z - (tz + z0 - d / 2), tz + z0 + d / 2 - z);
+      const bruit = 0.5 * Math.sin(x * 1.7 + z * 0.6) + 0.5 * Math.sin(z * 2.3 - x * 0.9);
+      col.push(1, 1, 1, lisse((e + bruit * 0.45) / 1.1)); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    const m = new THREE.Mesh(draper(geo, pavY += 0.0006), pbrRepeat(C, w / COBBLE_TILE, d / COBBLE_TILE, { roughness: 0.9, transparent: true, vertexColors: true }));
+    m.receiveShadow = true; m.renderOrder = 2; scene.add(m); };
   const RUE = 4.4;                       // demi-largeur de la chaussée, en unités locales
   // la grand-rue ne court plus jusqu'à une porte qui n'existe plus : elle se raccorde
   // aux rues relevées du quartier, aux deux bouts. Elle s'arrêtait à ±23 et la rue du
