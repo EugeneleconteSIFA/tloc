@@ -33,13 +33,13 @@ const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Da
 const REGARD = process.argv[3] === 'regard', ETIQUETTE = REGARD ? '-regard' + (process.argv[4] ? '-' + process.argv[4] : '') : '';
 const VUES_REGARD = [
   { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
-  { nom: 'plongée : Beauregard', cam: [345, 45, 195], at: [400, 0, 150] },
+  { nom: 'yeux : le Batut, depuis le départ', cam: [-116.7, 1.6, 143.8], at: [-135, 5, 170], sol: true },
   { nom: 'yeux : le Pouget, la cour', cam: [175, 1.6, -268], at: [185, 4, -312], sol: true },
   { nom: 'plongée : le Pouget', cam: [140, 45, -250], at: [185, 0, -315] },
   { nom: 'yeux : le barrage, le duel', cam: [-232, 1.6, -30], at: [-222, 1.2, -100], sol: true, rue: true },
   { nom: 'plongée : le barrage', cam: [-170, 40, -40], at: [-225, 0, -90] },
   { nom: 'yeux : Perpignou, la rue', cam: [440, 1.6, -205], at: [470, 3, -240], sol: true, rue: true },
-  { nom: 'yeux : le chemin de la rive nord', cam: [60, 1.6, -265], at: [0, 1.4, -275], sol: true, rue: true },
+  { nom: 'plongée : le Batut et son domaine', cam: [-92, 38, 135], at: [-135, 0, 170] },
 ];
 const VUES = REGARD ? VUES_REGARD : [   // la planche fixe : une aérienne, une de dessus (emprises OSM en surimpression), trois dans
   // les rues à hauteur de Camille, deux gros plans (façade, sol), une depuis le départ
@@ -179,7 +179,9 @@ try {
       bati: { batiments: bats.length, toitsQuiDebordent: debords.length, toitsSurVoisin: surVoisin.length, soubassementsPlus15: soubassements.length, chevauchements: chevauchements.length,
         pires: { debords: debords.sort((a, b) => b.m2 - a.m2).slice(0, 10), soubassements: soubassements.sort((a, b) => b.m - a.m).slice(0, 10) } },
       sols: { echantillons: ech, flottePlus5cm: flotte, part: +(flotte / Math.max(1, ech) * 100).toFixed(1), enfoncePlus2cm: enfonce, zFighting: zfight },
-      source: window.__lieu ? 'déclaré par le lieu (window.__lieu)' : 'règles de monde.js (le lieu ne déclare rien)', durees: (window.__lieu && window.__lieu.durees) || null };
+      source: window.__lieu ? 'déclaré par le lieu (window.__lieu)' : 'règles de monde.js (le lieu ne déclare rien)', durees: (window.__lieu && window.__lieu.durees) || null,
+      // ce que le lieu a posé : ses dépendances, ses essences, ses gens
+      pose: window.__lieu ? { domaines: window.__lieu.domaines || null, essences: window.__lieu.essences || null, affleurements: window.__lieu.affleurements ?? null, gens: window.__lieu.gens || null } : null };
   });
 
   // ---------------- la planche fixe de 8 vues ----------------

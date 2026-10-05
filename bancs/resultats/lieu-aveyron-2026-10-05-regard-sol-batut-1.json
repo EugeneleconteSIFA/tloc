@@ -1,0 +1,382 @@
+{
+ "date": "2026-10-05T10:05:30.643Z",
+ "chargement_s": 4.616,
+ "erreurs": [],
+ "praticabilite": {
+  "points": 9248,
+  "libres": 9227,
+  "part": 99.77,
+  "tropRaides": 0,
+  "bloques": [
+   [
+    -134.01554162574078,
+    152.6806516228154,
+    "le chemin du Batut"
+   ],
+   [
+    -134.46765199000617,
+    152.8482489725678,
+    "le chemin du Batut"
+   ],
+   [
+    382.9005496098142,
+    141.8417891091338,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.307332900113,
+    141.55785359435922,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.7141161904118,
+    141.27391807958463,
+    "le chemin de Beauregard"
+   ],
+   [
+    392.7806442035871,
+    135.24146450570353,
+    "le chemin de Beauregard"
+   ],
+   [
+    393.2167514005364,
+    135.0110609287189,
+    "le chemin de Beauregard"
+   ],
+   [
+    393.65285859748576,
+    134.78065735173425,
+    "le chemin de Beauregard"
+   ],
+   [
+    394.08896579443507,
+    134.55025377474962,
+    "le chemin de Beauregard"
+   ],
+   [
+    188.5611133740719,
+    -305.2950798438606,
+    "le chemin du Pouget"
+   ],
+   [
+    189.00109279577174,
+    -305.5074044157005,
+    "le chemin du Pouget"
+   ],
+   [
+    189.44107221747154,
+    -305.71972898754035,
+    "le chemin du Pouget"
+   ],
+   [
+    189.88105163917137,
+    -305.9320535593802,
+    "le chemin du Pouget"
+   ],
+   [
+    190.32103106087118,
+    -306.14437813122004,
+    "le chemin du Pouget"
+   ],
+   [
+    190.761010482571,
+    -306.3567027030599,
+    "le chemin du Pouget"
+   ],
+   [
+    191.20098990427084,
+    -306.5690272748998,
+    "le chemin du Pouget"
+   ],
+   [
+    191.64096932597064,
+    -306.78135184673965,
+    "le chemin du Pouget"
+   ],
+   [
+    192.08094874767048,
+    -306.9936764185795,
+    "le chemin du Pouget"
+   ],
+   [
+    192.5209281693703,
+    -307.2060009904194,
+    "le chemin du Pouget"
+   ],
+   [
+    192.9609075910701,
+    -307.41832556225927,
+    "le chemin du Pouget"
+   ],
+   [
+    193.40088701276994,
+    -307.63065013409914,
+    "le chemin du Pouget"
+   ]
+  ]
+ },
+ "cibles": [
+  {
+   "nom": "départ",
+   "x": -120,
+   "z": 135,
+   "atteinte": true,
+   "resteA": 0.25,
+   "arrets": 0
+  },
+  {
+   "nom": "repasser la porte de l’île",
+   "x": -126,
+   "z": 146,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -188.896,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -104.13777581641659,
+   "z": 470,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 332.9016194331984,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": 147.0847352024922,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -290,
+   "z": -189.02941176470588,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": -316.6085057471265,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 271.6362806933372,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.19,
+   "arrets": 0
+  },
+  {
+   "nom": "le Batut",
+   "x": -138.70826018962427,
+   "z": 159.39345455079518,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.19,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 390.2153600944035,
+   "z": 139.92275722641315,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "Beauregard",
+   "x": 393.44569575701667,
+   "z": 147.54213590888125,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 173.39472728392232,
+   "z": -307.0875006991809,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la grande maison du Pouget",
+   "x": 181.45504701796895,
+   "z": -308.96399897654175,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "la fontaine",
+   "x": -262.48235367508653,
+   "z": -336.04470768750133,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la source des Vergnes",
+   "x": 470.9303480237268,
+   "z": 438.00639709200965,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": -122.4241610960568,
+   "z": 149.3396932292362,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 1.01,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": 376.47472941357773,
+   "z": 144.38202493458573,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler à l’aïeule",
+   "x": 181.6576157597993,
+   "z": -309.30891332073935,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -66,
+   "z": 97,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -175,
+   "z": -325,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 452,
+   "z": -228,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 462,
+   "z": -212,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 291.5,
+   "z": 30,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -262,
+   "z": -330,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -205,
+   "z": -55,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  }
+ ],
+ "bati": {
+  "batiments": 16,
+  "toitsQuiDebordent": 0,
+  "toitsSurVoisin": 3,
+  "soubassementsPlus15": 0,
+  "chevauchements": 0,
+  "pires": {
+   "debords": [],
+   "soubassements": []
+  }
+ },
+ "sols": {
+  "echantillons": 46236,
+  "flottePlus5cm": 34,
+  "part": 0.1,
+  "enfoncePlus2cm": 0,
+  "zFighting": []
+ },
+ "source": "déclaré par le lieu (window.__lieu)",
+ "durees": {
+  "bâti": 36,
+  "rues": 64,
+  "lisière": 70,
+  "maisons Roquette": 189,
+  "domaines": 62,
+  "le reste (bourg, gens, sécheresse)": 40,
+  "arbres": 94,
+  "sol": 109
+ }
+}

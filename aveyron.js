@@ -146,6 +146,280 @@ function grandeMaison({ hauteur, scene, addInteract, inscrire }, X, Z, rot, nom,
 }
 
 // ---------------------------------------------------------------------
+//  Le Batut, d'après le dessin de P. Gaillac (docs/SCENARIO.md, « Les trois maisons »)
+// ---------------------------------------------------------------------
+// Eugène, 5 octobre : « du réalisme au niveau des proportions ». Le Batut n'est pas un bloc de
+// granit à tour ronde (la recette des grandes maisons, qu'il partageait avec les deux autres) :
+// c'est une maison de PLUSIEURS CORPS accolés, de hauteurs différentes —
+// - au centre, le corps haut de trois niveaux (9 × 10 m, 9,6 m à l'égout), pignon sur le lac
+//   percé d'un oculus ;
+// - à gauche, un corps plus bas (deux niveaux, en retrait de 1,5 m) ;
+// - à droite, l'aile aux fenêtres et à la porte CINTRÉES, ses petits oculus, sa lucarne ;
+// des murs clairs enduits à la chaux, le lierre jusqu'au premier étage, des volets à persiennes
+// ouverts, un très grand hêtre à gauche dont les branches passent au-dessus du toit, et devant,
+// un muret bas dans une haie, avec une petite ouverture.
+// Les mesures sont celles d'une maison de maître rurale : 3 m par niveau, des baies de 1 × 1,6 m
+// au rez-de-chaussée et au premier, plus petites sous le toit, une porte de 1,2 × 2,5 m.
+function batut({ hauteur, scene, addInteract, inscrire }, X, Z, rot) {
+  const c = Math.cos(rot), s = Math.sin(rot), monde = (lx, lz) => [X + lx * c + lz * s, Z - lx * s + lz * c];
+  const CORPS = [
+    { x0: -4.5, x1: 4.5, z0: -5, z1: 5, H: 9.6, faitage: 'z' },          // le corps central, pignon sur la façade
+    { x0: -11.5, x1: -4.5, z0: -4.5, z1: 3.5, H: 6.2, faitage: 'x' },     // le corps bas, à gauche
+    { x0: 4.5, x1: 14.5, z0: -4.5, z1: 4, H: 6.8, faitage: 'x' },         // l'aile droite
+  ];
+  let y0 = 1e9; for (const k of CORPS) for (const [a, b] of [[k.x0, k.z0], [k.x1, k.z0], [k.x1, k.z1], [k.x0, k.z1]]) y0 = Math.min(y0, hauteur(...monde(a, b)));
+  const g = new THREE.Group(); g.position.set(X, y0, Z); g.rotation.y = rot; scene.add(g);
+  // l'enduit à la chaux, lisse et clair : chaux_craquelee se lisait comme des moellons en rendu
+  const ENDUIT = { color: 0xf4ecdc }, P = 0.32, O = 0.45;
+  const piece = (arr, geo, x, y, z, ry = 0, rz = 0) => { geo.rotateZ(rz); geo.rotateY(ry); geo.translate(x, y, z); const gn = geo.index ? geo.toNonIndexed() : geo; gn.computeVertexNormals(); arr.push(gn); };
+  const vitres = [], granit = [], bois = [], tuiles = [], pignons = [];
+
+  // ---- les corps, leurs toits (tuiles canal, Eugène, 2 octobre), leurs pignons enduits ----
+  for (const k of CORPS) {
+    const w = k.x1 - k.x0, d = k.z1 - k.z0, cx = (k.x0 + k.x1) / 2, cz = (k.z0 + k.z1) / 2;
+    pose(g, boite(w, k.H + 5, d, 'enduit_gris', ENDUIT), cx, (k.H - 5) / 2, cz);
+    pose(g, boite(w + 0.1, 0.9, d + 0.1, 'rustic_stone_wall_02', { color: 0x9e968a }), cx, 0.2, cz);     // le soubassement de pierre
+    const long = k.faitage === 'x' ? w : d, large = k.faitage === 'x' ? d : w, hl = (large / 2 + O) * P, la = long / 2 + O, lb = large / 2 + O;
+    const V = (a, b, y) => k.faitage === 'x' ? [cx + a, y, cz + b] : [cx + b, y, cz + a];
+    const pos = [], uv = [], rampe = Math.hypot(lb, hl);
+    for (const sg of [1, -1]) { const q = [V(-la, sg * lb, k.H - O * P), V(la, sg * lb, k.H - O * P), V(la, 0, k.H + hl - O * P), V(-la, 0, k.H + hl - O * P)];
+      for (const i of [0, 1, 2, 0, 2, 3]) pos.push(...q[i]); uv.push(0, 0, 2 * la / 3, 0, 2 * la / 3, rampe / 3, 0, 0, 2 * la / 3, rampe / 3, 0, rampe / 3); }
+    const gt = new THREE.BufferGeometry(); gt.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gt.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gt.computeVertexNormals(); tuiles.push(gt);
+    for (const sg of [1, -1]) { const t = [V(sg * long / 2, -large / 2, k.H), V(sg * long / 2, large / 2, k.H), V(sg * long / 2, 0, k.H + large / 2 * P)], gp = new THREE.BufferGeometry();
+      gp.setAttribute('position', new THREE.Float32BufferAttribute(t.flat(), 3)); gp.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, large / 2.4, 0, large / 4.8, large / 2 * P / 2.4], 2)); gp.computeVertexNormals(); pignons.push(gp); }
+    // les collisions et ce que le banc du lieu mesure
+    const emp = [[k.x0, k.z0], [k.x1, k.z0], [k.x1, k.z1], [k.x0, k.z1]].map(([a, b]) => monde(a, b));
+    inscrire(emp, ...monde(cx, cz)); LIEU.murs.push({ pts: emp, sol: y0 });
+    LIEU.toits.push({ bat: LIEU.murs.length - 1, pts: [[k.x0 - O, k.z0 - O], [k.x1 + O, k.z0 - O], [k.x1 + O, k.z1 + O], [k.x0 - O, k.z1 + O]].map(([a, b]) => monde(a, b)) });
+  }
+  // deux souches de cheminée, sur le corps central et sur l'aile
+  pose(g, boite(1.1, 2.2, 0.8, 'rustic_stone_wall_02', { color: 0x9e968a }), 0, 9.6 + 5.45 * P + 0.6, -3.2);
+  pose(g, boite(1.0, 1.8, 0.8, 'rustic_stone_wall_02', { color: 0x9e968a }), 12.5, 6.8 + 4.25 * P + 0.4, -0.5);
+
+  // ---- les ouvertures : la vitre, l'encadrement de pierre, les persiennes ouvertes ----
+  const baie = (x, y, zf, w, h, { cintre = false, porte = false, persiennes = !porte } = {}) => {
+    const z = zf + 0.03;
+    piece(porte ? bois : vitres, boxG(w, h, 0.06), x, y, z - 0.02);
+    if (cintre) { const a = new THREE.CircleGeometry(w / 2, 14, 0, Math.PI); piece(porte ? bois : vitres, a, x, y + h / 2, z + 0.01);
+      piece(granit, new THREE.TorusGeometry(w / 2 + 0.1, 0.11, 6, 14, Math.PI), x, y + h / 2, z + 0.04); }
+    else piece(granit, boxG(w + 0.36, 0.2, 0.12), x, y + h / 2 + 0.1, z + 0.03);
+    for (const sx of [-1, 1]) piece(granit, boxG(0.16, h, 0.12), x + sx * (w / 2 + 0.08), y, z + 0.03);
+    if (!porte) piece(granit, boxG(w + 0.4, 0.1, 0.22), x, y - h / 2 - 0.05, z + 0.08);
+    if (persiennes && !cintre) for (const sx of [-1, 1]) {            // un battant de chaque côté, à lames inclinées
+      const bx = x + sx * (w / 2 + 0.18 + w / 4); piece(bois, boxG(w / 2, 0.06, 0.05), bx, y + h / 2 - 0.03, z + 0.06); piece(bois, boxG(w / 2, 0.06, 0.05), bx, y - h / 2 + 0.03, z + 0.06);
+      for (let k = 0; k < Math.floor(h / 0.11) - 1; k++) piece(bois, boxG(w / 2 - 0.06, 0.07, 0.02), bx, y - h / 2 + 0.1 + k * 0.11, z + 0.07, 0, 0, 0); }
+  };
+  const oculus = (x, y, zf, r) => { const z = zf + 0.03; piece(vitres, new THREE.CircleGeometry(r, 16), x, y, z + 0.01); piece(granit, new THREE.TorusGeometry(r + 0.06, 0.09, 6, 18), x, y, z + 0.04); };
+  // le corps central : deux baies par niveau, plus petites sous le toit ; l'oculus du pignon
+  for (const x of [-2.1, 2.1]) { baie(x, 1.75, 5, 1.0, 1.6); baie(x, 4.85, 5, 1.0, 1.6); baie(x, 7.9, 5, 0.85, 1.2); }
+  oculus(0, 9.6 + 0.75, 5, 0.42);
+  for (const x of [-2.1, 2.1]) { baie(x, 4.85, -5, 0.9, 1.4); }                   // derrière, côté coteau
+  // le corps bas : une baie et une porte basse au rez-de-chaussée, deux baies à l'étage
+  baie(-9.6, 1.75, 3.5, 0.9, 1.4); baie(-6.6, 1.15, 3.5, 1.0, 2.2, { porte: true }); baie(-9.6, 4.6, 3.5, 0.85, 1.2); baie(-6.6, 4.6, 3.5, 0.85, 1.2);
+  // l'aile droite : la porte cintrée au milieu, deux fenêtres cintrées, deux petits oculus à l'étage
+  baie(9.5, 1.3, 4, 1.2, 2.3, { cintre: true, porte: true }); baie(6.6, 1.65, 4, 1.0, 1.7, { cintre: true }); baie(12.4, 1.65, 4, 1.0, 1.7, { cintre: true });
+  baie(9.5, 4.7, 4, 0.95, 1.4); oculus(6.6, 4.9, 4, 0.32); oculus(12.4, 4.9, 4, 0.32);
+  // sa lucarne, sur le pan avant du toit
+  { const ly = 6.8 + 0.6, lz = 4 - 1.4, lu = new THREE.Group(); pose(g, lu, 9.5, ly, lz);
+    lu.add(mesh(boxG(1.5, 1.5, 1.6), phMat('enduit_gris', 1.5, 1.5, ENDUIT), 0, 0.5, 0));
+    const tl = mesh(boxG(1.9, 0.08, 1.9), TUILE(1.9, 1.9), 0, 1.38, 0.05); tl.rotation.x = 0.12; lu.add(tl);
+    lu.add(mesh(boxG(0.7, 0.9, 0.06), new THREE.MeshStandardMaterial({ color: 0x1b2026, roughness: 0.18, metalness: 0.35 }), 0, 0.55, 0.82)); }
+  const fondre = (arr, mat) => { if (!arr.length) return; const m = new THREE.Mesh(mergeGeometries(arr.map((q) => { for (const a of Object.keys(q.attributes)) if (!['position', 'normal', 'uv'].includes(a)) q.deleteAttribute(a); if (!q.attributes.uv) q.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(q.attributes.position.count * 2), 2)); return q; })), mat); m.castShadow = m.receiveShadow = true; g.add(m); };
+  fondre(vitres, new THREE.MeshStandardMaterial({ color: 0x1b2026, roughness: 0.18, metalness: 0.35 }));
+  fondre(granit, phMat('granite_tile_03', 1, 1, { color: 0xc8c2b6 }));
+  fondre(bois, phMat('wood_cabinet_worn_long', 1, 1, { color: 0x8a9a8c }));        // les persiennes, d'un vert-de-gris passé
+  fondre(tuiles, TUILE(1, 1)); fondre(pignons, phMat('enduit_gris', 1, 1, { ...ENDUIT, side: THREE.DoubleSide }));
+
+  // ---- le lierre, du pied jusqu'au premier étage, autour des baies ----
+  // des cartes de feuillage (le houppier du charme, découpé par son alpha) posées à plat contre la
+  // façade, qui se chevauchent ; le haut du lierre ondule, et il laisse les baies libres
+  const esp = especeGeo('charme');
+  if (esp) {
+    const libre = [[-2.1, 1.75, 1.0, 1.6], [2.1, 1.75, 1.0, 1.6], [-2.1, 4.85, 1.0, 1.6], [2.1, 4.85, 1.0, 1.6], [-9.6, 1.75, 0.9, 1.4], [-6.6, 1.15, 1.0, 2.2], [-9.6, 4.6, 0.85, 1.2], [-6.6, 4.6, 0.85, 1.2],
+      [9.5, 1.6, 1.2, 2.9], [6.6, 1.9, 1.0, 2.2], [12.4, 1.9, 1.0, 2.2], [9.5, 4.7, 0.95, 1.4], [6.6, 4.9, 0.7, 0.7], [12.4, 4.9, 0.7, 0.7]];
+    const pos = [], uv = [], ali = (x) => 3.6 + 2.4 * (0.5 + 0.5 * Math.sin(x * 0.7 + 1.3)) * (0.6 + 0.4 * Math.sin(x * 0.23));
+    const faces = [[-11.5, -4.5, 3.5], [-4.5, 4.5, 5], [4.5, 14.5, 4]];
+    for (const [a, b, zf] of faces) for (let x = a + 0.3; x < b - 0.2; x += 0.55) for (let y = 0.2; y < ali(x); y += 0.55) {
+      if (libre.some(([wx, wy, ww, wh]) => Math.abs(x - wx) < ww / 2 + 0.55 && Math.abs(y - wy) < wh / 2 + 0.35)) continue;
+      const r = 0.55 + 0.25 * Math.abs(Math.sin(x * 3.1 + y * 1.7)), j = 0.12 * Math.sin(x * 5.3 + y * 2.9), z = zf + 0.1 + 0.08 * Math.abs(Math.sin(x * 2 + y));
+      const q = [[x - r + j, y - r, z], [x + r + j, y - r, z], [x + r - j, y + r, z], [x - r - j, y + r, z]];
+      for (const i of [0, 1, 2, 0, 2, 3]) pos.push(...q[i]); uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1); }
+    const gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gl.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gl.computeVertexNormals();
+    const feuilles = esp.matH.clone(); feuilles.color = new THREE.Color(0x5a7040);
+    const l = new THREE.Mesh(gl, feuilles); l.receiveShadow = true; g.add(l); }
+
+  // ---- le très grand hêtre, à gauche, ses branches au-dessus du toit ----
+  const hetre = especeGeo('hetre');
+  if (hetre) { const [hx, hz] = [-16, 1.5], h = 22, a = new THREE.Group(); pose(g, a, hx, hauteur(...monde(hx, hz)) - y0 - 0.2, hz); a.scale.set(h * 1.25, h, h * 1.25);
+    a.add(new THREE.Mesh(hetre.tronc, hetre.matT), new THREE.Mesh(hetre.houppier, hetre.matH)); a.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const [wx, wz] = monde(hx, hz); inscrire(Array.from({ length: 8 }, (_, k) => [wx + Math.cos(k / 8 * 6.283) * 0.9, wz + Math.sin(k / 8 * 6.283) * 0.9]), wx, wz); }
+
+  // ---- devant : un muret bas dans une haie, une petite ouverture face à la porte cintrée ----
+  const zm = 14, ouv = 9.5, lo = 0.8;
+  const muret = (a, b) => { const n = Math.max(1, Math.round((b - a) / 2)), l = (b - a) / n;
+    for (let k = 0; k < n; k++) { const x = a + (k + 0.5) * l, y = hauteur(...monde(x, zm)) - y0; pose(g, boite(l + 0.04, 0.85 + 0.6, 0.5, 'rustic_stone_wall_02', { color: 0x9e968a }), x, y + 0.425 - 0.3, zm); }
+    inscrire([[a, zm - 0.3], [b, zm - 0.3], [b, zm + 0.3], [a, zm + 0.3]].map(([p, q]) => monde(p, q)), ...monde((a + b) / 2, zm)); };
+  muret(-13, ouv - lo); muret(ouv + lo, 16);
+  LIEU.haieBatut = []; for (let x = -12.5; x < 15.6; x += 1.6) if (Math.abs(x - ouv) > lo + 0.8) LIEU.haieBatut.push(monde(x, zm - 1.1));
+  // l'allée de terre de l'ouverture à la porte
+  { const p = [], u = []; for (let k = 0; k <= 10; k++) { const zz = 4.2 + (zm + 0.5 - 4.2) * k / 10; for (const sx of [-0.8, 0.8]) { const [wx, wz] = monde(ouv + sx, zz); p.push(ouv + sx, hauteur(wx, wz) - y0 + 0.03, zz); u.push(sx, zz / 2); } }
+    const idx = []; for (let k = 0; k < 10; k++) { const b = k * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+    const ga = new THREE.BufferGeometry(); ga.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); ga.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); ga.setIndex(idx); ga.computeVertexNormals();
+    const m = new THREE.Mesh(ga.toNonIndexed(), phMat('gravier', 1, 1, { color: 0xc8bea8, polygonOffset: true, polygonOffsetFactor: -2, side: THREE.DoubleSide })); m.receiveShadow = true; g.add(m); }
+  g.traverse((o) => { if (o.isMesh && o.material !== undefined && !o.material.alphaTest) { o.castShadow = true; o.receiveShadow = true; } });
+  const [fx, fz] = monde(9.5, 6);
+  addInteract({ pos: new THREE.Vector3(fx, y0, fz), r: 3.5, prompt: () => 'le Batut', fn: () => showMessage('Le Batut. Le lierre monte jusqu’aux fenêtres du premier ; derrière les persiennes, on parle d’eau.', 6) });
+  return { porte: monde(ouv, zm + 2), devant: (d) => monde(ouv, zm + d) };
+}
+
+// ---------------------------------------------------------------------
+//  Les domaines : ce qui fait vivre une maison du Ségala
+// ---------------------------------------------------------------------
+// Eugène, 5 octobre : le Batut paraissait « au milieu de nulle part ». Une maison de maître du
+// Ségala ne se tient pas seule dans un pré : un chemin la relie à la route, une grange-étable
+// la flanque (le bétail est la richesse de ces fermes, celle qu'on leur vole dans STORY.md), un
+// potager clos sèche au soleil, et de grands arbres l'ombragent. Les trois maisons Roquette les
+// reçoivent toutes.
+// le chemin d'accès : ajouté au plan AVANT rues(), qui le bâtit comme un chemin d'exploitation
+// (deux ornières) — de la porte de la maison au point le plus proche d'une route
+const DOMAINES = [];
+function cheminsDAcces(PLAN, maisons) {
+  for (const { nom, X, Z, rot, demi, porteL } of maisons) {
+    const c = Math.cos(rot), sn = Math.sin(rot), monde = (lx, lz) => [X + lx * c + lz * sn, Z - lx * sn + lz * c], local = (x, z) => [(x - X) * c - (z - Z) * sn, (x - X) * sn + (z - Z) * c];
+    const porte = monde(...porteL);
+    let b = null; for (const r of PLAN.rues || []) for (let k = 0; k < r.pts.length - 1; k++) { const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((porte[0] - ax) * dx + (porte[1] - az) * dz) / l)), x = ax + t * dx, z = az + t * dz, d = Math.hypot(x - porte[0], z - porte[1]); if (!b || d < b[2]) b = [x, z, d]; }
+    if (!b || b[2] < 3) continue;
+    // la route passe derrière la maison : le chemin sort de la cour et en fait le tour par le côté
+    // de la route (la ligne droite traversait la maison : banc, 21 points de chemin bloqués)
+    const [rx, rz] = local(b[0], b[1]), etapes = [porteL];
+    // (le tronçon le long de la cour passe à 1,8 m du muret : à 1 m, il frôlait ses pierres)
+    if (rz < porteL[1] - 2) { const sx = rx >= 0 ? 1 : -1, cote = sx * (demi + 6), zc = porteL[1] + 1.8; etapes.push([porteL[0], zc], [cote, zc]); if (rz < -14 || Math.abs(rx) < demi + 6) etapes.push([cote, Math.max(rz, -16)]); }
+    etapes.push([rx, rz]);
+    // chaque tronçon ondule un peu : un chemin de ferme suit le terrain, pas la règle
+    const pts = [];
+    for (let e = 0; e < etapes.length - 1; e++) { const [ax, az] = monde(...etapes[e]), [bx, bz] = monde(...etapes[e + 1]), l = Math.hypot(bx - ax, bz - az) || 1, n = Math.max(1, Math.round(l / 10));
+      for (let k = e ? 1 : 0; k <= n; k++) { const t = k / n, o = l < 25 ? 0 : Math.sin(t * Math.PI) * Math.sin(t * 7 + ax) * Math.min(3, l / 12); pts.push([ax + (bx - ax) * t - (bz - az) / l * o, az + (bz - az) * t + (bx - ax) / l * o]); } }
+    (PLAN.sentiers = PLAN.sentiers || []).push({ pts, r: 1, nom: 'le chemin ' + nom });
+  }
+}
+// la grange-étable : un long volume de moellons sous tuiles canal, le grand portail charretier au
+// pignon, des jours étroits ; 16 × 9 m, 5 m à l'égout — les mesures d'une grange de ferme moyenne
+function grange({ hauteur, scene, inscrire }, X, Z, rot) {
+  const L = 16, W = 9, H = 5, c = Math.cos(rot), s = Math.sin(rot), monde = (lx, lz) => [X + lx * c + lz * s, Z - lx * s + lz * c];
+  const coins = [[-L / 2, -W / 2], [L / 2, -W / 2], [L / 2, W / 2], [-L / 2, W / 2]], emp = coins.map(([a, b]) => monde(a, b));
+  let y0 = 1e9; for (const [x, z] of emp) y0 = Math.min(y0, hauteur(x, z));
+  const g = new THREE.Group(); g.position.set(X, y0, Z); g.rotation.y = rot; scene.add(g);
+  pose(g, boite(L, H + 5, W, 'stone_wall', { color: 0x9e9686 }), 0, (H - 5) / 2, 0);
+  const O = 0.4, hl = (W / 2 + O) * 0.3, la = L / 2 + O, lb = W / 2 + O, pos = [], uv = [], rampe = Math.hypot(lb, hl);
+  for (const sg of [1, -1]) { const q = [[-la, H - O * 0.3, sg * lb], [la, H - O * 0.3, sg * lb], [la, H + hl - O * 0.3, 0], [-la, H + hl - O * 0.3, 0]];
+    for (const i of [0, 1, 2, 0, 2, 3]) pos.push(...q[i]); uv.push(0, 0, 2 * la / 3, 0, 2 * la / 3, rampe / 3, 0, 0, 2 * la / 3, rampe / 3, 0, rampe / 3); }
+  const gt = new THREE.BufferGeometry(); gt.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gt.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gt.computeVertexNormals(); g.add(new THREE.Mesh(gt, TUILE(1, 1)));
+  const pg = new THREE.BufferGeometry(), t = []; for (const sx of [-1, 1]) t.push(sx * L / 2, H, -W / 2, sx * L / 2, H, W / 2, sx * L / 2, H + W / 2 * 0.3, 0);
+  pg.setAttribute('position', new THREE.Float32BufferAttribute(t, 3)); pg.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 4.5, 0, 2.25, 0.7, 0, 0, 4.5, 0, 2.25, 0.7], 2)); pg.computeVertexNormals();
+  g.add(new THREE.Mesh(pg, phMat('stone_wall', 1, 1, { color: 0x9e9686, side: THREE.DoubleSide })));
+  // le portail charretier au pignon (3,2 × 3,6 m), son linteau de bois ; deux jours sur le long côté
+  pose(g, mesh(boxG(0.1, 3.6, 3.2), phMat('wood_planks', 0.1, 3.6, { color: 0x8a7a66 })), L / 2 + 0.03, 1.8, 0);
+  pose(g, mesh(boxG(0.25, 0.3, 3.8), phMat('wood_cabinet_worn_long', 0.3, 3.8, { color: 0x6a5440 })), L / 2 + 0.08, 3.75, 0);
+  for (const x of [-4, 0, 4]) pose(g, mesh(boxG(0.3, 0.7, 0.08), new THREE.MeshStandardMaterial({ color: 0x15120f, roughness: 1 })), x, 3.4, W / 2 + 0.02);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  inscrire(emp, X, Z); LIEU.murs.push({ pts: emp, sol: y0 }); LIEU.toits.push({ bat: LIEU.murs.length - 1, pts: [[-la, -lb], [la, -lb], [la, lb], [-la, lb]].map(([a, b]) => monde(a, b)) });
+}
+// le potager clos : des planches de terre retournée, sèche, entre des allées, dans un muret bas
+function potager({ hauteur, scene, inscrire }, X, Z, rot) {
+  const c = Math.cos(rot), s = Math.sin(rot), monde = (lx, lz) => [X + lx * c + lz * s, Z - lx * s + lz * c], Lx = 12, Lz = 9;
+  const pos = [], uv = [];
+  for (let k = 0; k < 6; k++) { const z0 = -Lz / 2 + 0.6 + k * 1.4, z1 = z0 + 0.9;
+    for (let x = -Lx / 2 + 0.6; x < Lx / 2 - 0.6; x += 1) { const q = [[x, z0], [x + 1, z0], [x + 1, z1], [x, z1]].map(([a, b]) => { const [wx, wz] = monde(a, b); return [wx, hauteur(wx, wz) + 0.06, wz]; });
+      for (const i of [0, 3, 1, 1, 3, 2]) pos.push(...q[i]); uv.push(...[[0, 0], [0, 0.45], [0.5, 0], [0.5, 0], [0, 0.45], [0.5, 0.45]].flat()); } }
+  const gp = new THREE.BufferGeometry(); gp.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gp.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); gp.computeVertexNormals();
+  const m = new THREE.Mesh(gp, phMat('brown_mud_03', 1, 1, { color: 0xb8a088, polygonOffset: true, polygonOffsetFactor: -2, side: THREE.DoubleSide })); m.receiveShadow = true; scene.add(m);
+  // le muret bas, ouvert d'un côté
+  const pierres = [];
+  for (const [a, b] of [[[-Lx / 2, -Lz / 2], [Lx / 2, -Lz / 2]], [[Lx / 2, -Lz / 2], [Lx / 2, Lz / 2]], [[-Lx / 2, Lz / 2], [-Lx / 2, -Lz / 2]], [[-Lx / 2, Lz / 2], [Lx / 2 - 1.6, Lz / 2]]]) {
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(l / 1.5));
+    for (let k = 0; k < n; k++) { const t = (k + 0.5) / n, [wx, wz] = monde(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t), gb = boxG(l / n + 0.03, 0.75 + 0.6, 0.45);
+      gb.rotateY(rot + Math.atan2(-(b[1] - a[1]), b[0] - a[0])); gb.translate(wx, hauteur(wx, wz) + 0.075, wz); const gn = gb.toNonIndexed(); gn.computeVertexNormals(); uvMetres(gn); pierres.push(gn); }
+    const nx = -(b[1] - a[1]) / l * 0.25, nz = (b[0] - a[0]) / l * 0.25;
+    inscrire([[a[0] - nx, a[1] - nz], [b[0] - nx, b[1] - nz], [b[0] + nx, b[1] + nz], [a[0] + nx, a[1] + nz]].map(([p, q]) => monde(p, q)), ...monde((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)); }
+  const mm = new THREE.Mesh(mergeGeometries(pierres), phMat('rustic_stone_wall_02', 1, 1, { color: 0x9e968a })); mm.castShadow = mm.receiveShadow = true; scene.add(mm);
+}
+// pose les dépendances d'une maison : la grange et le potager sur ses côtés, là où il y a la place
+// (ni bâti, ni eau, ni rue) ; les grands arbres, arbres() les plante (LIEU.ombrages)
+function domaine(ctx, nom, X, Z, rot, demiLargeur) {
+  const { bloque, PLAN } = ctx, c = Math.cos(rot), s = Math.sin(rot), monde = (lx, lz) => [X + lx * c + lz * s, Z - lx * s + lz * c];
+  const eaux = [...(PLAN.eau.plans || []).map((p) => p.pts), PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : []];
+  const surRue = (x, z, r) => LIEU.rues.some((q) => q.pts.some(([px, pz]) => Math.abs(px - x) < r && Math.abs(pz - z) < r && Math.hypot(px - x, pz - z) < r));
+  const libre = (lx, lz, rx, rz) => { for (let a = -rx; a <= rx; a += 2) for (let b = -rz; b <= rz; b += 2) { const [x, z] = monde(lx + a, lz + b); if (bloque(x, z, 0.5) || eaux.some((P) => P.length && dansPoly(x, z, P)) || surRue(x, z, 3)) return false; } return true; };
+  const pris = [];
+  // la grange, d'un côté ou de l'autre, un peu en arrière
+  // (plusieurs places, de la plus naturelle à la moins : sur le côté, plus en arrière, derrière)
+  const D = demiLargeur, placeG = [[D + 13, -6], [-D - 13, -6], [D + 13, -20], [-D - 13, -20], [0, -26], [D + 16, 8], [-D - 16, 8]].find(([lx, lz]) => libre(lx, lz, 9, 6));
+  if (placeG) { const [x, z] = monde(...placeG); grange(ctx, x, z, rot + Math.PI / 2); pris.push(Math.sign(placeG[0])); }
+  // le potager, du côté resté libre, devant
+  const placeP = [[D + 9, 10], [-D - 9, 10], [D + 9, 24], [-D - 9, 24], [D + 22, -8], [-D - 22, -8]].find(([lx, lz]) => !pris.includes(Math.sign(lx)) && libre(lx, lz, 7, 6)) || [[-D - 22, -8], [D + 22, -8]].find(([lx, lz]) => libre(lx, lz, 7, 6));
+  if (placeP) { const [x, z] = monde(...placeP); potager(ctx, x, z, rot); }
+  // trois ou quatre grands arbres autour, derrière et sur les côtés : l'ombre de la cour
+  LIEU.ombrages = LIEU.ombrages || [];
+  for (const [lx, lz] of [[-demiLargeur - 4, -12], [demiLargeur + 3, -14], [0, -18], [-demiLargeur - 6, 8]]) { const [x, z] = monde(lx, lz); if (libre(lx, lz, 3, 3)) LIEU.ombrages.push([x, z]); }
+  DOMAINES.push({ nom, grange: placeG || null, potager: placeP || null }); LIEU.domaines = DOMAINES;
+}
+
+// ---------------------------------------------------------------------
+//  Le sol : la patine et les affleurements (le réalisme, 5 octobre)
+// ---------------------------------------------------------------------
+// Le withered_grass seul, partout de la même teinte, se répétait vu d'en haut et ne disait rien
+// du pays. Une patine par sommet du relief fin (des couleurs de sommet, multipliées à la texture) :
+// - le parcellaire : des prés de 40 à 80 m, chacun sa teinte, comme on les voit d'avion — les
+//   uns fauchés, les autres grillés sur pied ;
+// - l'eau : plus vert et plus sombre dans les creux et à moins de 20 m du lac plein, où la terre
+//   garde un peu d'humidité ;
+// - la pente : plus terreuse là où le sol est mince, sur les talus raides.
+// monde.js n'a pas encore de crochet pour cela (PROMPT-REPRISE.md, § 4.E : « sol.patine ») : on
+// reprend la maille du relief fin qu'il a posée, et on lui ajoute ses couleurs.
+// Les AFFLEUREMENTS : le Ségala est un plateau de schiste et de granit ; la roche perce les prés
+// pentus en dalles grises. Des blocs posés là où la pente passe 18°, fondus en une maille.
+function sol({ hauteur, scene, PLAN, bloque }) {
+  const Gc = PLAN.cadres && PLAN.cadres[0]; if (!Gc) return;
+  const nx = Math.round((Gc.x1 - Gc.x0) / 5) + 1;
+  const m = scene.children.find((o) => o.isMesh && o.geometry && o.geometry.type === 'PlaneGeometry' && o.geometry.parameters.widthSegments === nx - 1);
+  if (!m) return;
+  const lac = PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : [];
+  const dRive = (x, z) => { let b = 1e9; for (let i = 0, j = lac.length - 1; i < lac.length; j = i++) { const [ax, az] = lac[j], [bx, bz] = lac[i], dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l)); b = Math.min(b, Math.hypot(x - ax - t * dx, z - az - t * dz)); } return b; };
+  const h01 = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+  const p = m.geometry.attributes.position, col = new Float32Array(p.count * 3);
+  for (let k = 0; k < p.count; k++) {
+    const x = p.getX(k), z = p.getZ(k), y = p.getY(k);
+    // le pré : une case de 60 m, tordue pour ne pas faire un damier
+    const qx = Math.floor((x + 18 * Math.sin(z * 0.021)) / 60), qz = Math.floor((z + 18 * Math.sin(x * 0.019)) / 60), pre = h01(qx, qz);
+    let r = 0.92 + 0.16 * pre, g = 0.92 + 0.16 * pre, b = 0.92 + 0.12 * pre;
+    if (pre > 0.72) { r *= 1.05; g *= 1.04; b *= 0.94; }                              // un pré fauché, plus blond
+    const pente = Math.hypot(hauteur(x + 2.5, z) - hauteur(x - 2.5, z), hauteur(x, z + 2.5) - hauteur(x, z - 2.5)) / 5;
+    if (pente > 0.25) { const t = Math.min(1, (pente - 0.25) * 2); r *= 1 - 0.06 * t; g *= 1 - 0.12 * t; b *= 1 - 0.14 * t; }     // le talus, la terre à nu
+    const creux = y - (hauteur(x + 15, z) + hauteur(x - 15, z) + hauteur(x, z + 15) + hauteur(x, z - 15)) / 4;
+    const humide = Math.max(0, Math.min(1, -creux / 2.5)) * 0.6 + (lac.length && Math.abs(x) < 700 ? Math.max(0, 1 - dRive(x, z) / 20) * 0.5 : 0);
+    if (humide > 0) { r *= 1 - 0.14 * humide; g *= 1 - 0.02 * humide; b *= 1 - 0.12 * humide; }
+    col[k * 3] = r; col[k * 3 + 1] = g; col[k * 3 + 2] = b;
+  }
+  m.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  m.material = m.material.clone(); m.material.vertexColors = true; m.material.needsUpdate = true;
+  // les affleurements
+  const blocs = [], Zn = LIEU.zone || { x0: Gc.x0, x1: Gc.x1, z0: Gc.z0, z1: Gc.z1 };
+  for (let k = 0; k < 4000 && blocs.length < 160; k++) {
+    const x = Zn.x0 + h01(k, 1) * (Zn.x1 - Zn.x0), z = Zn.z0 + h01(1, k) * (Zn.z1 - Zn.z0);
+    const pente = Math.hypot(hauteur(x + 2, z) - hauteur(x - 2, z), hauteur(x, z + 2) - hauteur(x, z - 2)) / 4;
+    if (pente < 0.32 || bloque(x, z, 2) || (lac.length && dansPoly(x, z, lac))) continue;
+    // une dalle couchée dans le sens de la pente, deux ou trois éclats autour
+    for (let e = 0; e < 3; e++) { const ex = x + (e ? (h01(k, e) - 0.5) * 3 : 0), ez = z + (e ? (h01(e, k) - 0.5) * 3 : 0), r = e ? 0.35 + h01(k, e + 3) * 0.4 : 0.8 + h01(k, 7) * 0.7;
+      // un icosaèdre subdivisé, bosselé sommet par sommet : le dodécaèdre lisse faisait un galet noir
+      const gb = new THREE.IcosahedronGeometry(r, 1), pp = gb.attributes.position; for (let v = 0; v < pp.count; v++) { const f = 0.8 + 0.4 * h01(Math.round(pp.getX(v) * 40 + k), Math.round(pp.getZ(v) * 40 + pp.getY(v) * 17)); pp.setXYZ(v, pp.getX(v) * f, pp.getY(v) * f, pp.getZ(v) * f); } gb.scale(1.4, 0.45, 1); gb.rotateY(Math.atan2(hauteur(ex, ez + 1) - hauteur(ex, ez - 1), hauteur(ex + 1, ez) - hauteur(ex - 1, ez)));
+      gb.translate(ex, hauteur(ex, ez) + r * 0.12, ez); const gn = gb.toNonIndexed(); gn.computeVertexNormals(); uvMetres(gn); blocs.push(gn); }
+  }
+  if (blocs.length) { const mb = new THREE.Mesh(mergeGeometries(blocs), phMat('rocher_01', 1, 1, { color: 0xc4beb4, roughness: 0.95 })); mb.castShadow = mb.receiveShadow = true; scene.add(mb); }
+  LIEU.affleurements = blocs.length;
+}
+
+// ---------------------------------------------------------------------
 //  Le bâti d'OSM, les rues, les arbres — bâtis ici, au plus juste
 // ---------------------------------------------------------------------
 // Consigne de précision d'Eugène (2 octobre) : monde.js coiffait chaque bâtiment d'un toit sur
@@ -428,38 +702,63 @@ function lisiere({ hauteur, scene, PLAN, inscrire, addInteract }) {
 
 // les arbres, plantés APRÈS le bâti et les rues : monde.js les semait avant, jusque dans les maisons
 function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
-  const esp = especeGeo('chene'); if (!esp) return;
+  // La végétation du Ségala (le réalisme, 5 octobre) : un seul chêne, partout et à la même taille,
+  // faisait un parc. Le pays mêle le chêne (le plus commun), le hêtre dans les creux frais, le
+  // bouleau sur les sols maigres de schiste, et les fourrés bas (le charme, faute du genêt et du
+  // châtaignier, qui manquent à foret.js) au bord des prés et des murets. Chaque essence a sa taille.
+  const ESS = { chene: { h: [8, 14] }, hetre: { h: [12, 19] }, bouleau: { h: [8, 13] }, charme: { h: [5, 8] }, fourre: { h: [1.6, 3.2], de: 'charme' } };
+  for (const [k, e] of Object.entries(ESS)) e.geo = especeGeo(e.de || k);
+  if (!ESS.chene.geo) return;
+  const hasard = (x, z) => { const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return v - Math.floor(v); };
+  // l'essence d'un arbre isolé ou d'un bois, d'après sa place : le hêtre dans les creux, le bouleau
+  // sur les crêtes sèches, le chêne ailleurs
+  const essence = (x, z) => { const r = hasard(x, z), creux = hauteur(x, z) - (hauteur(x + 20, z) + hauteur(x - 20, z) + hauteur(x, z + 20) + hauteur(x, z - 20)) / 4;
+    if (creux < -1.2 && r < 0.55) return 'hetre'; if (creux > 1.2 && r < 0.4) return 'bouleau'; return r < 0.12 ? 'hetre' : r < 0.2 ? 'bouleau' : r < 0.28 ? 'charme' : 'chene'; };
   const pres = new Set(); for (const r of LIEU.rues) for (let k = 0; k < r.pts.length - 1; k++) { const [ax, az] = r.pts[k], [bx, bz] = r.pts[k + 1], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 2));
     for (let t = 0; t <= n; t++) pres.add(Math.floor((ax + (bx - ax) * t / n) / 4) + ',' + Math.floor((az + (bz - az) * t / n) / 4)); }
   const lac = PLAN.eau && PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : null;
   const bois = (PLAN.verdure.bois || []), pos = [];
-  const libre = (x, z) => !bloque(x, z, 3) && !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !(lac && dansPoly(x, z, lac)) && Math.hypot(x + 120, z - 135) > 8;
-  // l'écart de 4 m entre deux arbres, tenu par une grille de cases de 4 m (la haie et le bois de la
+  const libre = (x, z, r = 3) => !bloque(x, z, r) && !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !(lac && dansPoly(x, z, lac)) && Math.hypot(x + 120, z - 135) > 8;
+  // l'écart entre deux arbres, tenu par une grille de cases de 4 m (la haie et le bois de la
   // lisière font plus de 2 000 arbres : comparer chacun à tous coûtait trop)
   const cle = (i, j) => i + ',' + j;
-  const cases = new Map(), loin = (x, z) => { const i = Math.floor(x / 4), j = Math.floor(z / 4);
-    for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const [px, pz] of cases.get(cle(i + a, j + c)) || []) if (Math.abs(px - x) <= 4 && Math.abs(pz - z) <= 4) return false; return true; };
-  const planter = (x, z) => { const k = cle(Math.floor(x / 4), Math.floor(z / 4)); if (!cases.has(k)) cases.set(k, []); cases.get(k).push([x, z]); pos.push([x, z]); };
+  const cases = new Map(), loin = (x, z, e = 4) => { const i = Math.floor(x / 4), j = Math.floor(z / 4);
+    for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const [px, pz] of cases.get(cle(i + a, j + c)) || []) if (Math.abs(px - x) <= e && Math.abs(pz - z) <= e) return false; return true; };
+  const planter = (x, z, sp = essence(x, z), y = null, taille = 1) => { const k = cle(Math.floor(x / 4), Math.floor(z / 4)); if (!cases.has(k)) cases.set(k, []); cases.get(k).push([x, z]); pos.push([x, z, y, sp, taille]); };
   // la lisière (le resserrement du 5 octobre) : la haie derrière le muret, puis le bois de la bande
   // hors zone, où l'on ne marche pas — bloque() y est vrai partout, on n'y regarde que les rues et l'eau
   const Zn = LIEU.zone, dehors = (x, z) => Zn && (x < Zn.x0 || x > Zn.x1 || z < Zn.z0 || z > Zn.z1);
   const eaux = (PLAN.eau.plans || []).map((p) => p.pts), dansEau = (x, z) => eaux.some((P) => dansPoly(x, z, P)) || (lac && dansPoly(x, z, lac));
   const libreDehors = (x, z) => !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !dansEau(x, z);
-  for (const [x, z] of LIEU.haie || []) if (libreDehors(x, z) && loin(x, z)) planter(x, z);
+  // la haie de la lisière : des chênes, et entre eux le fourré
+  for (const [x, z] of LIEU.haie || []) if (libreDehors(x, z) && loin(x, z)) planter(x, z, hasard(x, z) < 0.6 ? 'chene' : 'charme');
+  for (const [x, z] of LIEU.haie || []) { const xx = x + 2.5 * Math.sin(z), zz = z + 2.5 * Math.cos(x); if (libreDehors(xx, zz) && loin(xx, zz, 2)) planter(xx, zz, 'fourre'); }
   // le bois de la bande, par taches (un bruit de 50 m) : uniforme, il dessinait un cadre vu d'avion
   const tache = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.043 + Math.sin(z * 0.031) * 2) + 0.25 * Math.sin(z * 0.037 + Math.sin(x * 0.029) * 2);
   if (Zn) for (let k = 0, n = 0; k < 8000 && n < 1200; k++) { const x = CADRE.x0 + Math.random() * (CADRE.x1 - CADRE.x0), z = CADRE.z0 + Math.random() * (CADRE.z1 - CADRE.z0);
     if (dehors(x, z) && Math.random() < 0.15 + tache(x, z) && libreDehors(x, z) && loin(x, z)) { planter(x, z); n++; } }
   // l'horizon : la campagne en bocage au-delà de la grille fine, chaque arbre à son altitude
-  // (carte/mondes/fondre-relief-aveyron.py, « les arbres de l'horizon »)
-  for (const [x, z, y] of (PLAN.horizon && PLAN.horizon.arbres) || []) pos.push([x, z, y - H0 - 0.6]);
+  // (carte/mondes/fondre-relief-aveyron.py, « les arbres de l'horizon ») ; le chêne et le hêtre
+  for (const [x, z, y] of (PLAN.horizon && PLAN.horizon.arbres) || []) pos.push([x, z, y - H0 - 0.6, hasard(x, z) < 0.75 ? 'chene' : 'hetre', 1]);
+  // les grands arbres des domaines (l'ombre des cours), plus grands que ceux des bois : des arbres
+  // de cent ans, qu'on n'a jamais coupés ; et la haie basse du Batut, derrière son muret
+  for (const [x, z] of LIEU.ombrages || []) if (loin(x, z, 6)) planter(x, z, hasard(x, z) < 0.5 ? 'chene' : 'hetre', null, 1.35);
+  for (const [x, z] of LIEU.haieBatut || []) planter(x, z, 'fourre');
   const n0 = pos.length;
   for (let k = 0; k < 9000 && pos.length - n0 < 700; k++) { const x = CADRE.x0 + Math.random() * (CADRE.x1 - CADRE.x0), z = CADRE.z0 + Math.random() * (CADRE.z1 - CADRE.z0); if (dehors(x, z)) continue;
     const dans = bois.some((b) => dansPoly(x, z, b.pts));
     if ((dans ? Math.random() < 0.6 : Math.random() < 0.012) && libre(x, z) && loin(x, z)) planter(x, z); }
-  const n = pos.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
-  pos.forEach(([x, z, y], k) => { const h = 7 + Math.random() * 5; q.setFromAxisAngle(Y, Math.random() * 6.283); s.set(h * (0.85 + Math.random() * 0.35), h, h * (0.85 + Math.random() * 0.35)); m4.compose(v.set(x, y ?? hauteur(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
-  tr.castShadow = hp.castShadow = true; scene.add(tr, hp);
+  // les fourrés au bord des rues et des chemins, là où la faux ne passe pas
+  for (const r of LIEU.rues) for (let k = 0; k < r.pts.length; k += 14) { const [x, z] = r.pts[k], [xb, zb] = r.pts[Math.min(r.pts.length - 1, k + 1)], l = Math.hypot(xb - x, zb - z) || 1;
+    if (hasard(x, z) > 0.45) continue; const sg = hasard(z, x) < 0.5 ? -1 : 1, e = (r.w || 3) / 2 + 2.2, px = x - (zb - z) / l * e * sg, pz = z + (xb - x) / l * e * sg;
+    if (!dehors(px, pz) && libre(px, pz, 1.2) && loin(px, pz, 2.5)) planter(px, pz, 'fourre'); }
+  // une InstancedMesh par essence : le tronc et le houppier
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), v = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  for (const [nom, e] of Object.entries(ESS)) { if (!e.geo) continue; const mien = pos.filter((p) => p[3] === nom); if (!mien.length) continue;
+    const tr = new THREE.InstancedMesh(e.geo.tronc, e.geo.matT, mien.length), hp = new THREE.InstancedMesh(e.geo.houppier, e.geo.matH, mien.length);
+    mien.forEach(([x, z, y, , taille], k) => { const h = (e.h[0] + hasard(x, z) * (e.h[1] - e.h[0])) * taille, l = nom === 'fourre' ? 1.5 : 1; q.setFromAxisAngle(Y, hasard(z, x) * 6.283);
+      sc.set(h * l * (0.85 + hasard(x + 1, z) * 0.35), h, h * l * (0.85 + hasard(x, z + 1) * 0.35)); m4.compose(v.set(x, y ?? hauteur(x, z) - 0.2, z), q, sc); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
+    tr.castShadow = hp.castShadow = true; scene.add(tr, hp); LIEU.essences = { ...(LIEU.essences || {}), [nom]: mien.length }; }
 }
 
 // ---------------------------------------------------------------------
@@ -760,21 +1059,29 @@ monde({
   plus(ctx) {
     // le bâti et les rues d'abord : tout ce qui suit cherche sa place libre avec bloque()
     const t0 = performance.now(), duree = (n, t) => { LIEU.durees = LIEU.durees || {}; LIEU.durees[n] = Math.round(performance.now() - t); return performance.now(); };
+    // chaque maison tourne sa façade et sa cour vers le lac : c'est l'eau qu'elles se disputent
+    const versLac = (x, z) => Math.atan2(-x, -z), local = (X, Z, rot, lx, lz) => [X + lx * Math.cos(rot) + lz * Math.sin(rot), Z - lx * Math.sin(rot) + lz * Math.cos(rot)];
+    const MAISONS = [{ nom: 'du Batut', X: -135, Z: 170, porte: [9.5, 15], demi: 16 }, { nom: 'de Beauregard', X: 400, Z: 150, porte: [0, 20], demi: 12 }, { nom: 'du Pouget', X: 185, Z: -315, porte: [0, 20], demi: 12 }]
+      .map((m) => ({ ...m, rot: versLac(m.X, m.Z), porteL: m.porte }));
+    // les chemins d'accès des maisons entrent au plan AVANT que rues() le bâtisse
+    cheminsDAcces(ctx.PLAN, MAISONS);
     let t = t0; bati(ctx); t = duree('bâti', t); rues(ctx); t = duree('rues', t);
     // la lisière APRÈS les rues (ses barrières se posent où elles sortent) et avant tout ce qui
     // cherche sa place avec bloque() : la bande hors zone y devient interdite
     lisiere(ctx); t = duree('lisière', t);
     secheresse(ctx);
-    // chaque maison tourne sa façade et sa cour vers le lac : c'est l'eau qu'elles se disputent
-    const versLac = (x, z) => Math.atan2(-x, -z);
-    grandeMaison(ctx, -135, 170, versLac(-135, 170), 'la grande maison du Batut', 'Le Batut. Les volets sont fermés au soleil ; derrière, on entend parler d’eau.', { volets: 0xb4c8d6, fermes: true });
+    batut(ctx, -135, 170, versLac(-135, 170));
     grandeMaison(ctx, 400, 150, versLac(400, 150), 'Beauregard', 'Beauregard, sur sa hauteur : de là, on voit tout le lac, et ce qu’il en reste.', { volets: 0xc8705a, fermes: false });
+    grandeMaison(ctx, 185, -315, versLac(185, -315), 'la grande maison du Pouget', 'Le Pouget, la grande maison. La plus vieille des trois.', { volets: 0xb0c09a, fermes: false });
+    t = duree('maisons Roquette', t);
+    for (const m of MAISONS) domaine(ctx, m.nom, m.X, m.Z, m.rot, m.demi);
+    t = duree('domaines', t);
     bourg(ctx);
     source(ctx);
     habitants(ctx);
-    grandeMaison(ctx, 185, -315, versLac(185, -315), 'la grande maison du Pouget', 'Le Pouget, la grande maison. La plus vieille des trois.', { volets: 0xb0c09a, fermes: false });
-    t = duree('le reste (maisons Roquette, bourg, gens, sécheresse)', t);
-    arbres(ctx); duree('arbres', t);
+    t = duree('le reste (bourg, gens, sécheresse)', t);
+    arbres(ctx); t = duree('arbres', t);
+    sol(ctx); duree('sol', t);
     // ce qui a été bâti, pour le banc du lieu (bancs/lieu-aveyron.mjs) : il mesure ce qui EST là
     LIEU.nappes.push({ nom: 'grève / relief', ecart: 0.05, decale: true }, { nom: 'cours des maisons / relief', ecart: 0.04, decale: true });
     window.__lieu = LIEU;

@@ -1,0 +1,481 @@
+{
+ "date": "2026-10-05T10:08:53.477Z",
+ "chargement_s": 5.287,
+ "erreurs": [],
+ "praticabilite": {
+  "points": 9331,
+  "libres": 9308,
+  "part": 99.75,
+  "tropRaides": 0,
+  "bloques": [
+   [
+    382.233626503634,
+    141.31403010444544,
+    "le chemin de Beauregard"
+   ],
+   [
+    382.4736790173878,
+    140.89815483849878,
+    "le chemin de Beauregard"
+   ],
+   [
+    382.7137315311415,
+    140.4822795725521,
+    "le chemin de Beauregard"
+   ],
+   [
+    382.9537840448952,
+    140.06640430660542,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.19383655864897,
+    139.65052904065874,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.4338890724027,
+    139.23465377471206,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.6739415861564,
+    138.81877850876538,
+    "le chemin de Beauregard"
+   ],
+   [
+    383.9139940999101,
+    138.4029032428187,
+    "le chemin de Beauregard"
+   ],
+   [
+    384.15404661366387,
+    137.987027976872,
+    "le chemin de Beauregard"
+   ],
+   [
+    384.3940991274176,
+    137.57115271092533,
+    "le chemin de Beauregard"
+   ],
+   [
+    384.6341516411713,
+    137.15527744497865,
+    "le chemin de Beauregard"
+   ],
+   [
+    384.87420415492505,
+    136.739402179032,
+    "le chemin de Beauregard"
+   ],
+   [
+    385.11425666867876,
+    136.32352691308532,
+    "le chemin de Beauregard"
+   ],
+   [
+    385.3543091824325,
+    135.90765164713864,
+    "le chemin de Beauregard"
+   ],
+   [
+    385.59436169618624,
+    135.49177638119195,
+    "le chemin de Beauregard"
+   ],
+   [
+    385.83441420993995,
+    135.07590111524527,
+    "le chemin de Beauregard"
+   ],
+   [
+    385.92700495663837,
+    134.60472768665286,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.0195957033368,
+    134.13355425806043,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.11218645003527,
+    133.66238082946802,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.2047771967337,
+    133.1912074008756,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.2973679434321,
+    132.72003397228318,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.3899586901305,
+    132.24886054369077,
+    "le chemin de Beauregard"
+   ],
+   [
+    386.48254943682895,
+    131.77768711509836,
+    "le chemin de Beauregard"
+   ]
+  ]
+ },
+ "cibles": [
+  {
+   "nom": "départ",
+   "x": -120,
+   "z": 135,
+   "atteinte": true,
+   "resteA": 0.25,
+   "arrets": 0
+  },
+  {
+   "nom": "repasser la porte de l’île",
+   "x": -126,
+   "z": 146,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -188.896,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -104.13777581641659,
+   "z": 470,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 332.9016194331984,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": 147.0847352024922,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": -290,
+   "z": -189.02941176470588,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": -316.6085057471265,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la barrière",
+   "x": 264.6789120171061,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.17,
+   "arrets": 0
+  },
+  {
+   "nom": "le Batut",
+   "x": -138.70826018962427,
+   "z": 159.39345455079518,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.2,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 390.2153600944035,
+   "z": 139.92275722641315,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "Beauregard",
+   "x": 393.44569575701667,
+   "z": 147.54213590888125,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 173.39472728392232,
+   "z": -307.0875006991809,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "la grande maison du Pouget",
+   "x": 181.45504701796895,
+   "z": -308.96399897654175,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "la fontaine",
+   "x": -262.48235367508653,
+   "z": -336.04470768750133,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "la source des Vergnes",
+   "x": 470.9303480237268,
+   "z": 438.00639709200965,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": -122.4241610960568,
+   "z": 149.3396932292362,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 1.01,
+   "arrets": 0
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": 376.47472941357773,
+   "z": 144.38202493458573,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler à l’aïeule",
+   "x": 181.6576157597993,
+   "z": -309.30891332073935,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -66,
+   "z": 97,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -175,
+   "z": -325,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 452,
+   "z": -228,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 462,
+   "z": -212,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": 291.5,
+   "z": 30,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -262,
+   "z": -330,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  },
+  {
+   "nom": "parler",
+   "x": -205,
+   "z": -55,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0
+  }
+ ],
+ "bati": {
+  "batiments": 16,
+  "toitsQuiDebordent": 0,
+  "toitsSurVoisin": 3,
+  "soubassementsPlus15": 0,
+  "chevauchements": 0,
+  "pires": {
+   "debords": [],
+   "soubassements": []
+  }
+ },
+ "sols": {
+  "echantillons": 46651,
+  "flottePlus5cm": 32,
+  "part": 0.1,
+  "enfoncePlus2cm": 0,
+  "zFighting": []
+ },
+ "source": "déclaré par le lieu (window.__lieu)",
+ "durees": {
+  "bâti": 35,
+  "rues": 62,
+  "lisière": 92,
+  "maisons Roquette": 225,
+  "domaines": 78,
+  "le reste (bourg, gens, sécheresse)": 35,
+  "arbres": 101,
+  "sol": 141
+ },
+ "pose": {
+  "domaines": [
+   {
+    "nom": "du Batut",
+    "grange": [
+     -29,
+     -6
+    ],
+    "potager": [
+     25,
+     24
+    ]
+   },
+   {
+    "nom": "de Beauregard",
+    "grange": [
+     25,
+     -6
+    ],
+    "potager": [
+     -34,
+     -8
+    ]
+   },
+   {
+    "nom": "du Pouget",
+    "grange": [
+     -25,
+     -6
+    ],
+    "potager": [
+     34,
+     -8
+    ]
+   }
+  ],
+  "essences": {
+   "chene": 6166,
+   "hetre": 1970,
+   "bouleau": 129,
+   "charme": 223,
+   "fourre": 451
+  },
+  "affleurements": 162,
+  "gens": [
+   {
+    "qui": "Le pêcheur",
+    "x": -66,
+    "z": 97,
+    "dit": "Le lac a perdu plus d’un mètre. Les poissons se serrent au fond, là où il reste de l’eau."
+   },
+   {
+    "qui": "Le colporteur",
+    "x": -175,
+    "z": -325,
+    "dit": "Je descends de Saint-Gervais, en haut. Là-haut aussi, les puits sont à sec."
+   },
+   {
+    "qui": "Une femme de Perpignou",
+    "x": 452,
+    "z": -228,
+    "dit": "Le puits du hameau ne donne plus que de la vase."
+   },
+   {
+    "qui": "Un homme de Perpignou",
+    "x": 462,
+    "z": -212,
+    "dit": "Le soleil ne bouge plus. Ça fait des jours que c’est midi."
+   },
+   {
+    "qui": "Un homme de Fariboules",
+    "x": 291.5,
+    "z": 30,
+    "dit": "Beauregard, c’est la grande maison sur la pente, au sud-est. De chez eux, on voit tout le lac."
+   },
+   {
+    "qui": "Une femme, à la fontaine",
+    "x": -262,
+    "z": -330,
+    "dit": "On dit que les sources se sont bouchées toutes seules. Moi, je n’y crois pas."
+   },
+   {
+    "qui": "Un homme, sur le barrage",
+    "x": -205,
+    "z": -55,
+    "dit": "Les Roquette vont finir par se battre, pour ce lac."
+   }
+  ]
+ }
+}
