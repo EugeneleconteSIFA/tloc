@@ -1466,7 +1466,10 @@ export function buildTown() {
   // (la rue nord-sud s'arrête au bout du marché, z = 17 : au-delà, c'est l'herbe de l'Esplanade)
   paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, -0.5, RUE * 1.8, 35); paved(0, 0, 18, 18);
   // trottoirs/bordures en pierre le long de la grand-rue
-  for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), phLocal('old_stone_wall_02', R2 * 2 + 4, 0.4, { color: 0xc8c0b0 }), tx, 0.09, tz + sz * (RUE - 0.3)));
+  // (5 octobre) la seule bordure nord, devant les boutiques ; celle du sud traversait le marché
+  // depuis que la rangée sud est partie. Même pierre que les bordures de la ville (carte.js) :
+  // le moellon teinté lisait comme une planche.
+  scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), phLocal('marble_rock_02', R2 * 2 + 4, 0.4, { color: 0xa8a49c, roughness: 0.8 }), tx, 0.09, tz - (RUE - 0.3)));
   // (5 octobre) PLUS DE MAISONS INVENTÉES. Les douze maisons du bourg (quatre au nord de la
   // grand-rue, quatre au sud, quatre sur la rue nord-sud) ont cédé la place au bâti relevé
   // (quartier.js) ; les commerces qu'elles portaient sont posés dans les façades relevées
