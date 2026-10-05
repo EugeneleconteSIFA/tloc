@@ -375,7 +375,7 @@ function batirMaisons(ctx, opts) {
 
   L.murs.maille(M.murs); if (M.enduits) L.enduits.maille(M.enduits); L.toits.maille(M.toits); L.terre.maille(M.terre); L.herbe.maille(M.herbe, false);
   BILAN.batiments += maisons.length;
-  for (const c of corps) BILAN.corps.push({ bat: c.i, rect: c.rect, toit: c.toit, toitEchant: c.toitEchant, plancher: c.plancher, cx: c.cx, cz: c.cz, avt: c.avt, k: c.b.k, sp: c.sp,
+  for (const c of corps) BILAN.corps.push({ bat: c.i, rect: c.rect, toit: c.toit, toitEchant: c.toitEchant, plancher: c.plancher, cx: c.cx, cz: c.cz, avt: c.avt, k: c.b.k, sp: c.sp, osm: c.b.pts,
     pied: c.pied.filter(([x, z]) => !autreCorps(c, x, z)).map(([x, z]) => [x, z]), echant: densifier([...coins(c, [-0.3, -0.3, -0.3, -0.3]), coins(c, [-0.3, -0.3, -0.3, -0.3])[0]], 1) });
   // le sol des terre-pleins : on y marche à hauteur du plancher (jamais sous le terrain)
   const plat = plateformes.filter((p) => p.c.marge.some((v) => v > 0.4)), pAutour = grille(plat, (p) => { const xs = p.pts.map((q) => q[0]), zs = p.pts.map((q) => q[1]); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
@@ -630,9 +630,10 @@ function facades(ctx, rs) {
     const niveaux = Math.max(1, Math.round((c.avt - c.plancher - 0.5) / 2.9)), teinte = hache(c.bat) % VOLETS.length;
     let porte = false;
     // les murs, celui qui donne sur la rue d'abord (il reçoit la porte)
-    const murs = [0, 1, 2, 3].map((k) => { const p = c.rect[k], q = c.rect[(k + 1) % 4], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L;
+    const murs = [0, 1, 2, 3].map((k) => { const kk = k, p = c.rect[k], q = c.rect[(k + 1) % 4], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1, ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L;
       let nx = -uz, nz = ux; const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2; if ((mx - c.cx) * nx + (mz - c.cz) * nz < 0) { nx = -nx; nz = -nz; }
-      return { p, ux, uz, nx, nz, L, rue: dRue(mx + nx * 1.5, mz + nz * 1.5) }; }).sort((a, b) => a.rue - b.rue);
+      return { k: kk, p, ux, uz, nx, nz, L, rue: dRue(mx + nx * 1.5, mz + nz * 1.5) }; }).sort((a, b) => a.rue - b.rue);
+    if (c.vitrine != null) porte = true;          // une boutique : sa porte est dans la devanture (devantures)
     for (const m of murs) {
       if (m.L < 3) continue;
       const u = U(m.ux, 0, m.uz), n = U(m.nx, 0, m.nz), nc = Math.max(1, Math.floor((m.L - 0.8) / 2.6)), pas = m.L / nc;
@@ -642,6 +643,7 @@ function facades(ctx, rs) {
         const sol = h(x + m.nx * 0.5, z + m.nz * 0.5), o = (y, d) => U(x, y, z).addScaledVector(n, d);
         for (let s = 0; s < niveaux; s++) {
           const y0 = c.plancher + s * 2.9;
+          if (s === 0 && m.k === c.vitrine) continue;
           if (s === 0 && !porte && m.rue < 4 && Math.abs(sol - c.plancher) < 0.6 && k === Math.floor(nc / 2)) {
             porte = true; nPortes++;
             portes.bloc(o(y0 + 1.05, 0.03), u.clone().multiplyScalar(0.5), U(0, 1.05, 0), n.clone().multiplyScalar(0.03), true);
@@ -669,6 +671,138 @@ function facades(ctx, rs) {
   portes.maille(phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a4434 }));
   volets.forEach((l, k) => l.maille(phMat('wood_planks', 1, 1, { color: VOLETS[k] }), false));
   BILAN.fenetres = fenetres; BILAN.portes = nPortes;
+}
+
+// Les boutiques de Villefort (Eugène, 5 octobre : « fais les vitrines de Chez Fernand et du Balme ; je
+// veux un café, Le National »). Chacune est désignée par un point DANS son bâtiment d'OSM ; son mur le
+// plus proche d'une rue reçoit la devanture au rez-de-chaussée, à la place des fenêtres et de la porte
+// (facades le saute : `c.vitrine`). Le National est la maison qui regarde le poteau, de l'autre côté
+// de la rue : c'est le café de la place, où l'on arrive.
+const BOUTIQUES = [
+  { id: 'national', dans: [1599.5, -1125.2], enseigne: 'CAFÉ LE NATIONAL', drapeau: 'CAFÉ', couleur: 0x2e4a3a, fond: '#2a4436', terrasse: true },
+  { id: 'fernand', dans: [1568.4, -1100.2], enseigne: 'CHEZ FERNAND', sous: 'Restaurant', drapeau: 'Restaurant', couleur: 0x6a2a24, fond: '#5e2620' },
+  { id: 'balme', dans: [1615.1, -1033.4], enseigne: 'HÔTEL BALME', sous: 'Hôtel – Restaurant', drapeau: 'HÔTEL', couleur: 0x30405a, fond: '#2c3a52' },
+];
+// le mur de devanture de chaque boutique (à appeler avant facades)
+function choisirBoutiques(rs) {
+  const pr = rs.filter((c) => (c.r || 0) >= 1).flatMap((c) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2]));
+  const dRue = (x, z) => pr.reduce((d, [a, b, w]) => Math.min(d, Math.hypot(a - x, b - z) - w), 99);
+  const out = [];
+  for (const B of BOUTIQUES) {
+    let mieux = null;
+    for (const c of BILAN.corps) {
+      if (!c.osm || !dansPoly(B.dans[0], B.dans[1], c.osm)) continue;
+      for (let k = 0; k < 4; k++) {
+        const p = c.rect[k], q = c.rect[(k + 1) % 4], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 4.5) continue;
+        const ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L; let nx = -uz, nz = ux; const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
+        if ((mx - c.cx) * nx + (mz - c.cz) * nz < 0) { nx = -nx; nz = -nz; }
+        const d = dRue(mx + nx * 1.5, mz + nz * 1.5);
+        if (!mieux || d < mieux.d) mieux = { c, k, d, p, L, u: V(ux, 0, uz), n: V(nx, 0, nz) };
+      }
+    }
+    if (mieux) { mieux.c.vitrine = mieux.k; out.push({ ...B, ...mieux }); }
+  }
+  return out;
+}
+// un panneau peint : le nom en capitales claires sur le fond de la devanture
+function peinture(texte, sous, fond, l, h) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = Math.max(96, Math.round(1024 * h / l)); const t = c.getContext('2d');
+  t.fillStyle = fond; t.fillRect(0, 0, c.width, c.height);
+  t.strokeStyle = 'rgba(230,210,150,0.8)'; t.lineWidth = 6; t.strokeRect(10, 10, c.width - 20, c.height - 20);
+  t.fillStyle = '#efe2bc'; t.textAlign = 'center'; t.textBaseline = 'middle';
+  const H = c.height, taille = Math.min(H * (sous ? 0.5 : 0.62), 1024 / Math.max(6, texte.length) * 1.5);
+  t.font = `bold ${Math.round(taille)}px Georgia, serif`; t.fillText(texte, 512, sous ? H * 0.42 : H * 0.53);
+  if (sous) { t.font = `italic ${Math.round(H * 0.24)}px Georgia, serif`; t.fillText(sous, 512, H * 0.78); }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; return tex;
+}
+// la salle vue à travers la vitrine : un fond chaud qui s'éclaircit vers le bas, des lampes, le
+// comptoir et des dossiers de chaises en ombre. Peinte une fois par boutique, étirée sur toute la baie
+function salle(fond, l, h) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = Math.max(128, Math.round(512 * h / l)); const t = c.getContext('2d'), W = c.width, H = c.height;
+  const g = t.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1a120c'); g.addColorStop(0.55, '#5a3a1e'); g.addColorStop(1, '#2a1c10'); t.fillStyle = g; t.fillRect(0, 0, W, H);
+  for (let k = 0; k < 4; k++) { const x = W * (k + 0.5) / 4, r = t.createRadialGradient(x, H * 0.18, 2, x, H * 0.18, H * 0.35);
+    r.addColorStop(0, 'rgba(255,214,150,0.9)'); r.addColorStop(1, 'rgba(255,190,120,0)'); t.fillStyle = r; t.fillRect(0, 0, W, H); }
+  t.fillStyle = 'rgba(20,12,6,0.85)'; t.fillRect(W * 0.08, H * 0.6, W * 0.5, H * 0.4);                        // le comptoir
+  t.fillStyle = fond; t.fillRect(W * 0.08, H * 0.6, W * 0.5, H * 0.04);
+  for (let k = 0; k < 5; k++) { const x = W * (0.62 + k * 0.08); t.fillStyle = 'rgba(15,10,6,0.9)'; t.fillRect(x, H * 0.62, W * 0.012, H * 0.38); t.fillRect(x, H * 0.62, W * 0.05, H * 0.015); }
+  t.fillStyle = 'rgba(255,255,255,0.06)'; t.beginPath(); t.moveTo(W * 0.15, 0); t.lineTo(W * 0.35, 0); t.lineTo(W * 0.1, H); t.lineTo(0, H); t.fill();   // un reflet
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+// un panneau orienté : sa face avant (+z de la boîte) regarde `face`. Sa largeur suit haut × face,
+// qui va de gauche à droite pour qui le regarde ; une base (x, y, z) qui ne serait pas directe le
+// retourne en miroir (le bandeau sortait du mur en biais)
+function panneau(ctx, centre, face, l, h, ep, bois, avant) {
+  const g = new THREE.BoxGeometry(l, h, ep), m = new THREE.Mesh(g, [bois, bois, bois, bois, avant, avant]);
+  const long = V().crossVectors(HAUT, face).normalize();
+  m.position.copy(centre); m.setRotationFromMatrix(new THREE.Matrix4().makeBasis(long, HAUT, face)); m.castShadow = true; ctx.scene.add(m);
+}
+// La devanture : deux pilastres et une allège de bois peint, des vitrines en trois ou quatre baies
+// et la porte vitrée au bout, le bandeau peint du nom, et une enseigne en drapeau à l'étage. Le
+// verre luit un peu chaud (un intérieur éclairé), sans lumière nouvelle. Au National, une terrasse
+// (trois guéridons, six chaises) sous un store de toile.
+function devantures(ctx, boutiques, rs) {
+  const h = ctx.dessin, fer = new Lot(), marbre = new Lot(), toile = new Lot(), peints = new Map();
+  const pr = rs.flatMap((c) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2]));
+  const surRue = (x, z) => pr.some(([a, b, w]) => Math.hypot(a - x, b - z) < w + 0.4);
+  const bilan = [];
+  for (const B of boutiques) {
+    const { c, p, L, u, n } = B, y0 = c.plancher, W = Math.min(L - 0.8, 9), centre = V(p[0], 0, p[1]).addScaledVector(u, L / 2);
+    const bois = phMat('wood_planks', 1, 1, { color: B.couleur }); if (!peints.has(B.id)) peints.set(B.id, new Lot());
+    const P = peints.get(B.id), o = (t, y, d) => centre.clone().addScaledVector(u, t).setY(y).addScaledVector(n, d);
+    const haut = Math.min(3.2, c.avt - y0 - 0.3), porte = 1.1, gauche = -W / 2 + 0.3, droite = W / 2 - 0.3, finVitrine = droite - porte;
+    // les pilastres, l'allège, la traverse haute, les montants
+    for (const sg of [-1, 1]) P.bloc(o(sg * (W / 2 - 0.15), y0 + haut / 2, 0.08), u.clone().multiplyScalar(0.15), V(0, haut / 2, 0), n.clone().multiplyScalar(0.08), true);
+    P.bloc(o((gauche + finVitrine) / 2, y0 + 0.3, 0.05), u.clone().multiplyScalar((finVitrine - gauche) / 2), V(0, 0.3, 0), n.clone().multiplyScalar(0.05), true);
+    P.bloc(o(0, y0 + 2.65, 0.06), u.clone().multiplyScalar(W / 2 - 0.3), V(0, 0.05, 0), n.clone().multiplyScalar(0.06), true);
+    const baies = Math.max(2, Math.round((finVitrine - gauche) / 1.5));
+    for (let k = 0; k <= baies; k++) { const t = gauche + (finVitrine - gauche) * k / baies; P.bloc(o(t, y0 + 1.6, 0.06), u.clone().multiplyScalar(0.05), V(0, 1.0, 0), n.clone().multiplyScalar(0.06), true); }
+    P.bloc(o(droite, y0 + 1.3, 0.06), u.clone().multiplyScalar(0.05), V(0, 1.3, 0), n.clone().multiplyScalar(0.06), true);
+    // le verre : la vitrine (allège à 60 cm) et la porte (jusqu'au seuil), la salle peinte derrière ;
+    // UV de 0 à 1 sur toute la baie (pas en mètres) : la salle n'est pas répétée tous les mètres
+    const tex = salle(B.fond, W, 2.6), verreB = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.06, metalness: 0.3 });
+    const pv = [], uvv = [], q = (t0, t1, ya, yb) => { const a = o(t0, ya, 0.03), b = o(t1, ya, 0.03), c2 = b.clone().setY(yb), d = a.clone().setY(yb);
+      const U2 = (t) => (t - gauche) / (droite - gauche), V2 = (y) => (y - y0) / 2.6;
+      for (const [P2, uu, vv] of [[a, U2(t0), V2(ya)], [b, U2(t1), V2(ya)], [c2, U2(t1), V2(yb)], [a, U2(t0), V2(ya)], [c2, U2(t1), V2(yb)], [d, U2(t0), V2(yb)]]) { pv.push(P2.x, P2.y, P2.z); uvv.push(uu, vv); } };
+    q(gauche, finVitrine, y0 + 0.6, y0 + 2.6); q(finVitrine, droite, y0 + 0.05, y0 + 2.6);
+    { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pv, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvv, 2)); g.computeVertexNormals();
+      // le sens des triangles : vers la rue (n) ; sinon on les retourne
+      const nn = V(g.attributes.normal.getX(0), 0, g.attributes.normal.getZ(0)); if (nn.dot(n) < 0) { g.index = null; const a = g.attributes.position.array, w = g.attributes.uv.array;
+        for (let k = 0; k < a.length; k += 9) for (let j = 0; j < 3; j++) { [a[k + 3 + j], a[k + 6 + j]] = [a[k + 6 + j], a[k + 3 + j]]; }
+        for (let k = 0; k < w.length; k += 6) for (let j = 0; j < 2; j++) { [w[k + 2 + j], w[k + 4 + j]] = [w[k + 4 + j], w[k + 2 + j]]; } g.computeVertexNormals(); }
+      ctx.scene.add(new THREE.Mesh(g, verreB)); }
+    fer.bloc(o(finVitrine + 0.15, y0 + 1.1, 0.09), u.clone().multiplyScalar(0.015), V(0, 0.12, 0), n.clone().multiplyScalar(0.03));   // la poignée
+    // le bandeau du nom, et l'enseigne en drapeau à l'étage
+    panneau(ctx, o(0, y0 + Math.min(haut + 0.35, c.avt - y0 - 0.2), 0.1), n, W, 0.62, 0.12, bois, phPeint('wood_planks', 1, 1, peinture(B.enseigne, B.sous, B.fond, W, 0.62)));
+    if (c.avt - y0 > 5) {
+      const pd = o(-W / 2 + 0.5, y0 + 4.1, 0.75);
+      panneau(ctx, pd, u, 0.95, 0.55, 0.05, bois, phPeint('wood_planks', 1, 1, peinture(B.drapeau, null, B.fond, 0.95, 0.55)));
+      fer.bloc(o(-W / 2 + 0.5, y0 + 4.42, 0.4), u.clone().multiplyScalar(0.02), V(0, 0.02, 0), n.clone().multiplyScalar(0.4), true);
+    }
+    const b = { id: B.id, x: +centre.x.toFixed(1), z: +centre.z.toFixed(1), nx: +n.x.toFixed(2), nz: +n.z.toFixed(2), mur: +L.toFixed(1), guerdons: 0 };
+    // la terrasse du National : le store, puis les guéridons là où il y a la place (pas sur la rue)
+    if (B.terrasse) {
+      const dir = n.clone().multiplyScalar(2.2).add(V(0, -0.6, 0)), lg = dir.length(); dir.normalize();
+      const nt = V().crossVectors(u, dir).normalize(), ct = centre.clone().setY(y0 + haut + 0.05).addScaledVector(dir, lg / 2);
+      toile.bloc(ct, u.clone().multiplyScalar(W / 2 - 0.2), dir.clone().multiplyScalar(lg / 2), nt.multiplyScalar(0.015));
+      for (const t of [-W / 3, 0, W / 3]) {
+        const g = o(t, 0, 2.3); if (surRue(g.x, g.z) || Math.hypot(g.x - 1584.5, g.z + 1129.5) < 2.5) continue;
+        const yg = h(g.x, g.z); b.guerdons++;
+        marbre.bloc(g.clone().setY(yg + 0.74), V(0.32, 0, 0), V(0, 0.02, 0), V(0, 0, 0.32));
+        fer.bloc(g.clone().setY(yg + 0.37), V(0.025, 0, 0), V(0, 0.36, 0), V(0, 0, 0.025));
+        for (const sg of [-1, 1]) { const ch = g.clone().addScaledVector(u, sg * 0.62), yc = h(ch.x, ch.z);
+          fer.bloc(ch.clone().setY(yc + 0.46), u.clone().multiplyScalar(0.2), V(0, 0.02, 0), n.clone().multiplyScalar(0.2));
+          fer.bloc(ch.clone().addScaledVector(u, sg * 0.19).setY(yc + 0.7), u.clone().multiplyScalar(0.015), V(0, 0.22, 0), n.clone().multiplyScalar(0.19));
+          for (const [a, d] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) fer.bloc(ch.clone().addScaledVector(u, a * 0.17).addScaledVector(n, d * 0.17).setY(yc + 0.22), V(0.012, 0, 0), V(0, 0.22, 0), V(0, 0, 0.012)); }
+        ctx.inscrire([[g.x - 0.4, g.z - 0.4], [g.x + 0.4, g.z - 0.4], [g.x + 0.4, g.z + 0.4], [g.x - 0.4, g.z + 0.4]], g.x, g.z);
+      }
+    }
+    bilan.push(b);
+  }
+  fer.maille(phMat('metal_plate_02', 1, 1, { color: 0x283028 }), false);
+  marbre.maille(phMat('marble_rock_02', 1, 1, { color: 0xe8e4dc }), false);
+  toile.maille(phMat('fabric_pattern_07', 1, 1, { color: 0x8a2c26, side: THREE.DoubleSide }));
+  for (const [id, l] of peints) l.maille(phMat('wood_planks', 1, 1, { color: BOUTIQUES.find((B) => B.id === id).couleur }));
+  BILAN.boutiques = bilan;
 }
 
 // Des arbres posés un par un (InstancedMesh), à des places choisies
@@ -741,13 +875,15 @@ function mobilier(ctx, rs, { pave, dense }) {
 // [rôle ou n° de villageois, x, z, regarde vers [x, z], qui, répliques]
 const GENS_VILLEFORT = [
   ['allumeur', 1578, -1136, [1584.5, -1129.5], 'Un vieux, sur la place', ['Ce poteau, c’est le départ des vieux chemins. Des sentiers de troupeaux, plus vieux que les routes.', 'La Garde-Guérin, c’est en haut, sur le plateau. Le Pouget aussi, c’est en haut. Ici, tout monte.']],
-  ['aubergiste', 1559.8, -1095.9, [1575, -1102], 'Le cafetier de Chez Fernand', ['Chez Fernand, tout le bourg passe un jour ou l’autre.', 'La place du Bosquet, avec le poteau, c’est juste en bas de la rue.']],
+  ['aubergiste', 1591, -1127, [1584.5, -1129.5], 'Le cafetier du National', ['Le National, c’est le café de la place. Tout le bourg y passe un jour ou l’autre.', 'Le poteau des vieux chemins, c’est là, devant la terrasse.']],
+  [1, 1559.8, -1095.9, [1575, -1102], 'Le patron de Chez Fernand', ['Chez Fernand, on sert à manger midi et soir.', 'Le café, c’est au National, sur la place.']],
+  ['cosimo', 1458, -1272, [1480, -1268], 'Le chef de gare', ['La gare, c’est au bout de l’avenue, en bas, à l’ouest du bourg.', 'Les trains ne passent plus à l’heure. Alors je monte au bourg, et je les attends ici.']],
   ['gardien', 1662, -968, [1683, -973], 'Le sacristain', ['Saint-Victorin. On l’a bâtie avec le granit de la vallée, comme tout le bourg.', 'La cloche sonne encore. Mais quelle heure elle sonne, je ne sais plus.']],
-  [10, 1531, -1401, [1527.7, -1407], 'Une femme, au lavoir', ['L’eau de l’Altier est froide, même en plein été.', 'Le pont, là : c’est par lui qu’arrivait la Régordane, avec les mulets.']],
+  [2, 1531, -1401, [1527.7, -1407], 'Une femme, au lavoir', ['L’eau de l’Altier est froide, même en plein été.', 'Le pont, là : c’est par lui qu’arrivait la Régordane, avec les mulets.']],
   ['pecheur', 1556, -1393, [1572, -1405], 'Le pêcheur', ['Des truites, dans l’Altier. Il faut savoir attendre.', 'Plus haut, il y a le lac du barrage. Avant, il n’y avait que la rivière.']],
-  [1, 1606, -1040, [1614.7, -1033.1], 'L’hôtelière', ['L’hôtel Balme. Les voyageurs du train y dorment, et les marcheurs de la Régordane aussi.']],
-  [4, 1668, -900, [1673, -890], 'Un homme, place de l’Ormeau', ['Le bourg est tout en long, entre la rivière et la pente. On ne peut pas s’y perdre.', 'La rue de la Bourgade, c’est l’ancienne Régordane. Elle traverse tout Villefort.']],
-  [13, 1585, -1018, [1578, -1013], 'Un homme, place du Portalet', ['Les maisons sont en granit et les toits en lauzes. Ici, tout vient de la montagne.']],
+  [0, 1606, -1040, [1614.7, -1033.1], 'L’hôtelière', ['L’hôtel Balme. Les voyageurs du train y dorment, et les marcheurs de la Régordane aussi.']],
+  [3, 1668, -900, [1673, -890], 'Un homme, place de l’Ormeau', ['Le bourg est tout en long, entre la rivière et la pente. On ne peut pas s’y perdre.', 'La rue de la Bourgade, c’est l’ancienne Régordane. Elle traverse tout Villefort.']],
+  [5, 1585, -1018, [1578, -1013], 'Un homme, place du Portalet', ['Les maisons sont en granit et les toits en lauzes. Ici, tout vient de la montagne.']],
 ];
 const GENS = [];          // les passants posés, que la fiche anime à chaque image (anime)
 let tAvant = 0;
@@ -817,7 +953,9 @@ const FICHES = {
       { id: 'eglise', nom: 'l’église Saint-Victorin', x: 1668, z: -968, r: 18, type: 'lieu' },
       { id: 'ormeau', nom: 'la place de l’Ormeau', x: 1673, z: -897, r: 14, type: 'lieu' },
       { id: 'pont', nom: 'le pont Saint-Jean et le lavoir', x: 1540, z: -1405, r: 18, type: 'lieu' },
+      { id: 'national', nom: 'le café Le National', x: 1593, z: -1126, r: 9, type: 'lieu' },
       { id: 'fernand', nom: 'Chez Fernand', x: 1559.8, z: -1095.9, r: 6, type: 'pnj' },
+      { id: 'chefgare', nom: 'le chef de gare', x: 1458, z: -1272, r: 6, type: 'pnj' },
       { id: 'balme', nom: 'l’hôtel Balme', x: 1606, z: -1040, r: 6, type: 'pnj' },
     ],
     sol: ['grass_ground', 0xa2ae7a],
@@ -840,8 +978,9 @@ const FICHES = {
       const t0s = performance.now();
       const { trottoir, pave } = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
       BILAN.msSol = Math.round(performance.now() - t0s);   // règle 8 : ≤ 300 ms
+      const boutiques = choisirBoutiques(rs);
       const t0f = performance.now(); facades(ctx, rs); BILAN.msFacades = Math.round(performance.now() - t0f);
-      const t0m = performance.now(); mobilier(ctx, rs, { pave, dense }); BILAN.msMobilier = Math.round(performance.now() - t0m);
+      const t0m = performance.now(); mobilier(ctx, rs, { pave, dense }); devantures(ctx, boutiques, rs); BILAN.msMobilier = Math.round(performance.now() - t0m);
       const terrePlein = FICHES.villefort._sol;
       FICHES.villefort._sol = (x, z) => { const a = terrePlein(x, z), b = trottoir(x, z); return a === null ? b : b === null ? a : Math.max(a, b); };
       voieFerree(ctx);

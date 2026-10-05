@@ -1803,6 +1803,29 @@ praticables 100 % ; le poteau, l'église, Chez Fernand et le pont sont atteints 
   se reconnaître de la rue.
 - Pas encore de barre de chargement sur villefort.html (le § 4.E le note pour les mondes).
 
+**Suite, le 5 après-midi (Eugène : « fais les vitrines de Chez Fernand et du Balme ; je veux un café, Le
+National » ; « un chef de gare descendu au bourg, c'est bien »)** — `lozere.js`, `BOUTIQUES` :
+- Trois devantures au rez-de-chaussée, sur le mur le plus proche d'une rue. Chaque boutique est
+  désignée par un point dans son bâtiment d'OSM. La devanture a ses pilastres, son allège de bois
+  peint, des vitrines en baies et une porte vitrée, un bandeau du nom peint (canvas) et une enseigne
+  en drapeau à l'étage. Derrière le verre, une salle peinte (lampes, comptoir, chaises), à peine
+  lumineuse. `facades` saute les fenêtres et la porte de ce mur (`c.vitrine`).
+- **Le café Le National** : la maison qui regarde le poteau, de l'autre côté de la rue (n° 319 du
+  plan), en vert bouteille. Il a une terrasse (trois guéridons de marbre, six chaises de fer) sous un
+  store de toile rouge. Le cafetier y passe.
+- **Chez Fernand** (bordeaux, « Restaurant ») a son patron ; **l'hôtel Balme** (bleu nuit, « Hôtel –
+  Restaurant ») a son hôtelière.
+- **Le chef de gare**, descendu au bourg au bas de l'avenue de la Gare (rôle `cosimo`, casquette et
+  bleu de travail) : « Les trains ne passent plus à l'heure. Alors je monte au bourg, et je les
+  attends ici. » Il ne dit rien du chien : l'enquête reste à écrire.
+- Corrigé au passage : `buildVillageois(n)` prend le modèle `n % 6` (0 la marchande, 1 le brasseur,
+  2 la lavandière, 3 le vieux garde, 4 la garde champêtre, 5 le bûcheron). L'hôtelière et la femme
+  du lavoir étaient des hommes.
+- Appris : un panneau orienté par `makeBasis(x, haut, z)` doit avoir x = haut × z, sinon la base est
+  indirecte et la boîte sort en miroir, de travers.
+- Mesures : devantures et mobilier 24 ms ; chargement 3,2 s ; rues praticables 100 %, quatre cibles sur
+  quatre. Captures : `bancs/resultats/villefort-2026-10-05-vitrines-*.jpg`.
+
 #### Lille, suite en autonomie (5 octobre, pause de midi d'Eugène) — **publié (f49035f, a9d9381, puis la bordure)**
 - **Une porte au milieu de chaque boutique** (garde, brasseur, drapier) : l'étal encadrait la porte de la
   maison inventée ; sur la façade relevée, il ne restait qu'un mur nu entre ses deux baies.
