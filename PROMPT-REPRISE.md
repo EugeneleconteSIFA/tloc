@@ -1820,7 +1820,14 @@ praticables 100 % ; le poteau, l'église, Chez Fernand et le pont sont atteints 
 - **« chaussée coupée sur 331–359 m (eau) »** : vérifié en A/B, il existait déjà avant le 5 octobre
   (34fa442). C'est la vieille route de campagne du pont « au village » (campagne.js, `roadPts`), qui file
   vers l'ouest jusqu'à (−171 ; 554) et finit dans un canal : elle date du bourg d'avant, et ne mène plus au
-  bourg (200 ; 660). À revoir avec Eugène : la recaler sur le chemin du pont au bourg, ou la raccourcir.
+  bourg (200 ; 660). **Recalée (Eugène)** : `roadPts` choisit maintenant le pont dont le détour jusqu'au
+  bourg est le plus court — le pont du Ramponneau, entrée (25 ; 623) — au lieu de la culée la plus proche du
+  pont royal ; l'avertissement a disparu. Les voies relevées qu'elle recouvre, ou qu'elle longe à moins de
+  10 m dans le même sens, lui cèdent la place (`sansLaRoute`, carte.js) : devant le pont, il y avait trois
+  routes côte à côte. Un plus court chemin sur le réseau relevé a été essayé : le glacis devant le pont royal
+  n'est relié à aucune voie relevée, et depuis le pont du Ramponneau la ligne droite reste la plus courte.
+  Hameau, lavoir, pâture et bornes se reposent seuls le long du tracé. Captures :
+  `route-pont-bourg-2026-10-05-*.jpg` ; A/B `charge-2026-10-05-ab5-*.json`, sans écart.
 
 #### Aveyron : tout en lauze (5 octobre)
 
@@ -1832,9 +1839,20 @@ suivent, puisque la lauze veut 45° et plus :
   leurs faîtages passent sous le toit central au lieu de le percer.
 
 Au banc : rues praticables 100 %, 25 cibles sur 25, étape « maisons » 206 ms. Planche :
-`…-regard-lauze-1-vues.png`. Publication : le contrôle échouait sur le banc à froid de Lille (23 s ;
-une mesure à 8,9 s), à cause de la charge des autres sessions. Une boucle réessaie toutes les
-10 minutes, sans forcer.
+`…-regard-lauze-1-vues.png`. Publication : le contrôle a d'abord échoué deux fois sur le banc à froid
+de Lille (23 s, avec une mesure à 8,9 s : la charge des autres sessions). Publié ensuite avec le lot
+suivant, `58f667b` (somme 13,3 s).
+
+**Le lac qui se retire (même commit)** :
+- `barrage()` : la route de crête passe entre deux parapets de béton, ouverts au carrefour du Moulin du
+  Prieur (fermés, ils barraient la route : banc). La maisonnette de la vanne est posée à l'écart des
+  rues ; sur la route, elle bloquait 10 points.
+- `grevesEchouees()` : le ponton de la baignade, à hauteur du lac plein, sur des pieux qui descendent
+  jusqu'à la vase (on passe dessous, les pieux sont des collisions) ; quatre barques peintes échouées,
+  entre 3 et 15 m de l'eau qui reste.
+- `troupeaux()` : 19 brebis (le modèle de `pouget-enclos.js`, chargé ici à part), par petits groupes
+  dans le pré derrière chaque domaine, et deux égarées. « Nos bêtes disparaissent » : on en voit peu.
+- Mesures : rues praticables 100 %, 27 cibles sur 27 ; « barrage, ponton, barques » 71 ms.
 
 ### Thaïlande — la nuit du 4 au 5 octobre (arrivée du Mac dans ba002ab, sans compte rendu) — **relue et vérifiée le 5 octobre sur le PC (consigne T)**
 
