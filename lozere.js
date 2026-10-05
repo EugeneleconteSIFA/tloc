@@ -523,7 +523,7 @@ function densite(maisons) {
 // - des trottoirs de 14 cm et 1,6 m le long de la départementale (r ≥ 3 : la route de Mende et
 //   l'avenue des Cévennes), avec la bordure de granit en face verticale, coupés aux carrefours. Les
 //   vieilles rues n'en ont pas : à Villefort comme ailleurs, ce sont celles de la route.
-// Rend la hauteur du trottoir en (x, z), ou null (pour solLieu : on y marche à 14 cm).
+// Rend { trottoir(x, z) : la hauteur du trottoir ou null (solLieu : on y marche à 14 cm), pave(x, z) }.
 function solDuBourg(ctx, rs, { emprise: E, dense, jardins }) {
   const h = ctx.dessin, corps = BILAN.corps, P = 1.25;
   // la distance au bâti, jusqu'à 4 m
@@ -601,7 +601,7 @@ function solDuBourg(ctx, rs, { emprise: E, dense, jardins }) {
     const o = new THREE.Mesh(g, m); o.receiveShadow = true; ctx.scene.add(o); }
   const zAut = grille(zones, (q) => { const xs = q.map((p) => p[0]), zs = q.map((p) => p[1]); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
   BILAN.trottoirs = zones.length;
-  return (x, z) => zAut(x, z).some((k) => dansPoly(x, z, zones[k])) ? h(x, z) + HT : null;
+  return { trottoir: (x, z) => zAut(x, z).some((k) => dansPoly(x, z, zones[k])) ? h(x, z) + HT : null, pave: (x, z) => val(x, z) > 0 };
 }
 
 // Les façades de Villefort (réalisme, consigne V). Avant, des blocs de pierre aveugles. Maintenant,
@@ -669,6 +669,69 @@ function facades(ctx, rs) {
   portes.maille(phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a4434 }));
   volets.forEach((l, k) => l.maille(phMat('wood_planks', 1, 1, { color: VOLETS[k] }), false));
   BILAN.fenetres = fenetres; BILAN.portes = nPortes;
+}
+
+// Des arbres posés un par un (InstancedMesh), à des places choisies
+function planter(ctx, espece, ps, [h0, h1]) {
+  const esp = especeGeo(espece); if (!esp || !ps.length) return;
+  const tr = new THREE.InstancedMesh(esp.tronc, esp.matT, ps.length), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, ps.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = V(), v = V();
+  ps.forEach(([x, z], k) => { const t = rand(h0, h1); q.setFromAxisAngle(HAUT, rand(0, TAU)); m4.compose(v.set(x, ctx.hauteur(x, z) - 0.2, z), q, sc.set(t, t, t)); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
+  tr.castShadow = hp.castShadow = true; ctx.scene.add(tr, hp);
+}
+
+// Le mobilier et les arbres du bourg (réalisme, consigne V, « puis le reste ») :
+// - le bosquet de la place du Bosquet : des charmes sur l'herbe de la place, tous les 7 m environ
+//   (la place porte le nom de son bosquet) ;
+// - l'ormeau de la place de l'Ormeau, un grand arbre seul (un chêne : la forêt du jeu n'a pas d'orme) ;
+// - des bancs de granit et de planches sur les places, tournés vers elles ;
+// - des lanternes de fer sur une maison sur trois, côté rue, à hauteur d'étage. Pas de lumière
+//   nouvelle (règle de la consigne de nuit) : le verre luit à peine, de jour.
+function mobilier(ctx, rs, { pave, dense }) {
+  const { bloque } = ctx, h = ctx.dessin;
+  const loinDesRues = (x, z, m) => rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + m);
+  // le bosquet
+  const bosquet = [];
+  for (let x = 1545; x <= 1605; x += 7) for (let z = -1240; z <= -1115; z += 7) {
+    const px = x + rand(-1.5, 1.5), pz = z + rand(-1.5, 1.5);
+    if (dense(px, pz) && !pave(px, pz) && !bloque(px, pz, 2.5) && loinDesRues(px, pz, 2)) bosquet.push([px, pz]);
+  }
+  planter(ctx, 'charme', bosquet, [7, 9.5]);
+  // l'ormeau
+  const libre = (x0, z0, m) => { for (let r = 0; r < 20; r += 1) for (let k = 0; k < 12; k++) { const x = x0 + Math.cos(k / 12 * TAU) * r, z = z0 + Math.sin(k / 12 * TAU) * r; if (!bloque(x, z, m) && loinDesRues(x, z, 1)) return [x, z]; } return null; };
+  const orme = libre(1673, -897, 3); if (orme) planter(ctx, 'chene', [orme], [15, 16]);
+  // les bancs : [x, z, regarde vers x, z]
+  const granit = new Lot(), planches = new Lot(), bancs = [];
+  for (const [x0, z0, lx, lz] of [[1566, -1150, 1575, -1175], [1586, -1172, 1575, -1180], [1567, -1196, 1575, -1180], [1590, -1028, 1584, -1020], [1660, -960, 1670, -968], ...(orme ? [[orme[0] + 3.2, orme[1], orme[0], orme[1]]] : [])]) {
+    const p = libre(x0, z0, 1.2); if (!p) continue; const [x, z] = p, y = h(x, z), a = Math.atan2(lx - x, lz - z), f = V(Math.sin(a), 0, Math.cos(a)), u = V(f.z, 0, -f.x);
+    for (const sg of [-0.6, 0.6]) granit.bloc(V(x, y + 0.2, z).addScaledVector(u, sg), u.clone().multiplyScalar(0.12), V(0, 0.22, 0), f.clone().multiplyScalar(0.2));
+    planches.bloc(V(x, y + 0.46, z), u.clone().multiplyScalar(0.85), V(0, 0.04, 0), f.clone().multiplyScalar(0.22));
+    planches.bloc(V(x, y + 0.78, z).addScaledVector(f, -0.24), u.clone().multiplyScalar(0.85), V(0, 0.14, 0), f.clone().multiplyScalar(0.03));
+    bancs.push([+x.toFixed(1), +z.toFixed(1)]);
+  }
+  granit.maille(phMat('granite_tile_03', 1, 1, { color: 0xb4b0a8 }));
+  planches.maille(phMat('wood_planks', 1, 1, { color: 0x7a6248 }));
+  // les lanternes : une maison sur trois qui donne sur une rue, au premier quart de son mur côté rue
+  const fer = new Lot(), verre = new Lot(); let lanternes = 0;
+  const pr = rs.filter((c) => (c.r || 0) >= 1).flatMap((c) => densifier(c.pts, 2).map(([x, z]) => [x, z, largeur(c) / 2]));
+  const rAut = grille(pr, ([x, z, w]) => [x - w - 4, z - w - 4, x + w + 4, z + w + 4]);
+  const dRue = (x, z) => { let d = 9; for (const i of rAut(x, z)) { const [a, b, w] = pr[i]; d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
+  for (const c of BILAN.corps) {
+    if ((Math.imul(c.bat + 3, 2654435761) >>> 0) % 3 || c.sp.tour || c.sp.clocher || c.avt - c.plancher < 5 || !dense(c.cx, c.cz)) continue;
+    for (let k = 0; k < 4; k++) {
+      const p = c.rect[k], q = c.rect[(k + 1) % 4], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 4) continue;
+      const ux = (q[0] - p[0]) / L, uz = (q[1] - p[1]) / L; let nx = -uz, nz = ux; const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
+      if ((mx - c.cx) * nx + (mz - c.cz) * nz < 0) { nx = -nx; nz = -nz; }
+      if (dRue(mx + nx * 1.5, mz + nz * 1.5) > 3) continue;
+      const x = p[0] + ux * L * 0.25, z = p[1] + uz * L * 0.25, y = c.plancher + 3.1, n = V(nx, 0, nz), u = V(ux, 0, uz);
+      fer.bloc(V(x, y + 0.2, z).addScaledVector(n, 0.2), u.clone().multiplyScalar(0.025), V(0, 0.025, 0), n.clone().multiplyScalar(0.2), true);   // la potence
+      fer.bloc(V(x, y + 0.24, z).addScaledVector(n, 0.42), u.clone().multiplyScalar(0.12), V(0, 0.03, 0), n.clone().multiplyScalar(0.12));        // le chapeau
+      verre.bloc(V(x, y + 0.04, z).addScaledVector(n, 0.42), u.clone().multiplyScalar(0.09), V(0, 0.17, 0), n.clone().multiplyScalar(0.09));
+      lanternes++; break;
+    }
+  }
+  fer.maille(phMat('metal_plate_02', 1, 1, { color: 0x2a2826 }), false);
+  verre.maille(new THREE.MeshStandardMaterial({ color: 0xf0e2c0, emissive: 0xffd9a0, emissiveIntensity: 0.35, roughness: 0.3 }), false);
+  Object.assign(BILAN, { bosquet: bosquet.length, ormeau: !!orme, bancs, lanternes });
 }
 
 // Les gens du bourg (consigne V, « des lieux jouables ») : Villefort est « l'endroit où l'on parle aux
@@ -775,9 +838,10 @@ const FICHES = {
       FICHES.villefort.enduit = (b, i) => ['house', 'apartments', 'detached', 'hotel', undefined].includes(b.k) && dense(b.pts[0][0], b.pts[0][1]) && (Math.imul(i + 7, 2654435761) >>> 0) % 10 < 4;
       const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['asphalt_02', 0x9a9894] : dense(...milieu(c)) ? ['granite_tile_03', 0xb4b8bc] : ['rocky_trail', 0xb0a088, true]);
       const t0s = performance.now();
-      const trottoir = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
+      const { trottoir, pave } = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
       BILAN.msSol = Math.round(performance.now() - t0s);   // règle 8 : ≤ 300 ms
       const t0f = performance.now(); facades(ctx, rs); BILAN.msFacades = Math.round(performance.now() - t0f);
+      const t0m = performance.now(); mobilier(ctx, rs, { pave, dense }); BILAN.msMobilier = Math.round(performance.now() - t0m);
       const terrePlein = FICHES.villefort._sol;
       FICHES.villefort._sol = (x, z) => { const a = terrePlein(x, z), b = trottoir(x, z); return a === null ? b : b === null ? a : Math.max(a, b); };
       voieFerree(ctx);

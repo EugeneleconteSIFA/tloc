@@ -71,7 +71,8 @@ try {
   const m = await page.evaluate(async ({ plan, grille, avant }) => {
     const T = window.TLOC, lv = T.G.level, THREE = T.THREE;
     const P = await (await fetch('/' + plan)).json(), C = P.cadre, M = await import('/lozere.js').catch(() => null), B = M && M.BILAN;
-    const dans = (x, z) => x > C.x0 + 9 && x < C.x1 - 9 && z > C.z0 + 9 && z < C.z1 - 9;
+    // 10 m dans le cadre du plan : monde.js (et l'emprise de Villefort) en rentrent de 8
+    const dans = (x, z) => x > C.x0 + 10 && x < C.x1 - 10 && z > C.z0 + 10 && z < C.z1 - 10;
     const densifier = (pts, pas) => { const o = []; for (let k = 0; k < pts.length - 1; k++) { const [a, b] = [pts[k], pts[k + 1]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / pas));
       for (let t = 0; t < n; t++) o.push([a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n]); } o.push(pts[pts.length - 1]); return o; };
     const dansPoly = (x, z, pts) => { let d = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, zi] = pts[i], [xj, zj] = pts[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d; } return d; };
