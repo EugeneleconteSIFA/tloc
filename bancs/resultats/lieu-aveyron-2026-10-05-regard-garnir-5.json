@@ -1,0 +1,522 @@
+{
+ "date": "2026-10-05T14:19:09.334Z",
+ "chargement_s": 4.437,
+ "erreurs": [],
+ "sonde": {
+  "batut": {
+   "arrivee": true,
+   "hauteur": 3.22,
+   "arret": null
+  },
+  "pouget": {
+   "arrivee": true,
+   "hauteur": 3.32,
+   "arret": null
+  },
+  "beauregard": {
+   "arrivee": true,
+   "hauteur": 3.32,
+   "arret": null
+  }
+ },
+ "praticabilite": {
+  "points": 9409,
+  "libres": 9409,
+  "part": 100,
+  "tropRaides": 0,
+  "bloques": []
+ },
+ "cibles": [
+  {
+   "nom": "départ",
+   "x": -120,
+   "z": 135,
+   "atteinte": true,
+   "resteA": 0.25,
+   "arrets": 0,
+   "arreteeA": [
+    -119.2,
+    135
+   ]
+  },
+  {
+   "nom": "repasser la porte de l’île",
+   "x": -126,
+   "z": 146,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0,
+   "arreteeA": [
+    -125,
+    146.8
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": -188.896,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0,
+   "arreteeA": [
+    -189,
+    -348.7
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": -104.13777581641659,
+   "z": 470,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.27,
+   "arrets": 0,
+   "arreteeA": [
+    -105,
+    468.7
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": 332.9016194331984,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0,
+   "arreteeA": [
+    333,
+    -348.7
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": 147.0847352024922,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0,
+   "arreteeA": [
+    519,
+    146.7
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": -290,
+   "z": -189.02941176470588,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0,
+   "arreteeA": [
+    -289,
+    -188.8
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": 520,
+   "z": -316.6085057471265,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0,
+   "arreteeA": [
+    519,
+    -316.7
+   ]
+  },
+  {
+   "nom": "la barrière",
+   "x": 276.54224275999127,
+   "z": -350,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0,
+   "arreteeA": [
+    277,
+    -348.8
+   ]
+  },
+  {
+   "nom": "le Batut",
+   "x": -138.70826018962427,
+   "z": 159.39345455079518,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.24,
+   "arrets": 0,
+   "arreteeA": [
+    -139,
+    158.8
+   ]
+  },
+  {
+   "nom": "regarder dans le puits",
+   "x": 389.85253253809543,
+   "z": 140.32069712688002,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0,
+   "arreteeA": [
+    391.2,
+    139
+   ]
+  },
+  {
+   "nom": "Beauregard",
+   "x": 390.2855847827212,
+   "z": 146.35709429352045,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0,
+   "arreteeA": [
+    389,
+    144.8
+   ]
+  },
+  {
+   "nom": "la grande maison du Pouget",
+   "x": 180.68022158046787,
+   "z": -307.6447016099859,
+   "r": 3.5,
+   "atteinte": true,
+   "resteA": 0.17,
+   "arrets": 0,
+   "arreteeA": [
+    181,
+    -308.8
+   ]
+  },
+  {
+   "nom": "la maisonnette de la vanne",
+   "x": -256,
+   "z": -169,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.24,
+   "arrets": 0,
+   "arreteeA": [
+    -255,
+    -168.8
+   ]
+  },
+  {
+   "nom": "la barque",
+   "x": -62.07057642493085,
+   "z": 107.07155916465472,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0,
+   "arreteeA": [
+    -63,
+    109.2
+   ]
+  },
+  {
+   "nom": "la fontaine",
+   "x": -262.48235367508653,
+   "z": -336.04470768750133,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.28,
+   "arrets": 0,
+   "arreteeA": [
+    -265,
+    -336.7
+   ]
+  },
+  {
+   "nom": "la source des Vergnes",
+   "x": 470.9303480237268,
+   "z": 438.00639709200965,
+   "r": 3,
+   "atteinte": true,
+   "resteA": 0.17,
+   "arrets": 0,
+   "arreteeA": [
+    471,
+    438.8
+   ]
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": -122.4241610960568,
+   "z": 149.3396932292362,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0,
+   "arreteeA": [
+    -123.2,
+    151
+   ]
+  },
+  {
+   "nom": "parler au cavalier",
+   "x": 376.47472941357773,
+   "z": 144.38202493458573,
+   "r": 4,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0,
+   "arreteeA": [
+    375,
+    142.8
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": -66,
+   "z": 97,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0,
+   "arreteeA": [
+    -65,
+    97.2
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": -175,
+   "z": -325,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.21,
+   "arrets": 0,
+   "arreteeA": [
+    -175,
+    -322.8
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": 452,
+   "z": -228,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.26,
+   "arrets": 0,
+   "arreteeA": [
+    453,
+    -226.7
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": 462,
+   "z": -212,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.16,
+   "arrets": 0,
+   "arreteeA": [
+    463,
+    -210.8
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": 291.5,
+   "z": 30,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.22,
+   "arrets": 0,
+   "arreteeA": [
+    291,
+    31.2
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": -262,
+   "z": -330,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.28,
+   "arrets": 0,
+   "arreteeA": [
+    -261,
+    -328.7
+   ]
+  },
+  {
+   "nom": "parler",
+   "x": -205,
+   "z": -55,
+   "r": 2.6,
+   "atteinte": true,
+   "resteA": 0.24,
+   "arrets": 0,
+   "arreteeA": [
+    -205,
+    -52.8
+   ]
+  }
+ ],
+ "bati": {
+  "batiments": 20,
+  "toitsQuiDebordent": 0,
+  "toitsSurVoisin": 7,
+  "soubassementsPlus15": 0,
+  "chevauchements": 0,
+  "pires": {
+   "debords": [],
+   "soubassements": []
+  }
+ },
+ "sols": {
+  "echantillons": 47043,
+  "flottePlus5cm": 32,
+  "part": 0.1,
+  "enfoncePlus2cm": 1,
+  "zFighting": []
+ },
+ "source": "déclaré par le lieu (window.__lieu)",
+ "durees": {
+  "bâti": 43,
+  "rues": 71,
+  "lisière": 76,
+  "maisons Roquette": 266,
+  "domaines": 80,
+  "barrage, ponton, barques": 80,
+  "cours et prés": 32,
+  "le reste (bourg, gens, sécheresse)": 42,
+  "arbres": 114,
+  "sol": 112
+ },
+ "pose": {
+  "domaines": [
+   {
+    "nom": "du Batut",
+    "X": -135,
+    "Z": 170,
+    "rot": 2.4704488181537845,
+    "D": 16,
+    "grange": [
+     -29,
+     -6
+    ],
+    "potager": [
+     38,
+     -8
+    ],
+    "pre": [
+     -154.90022859525075,
+     195.0595471199454
+    ]
+   },
+   {
+    "nom": "de Beauregard",
+    "X": 400,
+    "Z": 150,
+    "rot": -1.9295669970654687,
+    "D": 16,
+    "grange": [
+     29,
+     -6
+    ],
+    "potager": [
+     -38,
+     -8
+    ],
+    "pre": [
+     429.9625336822094,
+     161.23595013082854
+    ]
+   },
+   {
+    "nom": "du Pouget",
+    "X": 185,
+    "Z": -315,
+    "rot": -0.5310301048441823,
+    "D": 18,
+    "grange": [
+     -31,
+     -6
+    ],
+    "potager": [
+     40,
+     -8
+    ],
+    "pre": [
+     201.20549934642764,
+     -342.5931475358092
+    ]
+   }
+  ],
+  "essences": {
+   "chene": 6200,
+   "hetre": 1964,
+   "bouleau": 100,
+   "charme": 207,
+   "fourre": 461,
+   "touffe": 2346
+  },
+  "affleurements": 162,
+  "brebis": 19,
+  "objets": {
+   "charrette": 3,
+   "bois": 3,
+   "tonneaux": 9,
+   "bancs": 6,
+   "abreuvoirs": 3,
+   "meules": 6
+  },
+  "gens": [
+   {
+    "qui": "Le pêcheur",
+    "x": -66,
+    "z": 97,
+    "dit": "Le lac a perdu plus d’un mètre. Les poissons se serrent au fond, là où il reste de l’eau."
+   },
+   {
+    "qui": "Le colporteur",
+    "x": -175,
+    "z": -325,
+    "dit": "Je descends de Saint-Gervais, en haut. Là-haut aussi, les puits sont à sec."
+   },
+   {
+    "qui": "Une femme de Perpignou",
+    "x": 452,
+    "z": -228,
+    "dit": "Le puits du hameau ne donne plus que de la vase."
+   },
+   {
+    "qui": "Un homme de Perpignou",
+    "x": 462,
+    "z": -212,
+    "dit": "Le soleil ne bouge plus. Ça fait des jours que c’est midi."
+   },
+   {
+    "qui": "Un homme de Fariboules",
+    "x": 291.5,
+    "z": 30,
+    "dit": "Beauregard, c’est la grande maison sur la pente, au sud-est. De chez eux, on voit tout le lac."
+   },
+   {
+    "qui": "Une femme, à la fontaine",
+    "x": -262,
+    "z": -330,
+    "dit": "On dit que les sources se sont bouchées toutes seules. Moi, je n’y crois pas."
+   },
+   {
+    "qui": "Un homme, sur le barrage",
+    "x": -205,
+    "z": -55,
+    "dit": "Les Roquette vont finir par se battre, pour ce lac."
+   }
+  ]
+ }
+}

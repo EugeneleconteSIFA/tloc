@@ -4,7 +4,7 @@
 // maisons des Roquette — le Batut, Beauregard, la grande maison du Pouget — posées là où la
 // session des mondes les a proposées et Eugène validées (carte/mondes/README.md).
 import { monde } from './monde.js';
-import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, player } from './engine.js?v=41';
+import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, addRamp, player, world } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as PNJ from './pnj.js';
@@ -183,16 +183,17 @@ function lierre(g, faces, libre, ali) {
 // le sol de la maison est le relief, plat — le moteur ne sait pas poser un plancher sous une maison
 // tournée. Les maisons ne sont plus inscrites dans la grille de monde.js (on n'y entrerait pas) ;
 // leurs emprises sont gardées ici, pour que rien n'y pousse ni ne s'y pose.
-const EMPRISES = [], DEDANS = [];             // les emprises (monde), et les pièces où la caméra se tient basse
+const EMPRISES = [], DEDANS = [], PORTES = [];             // les emprises (monde), et les pièces où la caméra se tient basse
 const dansUneMaison = (x, z, m = 0) => EMPRISES.some((P) => dansPoly(x, z, P) || (m > 0 && P.some(([px, pz]) => Math.hypot(px - x, pz - z) < m)));
-function interieur(g, monde, y0) {
-  const capW = (ax, az, bx, bz, r, top, bas) => { const [wa, wb] = [monde(ax, az), monde(bx, bz)], c = addCap(wa[0], wa[1], wb[0], wb[1], r, y0 + top); if (bas !== undefined) c.bottom = y0 + bas; return c; };
+// (BAS : à l'étage, chaque capsule a un plancher — elle n'arrête pas qui passe dessous, au rez-de-chaussée)
+function interieur(g, monde, y0, BAS) {
+  const capW = (ax, az, bx, bz, r, top, bas = BAS) => { const [wa, wb] = [monde(ax, az), monde(bx, bz)], c = addCap(wa[0], wa[1], wb[0], wb[1], r, y0 + top); if (bas !== undefined) c.bottom = y0 + bas; return c; };
   return {
     // un mur droit dans le repère de la maison, de (ax, az) à (bx, bz) — sa ligne MÉDIANE —, de
     // 5 m sous terre à h, percé de portes { t (le milieu, en m depuis a), w, h } ; dehors (option),
     // la matière de sa face extérieure ; dedans, un enduit ; le côté intérieur est `cote` (+1 ou −1,
     // à gauche ou à droite en allant de a vers b)
-    mur(ax, az, bx, bz, { ep = 0.6, h, slug = 'enduit_gris', opt = { color: 0xeae2d2 }, dedans = null, cote = 1, portes = [], plafond = 3.1 } = {}) {
+    mur(ax, az, bx, bz, { ep = 0.6, h, slug = 'enduit_gris', opt = { color: 0xeae2d2 }, dedans = null, cote = 1, portes = [], plafond = 3.1, pied = -5 } = {}) {
       const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ry = -Math.atan2(bz - az, bx - ax), r = ep / 2 + 0.03;
       const nx = -uz * cote, nz = ux * cote;                         // vers l'intérieur
       const bout = (a, b, ya, yb, dur) => {
@@ -204,20 +205,64 @@ function interieur(g, monde, y0) {
         if (dur) capW(ax + ux * a, az + uz * a, ax + ux * b, az + uz * b, r, yb);
       };
       let t0 = 0;
-      for (const p of [...portes].sort((a, b) => a.t - b.t)) { const a = p.t - p.w / 2, b = p.t + p.w / 2; bout(t0, a, -5, h, true); bout(a, b, p.h ?? 2.5, h, false); t0 = b; }
-      bout(t0, L, -5, h, true);
+      for (const p of [...portes].sort((a, b) => a.t - b.t)) { const a = p.t - p.w / 2, b = p.t + p.w / 2; bout(t0, a, pied, h, true); bout(a, b, p.h ?? 2.5, h, false); t0 = b; }
+      bout(t0, L, pied, h, true);
     },
     // le sol d'une pièce (un parquet, des tomettes) et son plafond, dans le repère de la maison
-    sol(x0, x1, z0, z1, slug, color, { plafond = 3.1, poutres = true, nom = null } = {}) {
-      pose(g, boite(x1 - x0, 0.05, z1 - z0, slug, { color }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
-      pose(g, boite(x1 - x0, 0.12, z1 - z0, 'enduit_gris', { color: 0xe8e0d0 }), (x0 + x1) / 2, plafond + 0.06, (z0 + z1) / 2).castShadow = false;
-      if (poutres) for (let x = x0 + 1.2; x < x1 - 0.5; x += 1.4) pose(g, boite(0.2, 0.22, z1 - z0, 'wood_cabinet_worn_long', { color: 0x4a3420 }), x, plafond - 0.11, (z0 + z1) / 2).castShadow = false;
-      DEDANS.push({ pts: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => monde(a, b)), plafond: y0 + plafond, nom });
+    // trou : [x0, x1, z0, z1] de la cage d'escalier, que le plafond laisse ouverte ; base : la
+    // hauteur du sol (0 au rez-de-chaussée, le plancher à l'étage) ; sombre : une pièce du fond
+    sol(x0, x1, z0, z1, slug, color, { plafond = 3.1, poutres = true, nom = null, trou = null, base = 0, sombre = false } = {}) {
+      const plaf = sombre ? 0xb8b0a2 : 0xe8e0d0;
+      if (base === 0) pose(g, boite(x1 - x0, 0.05, z1 - z0, slug, { color }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
+      const plafonds = trou ? [[x0, x1, z0, trou[2]], [x0, x1, trou[3], z1], [x0, trou[0], trou[2], trou[3]], [trou[1], x1, trou[2], trou[3]]] : [[x0, x1, z0, z1]];
+      for (const [a, b, c, d] of plafonds) if (b - a > 0.02 && d - c > 0.02) pose(g, boite(b - a, 0.12, d - c, 'enduit_gris', { color: plaf }), (a + b) / 2, plafond + 0.06, (c + d) / 2).castShadow = false;
+      if (poutres) for (let x = x0 + 1.2; x < x1 - 0.5; x += 1.4) if (!trou || x < trou[0] - 0.15 || x > trou[1] + 0.15) pose(g, boite(0.2, 0.22, z1 - z0, 'wood_cabinet_worn_long', { color: 0x4a3420 }), x, plafond - 0.11, (z0 + z1) / 2).castShadow = false;
+      DEDANS.push({ pts: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => monde(a, b)), plafond: y0 + plafond, bas: y0 + base - 0.6, nom });
     },
+    // un plancher d'étage : des « segments à bouts carrés » du moteur (world.platforms, seg), qui
+    // suivent la maison tournée — addPlatform est aligné sur les axes. Le parquet par-dessus.
+    etage(rects, yE, color = 0x9a7650) {
+      for (const [x0, x1, z0, z1] of rects) { const long = x1 - x0 >= z1 - z0, [a, b] = long ? [monde(x0, (z0 + z1) / 2), monde(x1, (z0 + z1) / 2)] : [monde((x0 + x1) / 2, z0), monde((x0 + x1) / 2, z1)];
+        world.platforms.push({ seg: true, carre: true, ax: a[0], az: a[1], bx: b[0], bz: b[1], w: long ? z1 - z0 : x1 - x0, h: y0 + yE });
+        if (color != null) pose(g, boite(x1 - x0, 0.04, z1 - z0, 'wood_planks', { color }), (x0 + x1) / 2, yE + 0.02, (z0 + z1) / 2).castShadow = false; }
+    },
+    // un escalier droit, le long de z, de (x, za) au sol à (x, zb) à la hauteur h ; ses deux limons
+    // arrêtent qui passe dessous, et font garde-corps en haut, autour de la cage
+    escalier(x, za, zb, w, h) {
+      const sg = Math.sign(zb - za), len = Math.abs(zb - za), [sx, sz] = monde(x, za), c = Math.cos(g.rotation.y), s = Math.sin(g.rotation.y);
+      addRamp(sx, sz, sg * s, sg * c, len, w, y0, y0 + h);
+      const n = Math.round(h / 0.18);
+      for (let k = 0; k < n; k++) { const t = (k + 0.5) / n, y = (k + 1) * h / n, z = za + (zb - za) * t;
+        pose(g, boite(w, 0.18, len / n + 0.02, 'wood_planks', { color: 0x6a4a2e }), x, y - 0.09, z).castShadow = false;
+        for (const e of [-1, 1]) pose(g, boite(0.08, y + 0.05, len / n + 0.02, 'wood_cabinet_worn_long', { color: 0x4a3420 }), x + e * (w / 2 + 0.04), (y + 0.05) / 2, z).castShadow = false; }
+      // les limons : dès que la marche passe 60 cm (dessous, on ne passe pas debout), jusqu'en haut ; la main courante.
+      // (à 45 cm, il ne restait plus de place, entre le limon et le mur, pour monter sur la première marche : sonde)
+      const zl = za + (zb - za) * (0.6 / h);
+      for (const e of [-1, 1]) { capW(x + e * (w / 2 + 0.06), zl, x + e * (w / 2 + 0.06), zb, 0.06, h + 1.0);
+        const L = Math.abs(zb - zl), m = boite(0.06, 0.06, Math.hypot(L, h - 0.6), 'wood_cabinet_worn_long', { color: 0x4a3420 }); pose(g, m, x + e * (w / 2 + 0.06), (0.6 + h) / 2 + 0.95, (zl + zb) / 2); m.rotation.x = -sg * Math.atan2(h - 0.6, L);
+        for (let t = 0.1; t < 1; t += 0.12) { const z = zl + (zb - zl) * t, y = 0.6 + (h - 0.6) * t; pose(g, boite(0.04, 0.95, 0.04, 'wood_cabinet_worn_long', { color: 0x4a3420 }), x + e * (w / 2 + 0.06), y + 0.47, z).castShadow = false; } }
+      // en haut, au pied de la cage : un garde-corps (on ne tombe pas dans l'escalier par le bas du trou)
+      capW(x - w / 2, za, x + w / 2, za, 0.06, h + 1.0, h - 0.4); pose(g, boite(w + 0.1, 0.06, 0.06, 'wood_cabinet_worn_long', { color: 0x4a3420 }), x, h + 0.95, za);
+      // en bas, sous la marche haute : on ne passe pas sous l'escalier par son bout (au rez-de-chaussée seulement)
+      capW(x - w / 2, zb, x + w / 2, zb, 0.06, Math.min(2.0, h - 0.8));     // (à 2 m : elle arrêtait aussi qui arrive en haut — sonde)
+    },
+    // une porte qu'on ferme : le battant pivote sur un montant ; fermée, une capsule barre le passage
+    // (une capsule de rayon 0 n'arrête plus rien, engine.js : « grille ouverte »)
+    porte(ax, az, bx, bz, { ouverte = true, couleur = 0x6a4a30 } = {}) {
+      const L = Math.hypot(bx - ax, bz - az), ry = -Math.atan2(bz - az, bx - ax), q = new THREE.Group(); pose(g, q, ax, 0, az, ry);
+      const b = mesh(boxG(L - 0.04, 2.25, 0.05), phMat('wood_planks', L, 2.25, { color: couleur }), (L - 0.04) / 2, 1.14, 0); q.add(b); b.castShadow = true;
+      const cap = capW(ax, az, bx, bz, 0.08, 2.3); let o = ouverte;
+      const regler = () => { q.rotation.y = ry + (o ? -Math.PI / 2 * 0.95 : 0); cap.r = o ? 0 : 0.08; };
+      regler(); const [mx, mz] = monde((ax + bx) / 2, (az + bz) / 2);
+      PORTES.push({ pos: new THREE.Vector3(mx, y0, mz), r: 1.6, prompt: () => o ? 'fermer la porte' : 'ouvrir la porte', fn: () => { o = !o; regler(); } });
+    },
+    // une chandelle sur un meuble : une flamme qui luit (aucune lumière nouvelle — règle de nuit)
+    chandelle(x, y, z) { pose(g, mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 8), new THREE.MeshStandardMaterial({ color: 0xece4d0, roughness: 0.6 }), 0, 0, 0), x, y + 0.11, z).castShadow = false;
+      pose(g, mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb24a }), 0, 0, 0), x, y + 0.26, z).castShadow = false; },
     // un meuble : sa boîte, et sa collision (une capsule couchée sur son grand côté — les boîtes du
     // moteur sont alignées sur les axes, la maison est tournée)
     meuble(x, z, w, d, h, slug, color, ry = 0, { dur = true, y = 0 } = {}) {
-      const m = boite(w, h, d, slug, { color }); pose(g, m, x, y + h / 2, z, ry);
+      const m = slug === 'wool_boucle' ? new THREE.Mesh(boxG(w, h, d), drap(color, Math.max(w, d), Math.max(h, d))) : boite(w, h, d, slug, { color }); pose(g, m, x, y + h / 2, z, ry);
       if (!dur) return m;
       const c = Math.cos(ry), s = Math.sin(ry), R = Math.min(w, d) / 2, l = Math.max(0, Math.max(w, d) / 2 - R), [lx, lz] = w >= d ? [c * l, -s * l] : [s * l, c * l];
       capW(x - lx, z - lz, x + lx, z + lz, R + 0.05, y + h); return m;
@@ -235,17 +280,21 @@ function cheminee2(I, g, x, z, ry, { w = 2.2 } = {}) {
   f.add(mesh(boxG(w - 0.2, 1.7, 0.55), phMat('enduit_gris', w, 1.7, { color: 0xe0d8c8 }), 0, 2.25, -0.05));
   const c = Math.cos(ry), s = Math.sin(ry); I.cap(x - c * w / 2, z + s * w / 2, x + c * w / 2, z - s * w / 2, 0.4, 1.4);
 }
+// le tissu des lits et des sièges : la laine bouclée de Poly Haven, son relief et sa rugosité, mais
+// sans son image de couleur — elle est à carreaux, et se lisait en tartan même agrandie (planche du
+// 5 octobre) ; teinté, le tissu reste un PBR, pas un aplat
+function drap(color, u, v) { const m = phMat('wool_boucle', u, v, { color }).clone(); m.map = null; m.needsUpdate = true; return m; }
 // les meubles qui reviennent d'une maison à l'autre
 function mobilier(I, g) {
   const BOIS = 'wood_cabinet_worn_long', SOMBRE = 0x5a4030, CLAIR = 0x8a6a48;
   return {
     canape(x, z, ry, couleur = 0x7a3e32) { const q = new THREE.Group(); pose(g, q, x, 0, z, ry);
-      q.add(mesh(boxG(2.4, 0.45, 0.9), phMat('wool_boucle', 2.4, 0.9, { color: couleur }), 0, 0.225, 0));
-      q.add(mesh(boxG(2.4, 0.9, 0.22), phMat('wool_boucle', 2.4, 0.9, { color: couleur }), 0, 0.45, -0.34));
-      for (const sx of [-1, 1]) q.add(mesh(boxG(0.2, 0.65, 0.9), phMat('wool_boucle', 0.2, 0.65, { color: couleur }), sx * 1.1, 0.33, 0));
+      q.add(mesh(boxG(2.4, 0.45, 0.9), drap(couleur, 0.6, 0.225), 0, 0.225, 0));
+      q.add(mesh(boxG(2.4, 0.9, 0.22), drap(couleur, 0.6, 0.225), 0, 0.45, -0.34));
+      for (const sx of [-1, 1]) q.add(mesh(boxG(0.2, 0.65, 0.9), drap(couleur, 0.05, 0.163), sx * 1.1, 0.33, 0));
       const c = Math.cos(ry), s = Math.sin(ry); I.cap(x - c * 0.8, z + s * 0.8, x + c * 0.8, z - s * 0.8, 0.5, 0.9); },
     fauteuil(x, z, ry) { const q = new THREE.Group(); pose(g, q, x, 0, z, ry);
-      q.add(mesh(boxG(0.85, 0.45, 0.85), phMat('wool_boucle', 0.85, 0.85, { color: 0x6a5a3a }), 0, 0.225, 0)); q.add(mesh(boxG(0.85, 0.95, 0.18), phMat('wool_boucle', 0.85, 0.95, { color: 0x6a5a3a }), 0, 0.48, -0.34));
+      q.add(mesh(boxG(0.85, 0.45, 0.85), drap(0x6a5a3a, 0.212, 0.212), 0, 0.225, 0)); q.add(mesh(boxG(0.85, 0.95, 0.18), drap(0x6a5a3a, 0.212, 0.237), 0, 0.48, -0.34));
       I.cap(x, z, x, z, 0.45, 0.95); },
     table(x, z, w, d, ry = 0, chaises = 0) { I.meuble(x, z, w, d, 0.78, BOIS, SOMBRE, ry);
       const c = Math.cos(ry), s = Math.sin(ry), n = chaises / 2;
@@ -267,7 +316,7 @@ function mobilier(I, g) {
 // les emprises d'une maison : gardées pour arbres, brebis, gens (rien ne s'y pose), et pour le banc
 function emprise(monde, [x0, x1, z0, z1], sol, toitO = null) {
   const emp = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => monde(a, b)); EMPRISES.push(emp);
-  LIEU.murs.push({ pts: emp, sol }); if (toitO != null) LIEU.toits.push({ bat: LIEU.murs.length - 1, pts: [[x0 - toitO, z0 - toitO], [x1 + toitO, z0 - toitO], [x1 + toitO, z1 + toitO], [x0 - toitO, z1 + toitO]].map(([a, b]) => monde(a, b)) });
+  LIEU.murs.push({ pts: emp, sol }); LIEU.emprises = EMPRISES; if (toitO != null) LIEU.toits.push({ bat: LIEU.murs.length - 1, pts: [[x0 - toitO, z0 - toitO], [x1 + toitO, z0 - toitO], [x1 + toitO, z1 + toitO], [x0 - toitO, z1 + toitO]].map(([a, b]) => monde(a, b)) });
 }
 
 // ---------------------------------------------------------------------
@@ -364,25 +413,38 @@ function batut({ hauteur, scene, addInteract, inscrire }, X, Z, rot) {
   const I = interieur(g, monde, y0), M = mobilier(I, g), E = { slug: 'enduit_gris', opt: ENDUIT, dedans: { slug: 'enduit_gris', opt: { color: 0xece4d4 } } };
   const socle = (ax, az, bx, bz, nx, nz) => { const L = Math.hypot(bx - ax, bz - az); pose(g, boite(L + 0.1, 0.9, 0.08, 'rustic_stone_wall_02', { color: 0x9e968a }), (ax + bx) / 2 + nx * 0.04, 0.2, (az + bz) / 2 + nz * 0.04, -Math.atan2(bz - az, bx - ax)); };
   I.mur(-4.5, 4.7, 4.5, 4.7, { ...E, h: 9.6, cote: -1 }); I.mur(-4.5, -4.7, 4.5, -4.7, { ...E, h: 9.6, cote: 1 });
-  I.mur(-4.2, -5, -4.2, 5, { ...E, h: 9.6, cote: -1, portes: [{ t: 4.5, w: 1.9, h: 2.5 }] }); I.mur(4.2, -5, 4.2, 5, { ...E, h: 9.6, cote: 1, portes: [{ t: 5, w: 1.9, h: 2.5 }] });
+  I.mur(-4.2, -5, -4.2, 5, { ...E, h: 9.6, cote: -1, portes: [{ t: 2.2, w: 1.9, h: 2.5 }] });     // (vers le fond : l'escalier longe ce mur) I.mur(4.2, -5, 4.2, 5, { ...E, h: 9.6, cote: 1, portes: [{ t: 5, w: 1.9, h: 2.5 }] });
   I.mur(-11.5, 3.2, -4.5, 3.2, { ...E, h: 5.6, cote: -1 }); I.mur(-11.5, -4.2, -4.5, -4.2, { ...E, h: 5.6, cote: 1 }); I.mur(-11.2, -4.5, -11.2, 3.5, { ...E, h: 5.6, cote: -1 });
   I.mur(4.5, 3.7, 14.5, 3.7, { ...E, h: 6.0, cote: -1, portes: [{ t: 5, w: 1.9, h: 2.45 }] }); I.mur(4.5, -4.2, 14.5, -4.2, { ...E, h: 6.0, cote: 1 }); I.mur(14.2, -4.5, 14.2, 4, { ...E, h: 6.0, cote: 1 });
   I.mur(11.0, -3.9, 11.0, 3.4, { ep: 0.2, h: 3.1, slug: 'enduit_gris', opt: { color: 0xece4d4 }, portes: [{ t: 2.0, w: 1.6, h: 2.3 }] });
   for (const [ax, az, bx, bz, nx, nz] of [[-4.5, 5, 4.5, 5, 0, 1], [-11.5, 3.5, -4.5, 3.5, 0, 1], [4.5, 4, 8.5, 4, 0, 1], [10.5, 4, 14.5, 4, 0, 1], [-11.5, -4.5, 14.5, -4.5, 0, -1], [-11.5, -4.5, -11.5, 3.5, -1, 0], [14.5, -4.5, 14.5, 4, 1, 0]]) socle(ax, az, bx, bz, nx, nz);
   // ---- le dedans : le grand salon au centre, la bibliothèque dans le corps bas, la salle à manger et la cuisine dans l'aile ----
-  I.sol(-3.9, 3.9, -4.4, 4.4, 'wood_planks', 0xa07a52, { nom: 'le grand salon' });
-  I.sol(-10.9, -4.5, -3.9, 2.9, 'wood_planks', 0x8a6a4a, { nom: 'la bibliothèque', plafond: 3.0 });
+  I.sol(-3.9, 3.9, -4.4, 4.4, 'wood_planks', 0xa07a52, { nom: 'le grand salon', trou: [-3.9, -2.55, -1.8, 3.6] });
+  I.sol(-10.9, -4.5, -3.9, 2.9, 'wood_planks', 0x8a6a4a, { nom: 'la bibliothèque', plafond: 3.0, sombre: true });
   I.sol(4.5, 10.9, -3.9, 3.4, 'worn_tile_floor', 0xc8b8a4, { nom: 'la salle à manger', plafond: 3.0 });
-  I.sol(11.1, 13.9, -3.9, 3.4, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.0 });
+  I.sol(11.1, 13.9, -3.9, 3.4, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.0, sombre: true });
   // (les passages entre corps : le sol continue sous l'épaisseur du mur)
-  for (const [x0, x1, z0, z1] of [[-4.5, -3.9, -1.45, 0.45], [3.9, 4.5, -0.95, 0.95], [8.55, 10.45, 3.4, 4.0]]) pose(g, boite(x1 - x0, 0.05, z1 - z0, 'wood_planks', { color: 0x9a7650 }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
+  for (const [x0, x1, z0, z1] of [[-4.5, -3.9, -3.75, -1.85], [3.9, 4.5, -0.95, 0.95], [8.55, 10.45, 3.4, 4.0]]) pose(g, boite(x1 - x0, 0.05, z1 - z0, 'wood_planks', { color: 0x9a7650 }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
   cheminee2(I, g, 0, -4.05, 0, { w: 2.4 });
   M.tapis(0, -1.0, 3.6, 2.6); M.canape(0, 1.1, Math.PI); I.meuble(0, -1.1, 1.3, 0.7, 0.45, M.BOIS, M.SOMBRE);
-  M.fauteuil(-2.4, -1.6, Math.PI / 2); M.fauteuil(2.4, -1.6, -Math.PI / 2); M.piano(-2.9, 3.8, Math.PI); M.horloge(3.5, 3.9, Math.PI);
+  M.fauteuil(-2.4, -1.6, Math.PI / 2); M.fauteuil(2.4, -1.6, -Math.PI / 2); M.piano(2.2, 3.8, Math.PI); M.horloge(3.4, -3.95, 0);
   M.rayonnage(-8.1, -3.65, 5.2, 0); M.rayonnage(-10.65, -0.6, 4.2, Math.PI / 2); I.meuble(-7.3, 0.4, 2.0, 1.0, 0.78, M.BOIS, M.SOMBRE); M.fauteuil(-7.3, 1.7, Math.PI);
   { const [bx, bz] = monde(-7.3, 1.1); addInteract({ pos: new THREE.Vector3(bx, y0, bz), r: 2.4, prompt: () => 'les livres du Batut', fn: () => showMessage('Des registres de ferme, des almanachs, une vieille Bible. Sur la table, le registre des bêtes est ouvert.', 6) }); }
   M.table(7.6, -0.6, 2.4, 1.0, Math.PI / 2, 6); M.buffet(7.7, -3.6, 2.4, 0); M.horloge(5.1, 2.9, Math.PI / 2);
   cheminee2(I, g, 12.5, -3.55, 0, { w: 1.8 }); I.meuble(12.5, 0.9, 1.0, 1.8, 0.82, M.BOIS, M.CLAIR); M.buffet(13.6, 2.4, 1.6, -Math.PI / 2, 2.0); M.tonneau(11.6, 2.9);
+  // la pénombre des pièces du fond : des chandelles (aucune lumière nouvelle)
+  I.chandelle(-7.6, 0.78, 0.3); I.chandelle(-6.9, 0.78, 0.6); I.chandelle(12.5, 0.82, 0.6);
+  // les portes qu'on ferme : entre les corps, et celle de la cuisine
+  I.porte(-4.2, -3.75, -4.2, -1.85); I.porte(4.2, -0.95, 4.2, 0.95); I.porte(11.0, -2.7, 11.0, -1.1, { ouverte: false });
+  // ---- l'étage du corps central : l'escalier le long du mur de la bibliothèque, la chambre ----
+  // (3,22 m : le plafond du rez-de-chaussée et son épaisseur ; 2,9 m sous le plafond de la chambre)
+  I.escalier(-3.25, 3.6, -1.8, 1.3, 3.22);
+  I.etage([[-2.55, 3.9, -4.4, 4.4], [-3.9, -2.55, -4.4, -1.8]], 3.22, null);
+  { const g2 = new THREE.Group(); g2.position.y = 3.22; g.add(g2); const I2 = interieur(g2, monde, y0 + 3.22, -0.4), M2 = mobilier(I2, g2);
+    I2.sol(-3.9, 3.9, -4.4, 4.4, 'wood_planks', 0x9a7650, { nom: 'la chambre', plafond: 2.9 });
+    M2.lit(1.6, -3.0, 0); M2.armoire(3.45, 2.4, -Math.PI / 2); I2.meuble(-1.2, -3.9, 1.1, 0.5, 0.7, M2.BOIS, M2.CLAIR); M2.fauteuil(2.6, 0.4, -Math.PI / 2); M2.tapis(1.2, -0.6, 2.4, 1.8, 0, 0x5a4a6a);
+    I2.chandelle(-1.2, 0.7, -3.9);
+    const [cx2, cz2] = monde(1.6, -0.9); LIEU.etages = (LIEU.etages || []).concat([{ pos: new THREE.Vector3(cx2, y0 + 3.22, cz2), r: 2.2, prompt: () => 'la chambre du Batut', fn: () => showMessage('La chambre du maître, sous le toit du corps central. Par la fenêtre, le lac, et Beauregard en face.', 6) }]); }
 
   // ---- le lierre, du pied jusqu'au premier étage, autour des baies ----
   lierre(g, [[-11.5, -4.5, 3.5], [-4.5, 4.5, 5], [4.5, 14.5, 4]],
@@ -571,10 +633,10 @@ function pouget(ctx, X, Z, rot) {
   for (const sx of [-1, 1]) I.mur(sx * T / 2, -W / 2 + 0.6, sx * T / 2, tourR[2], { ...Cl, portes: [{ t: 2.4, w: 1.7, h: 2.4 }] });
   I.mur(-18, 2.2, -L / 2, 2.2, { ...Pg, h: 4.2, cote: -1, plafond: 3.0 }); I.mur(-18, -4.2, -L / 2, -4.2, { ...Pg, h: 4.2, cote: 1, plafond: 3.0 }); I.mur(-17.7, -4.5, -17.7, 2.5, { ...Pg, h: 4.2, cote: -1, plafond: 3.0 });
   I.sol(-T / 2 + 0.6, T / 2 - 0.6, tourR[2] + 0.2, tourR[3] - 0.6, 'worn_tile_floor', 0xd0c8bc, { nom: 'le vestibule', poutres: false, plafond: 3.2 });
-  I.sol(-T / 2 + 0.1, T / 2 - 0.1, -W / 2 + 0.6, tourR[2], 'worn_tile_floor', 0xd8d0c4, { nom: 'le hall', plafond: 3.2 });
+  I.sol(-T / 2 + 0.1, T / 2 - 0.1, -W / 2 + 0.6, tourR[2], 'worn_tile_floor', 0xd8d0c4, { nom: 'le hall', plafond: 3.2, trou: [-0.7, 0.7, -3.2, 0.4] });
   I.sol(-L / 2 + 0.6, -T / 2 - 0.1, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0xa8845c, { nom: 'le salon', plafond: 3.2 });
   I.sol(T / 2 + 0.1, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la salle à manger', plafond: 3.2 });
-  I.sol(-17.4, -L / 2, -3.9, 1.9, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.0, poutres: true });
+  I.sol(-17.4, -L / 2, -3.9, 1.9, 'worn_tile_floor', 0xb89a80, { nom: 'la cuisine', plafond: 3.0, poutres: true, sombre: true });
   for (const [x0, x1, z0, z1] of [[-0.95, 0.95, tourR[3] - 0.6, tourR[3] + 0.4], [-L / 2, -L / 2 + 0.6, -1.95, -0.05]]) pose(g, boite(x1 - x0, 0.05, z1 - z0, 'worn_tile_floor', { color: 0xd0c8bc }), (x0 + x1) / 2, 0.03, (z0 + z1) / 2).castShadow = false;
   // le salon : la cheminée sur le mur du fond, le canapé, les fauteuils, le piano devant les fenêtres
   cheminee2(I, g, -6.2, -W / 2 + 0.95, 0, { w: 2.4 }); M.tapis(-6.2, -1.6, 3.6, 2.6, 0, 0x4a5a7a); M.canape(-6.2, 0.4, Math.PI, 0x5a6a8a);
@@ -583,9 +645,30 @@ function pouget(ctx, X, Z, rot) {
   M.table(6.2, 0, 3.4, 1.1, 0, 8); M.buffet(6.2, -W / 2 + 0.9, 2.6, 0); M.horloge(9.0, W / 2 - 0.9, Math.PI);
   { const [tx, tz2] = monde(6.2, 1.8); addInteract({ pos: new THREE.Vector3(tx, y0, tz2), r: 2.4, prompt: () => 'la table de famille', fn: () => showMessage('La grande table de l’aïeule. Les Batut d’un côté, Beauregard de l’autre, autrefois. Elle met encore tous les couverts.', 6) }); }
   // le hall : une console, un coffre ; le vestibule, un banc
-  I.meuble(0, -W / 2 + 0.9, 1.6, 0.45, 0.85, M.BOIS, M.SOMBRE); I.meuble(-1.4, -1.2, 0.5, 1.2, 0.6, M.BOIS, M.CLAIR, Math.PI / 2);
+  I.meuble(-1.45, -W / 2 + 0.85, 1.1, 0.45, 0.85, M.BOIS, M.SOMBRE);        // (le coffre est parti : l'escalier prend le milieu du hall)
   // la cuisine : la grande cheminée sur le pignon, la table, le vaisselier, des tonneaux
   cheminee2(I, g, -17.05, -1.0, Math.PI / 2, { w: 2.2 }); I.meuble(-13.8, -1.0, 2.2, 1.0, 0.82, M.BOIS, M.CLAIR); M.buffet(-13.8, -3.6, 2.0, 0, 2.0); M.tonneau(-11.0, 1.2); M.tonneau(-11.0, -3.4);
+  I.chandelle(-13.8, 0.82, -0.8); I.chandelle(-13.3, 0.82, -1.2);
+  // les portes qu'on ferme : du hall au salon et à la salle à manger, du salon à la cuisine
+  for (const sx of [-1, 1]) I.porte(sx * T / 2, -2.85, sx * T / 2, -1.15); I.porte(-L / 2 + 0.3, -1.95, -L / 2 + 0.3, -0.05);
+  // ---- l'étage : l'escalier au milieu du hall, du fond vers la tour ; deux chambres ----
+  // (3,6 m de long, 42° : le pied à 1,2 m du mur du fond, pour y monter de côté ; le haut assez loin de
+  // la cloison de la tour pour passer au rez-de-chaussée — Camille a 0,5 m de rayon : sonde)
+  I.escalier(0, -3.2, 0.4, 1.3, 3.32);
+  I.etage([[-L / 2 + 0.6, -0.7, -W / 2 + 0.6, W / 2 - 0.6], [0.7, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6], [-0.7, 0.7, 0.4, 1.9]], 3.32, null);
+  { const g2 = new THREE.Group(); g2.position.y = 3.32; g.add(g2); const I2 = interieur(g2, monde, y0 + 3.32, -0.4), M2 = mobilier(I2, g2);
+    for (const sx of [-1, 1]) I2.mur(sx * T / 2, -W / 2 + 0.6, sx * T / 2, tourR[2], { ...Cl, h: 2.9, pied: 0, portes: [{ t: 5.0, w: 1.7, h: 2.3 }] });
+    I2.sol(-L / 2 + 0.6, -T / 2 - 0.1, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la chambre de l’aïeule', plafond: 2.9 });
+    I2.sol(-T / 2 + 0.1, T / 2 - 0.1, -W / 2 + 0.6, tourR[2], 'wood_planks', 0x9a7650, { nom: 'le palier', plafond: 2.9 });
+    I2.sol(T / 2 + 0.1, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la chambre bleue', plafond: 2.9 });
+    for (const sx of [-1, 1]) I2.porte(sx * T / 2, -0.25, sx * T / 2, 1.45);
+    // le haut de la tour est fermé à l'étage (on serait tombé dans le vestibule)
+    I2.mur(-T / 2 + 0.6, 2.2, T / 2 - 0.6, 2.2, { ...Cl, h: 2.9, pied: 0 });
+    // la chambre de l'aïeule : le grand lit, l'armoire de noces, le prie-Dieu, une chandelle ; la chambre bleue
+    M2.lit(-6.5, -3.0, 0, 0xd8d0c0); M2.armoire(-9.0, 1.5, Math.PI / 2); I2.meuble(-4.2, -3.9, 0.9, 0.5, 0.75, M2.BOIS, M2.CLAIR); M2.fauteuil(-4.0, 1.8, -Math.PI / 2); M2.tapis(-6.5, -0.5, 2.6, 1.8, 0, 0x6a3a3a);
+    I2.chandelle(-4.2, 0.75, -3.9);
+    M2.lit(6.0, -3.0, 0, 0xa8b8c8); M2.armoire(8.95, 1.0, -Math.PI / 2); I2.meuble(3.4, -3.9, 1.0, 0.5, 0.8, M2.BOIS, M2.CLAIR);
+    const [ax2, az2] = monde(-6.5, -0.8); LIEU.etages = (LIEU.etages || []).concat([{ pos: new THREE.Vector3(ax2, y0 + 3.32, az2), r: 2.2, prompt: () => 'la chambre de l’aïeule', fn: () => showMessage('La chambre de l’aïeule. Sur la commode, deux portraits côte à côte : un Batut, un Beauregard.', 6) }]); }
 
   // ---- le mur qui prolonge la façade à droite, et le lierre sur la droite ----
   pose(g, boite(8, 2.8 + 2, 0.6, 'granit_lozere', GR), L / 2 + 4, (2.8 - 2) / 2, W / 2 - 0.3);
@@ -691,7 +774,7 @@ function beauregard(ctx, X, Z, rot) {
   I.mur(-L / 2, -W / 2 + 0.3, L / 2, -W / 2 + 0.3, { ...Pg, h: H, cote: 1, plafond: 3.2 });
   I.mur(-L / 2 + 0.3, -W / 2, -L / 2 + 0.3, W / 2, { ...Pg, h: H, cote: -1, plafond: 3.2 }); I.mur(L / 2 - 0.3, -W / 2, L / 2 - 0.3, W / 2, { ...Pg, h: H, cote: 1, plafond: 3.2 });
   for (const sx of [-1, 1]) I.mur(sx * 2.5, -W / 2 + 0.6, sx * 2.5, W / 2 - 0.6, { ...Cl, portes: [{ t: 2.9, w: 1.7, h: 2.4 }] });
-  I.sol(-2.4, 2.4, -W / 2 + 0.6, W / 2 - 0.6, 'worn_tile_floor', 0xd8d0c4, { nom: 'le hall', plafond: 3.2 });
+  I.sol(-2.4, 2.4, -W / 2 + 0.6, W / 2 - 0.6, 'worn_tile_floor', 0xd8d0c4, { nom: 'le hall', plafond: 3.2, trou: [-0.7, 0.7, -3.2, 0.8] });
   I.sol(-L / 2 + 0.6, -2.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0xa8845c, { nom: 'le salon', plafond: 3.2 });
   I.sol(2.6, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la salle à manger', plafond: 3.2 });
   pose(g, boite(3.0, 0.05, 0.9, 'worn_tile_floor', { color: 0xd8d0c4 }), 0, 0.03, W / 2 - 0.3).castShadow = false;
@@ -706,7 +789,22 @@ function beauregard(ctx, X, Z, rot) {
   M.fauteuil(-6.0, 2.6, Math.PI); M.fauteuil(-6.0, -2.6, 0); M.rayonnage(-5.4, -W / 2 + 0.85, 3.6, 0);
   M.table(5.4, 0, 2.6, 1.0, Math.PI / 2, 6); M.buffet(5.4, -W / 2 + 0.9, 2.4, 0); M.horloge(7.6, W / 2 - 0.9, Math.PI);
   { const [fx2, fz2] = monde(-6.2, 0); addInteract({ pos: new THREE.Vector3(fx2, y0, fz2), r: 2.4, prompt: () => 'la cheminée de Beauregard', fn: () => showMessage('Le feu couve sous la cendre. Par la croisée, on voit le lac, et le Batut en face.', 6) }); }
-  I.meuble(0, -W / 2 + 0.9, 1.6, 0.5, 0.9, M.BOIS, M.SOMBRE);
+  I.meuble(-1.6, -W / 2 + 0.85, 1.1, 0.45, 0.9, M.BOIS, M.SOMBRE);
+  // les portes qu'on ferme, du hall au salon et à la salle à manger
+  for (const sx of [-1, 1]) I.porte(sx * 2.5, -1.85, sx * 2.5, -0.15);
+  // ---- l'étage : la vis de la tour reste un décor (elle barrait le passage du bas, de la porte au
+  // hall, sur tous les tracés essayés) ; on monte par l'escalier droit du hall ----
+  I.escalier(0, -3.2, 0.8, 1.3, 3.32);
+  I.etage([[-L / 2 + 0.6, -0.7, -W / 2 + 0.6, W / 2 - 0.6], [0.7, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6], [-0.7, 0.7, 0.8, W / 2 - 0.6]], 3.32, null);
+  { const g2 = new THREE.Group(); g2.position.y = 3.32; g.add(g2); const I2 = interieur(g2, monde, y0 + 3.32, -0.4), M2 = mobilier(I2, g2);
+    for (const sx of [-1, 1]) I2.mur(sx * 2.5, -W / 2 + 0.6, sx * 2.5, W / 2 - 0.6, { ...Cl, h: 2.9, pied: 0, portes: [{ t: 4.9, w: 1.7, h: 2.3 }] });
+    for (const sx of [-1, 1]) I2.porte(sx * 2.5, 0.15, sx * 2.5, 1.85);
+    I2.sol(-L / 2 + 0.6, -2.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'la chambre', plafond: 2.9 });
+    I2.sol(-2.4, 2.4, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x9a7650, { nom: 'le palier', plafond: 2.9 });
+    I2.sol(2.6, L / 2 - 0.6, -W / 2 + 0.6, W / 2 - 0.6, 'wood_planks', 0x8a6a4a, { nom: 'le bureau', plafond: 2.9, sombre: true });
+    M2.lit(-5.4, -2.6, 0, 0xc8b8a8); M2.armoire(-7.6, 1.6, Math.PI / 2); M2.fauteuil(-3.4, 2.4, Math.PI);
+    I2.meuble(5.2, 0.4, 1.8, 0.9, 0.78, M2.BOIS, M2.SOMBRE); M2.fauteuil(5.2, -0.7, 0); M2.rayonnage(5.2, -W / 2 + 0.85, 3.4, 0); I2.chandelle(5.6, 0.78, 0.5);
+    const [bx2, bz2] = monde(5.2, 1.4); LIEU.etages = (LIEU.etages || []).concat([{ pos: new THREE.Vector3(bx2, y0 + 3.32, bz2), r: 2.2, prompt: () => 'le bureau de Beauregard', fn: () => showMessage('Le bureau : des cartes de la vallée, des lettres, un encrier à sec. Par la croisée, tout le lac.', 6) }]); }
 
   // ---- la cour en terrasse : terre battue, le muret garde-corps sur le lac, les piliers, le puits ----
   const xg = L / 2 + 2, zf = W / 2 + CD, porte = 1.9;
@@ -834,7 +932,7 @@ function domaine(ctx, nom, X, Z, rot, demiLargeur) {
   LIEU.ombrages = LIEU.ombrages || [];
   for (const [lx, lz] of [[-demiLargeur - 4, -12], [demiLargeur + 3, -14], [0, -18], [-demiLargeur - 6, 8]]) { const [x, z] = monde(lx, lz); if (libre(lx, lz, 3, 3)) LIEU.ombrages.push([x, z]); }
   // le pré du troupeau, derrière la maison (troupeaux() y pose ce qui reste de brebis)
-  DOMAINES.push({ nom, grange: placeG || null, potager: placeP || null, pre: monde(0, -32) }); LIEU.domaines = DOMAINES;
+  DOMAINES.push({ nom, X, Z, rot, D, grange: placeG || null, potager: placeP || null, pre: monde(0, -32) }); LIEU.domaines = DOMAINES;
 }
 
 // ---------------------------------------------------------------------
@@ -889,6 +987,58 @@ function sol({ hauteur, scene, PLAN, bloque }) {
   }
   if (blocs.length) { const mb = new THREE.Mesh(mergeGeometries(blocs), phMat('rocher_01', 1, 1, { color: 0xc4beb4, roughness: 0.95 })); mb.castShadow = mb.receiveShadow = true; scene.add(mb); }
   LIEU.affleurements = blocs.length;
+}
+
+// ---------------------------------------------------------------------
+//  Ce qui fait vivre les cours et les prés (5 octobre)
+// ---------------------------------------------------------------------
+// Eugène : « ajoute de la végétation, des éléments (animaux, arbres, bancs, tonneaux) ». Une ferme du
+// Ségala a sa charrette devant la grange, son bois pour l'hiver, ses tonneaux, un banc de pierre au
+// soleil contre la façade ; dans le pré, l'abreuvoir (à sec) et les meules de foin, un cheval qui
+// broute. Chaque objet a sa collision (une capsule) : on bute contre, on saute sur ce qui est bas.
+function garnir(ctx) {
+  const { hauteur, scene, bloque, PLAN } = ctx, BOIS = phMat('wood_planks', 1, 1, { color: 0x7a6248 }), FONCE = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x4a3828 });
+  const GRANIT = phMat('granite_tile_03', 1, 1, { color: 0xbab4a8 }), FOIN = phMat('withered_grass', 2, 2, { color: 0xd0b878 });
+  const eaux = [...(PLAN.eau.plans || []).map((p) => p.pts), PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : []];
+  const surRue = (x, z, r) => LIEU.rues.some((q) => q.pts.some(([px, pz]) => Math.abs(px - x) < r && Math.hypot(px - x, pz - z) < r));
+  const libre = (x, z, r = 1.5) => !bloque(x, z, r) && !dansUneMaison(x, z, r) && !surRue(x, z, r + 1.5) && !eaux.some((P) => P.length && dansPoly(x, z, P));
+  const groupe = (x, z, ry) => { const g = new THREE.Group(); g.position.set(x, hauteur(x, z), z); g.rotation.y = ry; scene.add(g); return g; };
+  const ombres = (g) => g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const cap = (x, z, ry, l, r, top) => { const c = Math.cos(ry), s = Math.sin(ry); addCap(x - c * l, z + s * l, x + c * l, z - s * l, r, hauteur(x, z) + top); };
+  const OBJ = { charrette: 0, bois: 0, tonneaux: 0, bancs: 0, abreuvoirs: 0, meules: 0 };
+  const charrette = (x, z, ry) => { const g = groupe(x, z, ry);
+    g.add(mesh(boxG(2.6, 0.12, 1.4), BOIS, 0, 0.95, 0)); for (const sz of [-1, 1]) g.add(mesh(boxG(2.6, 0.45, 0.06), BOIS, 0, 1.2, sz * 0.7));
+    for (const sz of [-1, 1]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.1, 16), FONCE); r.rotation.x = Math.PI / 2; r.position.set(0.2, 0.65, sz * 0.82); g.add(r); }
+    for (const sz of [-0.45, 0.45]) { const b = mesh(boxG(2.4, 0.08, 0.08), FONCE, -2.3, 0.6, sz); b.rotation.z = -0.25; g.add(b); }
+    ombres(g); cap(x, z, ry, 1.0, 0.75, 1.4); OBJ.charrette++; };
+  const tasDeBois = (x, z, ry) => { const g = groupe(x, z, ry);
+    for (let k = 0; k < 4; k++) for (let j = 0; j < 9; j++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.0, 8), phMat('tree_trunk', 0.75, 1, { color: 0x8a6a4a })); b.rotation.x = Math.PI / 2; b.position.set(-1.0 + j * 0.25 + (k % 2) * 0.12, 0.13 + k * 0.23, 0); g.add(b); }
+    ombres(g); cap(x, z, ry, 0.8, 0.55, 1.0); OBJ.bois++; };
+  const tonneau = (x, z) => { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.95, 14), phMat('wood_planks', 2.5, 0.95, { color: 0x6a4a2a })); t.position.set(x, hauteur(x, z) + 0.47, z); t.castShadow = t.receiveShadow = true; scene.add(t);
+    for (const y of [0.15, 0.8]) { const c = new THREE.Mesh(new THREE.TorusGeometry(0.41, 0.025, 4, 18), phMat('metal_plate_02', 2.6, 0.1, { color: 0x3a3430 })); c.rotation.x = Math.PI / 2; c.position.set(x, hauteur(x, z) + y, z); scene.add(c); }
+    addCap(x, z, x, z, 0.42, hauteur(x, z) + 0.95); OBJ.tonneaux++; };
+  const banc = (x, z, ry) => { const g = groupe(x, z, ry); g.add(mesh(boxG(1.9, 0.12, 0.45), GRANIT, 0, 0.45, 0)); for (const sx of [-0.7, 0.7]) g.add(mesh(boxG(0.3, 0.45, 0.4), GRANIT, sx, 0.2, 0)); ombres(g); cap(x, z, ry, 0.75, 0.25, 0.5); OBJ.bancs++; };
+  const abreuvoir = (x, z, ry) => { const g = groupe(x, z, ry); g.add(mesh(boxG(2.4, 0.6, 0.7), GRANIT, 0, 0.3, 0));
+    g.add(mesh(boxG(2.1, 0.05, 0.45), phMat('mud_cracked_dry_03', 2, 0.5, { color: 0xc8baa4 }), 0, 0.58, 0)); ombres(g); cap(x, z, ry, 0.9, 0.38, 0.6); OBJ.abreuvoirs++; };
+  const meule = (x, z) => { const g = groupe(x, z, 0); g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 1.8, 18), FOIN)); g.children[0].position.y = 0.9;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(1.65, 1.4, 18), FOIN); c.position.y = 2.5; g.add(c); ombres(g); addCap(x, z, x, z, 1.55, hauteur(x, z) + 3.0); OBJ.meules++; };
+  // autour de chaque maison, dans son repère
+  for (const d of DOMAINES) {
+    const c = Math.cos(d.rot), s = Math.sin(d.rot), m = (lx, lz) => [d.X + lx * c + lz * s, d.Z - lx * s + lz * c], essai = (cands, r, f) => { for (const [lx, lz] of cands) { const [x, z] = m(lx, lz); if (libre(x, z, r)) { f(x, z); return true; } } return false; };
+    if (d.grange) { const [gx, gz] = d.grange; essai([[gx, gz + 8], [gx + 6, gz + 6], [gx - 6, gz + 6], [gx, gz - 8]], 1.6, (x, z) => charrette(x, z, d.rot + 0.4));
+      // (le long d'un mur de la grange : elle est tournée d'un quart de tour, ses côtés sont à ±4,5 m en x)
+      essai([[gx + 6.2, gz + 3], [gx - 6.2, gz + 3], [gx + 6.2, gz - 3], [gx - 6.2, gz - 3]], 0.8, (x, z) => { tonneau(x, z); if (libre(x + 1.0, z, 0.5)) tonneau(x + 1.0, z); if (libre(x + 0.5, z + 0.9, 0.5)) tonneau(x + 0.5, z + 0.9); }); }
+    essai([[d.D + 2, -6], [-d.D - 2, -6], [d.D + 3, 2]], 1.2, (x, z) => tasDeBois(x, z, d.rot + Math.PI / 2));
+    essai([[-d.D + 4, 7], [d.D - 4, 7], [0, 8]], 1.0, (x, z) => banc(x, z, d.rot));
+    const [px, pz] = d.pre; const pr = (lx, lz) => [px + lx * c + lz * s, pz - lx * s + lz * c];
+    for (const [lx, lz] of [[-8, 6], [9, -4]]) { const [x, z] = pr(lx, lz); if (libre(x, z, 1.8)) meule(x, z); }
+    { const [x, z] = pr(3, 8); if (libre(x, z, 1.4)) abreuvoir(x, z, d.rot); }
+    { const [x, z] = pr(-2, -6); if (libre(x, z, 1.5)) { cheval(scene, 'cheval_blanc.glb', x, hauteur(x, z), z, d.rot + 2.2, 'Eating'); addCap(x, z, x, z, 1.2, hauteur(x, z) + 1.6); } }
+  }
+  // les bancs du lac : à la fontaine, au bout du ponton, au pied du barrage
+  for (const [x0, z0, ry] of [[-258, -325, 0.6], [-220, -300, 2.3], [-212, -40, 1.1], [-60, 108, -0.4]])
+    for (let r = 0; r < 12; r += 1.5) { let fait = false; for (let k = 0; k < 8 && !fait; k++) { const x = x0 + Math.cos(k * 0.785) * r, z = z0 + Math.sin(k * 0.785) * r; if (libre(x, z, 1.1)) { banc(x, z, ry); fait = true; } } if (fait) break; }
+  LIEU.objets = OBJ;
 }
 
 // ---------------------------------------------------------------------
@@ -1178,8 +1328,10 @@ function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
   // faisait un parc. Le pays mêle le chêne (le plus commun), le hêtre dans les creux frais, le
   // bouleau sur les sols maigres de schiste, et les fourrés bas (le charme, faute du genêt et du
   // châtaignier, qui manquent à foret.js) au bord des prés et des murets. Chaque essence a sa taille.
-  const ESS = { chene: { h: [8, 14] }, hetre: { h: [12, 19] }, bouleau: { h: [8, 13] }, charme: { h: [5, 8] }, fourre: { h: [1.6, 3.2], de: 'charme' } };
-  for (const [k, e] of Object.entries(ESS)) e.geo = especeGeo(e.de || k);
+  // la touffe (5 octobre) : l'herbe haute que la sécheresse a blondie, au pied des murs, au bord des
+  // chemins et par plaques dans les prés — le houppier du charme, à 60 cm, teinté de paille
+  const ESS = { chene: { h: [8, 14] }, hetre: { h: [12, 19] }, bouleau: { h: [8, 13] }, charme: { h: [5, 8] }, fourre: { h: [1.6, 3.2], de: 'charme' }, touffe: { h: [0.45, 0.85], de: 'charme', paille: 0xc8b070 } };
+  for (const [k, e] of Object.entries(ESS)) { e.geo = especeGeo(e.de || k); if (e.geo && e.paille) e.geo = { ...e.geo, matH: Object.assign(e.geo.matH.clone(), { color: new THREE.Color(e.paille) }) }; }
   if (!ESS.chene.geo) return;
   const hasard = (x, z) => { const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return v - Math.floor(v); };
   // l'essence d'un arbre isolé ou d'un bois, d'après sa place : le hêtre dans les creux, le bouleau
@@ -1214,7 +1366,7 @@ function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
   for (const [x, z, y] of (PLAN.horizon && PLAN.horizon.arbres) || []) pos.push([x, z, y - H0 - 0.6, hasard(x, z) < 0.75 ? 'chene' : 'hetre', 1]);
   // les grands arbres des domaines (l'ombre des cours), plus grands que ceux des bois : des arbres
   // de cent ans, qu'on n'a jamais coupés ; et la haie basse du Batut, derrière son muret
-  for (const [x, z] of LIEU.ombrages || []) if (loin(x, z, 6)) planter(x, z, hasard(x, z) < 0.5 ? 'chene' : 'hetre', null, 1.35);
+  for (const [x, z] of LIEU.ombrages || []) if (loin(x, z, 6) && Math.hypot(x + 120, z - 135) > 9) planter(x, z, hasard(x, z) < 0.5 ? 'chene' : 'hetre', null, 1.35);
   for (const [x, z] of LIEU.haieBatut || []) planter(x, z, 'fourre');
   // la haie basse de l'allée du Pouget : taillée à hauteur de hanche, elle ne cache pas la façade
   for (const [x, z] of LIEU.fourres || []) planter(x, z, 'fourre', null, 0.4);
@@ -1226,6 +1378,15 @@ function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
   for (const r of LIEU.rues) for (let k = 0; k < r.pts.length; k += 14) { const [x, z] = r.pts[k], [xb, zb] = r.pts[Math.min(r.pts.length - 1, k + 1)], l = Math.hypot(xb - x, zb - z) || 1;
     if (hasard(x, z) > 0.45) continue; const sg = hasard(z, x) < 0.5 ? -1 : 1, e = (r.w || 3) / 2 + 2.2, px = x - (zb - z) / l * e * sg, pz = z + (xb - x) / l * e * sg;
     if (!dehors(px, pz) && libre(px, pz, 1.2) && loin(px, pz, 2.5)) planter(px, pz, 'fourre'); }
+  // les touffes : au bord des rues et des chemins (là où la faux ne passe pas), au pied des murets de
+  // la lisière, par plaques dans les prés
+  for (const r of LIEU.rues) for (let k = 3; k < r.pts.length; k += 7) { const [x, z] = r.pts[k], [xb, zb] = r.pts[Math.min(r.pts.length - 1, k + 1)], l = Math.hypot(xb - x, zb - z) || 1;
+    for (const sg of [-1, 1]) { if (hasard(x + sg, z) > 0.55) continue; const e = (r.w || 3) / 2 + 1.0 + hasard(z, x + sg) * 1.2, px = x - (zb - z) / l * e * sg, pz = z + (xb - x) / l * e * sg;
+      if (!dehors(px, pz) && !bloque(px, pz, 0.4) && !dansUneMaison(px, pz, 1) && !(lac && dansPoly(px, pz, lac)) && loin(px, pz, 0.9)) planter(px, pz, 'touffe'); } }
+  if (Zn) for (const [ox, oz, dx, dz, l, nx, nz] of [[Zn.x0, Zn.z0, 1, 0, Zn.x1 - Zn.x0, 0, 1], [Zn.x1, Zn.z0, 0, 1, Zn.z1 - Zn.z0, -1, 0], [Zn.x1, Zn.z1, -1, 0, Zn.x1 - Zn.x0, 0, -1], [Zn.x0, Zn.z1, 0, -1, Zn.z1 - Zn.z0, 1, 0]])
+    for (let t = 2; t < l; t += 3.2) { const e = 1.1 + hasard(t, ox) * 0.8, x = ox + dx * t + nx * e, z = oz + dz * t + nz * e; if (hasard(x, z) < 0.65 && !bloque(x, z, 0.4) && !(lac && dansPoly(x, z, lac)) && loin(x, z, 0.9)) planter(x, z, 'touffe'); }
+  for (let k = 0, n = 0; k < 5000 && n < 260; k++) { const cx = Zn ? Zn.x0 + hasard(k, 3) * (Zn.x1 - Zn.x0) : 0, cz = Zn ? Zn.z0 + hasard(3, k) * (Zn.z1 - Zn.z0) : 0;
+    if (!libre(cx, cz, 1)) continue; for (let j = 0; j < 5; j++) { const x = cx + (hasard(k, j) - 0.5) * 5, z = cz + (hasard(j, k) - 0.5) * 5; if (libre(x, z, 0.5) && loin(x, z, 0.9)) { planter(x, z, 'touffe'); n++; } } }
   // une InstancedMesh par essence : le tronc et le houppier
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), v = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
   for (const [nom, e] of Object.entries(ESS)) { if (!e.geo) continue; const mien = pos.filter((p) => p[3] === nom); if (!mien.length) continue;
@@ -1544,9 +1705,10 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque, PLAN }) {
   cavalier('roquette_beauregard', 'cheval_blanc.glb', 400, 150, [
     { who: 'Beauregard', text: 'D’ici, on voit tout le lac. Et on voit le Batut, de l’autre côté, qui le garde pour lui.' },
     { who: 'Beauregard', text: 'Nos troupeaux fondent comme l’eau. Ce sont eux, j’en suis sûr.' }]);
-  // l'aïeule, sur le seuil de la grande maison du Pouget, et un cheval qui broute dans sa cour
-  { const X = 185, Z = -315, rot = Math.atan2(-X, -Z), [x, z] = devant(X, Z, rot, POUGET.W / 2 + 3.4), y = hauteur(x, z);     // au pied des trois marches
-    personne(scene, 'aieule_pouget', x, y, z, rot); rond(x, z, 0.5);
+  // l'aïeule, chez elle : au bout de sa grande table, dans la salle à manger (5 octobre — STORY.md :
+  // « les familles se retrouvent chez l'aïeule du Pouget ») ; un cheval broute dans sa cour
+  { const X = 185, Z = -315, rot = Math.atan2(-X, -Z), [x, z] = devant(X, Z, rot, 0, 8.5), y = hauteur(x, z);
+    personne(scene, 'aieule_pouget', x, y, z, rot - Math.PI / 2); rond(x, z, 0.5);
     addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.5, prompt: () => 'parler à l’aïeule', fn: () => dialogue([
       { who: 'L’aïeule', text: 'Le Batut, Beauregard… Ce sont mes petits-enfants, les uns comme les autres.' },
       { who: 'L’aïeule', text: 'Avant, on se retrouvait tous ici, à la Saint-Jean. Maintenant ils se regardent par-dessus le lac.' }]) });
@@ -1637,9 +1799,12 @@ monde({
     beauregard(ctx, 400, 150, versLac(400, 150));
     pouget(ctx, 185, -315, versLac(185, -315));
     t = duree('maisons Roquette', t);
+    // les portes qu'on ferme, et ce qu'on regarde à l'étage
+    for (const p of [...PORTES, ...(LIEU.etages || [])]) ctx.addInteract(p);
     for (const m of MAISONS) domaine(ctx, m.nom, m.X, m.Z, m.rot, m.demi);
     t = duree('domaines', t);
     barrage(ctx); grevesEchouees(ctx); t = duree('barrage, ponton, barques', t);
+    garnir(ctx); t = duree('cours et prés', t);
     troupeaux(ctx);       // le modèle se charge en tâche de fond : les brebis arrivent après
     bourg(ctx);
     source(ctx);
@@ -1656,7 +1821,7 @@ monde({
     const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
     // dans une maison, la caméra reste sous le plafond et se rapproche (cf. batut.js) ; dehors, elle
     // reprend le champ que monde.js lui donne
-    { const p = player.pos, ici = DEDANS.find((d) => dansPoly(p.x, p.z, d.pts));
+    { const p = player.pos, ici = DEDANS.find((d) => p.y >= d.bas && p.y < d.plafond - 0.6 && dansPoly(p.x, p.z, d.pts));
       if (ici) { G.camMaxY = ici.plafond - 0.3; G.camBack = 3.6; G.camUp = 1.9; camDedans = true; }
       else if (camDedans) { G.camMaxY = Infinity; G.camBack = 7; G.camUp = 3.4; camDedans = false; } }
     for (const m of chevaux) m.update(dt);

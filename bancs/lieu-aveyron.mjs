@@ -35,7 +35,7 @@ const VUES_REGARD = [
   { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
   { nom: 'yeux : le Batut, depuis le départ', cam: [-116.7, 1.6, 143.8], at: [-135, 5, 170], sol: true },
   { nom: 'yeux : le Pouget, depuis la grille', cam: [169, 1.6, -287], at: [185, 6, -315], sol: true },
-  { nom: 'plongée : la grève, la barque, le pré du Batut', cam: [-30, 30, 130], at: [-110, 0, 160] },
+  { nom: 'plongée : la cour et le pré de Beauregard', cam: [455, 28, 120], at: [420, 0, 165] },
   { nom: 'yeux : le barrage, le duel', cam: [-205, 1.6, -40], at: [-235, 1.2, -110], sol: true, rue: true },
   { nom: 'dedans : le Batut, le grand salon', cam: [-135.0, 1.6, 165.9], at: [-136.0, 1.2, 173.7], sol: true },
   { nom: 'dedans : le Pouget, le salon', cam: [180.4, 1.6, -313.5], at: [180.1, 1.2, -321.4], sol: true },
@@ -113,7 +113,8 @@ try {
       for (const [x, z] of [...pts, [cible.x, cible.z]]) { for (let g = 0; g < 400; g++) { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d < 0.3) break;
           const s = Math.min(0.15, d), ok = E.tryMove(p, dx / d * s, dz / d * s, 0.4, false); p.y = H(p.x, p.z); if (!ok) { bloque++; break; } } }
       return { fin: Math.hypot(p.x - cible.x, p.z - cible.z), bloque, ou: [+p.x.toFixed(1), +p.z.toFixed(1)] }; };
-    const atteintes = cibles.map((c) => {
+    const dansMaison = (x, z) => ((L.emprises) || []).some((P) => dansP(x, z, P));
+    const atteintes = cibles.filter((c) => !dansMaison(c.x, c.z)).map((c) => {     // dans une maison : voir la sonde (la grille ne connaît pas les étages)
       let best = -1, bd = 1e9; const rr = (c.r || 2) + 1; for (let dx = -rr; dx <= rr; dx += 1) for (let dz = -rr; dz <= rr; dz += 1) { const k = id(c.x + dx, c.z + dz); if (k >= 0 && vu[k] >= 0) { const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = k; } } }
       if (best < 0) return { ...c, atteinte: false, pourquoi: 'aucun chemin libre sur la grille de 2 m' };
       const m = marcher(chemin(best), { x: centre(best)[0], z: centre(best)[1] });
@@ -181,7 +182,7 @@ try {
       sols: { echantillons: ech, flottePlus5cm: flotte, part: +(flotte / Math.max(1, ech) * 100).toFixed(1), enfoncePlus2cm: enfonce, zFighting: zfight },
       source: window.__lieu ? 'déclaré par le lieu (window.__lieu)' : 'règles de monde.js (le lieu ne déclare rien)', durees: (window.__lieu && window.__lieu.durees) || null,
       // ce que le lieu a posé : ses dépendances, ses essences, ses gens
-      pose: window.__lieu ? { domaines: window.__lieu.domaines || null, essences: window.__lieu.essences || null, affleurements: window.__lieu.affleurements ?? null, brebis: window.__lieu.brebis ?? null, gens: window.__lieu.gens || null } : null };
+      pose: window.__lieu ? { domaines: window.__lieu.domaines || null, essences: window.__lieu.essences || null, affleurements: window.__lieu.affleurements ?? null, brebis: window.__lieu.brebis ?? null, objets: window.__lieu.objets ?? null, gens: window.__lieu.gens || null } : null };
   });
 
   // ---------------- la planche fixe de 8 vues ----------------
@@ -222,12 +223,37 @@ try {
     for (const [x, z] of [[-135, 170], [-66, 97], [-230, -95], [-269, -339], [-175, -325], [185, -315], [283, 12], [400, 150], [470, 440], [462, -232]]) { poser(x, z); await new Promise((r) => setTimeout(r, 400)); }
     poser(420, -190); await new Promise((r) => setTimeout(r, 1200));
     const c = document.getElementById('minimap'); return c ? c.toDataURL('image/png') : null; });
+  // LA SONDE DES MAISONS (5 octobre : on entre, on monte) — marcher pour de vrai, avec les règles du
+  // moteur : tryMove au rayon de Camille (0,5 m), getH à la hauteur où l'on est (le banc de marche
+  // ci-dessus lit la hauteur sans elle, et se retrouvait d'office à l'étage dans une maison). Pour
+  // chaque maison, un parcours de la porte d'entrée à la chambre de l'étage, par l'escalier.
+  const sonde = await page.evaluate(async () => {
+    const E = await import(performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.includes('/engine.js?v=')));
+    const MAISONS = {
+      batut: [-135, 170, [[9.5, 9], [9.5, 2], [6.5, 0.5], [3, 0], [3.1, 2.4], [-1.8, 2.4], [-1.9, 3.5], [-3.25, 3.5], [-3.25, -2.4], [-1.5, -2.6], [1.6, -0.9]]],
+      pouget: [185, -315, [[0, 10], [0, 3.6], [0, 2.0], [0.4, 1.0], [1.4, 0.9], [1.4, -3.4], [0, -3.4], [0, 1.45], [-1.0, 1.45], [-1.4, 0.6], [-3.4, 0.6], [-6.5, -0.8]]],
+      beauregard: [400, 150, [[0, 11], [0, 8.6], [0, 7.5], [0.9, 6.6], [0.9, 5.0], [0.15, 3.9], [0.15, 3.2], [1.5, 2.6], [1.5, -3.2], [0, -3.2], [0, 1.8], [1.3, 1.8], [1.6, 1.0], [3.6, 1.0], [5.2, 1.4]]],
+    };
+    const res = {};
+    for (const [nom, [X, Z, pts]] of Object.entries(MAISONS)) {
+      const rot = Math.atan2(-X, -Z), c = Math.cos(rot), s = Math.sin(rot), m = ([lx, lz]) => [X + lx * c + lz * s, Z - lx * s + lz * c];
+      const [x0, z0] = m(pts[0]), p = new E.THREE.Vector3(x0, 0, z0); p.y = E.getH(x0, z0);
+      let ok = true, ou = null;
+      for (const q of pts.slice(1)) { const [tx, tz] = m(q); let bloque = 0;
+        for (let k = 0; k < 2000; k++) { const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz); if (d < 0.15) break;
+          const st = Math.min(0.12, d); if (!E.tryMove(p, dx / d * st, dz / d * st, 0.5, false)) { if (++bloque > 20) break; } else p.y = E.getH(p.x, p.z, p.y); }
+        if (Math.hypot(tx - p.x, tz - p.z) > 0.4) { ok = false; ou = { vers: q, local: [+((p.x - X) * c - (p.z - Z) * s).toFixed(2), +((p.x - X) * s + (p.z - Z) * c).toFixed(2)], y: +(p.y - E.getH(p.x, p.z, -9)).toFixed(2) }; break; } }
+      res[nom] = { arrivee: ok, hauteur: +(p.y - E.getH(p.x, p.z, -9)).toFixed(2), arret: ou };
+    }
+    return res;
+  });
+  console.log('sonde des maisons :', JSON.stringify(sonde));
   const nom = DIR + 'lieu-aveyron-' + JOUR + ETIQUETTE;
   fs.writeFileSync(nom + '-carte.png', Buffer.from(res.carte.split(',')[1], 'base64'));
   fs.writeFileSync(nom + '-vues.png', Buffer.from(planche.split(',')[1], 'base64'));
   if (minicarte) fs.writeFileSync(nom + '-minicarte.png', Buffer.from(minicarte.split(',')[1], 'base64'));
   delete res.carte;
-  const sortie = { date: new Date().toISOString(), chargement_s: charge, erreurs: erreurs.slice(0, 20), ...res };
+  const sortie = { date: new Date().toISOString(), chargement_s: charge, erreurs: erreurs.slice(0, 20), sonde, ...res };
   fs.writeFileSync(nom + '.json', JSON.stringify(sortie, null, 1));
   const p = res.praticabilite, b = res.bati, s = res.sols, ok = res.cibles.filter((c) => c.atteinte).length;
   console.log(`chargé en ${charge.toFixed(1)} s ; ${res.source}${res.durees ? ' ; étapes du lieu (ms) ' + JSON.stringify(res.durees) : ''}`);
