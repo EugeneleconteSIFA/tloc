@@ -34,6 +34,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 Object.assign(PH, {
   granit_lozere: { tuile: 2.0, maps: ['couleur', 'normale', 'rugosite'], repli: 0x9a958a },
   lauze_lozere:  { tuile: 3.0, maps: ['couleur', 'normale', 'rugosite'], repli: 0x6a6866 },
+  // l'enrobé et le dallage de granit du bourg de Villefort : déjà dans le dépôt, inscrits comme dans
+  // aveyron.js (mêmes valeurs ; la seconde inscription ne change rien)
+  asphalt_02:      { tuile: 3.0, maps: ['couleur', 'normale', 'rugosite'], repli: 0x8a8a88 },
+  granite_tile_03: { tuile: 1.8, maps: ['couleur', 'normale'], repli: 0x8a8580 },
 });
 
 // ce que le lieu a bâti, pour le banc (bancs/lieu-lozere.mjs)
@@ -481,6 +485,107 @@ function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
   BILAN.bouts = murs;
 }
 
+// Le bourg dense : au moins 6 bâtiments dans les neuf cases de 25 m autour du point. C'est là que le
+// sol est pavé de mur à mur et que les ruelles sont dallées ; hors de lui, des chemins et des prés.
+function densite(maisons) {
+  const n = new Map();
+  for (const b of maisons) { const cx = b.pts.reduce((s, p) => s + p[0], 0) / b.pts.length, cz = b.pts.reduce((s, p) => s + p[1], 0) / b.pts.length, k = Math.floor(cx / 25) + ',' + Math.floor(cz / 25); n.set(k, (n.get(k) || 0) + 1); }
+  // la réponse ne dépend que de la case de 25 m : gardée en mémoire (le sol du bourg la demande
+  // 140 000 fois)
+  const memo = new Map();
+  return (x, z) => { const i = Math.floor(x / 25), j = Math.floor(z / 25), k = i + ',' + j; let r = memo.get(k);
+    if (r === undefined) { let s = 0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) s += n.get((i + a) + ',' + (j + b)) || 0; memo.set(k, r = s >= 6); }
+    return r; };
+}
+
+// Le sol du bourg (réalisme, consigne V : « ce qu'on a sous les pieds d'abord »). Avant, de l'herbe
+// jusqu'au pied des façades, au milieu du bourg. Maintenant, dans le bourg dense :
+// - un enrobé de mur à mur, qui borde les rues de 3 m et le bâti de 3,5 m (pas dans les jardins
+//   d'OSM ; à 2 m, des lanières d'herbe d'un mètre restaient entre deux rues). Son contour est découpé au pas de 1,25 m (marching squares, interpolé sur les arêtes) :
+//   il suit une courbe, pas des marches de cases ;
+// - des trottoirs de 14 cm et 1,6 m le long de la départementale (r ≥ 3 : la route de Mende et
+//   l'avenue des Cévennes), avec la bordure de granit en face verticale, coupés aux carrefours. Les
+//   vieilles rues n'en ont pas : à Villefort comme ailleurs, ce sont celles de la route.
+// Rend la hauteur du trottoir en (x, z), ou null (pour solLieu : on y marche à 14 cm).
+function solDuBourg(ctx, rs, { emprise: E, dense, jardins }) {
+  const h = ctx.dessin, corps = BILAN.corps, P = 1.25;
+  // la distance au bâti, jusqu'à 4 m
+  const bC = corps.map((c) => { const xs = c.rect.map((p) => p[0]), zs = c.rect.map((p) => p[1]); return [Math.min(...xs) - 4, Math.min(...zs) - 4, Math.max(...xs) + 4, Math.max(...zs) + 4]; });
+  const cAut = grille(corps, (_, i) => bC[i]);
+  const fermes = corps.map((c) => [...c.rect, c.rect[0]]);
+  const dBati = (x, z) => { let d = 4; for (const i of cAut(x, z)) { if (x < bC[i][0] || x > bC[i][2] || z < bC[i][1] || z > bC[i][3]) continue;
+    if (dansPoly(x, z, corps[i].rect)) return 0; d = Math.min(d, distLigne(x, z, fermes[i])); } return d; };
+  // la distance au bord des rues, jusqu'à 4 m
+  const pr = rs.flatMap((c, id) => densifier(c.pts, 1).map(([x, z]) => [x, z, largeur(c) / 2, id]));
+  const rAut = grille(pr, ([x, z, w]) => [x - w - 4, z - w - 4, x + w + 4, z + w + 4]);
+  const dRue = (x, z, sauf = -1) => { let d = 4; for (const i of rAut(x, z)) { const [a, b, w, id] = pr[i]; if (id !== sauf) d = Math.min(d, Math.hypot(a - x, b - z) - w); } return d; };
+  const jard = jardins.map((j) => { const xs = j.pts.map((p) => p[0]), zs = j.pts.map((p) => p[1]); return { pts: j.pts, b: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)] }; });
+  const auJardin = (x, z) => jard.some((j) => x > j.b[0] && x < j.b[2] && z > j.b[1] && z < j.b[3] && dansPoly(x, z, j.pts));
+  // hors du bourg dense, un accotement de 1,6 m le long des rues : il ferme les lanières d'herbe
+  // de moins de 3 m entre deux routes (au pont Saint-Jean)
+  const val = (x, z) => auJardin(x, z) ? -1 : !dense(x, z) ? 1.6 - dRue(x, z) : Math.max(3.5 - dBati(x, z), 3 - dRue(x, z));
+
+  // 1. l'enrobé : les valeurs aux nœuds, puis chaque case découpée sur val = 0
+  const nx = Math.ceil((E.x1 - E.x0) / P) + 1, nz = Math.ceil((E.z1 - E.z0) / P) + 1, V2 = new Float32Array(nx * nz);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) V2[j * nx + i] = val(E.x0 + i * P, E.z0 + j * P);
+  const pos = [], uv = [];
+  const sommet = (x, z) => { pos.push(x, h(x, z) + 0.012, z); uv.push(x, z); };
+  for (let j = 0; j + 1 < nz; j++) for (let i = 0; i + 1 < nx; i++) {
+    const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => [E.x0 + a * P, E.z0 + b * P, V2[b * nx + a]]);
+    if (c.every((q) => q[2] <= 0)) continue;
+    const poly = [];
+    for (let k = 0; k < 4; k++) { const a = c[k], b = c[(k + 1) % 4];
+      if (a[2] > 0) poly.push([a[0], a[1]]);
+      if ((a[2] > 0) !== (b[2] > 0)) { const t = a[2] / (a[2] - b[2]); poly.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); } }
+    // faces vers le ciel ; un triangle plat (deux points confondus au ras d'un coin) aurait une
+    // normale nulle, d'où un NaN au shader : on le saute
+    for (let k = 1; k + 1 < poly.length; k++) { const [a, b, c2] = [poly[0], poly[k + 1], poly[k]];
+      if (Math.abs((b[0] - a[0]) * (c2[1] - a[1]) - (c2[0] - a[0]) * (b[1] - a[1])) < 1e-4) continue;
+      for (const q of [a, b, c2]) sommet(...q); }
+  }
+  if (pos.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, phMat('asphalt_02', 1, 1, { color: 0xa8a49c, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.receiveShadow = true; ctx.scene.add(m); }
+
+  // 2. les trottoirs de la départementale : un ruban de chaque côté, coupé là où une autre rue
+  //    arrive (le carrefour) ou où le bâti avance sur lui ; la bordure, face verticale côté chaussée
+  const tp = [], ti = [], tu = [], bp = [], bi = [], bu = [], zones = [], HT = 0.14, LT = 1.6;
+  rs.forEach((c, id) => { if ((c.r || 0) < 3) return;
+    const pts = densifier(c.pts, 1), w = largeur(c) / 2;
+    for (const sg of [-1, 1]) {
+      let run = [];
+      const fin = () => { if (run.length >= 3) {
+          const b0 = tp.length / 3, c0 = bp.length / 3;
+          run.forEach(([x, z, nx2, nz2], k) => {
+            const xi = x + nx2 * w, zi = z + nz2 * w, xo = x + nx2 * (w + LT), zo = z + nz2 * (w + LT), yi = h(xi, zi), yo = h(xo, zo);
+            tp.push(xi, yi + HT, zi, xo, yo + HT, zo); tu.push(0, k, LT, k);
+            bp.push(xi, yi + 0.015, zi, xi, yi + HT, zi); bu.push(k, 0, k, HT);
+            if (k) { const a = b0 + (k - 1) * 2, e = c0 + (k - 1) * 2;
+              ti.push(...(sg > 0 ? [a, a + 1, a + 2, a + 1, a + 3, a + 2] : [a, a + 2, a + 1, a + 1, a + 2, a + 3]));   // vers le ciel
+              // la bordure : UNE face, tournée vers la chaussée. Ses deux faces sur les mêmes sommets
+              // annulaient les normales (vecteur nul, NaN au shader) et le flou du post-traitement
+              // noircissait tout l'écran
+              bi.push(...(sg > 0 ? [e, e + 1, e + 2, e + 1, e + 3, e + 2] : [e, e + 2, e + 1, e + 1, e + 2, e + 3]));
+              const [xa, za, na, ma] = run[k - 1];
+              zones.push([[xa + na * w, za + ma * w], [x + nx2 * w, z + nz2 * w], [xo, zo], [xa + na * (w + LT), za + ma * (w + LT)]]); } });
+        } run = []; };
+      for (let k = 0; k < pts.length; k++) {
+        const [x, z] = pts[k], [xa, za] = pts[Math.max(0, k - 1)], [xb, zb] = pts[Math.min(pts.length - 1, k + 1)], l = Math.hypot(xb - xa, zb - za) || 1;
+        const nx2 = -(zb - za) / l * sg, nz2 = (xb - xa) / l * sg, xm = x + nx2 * (w + LT / 2), zm = z + nz2 * (w + LT / 2);
+        const ok = dense(xm, zm) && xm > E.x0 && xm < E.x1 && zm > E.z0 && zm < E.z1 && dBati(xm, zm) > 0.3 && dRue(xm, zm, id) > 0.5;
+        if (ok) run.push([x, z, nx2, nz2]); else fin();
+      }
+      fin();
+    }
+  });
+  const pierre = phMat('granite_tile_03', 1, 1, { color: 0xb4b0a8 });
+  for (const [p, i, u, m] of [[tp, ti, tu, pierre], [bp, bi, bu, pierre]]) if (p.length) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); g.setIndex(i); g.computeVertexNormals();
+    const o = new THREE.Mesh(g, m); o.receiveShadow = true; ctx.scene.add(o); }
+  const zAut = grille(zones, (q) => { const xs = q.map((p) => p[0]), zs = q.map((p) => p[1]); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
+  BILAN.trottoirs = zones.length;
+  return (x, z) => zAut(x, z).some((k) => dansPoly(x, z, zones[k])) ? h(x, z) + HT : null;
+}
+
 // Les gens du bourg (consigne V, « des lieux jouables ») : Villefort est « l'endroit où l'on parle aux
 // gens » (SCENARIO § 14). Des gens de passage seulement, avec les rôles et villageois de pnj.js : ceux de
 // l'enquête du chien (la boulangère, le chef de gare, les enfants près du lac) attendent Eugène. Ce
@@ -576,8 +681,15 @@ const FICHES = {
     solLieu(x, z) { return FICHES.villefort._sol ? FICHES.villefort._sol(x, z) : null; },
     plus(ctx) {
       const { PLAN, CADRE, scene } = ctx;
-      // les rues du bourg goudronnées (gris clair), les chemins de terre
-      const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['gravier', 0xb4b0a8] : ['rocky_trail', 0xb8ab90]);
+      // les rues : l'enrobé pour la route et les rues (r ≥ 2) ; dans le bourg dense, les ruelles dallées
+      // de granit ; dehors, les chemins de terre. Le « gravier » d'avant se lisait comme un ruban noir.
+      const dense = densite(PLAN.maisons), milieu = (c) => c.pts[Math.floor(c.pts.length / 2)];
+      const rs = preparer(ctx, FICHES.villefort, (c) => c.r >= 2 ? ['asphalt_02', 0x9a9894] : dense(...milieu(c)) ? ['granite_tile_03', 0xb4b8bc] : ['rocky_trail', 0xb8ab90]);
+      const t0s = performance.now();
+      const trottoir = solDuBourg(ctx, rs, { emprise: FICHES.villefort.emprise, dense, jardins: PLAN.verdure.jardins || [] });
+      BILAN.msSol = Math.round(performance.now() - t0s);   // règle 8 : ≤ 300 ms
+      const terrePlein = FICHES.villefort._sol;
+      FICHES.villefort._sol = (x, z) => { const a = terrePlein(x, z), b = trottoir(x, z); return a === null ? b : b === null ? a : Math.max(a, b); };
       voieFerree(ctx);
       // les quais de la gare : une dalle surélevée
       for (const q of PLAN.fer.quais.filter((q) => dansCadre(CADRE, q.pts) && q.pts.length > 2)) {
