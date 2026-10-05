@@ -16,6 +16,7 @@ import * as PNJ from './pnj.js';
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
   addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state } from './engine.js?v=41';
 import { DONJON } from './carte.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const R_ILE = 50, R_COUR = 26, R_TOUR = 10, EP_TOUR = 1.4, H_TOUR = 72;
 const MER = -1.3;                                    // la mer figée, sous le bord de l'île
@@ -30,6 +31,29 @@ const PORTES = [
 ];
 const angPorte = (i) => i * TAU / PORTES.length;      // 0 = sud (+z), puis dans le sens trigonométrique vu d'en haut
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// (5 octobre) DES UV EN MÈTRES. Le sol de l'île et la cour sont des anneaux : leurs UV
+// d'origine tendaient UNE tuile de texture sur toute l'île (112 m), d'où l'herbe floue et les
+// grandes dalles sombres. Ici, u = x et v = z : phMat(slug, 1, 1) retrouve l'échelle réelle.
+function uvMetres(g) {
+  const p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i), p.getZ(i));
+  uv.needsUpdate = true; return g;
+}
+// Des morceaux d'un même matériau, chacun posé par sa matrice, en UN maillage : la couronne de
+// la tour, ses contreforts, les rochers de la rive, le ponton comptent des centaines de pièces.
+// `metres` : des UV en mètres, projetées selon l'orientation de chaque face (le dessus en x,z,
+// les côtés en longueur, hauteur) — les UV d'une boîte vont de 0 à 1 sur chaque face quelle que
+// soit sa taille, et la pierre d'un flanc de jetée de 11 m s'y étirait en fausses planches.
+function fusion(morceaux, m, ombre = true, metres = false) {
+  const g = mergeGeometries(morceaux.map(([geo, M]) => { const q = geo.index ? geo.toNonIndexed() : geo.clone(); q.deleteAttribute('uv2'); return q.applyMatrix4(M); }));
+  if (metres) { const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) { const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i)), nz = Math.abs(n.getZ(i));
+      if (ny > 0.6) uv.setXY(i, p.getX(i), p.getZ(i)); else if (nx > nz) uv.setXY(i, p.getZ(i), p.getY(i)); else uv.setXY(i, p.getX(i), p.getY(i)); } }
+  const o = new THREE.Mesh(g, m); o.castShadow = ombre; o.receiveShadow = true; scene.add(o); return o;
+}
+const MAT4 = (x, y, z, ry = 0, rx = 0, rz = 0, sx = 1, sy = 1, sz = 1) => new THREE.Matrix4().compose(V(x, y, z),
+  new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), V(sx, sy, sz));
 
 // hauteur du sol : le plateau plat jusqu'à la rive, puis la roche qui plonge dans la mer
 function hauteur(x, z) {
@@ -150,11 +174,14 @@ function build() {
   renderer.toneMappingExposure = 1.0; bloom.strength = 0.22;
   G.camBack = 7; G.camUp = 3.4;
 
-  const roche = phMat('rocher_01', 4, 4, { color: 0x9a9088 });
-  const herbe = phMat('withered_grass', 5, 5, { color: 0xa8a080 });
-  const pave = phMat('worn_tile_floor', 4, 4, { color: 0xb0a898 });
-  const pierre = phMat('old_stone_wall_02', 4, 4, { color: 0xc8beac });
-  const taille = phMat('old_stone_wall_02', 2, 2, { color: 0xddd3c0 });
+  // (5 octobre) LES TEINTES. Sous le soleil doré du crépuscule, les pierres teintées sable
+  // viraient au brun orangé ; Eugène aime le violet pastel de la première planche : les pierres
+  // passent au gris lilas, le soleil leur rend la chaleur.
+  const roche = phMat('rocher_01', 1, 1, { color: 0x8e8890 });
+  const herbe = phMat('grass_ground', 1, 1, { color: 0xb6b69c });
+  const pave = phMat('worn_tile_floor', 1, 1, { color: 0xc4bcc2 });
+  const pierre = phMat('old_stone_wall_02', 4, 4, { color: 0xc0b8c4 });
+  const taille = phMat('old_stone_wall_02', 2, 2, { color: 0xd8d0d6 });
   const bois = phMat('wood_cabinet_worn_long', 2, 2, { color: 0x5a4430 });
   const fer = mat(0x3a3a40, { metalness: 0.8, roughness: 0.45 });
 
@@ -165,36 +192,53 @@ function build() {
   // ---------- l'île : le plateau, la rive de roche ----------
   // un anneau maillé en 40 cercles, pas un disque : CircleGeometry n'a que son centre et son
   // bord, et le relief de la rive en faisait un cône qui plongeait sous la mer dès 12 m
-  { const g = new THREE.RingGeometry(0, R_ILE + 6, 96, 40); g.rotateX(-Math.PI / 2);
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), r = Math.hypot(x, z);
-      // la rive n'est pas un cercle : des avancées et des criques, figées comme le reste
-      const k = r > R_ILE - 10 ? 1 + 0.05 * Math.sin(a * 5) + 0.03 * Math.sin(a * 13 + 1) : 1;
-      p.setX(i, x * k); p.setZ(i, z * k); p.setY(i, hauteur(x, z) - (r > R_ILE + 2 ? 2 : 0)); }
-    g.computeVertexNormals();
-    const sol = new THREE.Mesh(g, herbe); sol.receiveShadow = true; scene.add(sol);
-    // la rive : une couronne de rochers à demi noyés
-    for (let k = 0; k < 70; k++) { const a = k / 70 * TAU + Math.sin(k * 7.3) * 0.04, r = R_ILE + 1 + Math.sin(k * 3.1) * 2.5;
-      if (Math.abs(Math.atan2(Math.sin(a - A_PONTON), Math.cos(a - A_PONTON))) < 0.13) continue;   // le ponton du passeur passe là
-      const s = 1.6 + Math.abs(Math.sin(k * 5.7)) * 2.6;
-      const b = mesh(new THREE.DodecahedronGeometry(s, 1), roche, Math.sin(a) * r, MER - s * 0.25, Math.cos(a) * r);
-      b.scale.set(1, 0.55 + Math.abs(Math.sin(k)) * 0.35, 1.2); b.rotation.set(k, k * 2.1, 0); b.castShadow = b.receiveShadow = true; scene.add(b); } }
+  // Deux anneaux sur le même relief : la roche de la rive, d'un bord à l'autre, et l'herbe du
+  // plateau par-dessus, qui s'efface sur ses trois derniers mètres (opacité de sommet).
+  { const anneau = (r0, r1, nr, dy) => { const g = new THREE.RingGeometry(r0, r1, 120, nr); g.rotateX(-Math.PI / 2);
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), r = Math.hypot(x, z);
+        // la rive n'est pas un cercle : des avancées et des criques, figées comme le reste
+        const k = r > R_ILE - 10 ? 1 + 0.05 * Math.sin(a * 5) + 0.03 * Math.sin(a * 13 + 1) : 1;
+        p.setX(i, x * k); p.setZ(i, z * k); p.setY(i, hauteur(x, z) - (r > R_ILE + 2 ? 2 : 0) + dy); }
+      g.computeVertexNormals(); return uvMetres(g); };
+    const rive = new THREE.Mesh(anneau(R_ILE - 9, R_ILE + 6, 16, 0), roche); rive.receiveShadow = true; scene.add(rive);
+    const g = anneau(0, R_ILE - 3, 48, 0.02), p = g.attributes.position, col = [];
+    for (let i = 0; i < p.count; i++) { const r = Math.hypot(p.getX(i), p.getZ(i)), a = Math.atan2(p.getZ(i), p.getX(i));
+      col.push(1, 1, 1, Math.max(0, Math.min(1, (R_ILE - 3.2 + Math.sin(a * 9) * 0.8 - r) / 3))); }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    herbe.transparent = true; herbe.vertexColors = true;
+    const sol = new THREE.Mesh(g, herbe); sol.receiveShadow = true; sol.renderOrder = 1; scene.add(sol);
+    // LA RIVE : une couronne de rochers à demi noyés. C'étaient des dodécaèdres aplatis — des
+    // chapeaux posés sur l'eau ; ce sont des blocs bosselés (un icosaèdre dont chaque sommet
+    // est poussé ou rentré), plus enfoncés, tous en un seul maillage.
+    const blocs = [];
+    for (let k = 0; k < 84; k++) { const a = k / 84 * TAU + Math.sin(k * 7.3) * 0.04, r = R_ILE + 0.5 + Math.sin(k * 3.1) * 2.8;
+      if (Math.abs(Math.atan2(Math.sin(a - A_PONTON), Math.cos(a - A_PONTON))) < 0.16) continue;   // le port passe là
+      const s = 1.4 + Math.abs(Math.sin(k * 5.7)) * 2.6, ge = new THREE.IcosahedronGeometry(1, 2), q = ge.attributes.position;
+      for (let i = 0; i < q.count; i++) { const v = V(q.getX(i), q.getY(i), q.getZ(i)), n = 1 + 0.22 * Math.sin(v.x * 3.1 + k) * Math.sin(v.y * 2.7 + k * 0.7) + 0.12 * Math.sin(v.z * 5.3 + k * 1.3);
+        q.setXYZ(i, v.x * n, v.y * n * 0.62, v.z * n); }
+      ge.computeVertexNormals();
+      blocs.push([ge, MAT4(Math.sin(a) * r, MER - s * 0.32, Math.cos(a) * r, k * 2.1, 0.15 * Math.sin(k), 0.1 * Math.cos(k), s, s, s * 1.25)]); }
+    fusion(blocs, roche); }
 
   // ---------- la cour ronde ----------
-  { const c = new THREE.Mesh(new THREE.RingGeometry(R_TOUR, R_COUR + 1.5, 96, 1), pave); c.rotation.x = -Math.PI / 2; c.position.y = 0.03; c.receiveShadow = true; scene.add(c);
+  { const gc = new THREE.RingGeometry(R_TOUR, R_COUR + 1.5, 120, 8); gc.rotateX(-Math.PI / 2); uvMetres(gc);
+    const c = new THREE.Mesh(gc, pave); c.position.y = 0.03; c.receiveShadow = true; scene.add(c);
+    // trois cercles de pierre de taille dans le dallage : la cour se lit comme un plan tracé
+    for (const r of [R_TOUR + 4.5, R_TOUR + 9.5]) { const b = new THREE.Mesh(new THREE.TorusGeometry(r, 0.22, 4, 120), taille); b.rotation.x = Math.PI / 2; b.position.y = 0.04; b.scale.z = 0.18; b.receiveShadow = true; scene.add(b); }
     const b = new THREE.Mesh(new THREE.TorusGeometry(R_COUR + 1.5, 0.28, 6, 120), taille); b.rotation.x = Math.PI / 2; b.position.y = 0.06; b.scale.z = 0.4; scene.add(b); }
 
   // ---------- la tour creuse ----------
   { const porte = 0.22;                                       // demi-ouverture de la porte, en radians (côté sud)
     const mur = new THREE.Mesh(new THREE.CylinderGeometry(R_TOUR, R_TOUR + 0.6, H_TOUR, 72, 12, true, porte, TAU - 2 * porte), pierre);
     // la texture court sur tout le tour (63 m) et toute la hauteur : à l'échelle, sinon les pierres s'étirent
-    mur.position.y = H_TOUR / 2; mur.material = phMat('old_stone_wall_02', TAU * R_TOUR, H_TOUR, { color: 0xc8beac, side: THREE.DoubleSide });
+    mur.position.y = H_TOUR / 2; mur.material = phMat('old_stone_wall_02', TAU * R_TOUR, H_TOUR, { color: 0xbab2c8, side: THREE.DoubleSide });
     mur.castShadow = mur.receiveShadow = true; scene.add(mur);
-    const dedans = new THREE.Mesh(new THREE.CylinderGeometry(R_TOUR - EP_TOUR, R_TOUR - EP_TOUR, H_TOUR, 72, 12, true, porte, TAU - 2 * porte), phMat('old_stone_wall_02', TAU * (R_TOUR - EP_TOUR), H_TOUR, { color: 0xa8a090, side: THREE.BackSide }));
+    const dedans = new THREE.Mesh(new THREE.CylinderGeometry(R_TOUR - EP_TOUR, R_TOUR - EP_TOUR, H_TOUR, 72, 12, true, porte, TAU - 2 * porte), phMat('old_stone_wall_02', TAU * (R_TOUR - EP_TOUR), H_TOUR, { color: 0xa49eb0, side: THREE.BackSide }));
     dedans.position.y = H_TOUR / 2; dedans.receiveShadow = true; scene.add(dedans);
     // le linteau au-dessus de la porte, et les deux joues
     const lin = new THREE.Mesh(new THREE.CylinderGeometry(R_TOUR + 0.05, R_TOUR + 0.6, H_TOUR - 9, 24, 1, true, -porte, 2 * porte), pierre);
-    lin.position.y = 9 + (H_TOUR - 9) / 2; lin.material = phMat('old_stone_wall_02', 2 * porte * R_TOUR, H_TOUR - 9, { color: 0xc8beac, side: THREE.DoubleSide }); scene.add(lin);
+    lin.position.y = 9 + (H_TOUR - 9) / 2; lin.material = phMat('old_stone_wall_02', 2 * porte * R_TOUR, H_TOUR - 9, { color: 0xbab2c8, side: THREE.DoubleSide }); scene.add(lin);
     for (const s of [-1, 1]) { const a = s * porte;
       const j = mesh(boxG(EP_TOUR + 0.6, 9, 0.9), taille, Math.sin(a) * (R_TOUR - EP_TOUR / 2), 4.5, Math.cos(a) * (R_TOUR - EP_TOUR / 2)); j.rotation.y = a; j.castShadow = true; scene.add(j); }
     // bandeaux de pierre claire à chaque étage, dehors
@@ -206,6 +250,39 @@ function build() {
       for (const a of [k * 0.5, k * 0.5 + Math.PI / 2]) { const po = mesh(boxG(0.5, 0.6, (R_TOUR - EP_TOUR) * 2), bois, 0, y + 0.5, 0); po.rotation.y = a; po.castShadow = true; scene.add(po); }
       const cr = mesh(new THREE.TorusGeometry(0.28, 0.07, 6, 14, Math.PI * 1.4), fer, 0, y - 0.1, 0); cr.rotation.z = Math.PI * 0.8; scene.add(cr);
       scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), fer, 0, y + 0.15, 0)); }
+    // (5 octobre) CE QUI FAIT UNE TOUR. C'était un cylindre lisse de 72 m, sans pied ni tête :
+    // un silo. Elle prend un soubassement à deux degrés, douze contreforts qui montent en
+    // s'amincissant, une baie étroite à chaque étage (là où pendront les cloches), et un
+    // couronnement sur corbeaux, à créneaux, d'où l'on verrait les six mondes.
+    { const ouvert = (a) => Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < porte + 0.08;
+      const socle = [], contreforts = [], baies = [], couronne = [];
+      for (const [r, h] of [[R_TOUR + 1.6, 0.55], [R_TOUR + 1.0, 1.25]])
+        socle.push([new THREE.CylinderGeometry(r, r + 0.15, h, 72, 1, false, porte + 0.06, TAU - 2 * porte - 0.12), MAT4(0, h / 2, 0)]);
+      for (let c = 0; c < 12; c++) { const a = (c + 0.5) / 12 * TAU; if (ouvert(a)) continue;
+        for (const [y0, y1, w, d] of [[0, 24, 1.5, 1.2], [24, 48, 1.2, 0.9], [48, H_TOUR - 4, 0.9, 0.6]]) {
+          const r = R_TOUR + 0.35 + d / 2; contreforts.push([new THREE.BoxGeometry(w, y1 - y0, d), MAT4(Math.sin(a) * r, (y0 + y1) / 2, Math.cos(a) * r, a)]);
+          // le glacis en haut de chaque ressaut : le contrefort s'amincit par une pente, pas une marche
+          contreforts.push([new THREE.BoxGeometry(w, 0.9, d * 0.8), MAT4(Math.sin(a) * (r + 0.05), y1 - 0.1, Math.cos(a) * (r + 0.05), a, -0.55)]); } }
+      // (entre deux contreforts : à (c + 0,25) / 6, elles tombaient pile dans leur axe, cachées)
+      for (let k = 0; k < 6; k++) for (let c = 0; c < 6; c++) { const a = (c + (k % 2) * 0.5) / 6 * TAU; if (ouvert(a)) continue;
+        const y = 14 + k * 11 + 1.2, r = R_TOUR + 0.62;
+        baies.push([new THREE.PlaneGeometry(0.95, 3.0), MAT4(Math.sin(a) * r, y, Math.cos(a) * r, a)]);
+        couronne.push([new THREE.BoxGeometry(1.5, 0.25, 0.45), MAT4(Math.sin(a) * (r + 0.1), y - 1.6, Math.cos(a) * (r + 0.1), a)]);
+        couronne.push([new THREE.CylinderGeometry(0.75, 0.75, 0.4, 12, 1, false, -Math.PI / 2, Math.PI), MAT4(Math.sin(a) * (r + 0.05), y + 1.5, Math.cos(a) * (r + 0.05), a, Math.PI / 2, 0, 1, 1, 0.6)]); }
+      // le couronnement : quarante-huit corbeaux, un parapet en encorbellement, vingt-quatre merlons
+      for (let c = 0; c < 48; c++) { const a = c / 48 * TAU;
+        couronne.push([new THREE.BoxGeometry(0.5, 1.4, 1.5), MAT4(Math.sin(a) * (R_TOUR + 0.8), H_TOUR - 2.2, Math.cos(a) * (R_TOUR + 0.8), a)]); }
+      couronne.push([new THREE.CylinderGeometry(R_TOUR + 1.6, R_TOUR + 1.6, 2.6, 72, 1, true), MAT4(0, H_TOUR - 0.2, 0)]);
+      couronne.push([new THREE.CylinderGeometry(R_TOUR + 1.25, R_TOUR + 1.25, 2.6, 72, 1, true), MAT4(0, H_TOUR - 0.2, 0)]);
+      couronne.push([new THREE.RingGeometry(R_TOUR - 0.2, R_TOUR + 1.6, 72, 1), MAT4(0, H_TOUR - 1.5, 0, 0, Math.PI / 2)]);
+      for (let c = 0; c < 24; c++) { const a = (c + 0.5) / 24 * TAU;
+        couronne.push([new THREE.BoxGeometry(1.5, 1.3, 0.5), MAT4(Math.sin(a) * (R_TOUR + 1.42), H_TOUR + 1.75, Math.cos(a) * (R_TOUR + 1.42), a)]); }
+      fusion(socle, phMat('old_stone_wall_02', 1, 1, { color: 0xb8b0ba }), true, true);
+      fusion(contreforts, phMat('old_stone_wall_02', 1, 1, { color: 0xc6bec8 }), true, true);
+      fusion(couronne, phMat('old_stone_wall_02', 1, 1, { color: 0xd8d0d6, side: THREE.DoubleSide }), true, true);
+      // (une pierre teintée presque noire, l'embrasure dans l'ombre : un aplat uni, le moteur le
+      // repeint — il n'en veut pas, cf. le style réaliste)
+      fusion(baies, phMat('old_stone_wall_02', 1, 1, { color: 0x1c1820, roughness: 1, side: THREE.DoubleSide }), false, true).name = 'baies-de-la-tour'; }
     // collisions : le mur de la tour, sauf la porte
     for (let c = 0; c < 40; c++) { const a = (c + 0.5) / 40 * TAU; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < porte + 0.05) continue;
       const x = Math.sin(a) * (R_TOUR - EP_TOUR / 2), z = Math.cos(a) * (R_TOUR - EP_TOUR / 2); addCap(x, z, x, z, 1.0); } }
@@ -219,10 +296,12 @@ function build() {
     p.position.set(Math.sin(a) * r, 1.9, Math.cos(a) * r); p.rotation.y = a; p.castShadow = true; scene.add(p); }
 
   // ---------- les six portes ----------
+  const PILIER = phMat('old_stone_wall_02', 1.2, 5.2, { color: 0xd8d0d6 });
   PORTES.forEach((P, i) => {
     const a = angPorte(i), g = new THREE.Group(); g.position.set(Math.sin(a) * R_COUR, 0, Math.cos(a) * R_COUR); g.rotation.y = a; scene.add(g);
     // deux piliers, un arc plein cintre, une marche ; le dedans de l'arc : la porte du monde
-    for (const s of [-1, 1]) { g.add(mesh(boxG(1.1, 5.2, 1.3), taille, s * 2.35, 2.6, 0)); g.add(mesh(boxG(1.5, 0.5, 1.6), taille, s * 2.35, 0.25, 0)); }
+    // (la pierre des piliers à la taille de leur face : calée sur 2 m, elle s'étirait sur 5,2)
+    for (const s of [-1, 1]) { g.add(mesh(boxG(1.1, 5.2, 1.3), PILIER, s * 2.35, 2.6, 0)); g.add(mesh(boxG(1.5, 0.5, 1.6), taille, s * 2.35, 0.25, 0)); }
     const arc = mesh(new THREE.TorusGeometry(2.35, 0.55, 8, 24, Math.PI), taille, 0, 5.2, 0); arc.scale.z = 2.3; g.add(arc);
     g.add(mesh(boxG(5.9, 0.18, 2.2), taille, 0, 0.09, 0));
     const fond = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 5.2), P.ouverte
@@ -298,31 +377,98 @@ function cadran() {
   const ai = new THREE.Group(); ai.position.set(x, y, z + 0.08); scene.add(ai);
   ai.add(mesh(boxG(0.14, 2.5, 0.05), mat(0x2a2a2e, { metalness: 0.7, roughness: 0.4 }), 0, 1.15, 0)); BOUGE.aiguille = ai;
 }
-// LA BARQUE DU PASSEUR : un ponton de bois sur la mer-miroir, au nord-est, et le passeur qui
-// attend, sa lanterne à la main. Il ne parle pas encore — il ne regarde que le large.
-// le ponton : un couloir de 2 m sur l'eau, qu'on peut arpenter jusqu'à la barque
-const A_PONTON = 2.6;
+// LE PORT DU PASSEUR (5 octobre, Eugène : « améliore le port »). C'était une planche sur
+// pilotis, posée 45 cm au-dessus de l'herbe, et une demi-sphère aplatie en guise de barque. Au
+// nord-est, dans l'axe A_PONTON : une jetée de pierre de plain-pied avec l'île, sa margelle, un
+// escalier qui descend à l'eau et deux bittes d'amarrage ; au bout, un ponton de planches sur
+// pieux, sa lanterne ; à quai, la barque — une coque bordée, ses bancs, ses avirons, sa
+// lanterne de poupe — et le passeur, qui ne regarde que le large.
+const A_PONTON = 2.6, JETEE = [R_ILE - 8, R_ILE + 3, 2.3], PONTON = [R_ILE + 3, R_ILE + 12.5, 1.25];
+// on marche sur la jetée et sur le ponton, de plain-pied avec l'île (y = 0)
 function surPonton(x, z) {
   const r = x * Math.sin(A_PONTON) + z * Math.cos(A_PONTON), d = x * Math.cos(A_PONTON) - z * Math.sin(A_PONTON);
-  return Math.abs(d) < 1.0 && r > R_ILE - 7 && r < R_ILE + 9.5;
+  return (r > JETEE[0] && r < JETEE[1] && Math.abs(d) < JETEE[2] - 0.3) || (r >= JETEE[1] && r < PONTON[1] && Math.abs(d) < PONTON[2] - 0.15);
 }
 function barque() {
-  const a = A_PONTON, bois = phMat('wood_planks', 1.2, 6, { color: 0x7a6248 }), poteau = phMat('tree_trunk', 0.3, 2, { color: 0x5a4a38 });
-  const pt = (r, d = 0) => [Math.sin(a) * r + Math.cos(a) * d, Math.cos(a) * r - Math.sin(a) * d];
-  for (let k = 0; k < 7; k++) { const r = R_ILE - 6 + k * 2.2, [x, z] = pt(r);
-    const pl = mesh(boxG(2.2, 0.12, 2.1), bois, x, 0.45, z); pl.rotation.y = a; pl.castShadow = pl.receiveShadow = true; scene.add(pl);
-    if (k % 2 === 0) for (const d of [-1.05, 1.05]) { const [px, pz] = pt(r, d); scene.add(mesh(new THREE.CylinderGeometry(0.11, 0.13, 2.4, 7), poteau, px, -0.5, pz)); } }
-  // la barque, amarrée au bout : une coque tournée, aplatie, posée sur l'eau qui ne bouge pas
-  // le bord de la coque à 45 cm au-dessus de l'eau : posée au ras de la mer, elle était noyée
-  const [bx, bz] = pt(R_ILE + 5.5, 2.3), g = new THREE.Group(); g.position.set(bx, MER + 0.5, bz); g.rotation.y = a; scene.add(g);
-  const coque = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 10, 0, TAU, Math.PI / 2, Math.PI / 2), phMat('wood_planks', 2, 1, { color: 0x5a4632, side: THREE.DoubleSide }));
-  coque.scale.set(0.95, 0.55, 2.6); coque.castShadow = true; g.add(coque);
-  g.add(mesh(boxG(1.6, 0.06, 0.3), bois, 0, -0.08, 0.6)); g.add(mesh(boxG(1.6, 0.06, 0.3), bois, 0, -0.08, -0.9));
-  const rame = mesh(new THREE.CylinderGeometry(0.03, 0.03, 3, 5), poteau, 0.9, 0.05, 0); rame.rotation.set(0.2, 0, 1.25); g.add(rame);
+  const a = A_PONTON, pt = (r, d = 0) => [Math.sin(a) * r + Math.cos(a) * d, Math.cos(a) * r - Math.sin(a) * d];
+  // (r : la distance au centre de l'île, y : la hauteur, d : l'écart latéral à l'axe du port)
+  const M = (r, y, d, ry = 0, rx = 0, rz = 0, sx = 1, sy = 1, sz = 1) => { const [x, z] = pt(r, d); return MAT4(x, y, z, a + ry, rx, rz, sx, sy, sz); };
+  const pierreJ = phMat('old_stone_wall_02', 1, 1, { color: 0xb4acb6 }), margelle = phMat('old_stone_wall_02', 1, 1, { color: 0xd8d0d6 });
+  const planche = phMat('wood_planks', 2.4, 0.5, { color: 0x8a7c6e }), poutre = phMat('wood_planks', 1, 3, { color: 0x5e5244 });
+  const pieu = phMat('tree_trunk', 0.6, 3, { color: 0x5a5048 }), fer = phMat('metal_plate_02', 0.5, 0.5, { color: 0x3a3a42, metalness: 0.8, roughness: 0.5 });
+  const corde = phMat('withered_grass', 0.4, 0.4, { color: 0xa08a64 });
+  // ---- la jetée : un massif de pierre, de la rive jusqu'à 3 m dans l'eau ----
+  { const [r0, r1, w] = JETEE, L = r1 - r0, bas = MER - 1.8;
+    fusion([[new THREE.BoxGeometry(2 * w, -bas, L), M((r0 + r1) / 2, bas / 2 - 0.02, 0)]], pierreJ, true, true);
+    // le dallage du dessus, aux UV en mètres
+    const g = new THREE.PlaneGeometry(2 * w - 0.6, L); g.applyMatrix4(M((r0 + r1) / 2, 0.005, 0, 0, -Math.PI / 2)); uvMetres(g);
+    const top = new THREE.Mesh(g, phMat('worn_tile_floor', 1, 1, { color: 0xc4bcc2 })); top.receiveShadow = true; scene.add(top);
+    const pieces = [];
+    for (const s of [-1, 1]) pieces.push([new THREE.BoxGeometry(0.42, 0.16, L), M((r0 + r1) / 2, 0.06, s * (w - 0.21))]);     // la margelle
+    pieces.push([new THREE.BoxGeometry(2 * w, 0.16, 0.42), M(r1 - 0.21, 0.06, 0)]);
+    // l'escalier qui descend à l'eau, le long du flanc ouest de la jetée
+    for (let k = 0; k < 8; k++) { const y = -0.18 * (k + 1), r = R_ILE - 2.6 + k * 0.62;
+      pieces.push([new THREE.BoxGeometry(1.1, y - bas, 0.62), M(r, (y + bas) / 2, -(w + 0.55))]); }
+    // les bittes d'amarrage, au bout
+    for (const s of [-1, 1]) { pieces.push([new THREE.CylinderGeometry(0.2, 0.26, 0.62, 12), M(r1 - 0.7, 0.31, s * (w - 0.6))]);
+      pieces.push([new THREE.CylinderGeometry(0.3, 0.22, 0.14, 12), M(r1 - 0.7, 0.66, s * (w - 0.6))]); }
+    fusion(pieces, margelle, true, true);
+    for (const s of [-1, 1]) { const [bx, bz] = pt(r1 - 0.7, s * (w - 0.6)); addCap(bx, bz, bx, bz, 0.3, 0.8); } }
+  // ---- le ponton : des planches sur deux longerons, des moises, des pieux ----
+  { const [r0, r1, w] = PONTON, planches = [], bois = [], pieux = [];
+    for (let r = r0 + 0.13, k = 0; r < r1; r += 0.27, k++)
+      planches.push([new THREE.BoxGeometry(2 * w, 0.06, 0.24), M(r, -0.03 + Math.sin(k * 2.3) * 0.006, Math.sin(k * 1.7) * 0.03, Math.sin(k * 3.1) * 0.012)]);
+    for (const d of [-0.85, 0.85]) bois.push([new THREE.BoxGeometry(0.2, 0.26, r1 - r0), M((r0 + r1) / 2, -0.19, d)]);
+    for (let r = r0 + 0.6; r < r1; r += 2.3) { bois.push([new THREE.BoxGeometry(2 * w + 0.3, 0.2, 0.22), M(r, -0.42, 0)]);
+      for (const d of [-w, w]) pieux.push([new THREE.CylinderGeometry(0.13, 0.16, 3.6, 8), M(r, MER - 1.2 + 1.8 + (Math.abs(r - r1) < 2.4 ? 0.55 : 0), d)]); }
+    fusion(planches, planche); fusion(bois, poutre); fusion(pieux, pieu);
+    // la lanterne du bout du ponton : une lueur, pas une lumière (aucune lumière nouvelle)
+    const [lx, lz] = pt(r1 - 0.5, w - 0.15);
+    scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.6, 8), fer, lx, 1.3, lz));
+    scene.add(mesh(boxG(0.32, 0.44, 0.32), new THREE.MeshStandardMaterial({ color: 0xffd28a, emissive: 0xffb860, emissiveIntensity: 1.5 }), lx, 2.75, lz));
+    scene.add(mesh(new THREE.ConeGeometry(0.28, 0.24, 4), fer, lx, 3.08, lz).rotateY(Math.PI / 4));
+    addCap(lx, lz, lx, lz, 0.15, 3); }
+  // ---- sur la jetée : deux tonneaux, une caisse, un rouleau de cordage ----
+  { const tonneaux = [], cercles = [];
+    for (const [r, d] of [[R_ILE + 0.6, 1.4], [R_ILE + 1.3, 1.65]]) { tonneaux.push([new THREE.CylinderGeometry(0.34, 0.3, 0.8, 14), M(r, 0.4, d)]);
+      for (const y of [0.12, 0.68]) cercles.push([new THREE.TorusGeometry(0.33, 0.025, 5, 16), M(r, y, d, 0, Math.PI / 2)]);
+      const [x, z] = pt(r, d); addCap(x, z, x, z, 0.38, 0.85); }
+    tonneaux.push([new THREE.BoxGeometry(0.8, 0.6, 0.6), M(R_ILE - 0.6, 0.3, 1.5, 0.3)]);
+    { const [x, z] = pt(R_ILE - 0.6, 1.5); addCap(x, z, x, z, 0.45, 0.65); }
+    fusion(tonneaux, phMat('wood_planks', 0.8, 0.8, { color: 0x7a6450 })); fusion(cercles, fer);
+    const rouleau = []; for (let k = 0; k < 4; k++) rouleau.push([new THREE.TorusGeometry(0.34 - k * 0.02, 0.045, 6, 18), M(JETEE[1] - 1.5, 0.06 + k * 0.08, -(JETEE[2] - 0.75), 0, Math.PI / 2)]);
+    fusion(rouleau, corde); }
+  // ---- la barque : une coque bordée, tirée de sections, amarrée le long du ponton ----
+  const g = new THREE.Group(); { const [bx, bz] = pt(R_ILE + 9.2, PONTON[2] + 1.05); g.position.set(bx, MER, bz); g.rotation.y = a; scene.add(g); }
+  { const Lc = 4.6, Wc = 0.78, Dc = 0.62, NS = 22, NP = 13, pos = [], uv = [], idx = [], bord = [[], []];
+    for (let i = 0; i <= NS; i++) { const t = i / NS, z = (t - 0.5) * Lc, f = Math.pow(Math.sin(Math.PI * t), 0.55);
+      const w = Wc * f + 0.02, d = Dc * (0.55 + 0.45 * Math.sin(Math.PI * t)), tonture = 0.22 * Math.pow(2 * t - 1, 2);
+      for (let j = 0; j <= NP; j++) { const u = j / NP * 2 - 1, x = u * w, y = 0.45 + tonture - d * (1 - Math.pow(Math.abs(u), 1.7));
+        pos.push(x, y, z); uv.push(z, (u + 1) * 1.1); }
+      bord[0].push(V(-w, 0.45 + tonture, z)); bord[1].push(V(w, 0.45 + tonture, z)); }
+    for (let i = 0; i < NS; i++) for (let j = 0; j < NP; j++) { const p0 = i * (NP + 1) + j, p1 = p0 + NP + 1; idx.push(p0, p1, p0 + 1, p0 + 1, p1, p1 + 1); }
+    const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ge.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    ge.setIndex(idx); ge.computeVertexNormals();
+    const coque = new THREE.Mesh(ge, phMat('wood_planks', 1, 0.6, { color: 0x6a5848, side: THREE.DoubleSide })); coque.castShadow = coque.receiveShadow = true; g.add(coque);
+    // le plat-bord, deux bancs, l'étrave et l'étambot, deux avirons couchés
+    const bb = phMat('wood_planks', 1, 1, { color: 0x4e4236 });
+    for (const b of bord) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(b), 40, 0.045, 5, false), bb));
+    for (const z of [0.7, -0.75]) g.add(mesh(boxG(1.4, 0.06, 0.3), bb, 0, 0.3, z));
+    for (const s of [1, -1]) { const e = mesh(boxG(0.08, 0.75, 0.12), bb, 0, 0.42, s * (Lc / 2 - 0.02)); e.rotation.x = -s * 0.25; g.add(e); }
+    for (const s of [-1, 1]) { const av = new THREE.Group(); av.position.set(s * 0.32, 0.38, 0.1); av.rotation.set(0, s * 0.06, Math.PI / 2 - 0.06 * s); g.add(av);
+      av.add(mesh(new THREE.CylinderGeometry(0.03, 0.035, 2.9, 6), bb, 0, 0, 0).rotateX(Math.PI / 2));
+      av.add(mesh(boxG(0.03, 0.16, 0.6), bb, 0, 0, 1.55)); }
+    // la lanterne de poupe, sur sa perche
+    g.add(mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.4, 6), fer, 0.2, 1.05, -Lc / 2 + 0.35));
+    g.add(mesh(boxG(0.2, 0.28, 0.2), new THREE.MeshStandardMaterial({ color: 0xffd28a, emissive: 0xffb860, emissiveIntensity: 1.3 }), 0.2, 1.85, -Lc / 2 + 0.35));
+    // l'amarre, de l'étrave à un pieu du ponton
+    { const A0 = V(0, 0.65, Lc / 2 - 0.1).applyMatrix4(g.matrixWorld.compose(g.position, g.quaternion, g.scale));
+      const [px, pz] = pt(R_ILE + 11.2, PONTON[2]), B0 = V(px, 0.35, pz), mid = A0.clone().lerp(B0, 0.5); mid.y -= 0.35;
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(A0, mid, B0), 16, 0.025, 5, false), corde)); } }
   const pas = PNJ.buildVillageois(3);
-  if (pas) { pas.scale.setScalar(0.6); pas.position.set(0, -0.42, -0.9); pas.rotation.y = 0; g.add(pas); BOUGE.passeur = pas; }   // à la poupe, tourné vers le large
-  const [ix, iz] = pt(R_ILE + 7.5);
-  addInteract({ pos: new THREE.Vector3(ix, 0.5, iz), r: 3.2, prompt: () => 'parler au passeur',
+  if (pas) { pas.scale.setScalar(0.6); pas.position.set(0, 0.0, -1.35); pas.rotation.y = 0; g.add(pas); BOUGE.passeur = pas; }   // à la poupe, tourné vers le large
+  const [ix, iz] = pt(R_ILE + 9.2, 0.6);
+  addInteract({ pos: new THREE.Vector3(ix, 0, iz), r: 3.2, prompt: () => 'parler au passeur',
     fn: () => showMessage('Le passeur ne se retourne pas. Il regarde le large, la lanterne à la main. « Pas encore. »', 5) });
 }
 
@@ -439,7 +585,7 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
-  name: 'temple', echelle: 0.6, musique: 'mage', getH: (x, z) => surPonton(x, z) ? Math.max(0.51, hauteur(x, z)) : hauteur(x, z), zoneName: () => 'L’île du temps',
+  name: 'temple', echelle: 0.6, musique: 'mage', getH: (x, z) => surPonton(x, z) ? 0 : hauteur(x, z), zoneName: () => 'L’île du temps',
   // la rive : on ne marche pas sur la mer, sauf sur le ponton du passeur
   blocked: (x, z) => Math.hypot(x, z) > R_ILE - 3 && !surPonton(x, z),
   build, populate, animate, minimap,

@@ -79,3 +79,23 @@ sur la mer-miroir, au nord-ouest, une barque amarrée, et le passeur, lanterne �
 regarde que le large (« Pas encore. »). Lille seul ouvert : la tour est vide, rien ne bouge.
 À faire ensuite : les
 débordements de chaque monde sur la rive, la barque du passeur, et relier l'île au donjon.
+
+**v5, la qualité graphique et le port** (5 octobre, Eugène : « améliore la qualité graphique, les éléments
+qui la composent, et le port ») — captures `bancs/resultats/ile-du-temps-2026-10-05-avant-*.jpg` et `-apres-*.jpg` :
+- **les sols à leur échelle** : l'herbe et les dalles de la cour avaient UNE tuile de texture sur toute
+  l'île (UV d'origine d'un anneau) ; UV en mètres (`uvMetres`), et l'herbe du plateau se fond sur une rive
+  de roche ;
+- **la rive** : des blocs bosselés, à demi noyés, en un seul maillage, au lieu de dodécaèdres posés sur
+  l'eau comme des chapeaux ;
+- **la tour** : un soubassement à deux degrés, douze contreforts à ressauts, une baie à chaque étage (entre
+  deux contreforts), un couronnement sur quarante-huit corbeaux à créneaux ; les pierres passent du sable
+  au gris lilas (le crépuscule doré les réchauffait en brun orangé) ;
+- **les portes** : la pierre des piliers à la taille de leur face ;
+- **le port du passeur** : une jetée de pierre de plain-pied avec l'île (dallage, margelle, escalier qui
+  descend à l'eau, deux bittes d'amarrage, tonneaux, caisse, cordage), un ponton de planches sur longerons,
+  moises et pieux, sa lanterne ; une barque à coque bordée tirée de sections (plat-bord, bancs, étrave,
+  avirons, lanterne de poupe, amarre) ; on marche de la cour au passeur sans marche.
+Les morceaux sont fusionnés par matériau (`fusion`, UV projetées en mètres pour la pierre) ; aucune lumière
+nouvelle. Chargement en A/B : 3,5 / 3,4 s → 3,4 / 2,6 s. À savoir : un matériau uni (`MeshStandardMaterial`
+sans texture) est repeint par le moteur — les baies de la tour étaient blanches ; elles prennent une pierre
+teintée presque noire.
