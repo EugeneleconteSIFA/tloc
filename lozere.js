@@ -22,7 +22,8 @@
 // propose les deux autres (comme le petit train des Pouilles). Pas encore de porte de l'île.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G } from './engine.js?v=41';
+import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -480,6 +481,43 @@ function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
   BILAN.bouts = murs;
 }
 
+// Les gens du bourg (consigne V, « des lieux jouables ») : Villefort est « l'endroit où l'on parle aux
+// gens » (SCENARIO § 14). Des gens de passage seulement, avec les rôles et villageois de pnj.js : ceux de
+// l'enquête du chien (la boulangère, le chef de gare, les enfants près du lac) attendent Eugène. Ce
+// qu'ils disent oriente (le poteau, la Régordane, le pont) ou raconte le lieu, et ne promet rien.
+// [rôle ou n° de villageois, x, z, regarde vers [x, z], qui, répliques]
+const GENS_VILLEFORT = [
+  ['allumeur', 1578, -1136, [1584.5, -1129.5], 'Un vieux, sur la place', ['Ce poteau, c’est le départ des vieux chemins. Des sentiers de troupeaux, plus vieux que les routes.', 'La Garde-Guérin, c’est en haut, sur le plateau. Le Pouget aussi, c’est en haut. Ici, tout monte.']],
+  ['aubergiste', 1559.8, -1095.9, [1575, -1102], 'Le cafetier de Chez Fernand', ['Chez Fernand, tout le bourg passe un jour ou l’autre.', 'La place du Bosquet, avec le poteau, c’est juste en bas de la rue.']],
+  ['gardien', 1662, -968, [1683, -973], 'Le sacristain', ['Saint-Victorin. On l’a bâtie avec le granit de la vallée, comme tout le bourg.', 'La cloche sonne encore. Mais quelle heure elle sonne, je ne sais plus.']],
+  [10, 1531, -1401, [1527.7, -1407], 'Une femme, au lavoir', ['L’eau de l’Altier est froide, même en plein été.', 'Le pont, là : c’est par lui qu’arrivait la Régordane, avec les mulets.']],
+  ['pecheur', 1556, -1393, [1572, -1405], 'Le pêcheur', ['Des truites, dans l’Altier. Il faut savoir attendre.', 'Plus haut, il y a le lac du barrage. Avant, il n’y avait que la rivière.']],
+  [1, 1606, -1040, [1614.7, -1033.1], 'L’hôtelière', ['L’hôtel Balme. Les voyageurs du train y dorment, et les marcheurs de la Régordane aussi.']],
+  [4, 1668, -900, [1673, -890], 'Un homme, place de l’Ormeau', ['Le bourg est tout en long, entre la rivière et la pente. On ne peut pas s’y perdre.', 'La rue de la Bourgade, c’est l’ancienne Régordane. Elle traverse tout Villefort.']],
+  [13, 1585, -1018, [1578, -1013], 'Un homme, place du Portalet', ['Les maisons sont en granit et les toits en lauzes. Ici, tout vient de la montagne.']],
+];
+const GENS = [];          // les passants posés, que la fiche anime à chaque image (anime)
+let tAvant = 0;
+function gensDuBourg(ctx, gens, sol) {
+  const { hauteur, bloque, addInteract } = ctx;
+  // un point libre au plus près de la place voulue (un rond de 30 m au plus)
+  const placer = (x0, z0) => { for (let r = 0; r < 30; r += 1.5) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * TAU) * r, z = z0 + Math.sin(k / 16 * TAU) * r; if (!bloque(x, z, 0.9)) return [x, z]; } return null; };
+  BILAN.gens = [];
+  for (const [qui0, x0, z0, [lx, lz], qui, mots] of gens) {
+    const p = placer(x0, z0); if (!p) continue; const [x, z] = p;
+    const o = typeof qui0 === 'string' ? PNJ.buildRole(qui0) : PNJ.buildVillageois(qui0); if (!o) continue;
+    const y = sol(x, z) ?? hauteur(x, z);
+    o.scale.setScalar(G.echelle); o.position.set(x, y, z); o.rotation.y = Math.atan2(lx - x, lz - z); scene.add(o); GENS.push(o);
+    // le pêcheur est un rôle ASSIS : sans rien sous lui, il s'asseyait dans le vide. Un banc de
+    // granit de 48 cm sous l'assise (l'origine du rôle est à la hanche, pas aux pieds)
+    if (qui0 === 'pecheur') { const bx = x, bz = z;
+      const banc = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.48, 0.5), phMat('granit_lozere', 1, 1, { color: 0xa8a69e }));
+      banc.position.set(bx, y + 0.19, bz); banc.rotation.y = o.rotation.y; banc.castShadow = banc.receiveShadow = true; scene.add(banc); }
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler', fn: () => dialogue(mots.map((text) => ({ who: qui, text }))) });
+    BILAN.gens.push({ qui, x: +x.toFixed(1), z: +z.toFixed(1), dit: mots[0] });
+  }
+}
+
 // ---------------------------------------------------------------------
 //  La lumière et la pierre des Cévennes, communes aux deux lieux
 // ---------------------------------------------------------------------
@@ -518,6 +556,17 @@ const FICHES = {
     // où l'on marche : le relief fin (carte/mondes/recoudre-relief-lozere.py) déborde de 60 m à l'ouest
     // et au nord, un débord boisé qu'on ne parcourt pas (lisiere) ; monde.js rentre de 8 m les deux autres bords
     emprise: { x0: 1428, x1: 1792, z0: -1422, z1: -828 },
+    // les endroits qui comptent : la minicarte et les lieux découverts (monde.js)
+    reperes: [
+      { id: 'bosquet', nom: 'la place du Bosquet', x: 1576, z: -1140, r: 18, type: 'lieu' },
+      { id: 'poteau', nom: 'le poteau des vieux chemins', x: 1584.5, z: -1129.5, r: 6, type: 'passage' },
+      { id: 'portalet', nom: 'la place du Portalet', x: 1584, z: -1022, r: 14, type: 'lieu' },
+      { id: 'eglise', nom: 'l’église Saint-Victorin', x: 1668, z: -968, r: 18, type: 'lieu' },
+      { id: 'ormeau', nom: 'la place de l’Ormeau', x: 1673, z: -897, r: 14, type: 'lieu' },
+      { id: 'pont', nom: 'le pont Saint-Jean et le lavoir', x: 1540, z: -1405, r: 18, type: 'lieu' },
+      { id: 'fernand', nom: 'Chez Fernand', x: 1559.8, z: -1095.9, r: 6, type: 'pnj' },
+      { id: 'balme', nom: 'l’hôtel Balme', x: 1606, z: -1040, r: 6, type: 'pnj' },
+    ],
     sol: ['grass_ground', 0xa2ae7a],
     depart: { x: ARRIVEES.villefort.pos[0], z: ARRIVEES.villefort.pos[2], yaw: ARRIVEES.villefort.yaw },
     portes: [],
@@ -554,6 +603,12 @@ const FICHES = {
       lisiere(ctx, [...rs, ...PLAN.regordane.filter((c) => dansCadre(CADRE, c.pts, 20))], { cotes: ['ouest', 'nord'], emprise: FICHES.villefort.emprise,
         libre: (x, z) => !ctx.bloque(x, z, 2.5) && FICHES.villefort._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1.5) });
       poteau(ctx, 'villefort');
+      const t0 = performance.now(); gensDuBourg(ctx, GENS_VILLEFORT, FICHES.villefort._sol); BILAN.msGens = Math.round(performance.now() - t0);   // règle 8 : ≤ 300 ms
+    },
+    // les passants respirent et bougent un peu, à chaque image
+    anime(now) {
+      const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
+      for (const g of GENS) if (g.userData.ctrl) PNJ.animeVillageois(g, dt, false);
     },
   },
 
