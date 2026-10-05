@@ -35,8 +35,8 @@ const VUES_REGARD = [
   { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
   { nom: 'yeux : le Batut, depuis le départ', cam: [-116.7, 1.6, 143.8], at: [-135, 5, 170], sol: true },
   { nom: 'yeux : le Pouget, depuis la grille', cam: [169, 1.6, -287], at: [185, 6, -315], sol: true },
-  { nom: 'plongée : le Pouget', cam: [140, 45, -250], at: [185, 0, -315] },
-  { nom: 'yeux : le barrage, le duel', cam: [-232, 1.6, -30], at: [-222, 1.2, -100], sol: true, rue: true },
+  { nom: 'plongée : la grève, la barque, le pré du Batut', cam: [-30, 30, 130], at: [-110, 0, 160] },
+  { nom: 'yeux : le barrage, le duel', cam: [-205, 1.6, -40], at: [-235, 1.2, -110], sol: true, rue: true },
   { nom: 'plongée : le barrage', cam: [-170, 40, -40], at: [-225, 0, -90] },
   { nom: 'yeux : Perpignou, la rue', cam: [440, 1.6, -205], at: [470, 3, -240], sol: true, rue: true },
   { nom: 'plongée : le Batut et son domaine', cam: [-92, 38, 135], at: [-135, 0, 170] },
@@ -181,7 +181,7 @@ try {
       sols: { echantillons: ech, flottePlus5cm: flotte, part: +(flotte / Math.max(1, ech) * 100).toFixed(1), enfoncePlus2cm: enfonce, zFighting: zfight },
       source: window.__lieu ? 'déclaré par le lieu (window.__lieu)' : 'règles de monde.js (le lieu ne déclare rien)', durees: (window.__lieu && window.__lieu.durees) || null,
       // ce que le lieu a posé : ses dépendances, ses essences, ses gens
-      pose: window.__lieu ? { domaines: window.__lieu.domaines || null, essences: window.__lieu.essences || null, affleurements: window.__lieu.affleurements ?? null, gens: window.__lieu.gens || null } : null };
+      pose: window.__lieu ? { domaines: window.__lieu.domaines || null, essences: window.__lieu.essences || null, affleurements: window.__lieu.affleurements ?? null, brebis: window.__lieu.brebis ?? null, gens: window.__lieu.gens || null } : null };
   });
 
   // ---------------- la planche fixe de 8 vues ----------------
