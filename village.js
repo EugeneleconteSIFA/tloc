@@ -1251,6 +1251,16 @@ function estaminet(fr) {
   anneauMur(fr, -3.0, 1.45, -0.04, 0);
   grattoir(fr, -1.2, 0.35, 0);
 }
+// Où le sol du bourg reste de terre battue (1) et où l'Esplanade reprend son herbe (0), en
+// unités du bourg : la grand-rue et tout le nord ; au sud, le marché, la forge, le séchoir du
+// drapier et la charrette du colporteur. Le bord fond sur deux unités et demie, irrégulier.
+const AIRES_TERRE = [[-40, 40, -40, 5.2], [-12, 12, 4, 18.2], [0.5, 8.5, 9, 20], [18.4, 25.5, 4.5, 10.8], [3, 13, 16, 23]];
+function terreBourg(x, z) {
+  let d = Infinity;
+  for (const [x0, x1, z0, z1] of AIRES_TERRE) d = Math.min(d, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)));
+  const bruit = 0.6 * Math.sin(x * 0.9 + z * 0.4) + 0.4 * Math.sin(z * 1.3 - x * 0.5);
+  return 1 - lisse((d + bruit * 0.6) / 2.5);
+}
 // Les monuments que le bâti relevé ne recouvre pas (Eugène : « garder sur place ») : le
 // beffroi, la chapelle avec son porche et son parvis, et le cimetière. Repère du bourg.
 const MONUMENTS = [[5.0, 11.0, -15.0, -9.0], [-5.0, 5.0, -33.8, -12.5], [-18.4, -8.6, -29.0, -18.2]];
@@ -1336,18 +1346,24 @@ export function buildTown() {
   { const B = TOWN_BOITE, FONDU = 4;
     const geo = new THREE.PlaneGeometry(B.x1 - B.x0, B.z1 - B.z0, B.x1 - B.x0, B.z1 - B.z0).rotateX(-Math.PI / 2)
       .translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2);
-    const po = geo.attributes.position, col = [];
-    for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i);
-      col.push(1, 1, 1, lisse(Math.min(x - B.x0, B.x1 - x, z - B.z0, B.z1 - z) / FONDU)); }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
-    const socle = new THREE.Mesh(draper(geo, 0.02),
-      phMat('rocks_ground_08', (B.x1 - B.x0) * S, (B.z1 - B.z0) * S, { color: 0xd5c4a0, roughness: 1, transparent: true, depthWrite: false, vertexColors: true }));
-    socle.receiveShadow = true; socle.renderOrder = 1; scene.add(socle);
-    // le cœur, opaque, sous la nappe : c'est lui qui porte les ombres et que voient les bancs
-    // (crawl.mjs, murs.mjs écartent les transparents)
+    // (5 octobre, Eugène : « rends l'herbe à l'Esplanade ») DEUX NAPPES SUR LE MÊME SOCLE.
+    // Le socle était de terre battue d'un bord à l'autre de la boîte : depuis que les maisons
+    // de la rangée sud sont parties, toute la moitié sud du bourg — l'Esplanade — était un
+    // grand terrain vague beige. L'herbe de l'Esplanade y revient ; la terre battue ne reste
+    // que là où l'on travaille et où l'on passe (terreBourg) : la grand-rue, le marché, la
+    // forge, le séchoir, le colporteur. Le sol marchable, lui, ne change pas.
+    const po = geo.attributes.position, colH = [], colT = [];
+    for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i), f = lisse(Math.min(x - B.x0, B.x1 - x, z - B.z0, B.z1 - z) / FONDU);
+      colH.push(1, 1, 1, f); colT.push(1, 1, 1, f * terreBourg(x, z)); }
+    const nappe = (g, col, m, ordre) => { g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+      const o = new THREE.Mesh(draper(g, 0.02), m); o.receiveShadow = true; o.renderOrder = ordre; scene.add(o); };
+    nappe(geo.clone(), colH, phMat('grass_ground', (B.x1 - B.x0) * S, (B.z1 - B.z0) * S, { color: 0x8fa862, roughness: 1, transparent: true, depthWrite: false, vertexColors: true }), 1);
+    nappe(geo, colT, phMat('rocks_ground_08', (B.x1 - B.x0) * S, (B.z1 - B.z0) * S, { color: 0xd5c4a0, roughness: 1, transparent: true, depthWrite: false, vertexColors: true }), 1);
+    // le cœur, opaque, sous les nappes : c'est lui qui porte les ombres et que voient les bancs
+    // (crawl.mjs, murs.mjs écartent les transparents) ; d'herbe, la terre se pose dessus
     const W = B.x1 - B.x0 - 2 * FONDU, D = B.z1 - B.z0 - 2 * FONDU;
     const coeur = new THREE.Mesh(draper(new THREE.PlaneGeometry(W, D, W, D).rotateX(-Math.PI / 2).translate((B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2), 0.019),
-      phMat('rocks_ground_08', W * S, D * S, { color: 0xd5c4a0, roughness: 1 }));
+      phMat('grass_ground', W * S, D * S, { color: 0x8fa862, roughness: 1 }));
     coeur.receiveShadow = true; scene.add(coeur); }
   // top est une hauteur LOCALE : elle se compte depuis le dallage du bourg, pas depuis 0
   const addCap = (ax, az, bx, bz, r, top = Infinity) => E.addCap(...W2(ax, az), ...W2(bx, bz), r * S, TOWN.y + top * S);
@@ -1406,7 +1422,7 @@ export function buildTown() {
         for (let k = 0; k < NR; k++) {
           const r = Math.max(0.2, RB + stops[k][0] + j * (0.35 + k * 0.4));
           const x = Math.cos(a) * r, z = -4 + Math.sin(a) * r;
-          pos.push(x, y, z); uv.push(x * S, z * S); col.push(1, 1, 1, stops[k][1]);
+          pos.push(x, y, z); uv.push(x * S, z * S); col.push(1, 1, 1, stops[k][1] * terreBourg(x, z));
         }
       }
       for (let i = 0; i < NA; i++) for (let k = 0; k < NR - 1; k++) {
@@ -1433,7 +1449,8 @@ export function buildTown() {
   // aux rues relevées du quartier, aux deux bouts. Elle s'arrêtait à ±23 et la rue du
   // marché à 18 : cinq unités de terre battue entre le pavé du bourg et celui de la ville.
   // Elles courent maintenant jusqu'au bord de la boîte, en suivant la rampe.
-  paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, 2, RUE * 1.8, R2 * 2 + 8); paved(0, 0, 18, 18);
+  // (la rue nord-sud s'arrête au bout du marché, z = 17 : au-delà, c'est l'herbe de l'Esplanade)
+  paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, -0.5, RUE * 1.8, 35); paved(0, 0, 18, 18);
   // trottoirs/bordures en pierre le long de la grand-rue
   for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), phLocal('old_stone_wall_02', R2 * 2 + 4, 0.4, { color: 0xc8c0b0 }), tx, 0.09, tz + sz * (RUE - 0.3)));
   // (5 octobre) PLUS DE MAISONS INVENTÉES. Les douze maisons du bourg (quatre au nord de la
