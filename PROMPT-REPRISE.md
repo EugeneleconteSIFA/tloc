@@ -1371,6 +1371,91 @@ Sources de la recherche sur le quai du Wault (dernier bassin portuaire de Lille,
 fermé en 1865, remis en eau en 1994, quais pavés, couvent des Minimes) : fr.wikipedia.org/wiki/Quai_du_Wault,
 caue-nord.com (observatoire, le quai du Wault), lilledantan.com.
 
+### Lille — le réalisme et les passants (5 octobre, sur le PC, consigne L) — **faits, vérifiés en rendu, publiés (66f7999 puis c7e6820)**
+
+Les correctifs restés sur le Mac (`patch-routes.py`, `patch-passants.py`) ont été refaits de zéro.
+
+**Lot 1 — 66f7999** (carte.js, quartier.js, campagne.js) :
+- **La rue en travers** (`voiriesLille`, `profilGeo`, carte.js) : chaussée de ville à +0,12, bombée par-dessus
+  (+7 cm à l'axe) ; caniveau de grès de 45 cm ; bordure de 14 cm avec sa face vue de la rue ; trottoir de
+  dalles jusqu'à la façade quand elle est à moins de 5 m (sinon 1,6 m et un glacis vers le sol du quartier),
+  2 % de dévers. Le trottoir et sa bordure s'interrompent sur la chaussée d'une autre rue (le carrefour) et
+  ferment leur bout. On marche dessus sans rien de plus : `graverVoie` lit déjà les surépaisseurs.
+- **Les seuils** (quartier.js) : portes, devantures, tonneaux et caisses se posent sur ce qui est dessiné
+  devant eux (`epaisseurVoie`), plus sur le relief.
+- **Le cœur des îlots** (`solVille`) : plus d'aplat brun — pavé le long des voies, jardin au-delà de 5 m,
+  quelques plaques de terre battue ; tout le pourtour du Wault pavé jusqu'aux façades.
+- **Le quai du Wault** (`quaiDuWault`, carte.js) : tout le tour du bassin, une bande d'eau qui rejoint le
+  mur, un fond de vase, un mur de pierre au trait de rive, une margelle de 45 cm, puis le quai pavé de
+  niveau jusqu'à ce que la berge le rejoigne (9 m au plus). `graverVoie(ge, 1.5)` : il monte jusqu'à 1,5 m
+  au-dessus de la berge en pente.
+- **Les façades** (quartier.js) : la pierre déclarée passe pour moitié à la brique (rang-de-Lille), le reste
+  en pierre de Lezennes plus ou moins patinée ; l'enduit (le « 30 » du relevé, la longue rangée blanche du
+  Wault) reçoit un badigeon ocre, crème ou gris rosé.
+- **Les bords fondus** : les sentiers relevés (`rubanGeo(…, fondu)`) et la route du pont au village
+  (`chausseeEt`, campagne.js) s'effacent dans l'herbe, bord ondulé.
+
+**Lot 2 — c7e6820** (quartier.js, hud.js, village.js, carte.js) :
+- **Les passants** (`passantsDeVille`, quartier.js), sur le chemin du bourg au Wault :
+  - **la lavandière**, sur le quai du Wault (−150 ; 736) : « Les bateaux déchargent le grain au bout du
+    bassin… » ; elle indique le bourg ;
+  - **la marchande**, au carrefour Léonard Danel / Gros Gérard (62 ; 746) : beurre, œufs, maroilles ;
+    elle indique le Wault (vers le couchant) et le bourg (vers le beffroi) ;
+  - **le brasseur**, rue du Gros Gérard (−6 ; 770) : la bière de garde ; « au bout des rues, les portes sont
+    fermées, le guet y veille » (ce qui dit les rues coupées sans inventer d'histoire) ;
+  - **le garde du guet**, devant la porte coupée la plus proche (−88 ; 907) : « Halte ! Cette porte reste
+    fermée. » ; il indique le bourg et le Wault.
+  Aucun n'est de l'histoire, aucun ne donne de quête. **Le quai du Wault est un lieu découvert**
+  (`addLieu`, id `wault` : le compteur passe à 15).
+- **Minicarte et carte M** (hud.js ; atlas.js réutilise `construireCarte`) : rues et bâti du tissu coupé
+  (`horsVille`) tracés éteints, en gris.
+- **Écart n° 1, « le dallage flou »** : ce n'était pas le dallage. Le point « garde » du banc tombait sur le
+  soubassement d'une maison du bourg, et la caméra filmait son dessus : une pierre de taille calée sur 1,2 m,
+  étirée sur toute la façade. Corrigé dans village.js, une ligne (le soubassement prend `phLocal` à la taille
+  de sa face). Le dallage lui-même (pavés `paved`) est net ; ses bords restent des rectangles francs sur le
+  socle de terre, vus d'en haut.
+
+**Vérifié** : `acces.mjs index` 27 interactions, 0 hors d'atteinte (les passants compris) ; prologue joué en
+headless (« Jouer le prologue », Entrée toutes les 1,5 s pendant 90 s) sans erreur, minicarte comprise ;
+carte M rendue.
+
+**§ 4.E — le chargement** : mesuré en **A/B entrelacé** (version publiée puis la nouvelle, deux fois, sous le
+même verrou de banc), parce que la machine variait du simple au double dans la matinée (la même version
+publiée : 8,1 s à 9 h, 12,6 s à 10 h, avec les bancs des autres sessions). Lot 1 : 12,56 / 12,84 s → 12,73 /
+13,06 s (+0,2 s ; « ouvrages et eaux », qui porte les rues et les sols, +140 ms). Lot 2 : 8,25 / 7,50 s →
+7,61 / 7,72 s, pas d'écart mesurable ; tas +5 Mo. Relevés : `bancs/resultats/charge-2026-10-05-ab-*.json` et
+`-ab2-*.json`. Dans la page, `voiriesLille` coûte ~200 ms et `solVille` ~300 ms (appelés à chaud).
+
+**Captures à regarder** : `bancs/resultats/ville-L-avant-*.jpg` (ce matin, sur le PC), `ville-L-lot1-*.jpg`,
+`ville-L-lot2-*.jpg` — garde, place, chemin, rue, carrefour, wault ; à hauteur d'yeux et en plongée.
+`bancs/regard-ville.mjs` a été recalé : la vue « rue » est sur l'axe de la rue du Gros Gérard (elle filmait
+une cour), « garde » est dans la grand-rue face à la salle de la garde (elle filmait un soubassement), la
+hauteur d'yeux se prend au sol DESSINÉ (un rayon : le dallage du bourg est un mètre au-dessus de `getH`), et
+une vue « carrefour » est ajoutée.
+
+**Ce qui reste, et demandes pour d'autres fichiers** :
+- **promenade.js — la voie des combattants** : c'est ELLE, le « ruban brun à bords francs dans le bois » de la
+  capture « chemin » (le banc l'a identifiée au rayon : maillage `voie-des-combattants`). Hors de mes
+  fichiers. Il lui faut le même traitement que les sentiers : `rubanGeo(lignes, 4.2, 0.17, 5, 0.9)` et un
+  matériau `transparent, vertexColors` (l'option `fondu` existe maintenant dans carte.js), et des ornières
+  moins tracées au cordeau.
+- **pnj.js — des silhouettes** : les quatre passants reprennent les silhouettes des villageois du bourg
+  (marchande, brasseur, lavandière, guetteur : Aldegonde, Baptiste, Cornélie et Désiré ont les mêmes). Il
+  faudrait des variantes (couleurs de tunique, coiffes) pour les gens de passage.
+- **village.js — les bords du dallage** : les nappes de pavés du bourg sont des rectangles francs sur le socle
+  de terre ; un fondu ou une bordure les raccorderait (hors de ce qui m'était ouvert).
+- **Les passants ne marchent pas** : ils se tiennent à leur poste ; une `route` (comme les villageois du
+  bourg) les ferait circuler sur le trottoir.
+- `campagne : chaussée coupée sur 331–359 m (eau)` s'affiche au chargement : à vérifier s'il date d'avant
+  (rien dans ce lot ne change l'eau ni les collisions de la route).
+
+**Questions pour Eugène** :
+1. Les répliques des passants (ci-dessus) te vont-elles ? Elles orientent sans rien ajouter à l'histoire.
+2. Le garde du guet est à (−88 ; 907), à la porte coupée la plus proche de la rue du Gros Gérard, un peu au
+   nord. Veux-tu qu'il garde plutôt une porte sur le chemin même (au bout de la rue Saint-Martin) ?
+3. Les deux questions de la nuit restent posées : le bourg doit-il disparaître au profit des bâtiments
+   relevés, et le cercle « à droite du Wault » est-il au bon endroit ?
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
@@ -1527,6 +1612,21 @@ caue-nord.com (observatoire, le quai du Wault), lilledantan.com.
   quoi on accuse le code d'un écart qui n'est que du bruit.
 - **Les avatars distants étaient en primitives, à l'échelle 1** : ils faisaient 1,7 fois
   la taille du joueur local. `appliquerSur` pose désormais `G.echelle × taille`.
+- **`material.clone()` ne copie pas `onBeforeCompile`** : un clone de `eauMat()` perd son shader et
+  rend une eau turquoise unie. Pour qu'un ruban d'eau se voie quel que soit le sens de son contour, on
+  pose ses triangles dans les deux sens plutôt que de cloner en `DoubleSide` (quaiDuWault, 5 octobre).
+- **`distBati` compte aussi le bâti relevé qu'on n'élève pas** (abris, annexes, emprises écartées) : il ne
+  dit pas « près d'une façade dessinée ». Il pavait tout le cœur des îlots.
+- **Un point de banc se vérifie au rayon** avant d'en tirer un écart : trois des cinq vues de
+  `regard-ville.mjs` filmaient autre chose que ce qu'elles nommaient (une cour, le dessus d'un
+  soubassement, la voie des combattants au lieu du chemin du bourg). La sonde : un `Raycaster` lancé de la
+  caméra du banc, qui donne le nom du maillage et de son groupe.
+- **Mesurer en A/B entrelacé quand la machine est partagée** : remettre le temps d'un banc la version publiée
+  (`git show HEAD:fichier > fichier`), mesurer, restaurer, mesurer la nouvelle — deux fois, sous le même
+  verrou `bancs/tour.sh`, les fichiers sauvegardés à part et restaurés par un `trap`. Avec les bancs des
+  autres sessions, la même version a varié de 8 à 13 s dans la matinée du 5 octobre.
+- **Ne rien éditer pendant `publier-dev.sh`** : le contrôle prend plusieurs minutes, et le commit prend les
+  fichiers tels qu'ils sont À LA FIN. Un fichier du lot modifié entre-temps partirait sans avoir été contrôlé.
 
 ---
 
