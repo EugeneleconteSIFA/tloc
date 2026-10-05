@@ -53,11 +53,14 @@ export function voieDesCombattants() {
   // 1. la bande. Quatre mètres vingt de TERRE BATTUE : le goudron et la ligne blanche
   // peinte au milieu — un marquage routier des années 1960 — n'ont rien à faire dans
   // une ville du XVIIe. Deux ornières de charroi tiennent lieu de marquage.
-  const bande = rubanGeo(lignes, 4.2, 0.17);
+  // (5 octobre, Eugène) LES BORDS FONDUS. C'était un ruban brun à bords francs, tiré au
+  // cordeau dans le bois : la terre s'efface maintenant dans l'herbe, sur un bord qui ondule
+  // (rubanGeo, `fondu`, comme les sentiers relevés de carte.js).
+  const bande = rubanGeo(lignes, 4.2, 0.17, 5, 1.1);
   graverVoie(bande);                    // on marche SUR la bande, pas dedans (cf. levelH)
   if (bande) {
     const m = new THREE.Mesh(bande, phMat('terre_battue', 1, 1, {
-      color: 0x8e7b5e, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3,
+      color: 0x8c8068, roughness: 1, transparent: true, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -3,
     }));
     m.receiveShadow = true; m.renderOrder = 2; g.add(m);
   }
@@ -66,13 +69,16 @@ export function voieDesCombattants() {
       pts: o.pts.map((q, i, T) => {
         const a = T[Math.max(0, i - 1)], b2 = T[Math.min(T.length - 1, i + 1)];
         const dx = b2[0] - a[0], dz = b2[1] - a[1], L = Math.hypot(dx, dz) || 1;
-        return [q[0] - dz / L * cote * 0.75, q[1] + dx / L * cote * 0.75];
+        // les roues ne roulent pas sur des rails : l'ornière s'écarte et revient de 15 cm
+        const e = 0.75 + 0.15 * Math.sin(i * 0.37 + cote * 1.3);
+        return [q[0] - dz / L * cote * e, q[1] + dx / L * cote * e];
       }),
-    })), 0.34, 0.176);
+    })), 0.3, 0.176, 5, 0.25);
     if (orn) {
-      // tassées, un peu plus sombres que la bande — pas deux traits noirs de goudron
+      // tassées, un peu plus sombres que la bande — pas deux traits noirs de goudron ; leurs
+      // bords se fondent aussi, sinon elles redessinaient le cordeau qu'on vient d'ôter
       const m = new THREE.Mesh(orn, phMat('terre_battue', 1, 1, {
-        color: 0x6e5c46, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -5,
+        color: 0x7c705c, roughness: 0.95, transparent: true, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -5,
       }));
       m.renderOrder = 3; g.add(m);
     }
