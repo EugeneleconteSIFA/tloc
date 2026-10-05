@@ -12,12 +12,18 @@
 // Projet-Padel) et le Chrome de la machine (channel: 'chrome').
 import { createRequire } from 'module';
 import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+// sur le PC, Playwright est dans GitHub/tloc/outils (5 octobre)
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname;
+// fileURLToPath et non `.pathname`, qui donne « /C:/… » sous Windows
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url));
+// Metal n'existe que sur le Mac ; Direct3D 11 est son équivalent sous Windows
+const ANGLE = process.platform === 'darwin' ? 'metal' : 'd3d11';
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${ANGLE}`, '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info'] });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 // la MÉMOIRE (30 septembre) : ce qui fera tenir le jeu sur un téléphone ou non. Le tas JS après
 // un ramasse-miettes, et la mémoire graphique des textures (ce qu'elles pèseront une fois envoyées)

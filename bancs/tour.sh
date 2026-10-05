@@ -1,4 +1,6 @@
-#!/bin/zsh
+#!/usr/bin/env bash
+# (bash et non zsh depuis le 5 octobre : le PC Windows n'a que le bash de Git ; tout ce qui
+# suit est du bash 3.2, celui du Mac)
 # bancs/tour.sh — chacun son tour : UN seul Chrome de test à la fois sur le Mac.
 #
 #   bancs/tour.sh node bancs/controle.mjs
@@ -13,7 +15,7 @@
 # Un verrou dont le propriétaire est mort est repris. On n'attend pas plus de 30 minutes
 # (TOUR_ATTENTE=5400 pour la publication : 90).
 # le verrou dans le dépôt même, pas dans /tmp : chaque session a peut-être le sien
-V=${0:A:h}/.tour.lock
+V=$(cd "$(dirname "$0")" && pwd)/.tour.lock
 debut=$(date +%s); dit=0
 # on attend plus longtemps pour publier (le contrôle) que pour un rendu : 90 minutes contre 30
 ATTENTE=${TOUR_ATTENTE:-1800}
@@ -29,7 +31,8 @@ done
 echo $$ > $V/pid; echo "$*" > $V/quoi
 trap 'rm -rf $V' EXIT INT TERM
 dit=0
-while (( $(sysctl -n vm.loadavg | awk '{print int($2)}') >= 4 )); do
+# la charge ne se lit qu'avec le sysctl du Mac ; sous Windows, on lance sans attendre
+while command -v sysctl >/dev/null && (( $(sysctl -n vm.loadavg | awk '{print int($2)}') >= 4 )); do
   (( dit )) || { echo "⏳ Le Mac est chargé ($(sysctl -n vm.loadavg | awk '{print $2}')) : j'attends qu'il retombe sous 4…"; dit=1; }
   (( $(date +%s) - debut > ATTENTE )) && { echo "⌛ $((ATTENTE / 60)) minutes d'attente : je lance quand même."; break; }
   sleep 15

@@ -17,9 +17,13 @@ import { createRequire } from 'module';
 import { execFileSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import { fileURLToPath } from 'url';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
-const RACINE = new URL('..', import.meta.url).pathname;
-const RES = new URL('resultats/', import.meta.url).pathname;
+// fileURLToPath et non `.pathname` : sous Windows, `.pathname` donne « /C:/… », que fs lit
+// « C:\C:\… » (le PC du 5 octobre). Barres obliques gardées : RACINE + 'bancs/' marche partout.
+const chemin = (u) => fileURLToPath(new URL(u, import.meta.url)).split('\\').join('/');
+const RACINE = chemin('..');
+const RES = chemin('resultats/');
 // TLOC_SOMME_MAX ne sert qu'à prouver que le contrôle refuse bien un dépassement
 const SOMME_MAX = +(process.env.TLOC_SOMME_MAX || 17), MO_MAX = 45, PASSES = 3;
 const PAGES = ['index.html', 'cave.html', 'tavern.html', 'chapelle.html', 'house.html', 'mage.html'];
@@ -40,11 +44,17 @@ for (const f of modules) {
 dire(`1. syntaxe : ${modules.length} modules, ${echecs.length ? echecs.length + ' en erreur' : 'tous bons'}`);
 
 // ---- 2. le démarrage
-try { execFileSync('curl', ['-sf', '-o', '/dev/null', ORIGINE + '/index.html']); }
-catch (e) { dire(`Le serveur ne répond pas sur ${ORIGINE} : lance ./lancer.sh d'abord.`); process.exit(1); }
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+// fetch plutôt que curl : `-o /dev/null` n'existe pas sous Windows
+if (!(await fetch(ORIGINE + '/index.html').then((r) => r.ok).catch(() => false))) {
+  dire(`Le serveur ne répond pas sur ${ORIGINE} : lance ./lancer.sh d'abord.`); process.exit(1);
+}
+// Playwright n'est pas dans le projet : celui de Projet-Padel sur le Mac, celui de
+// GitHub/tloc/outils sur le PC (installé le 5 octobre), ou TLOC_PLAYWRIGHT.
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+// Metal n'existe que sur le Mac ; Direct3D 11 est son équivalent sous Windows
+const ANGLE = process.platform === 'darwin' ? 'metal' : 'd3d11';
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${ANGLE}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 for (const pg of PAGES) {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
   const err = [];

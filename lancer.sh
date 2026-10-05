@@ -11,9 +11,18 @@
 # Usage : ./lancer.sh          (port 8000)
 #         ./lancer.sh 8100     (autre port)
 cd "$(dirname "$0")/serveur" || exit 1
-if [ ! -x .venv/bin/uvicorn ]; then
+# Sous Windows (Git Bash), le venv range ses exécutables dans Scripts/ et non bin/, et
+# `python3` peut n'être que le raccourci du Microsoft Store, qui répond sans rien lancer :
+# on prend le premier Python qui exécute vraiment quelque chose (le PC du 5 octobre).
+BIN=.venv/bin; [ -d .venv/Scripts ] && BIN=.venv/Scripts
+if [ ! -x $BIN/uvicorn ] && [ ! -x $BIN/uvicorn.exe ]; then
   echo "Première fois : installation de l'environnement du serveur…"
-  python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt || exit 1
+  PY=
+  for p in python3 python "py -3"; do $p -c 'pass' >/dev/null 2>&1 && { PY=$p; break; }; done
+  [ -n "$PY" ] || { echo "Python 3 introuvable : installe-le d'abord."; exit 1; }
+  $PY -m venv .venv || exit 1
+  BIN=.venv/bin; [ -d .venv/Scripts ] && BIN=.venv/Scripts
+  $BIN/python -m pip install -q -r requirements.txt || exit 1
 fi
 PORT="${1:-8000}"
 echo "The Legend of Camille"
@@ -23,4 +32,4 @@ echo "  (Ctrl+C pour arrêter)"
 # --no-access-log : une ligne par fichier servi noyait le terminal (des centaines de textures
 # à chaque chargement), et la ligne du salon multi affichait le jeton de session en clair
 # (/ws/<code>?jeton=…). Les erreurs et les avertissements s'affichent toujours.
-exec env TLOC_RACINE=.. .venv/bin/uvicorn app:app --reload --port "$PORT" --no-access-log
+exec env TLOC_RACINE=.. $BIN/uvicorn app:app --reload --port "$PORT" --no-access-log
