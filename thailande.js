@@ -247,6 +247,36 @@ function parois() {
   m.needsUpdate = true;
 }
 
+// ---------- l'esplanade du sommet ----------
+// Eugène, 5 octobre : « dalle la ». Au vrai Wat Tham Suea, le sommet est une esplanade de dalles
+// autour des temples et du grand chedi ; ici, l'herbe de la jungle y était restée quand on en a ôté
+// les arbres. Les dalles couvrent le grand piton au-dessus de 100 m (le plateau et la bosse du
+// chedi), par cases de 2,5 m, là où la pente reste sous 0,6 : les bords de falaise gardent leur
+// roche. Les hauteurs sont celles du MAILLAGE du sol (solMaille), 3 cm au-dessus, comme les voies.
+function esplanade({ hauteur, CADRE, PLAN, scene }) {
+  const S = PLAN.morceaux && PLAN.morceaux.suea; if (!S) return;
+  const H = solMaille(hauteur, CADRE), pas = 2.5, v = [], uv = [];
+  for (let z = Math.floor(S.z0 / pas) * pas; z < S.z1; z += pas) for (let x = Math.floor(S.x0 / pas) * pas; x < S.x1; x += pas) {
+    const c = [[x, z], [x + pas, z], [x + pas, z + pas], [x, z + pas]], hs = c.map(([a, b]) => H(a, b));
+    if (Math.min(...hs) < 100 || Math.max(...hs) - Math.min(...hs) > 0.6 * pas) continue;
+    const p = c.map(([a, b], k) => [a, hs[k] + 0.03, b]);
+    v.push(...p[0], ...p[3], ...p[2], ...p[0], ...p[2], ...p[1]);
+    for (const k of [0, 3, 2, 0, 2, 1]) uv.push(c[k][0], c[k][1]);
+  }
+  if (!v.length) return;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+  // les dalles claires des cours des temples thaïs. worn_tile_floor a le bon dessin (des dalles et
+  // leurs joints) mais c'est un carrelage sombre : le plateau faisait une tache noire vu d'en haut ;
+  // la couleur ne peut pas dépasser le blanc, alors on l'éclaircit dans le shader, comme parois()
+  // retouche la roche — la pierre pâlit, les joints restent marqués. (Le marbre, essayé, n'a pas de
+  // joints : on aurait dit de la terre craquelée.)
+  const mat = phMat('worn_tile_floor', 1.6, 1.6, { color: 0xffffff, roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  mat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
+    '#include <map_fragment>\n diffuseColor.rgb = min(diffuseColor.rgb * vec3(2.25, 2.15, 1.95), vec3(0.95));'); };
+  mat.customProgramCacheKey = () => 'dalles-esplanade';
+  const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
+}
+
 // ---------- la jungle ----------
 // Partout où la terre monte au-dessus des grèves et où la pente tient un arbre : un semis
 // serré (tous les 7 m, décalé au hasard), qui laisse à nu les parois et les villages.
@@ -976,7 +1006,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
