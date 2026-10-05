@@ -1004,28 +1004,46 @@ function vol({ centre: [cx, cz], y, rayon: [r0, r1], n, taille, vitesse, couleur
   };
 }
 
-// Le cheval de la banque (cheval.glb, cheval_blanc.glb) : chargé et lissé comme dans aveyron.js (dont
-// le chargeur est privé à sa page), à l'échelle des gens du lieu, une boucle d'animation (Eating, Idle)
-async function chevalAuRepos(fichier, x, y, z, yaw, clip) {
-  try {
-    const [L, S, U] = await Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')]);
-    const g = await new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier + '?v=2');
-    g.scene.traverse((o) => { if (!o.isSkinnedMesh) return; let ge = o.geometry.clone(); ge.deleteAttribute('normal'); ge = U.mergeVertices(ge, 1e-4); ge.computeVertexNormals(); o.geometry = ge;
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.flatShading = false; m.roughness = 0.82; m.metalness = 0; m.needsUpdate = true; } });
-    g.scene.updateMatrixWorld(true);
-    const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
-    const c = S.clone(g.scene); c.scale.setScalar(2.35 / (b.max.y - b.min.y) * G.echelle);
-    c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
-    c.position.set(x, y, z); c.rotation.y = yaw; scene.add(c);
-    const mix = new THREE.AnimationMixer(c), a = g.animations.find((k) => k.name === clip) || g.animations.find((k) => k.name === 'Idle');
-    if (a) { const act = mix.clipAction(a); act.time = Math.random() * a.duration; act.play(); }
-    return mix;
-  } catch (e) { console.warn('décor : cheval indisponible —', e.message); return null; }
+// Les bêtes de la banque (Quaternius, CC0, assets_back/02_personnages/animaux/, préparées par glb.py) :
+// chargées et lissées comme dans aveyron.js (dont le chargeur est privé à sa page), UNE fois par
+// fichier, puis clonées (SkeletonUtils), à l'échelle des gens du lieu, chacune sa boucle d'animation.
+// HAUT : la hauteur de la bête en unités de Lille (le cheval de 2,35, comme dans l'Aveyron).
+// TEINTES : les couleurs du pays, posées sur les matières du modèle (des aplats nommés) — la vache
+// et le taureau d'Aubrac, froment, le mufle et le tour des yeux sombres, les cornes en lyre claires ;
+// l'âne gris, le ventre et le museau clairs, la crinière sombre.
+const BETES = {
+  'cheval.glb': { haut: 2.35 }, 'cheval_blanc.glb': { haut: 2.35 },
+  'vache.glb': { haut: 2.05, teintes: { Main: 0xb48c5a, Main_Light: 0xdcc8a0, Muzzle: 0x2e2622, Horns: 0xe6dcc4, Hooves: 0x2a2420 } },
+  'taureau.glb': { haut: 2.25, teintes: { Main: 0x96704a, Main_Light: 0xc8aa7c, Muzzle: 0x2a2220, Horns: 0xe6dcc4, Hooves: 0x2a2420 } },
+  'ane.glb': { haut: 1.75, teintes: { Main: 0x5e5852, Main_Light: 0xb4aea4, Main_Dark: 0x4a4642, Hair: 0x34302c, Muzzle: 0xd8d4cc } },
+};
+const modelesBetes = new Map();
+function chargerBete(fichier) {
+  if (!modelesBetes.has(fichier)) modelesBetes.set(fichier, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')])
+    .then(([L, S, U]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier + '?v=2').then((g) => {
+      const T = (BETES[fichier] || {}).teintes || {};
+      g.scene.traverse((o) => { if (!o.isSkinnedMesh) return; let ge = o.geometry.clone(); ge.deleteAttribute('normal'); ge = U.mergeVertices(ge, 1e-4); ge.computeVertexNormals(); o.geometry = ge;
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.flatShading = false; m.roughness = 0.82; m.metalness = 0; if (T[m.name] != null) m.color.setHex(T[m.name]); m.needsUpdate = true; } });
+      g.scene.updateMatrixWorld(true);
+      const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+      return { g, S, echelle: ((BETES[fichier] || {}).haut || 2.35) / (b.max.y - b.min.y) };
+    })).catch((e) => { console.warn('décor : ' + fichier + ' indisponible —', e.message); return null; }));
+  return modelesBetes.get(fichier);
+}
+async function beteAuRepos(fichier, x, y, z, yaw, clip) {
+  const m = await chargerBete(fichier); if (!m) return null;
+  const c = m.S.clone(m.g.scene); c.scale.setScalar(m.echelle * G.echelle);
+  c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+  c.position.set(x, y, z); c.rotation.y = yaw; scene.add(c);
+  const mix = new THREE.AnimationMixer(c), a = m.g.animations.find((k) => k.name === clip) || m.g.animations.find((k) => k.name === 'Idle');
+  if (a) { const act = mix.clipAction(a); act.time = Math.random() * a.duration; act.play(); }
+  return mix;
 }
 
 // ctx : { hauteur, bloque } ; o : { maisons [{pts}], rues [{pts, r}], libre(x, z), centre [x, z],
-// pres { rmin, rmax } (où semer fleurs et brebis), oiseaux [params de vol], brebis n, chevaux
-// [[fichier, x, z, yaw, clip]] }. Rend anime(t, dt) (les oiseaux, les chevaux) et un bilan.
+// pres { rmin, rmax } (où semer fleurs et brebis), oiseaux [params de vol], brebis n, betes
+// [[fichier, x, z, yaw, clip]] (posées une à une), vaches { n, taureau } (un troupeau d'Aubrac) }.
+// Rend anime(t, dt) (les oiseaux, les bêtes) et un bilan.
 export async function decorDeHameau(ctx, o) {
   const { hauteur: h } = ctx, t0 = performance.now(), bilan = {};
   const places = seuils(o.maisons, o.rues, o.libre), pris = [];
@@ -1078,11 +1096,24 @@ export async function decorDeHameau(ctx, o) {
       ps.forEach(([x, z], k) => { const e = rand(0.88, 1.08); q.setFromAxisAngle(HAUT, rand(0, TAU)); m4.compose(v.set(x, h(x, z) - 0.03, z), q, sc.set(e, e, e)); im.setMatrixAt(k, m4); });
       im.castShadow = im.receiveShadow = true; scene.add(im); bilan.brebis = ps.length; bilan.troupeaux = centres.length; } }
 
-  // les oiseaux, et les chevaux
+  // les oiseaux, et les bêtes
   const vols = (o.oiseaux || []).map(vol); bilan.oiseaux = (o.oiseaux || []).reduce((s, b) => s + b.n, 0);
-  // chaque cheval sur une place libre de pré, au plus près de celle voulue (un rond de 25 m)
+  // chaque bête sur une place libre de pré, au plus près de celle voulue (un rond de 25 m)
   const surPre = (x0, z0) => { for (let r = 0; r < 25; r += 1) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * TAU) * r, z = z0 + Math.sin(k / 16 * TAU) * r; if (o.libre(x, z) && o.pre(x, z) && o.libre(x + 1.2, z) && o.libre(x - 1.2, z)) return [x, z]; } return null; };
-  const mixers = (await Promise.all((o.chevaux || []).map(([f, x0, z0, a, clip]) => { const p = surPre(x0, z0); return p ? chevalAuRepos(f, p[0], h(...p), p[1], a, clip) : null; }))).filter(Boolean); bilan.chevaux = mixers.length;
+  const betes = [...(o.betes || [])];
+  // le troupeau d'Aubrac : sur un pré à part des brebis, les vaches à 4 m au moins l'une de l'autre,
+  // chacune sa posture (elles broutent surtout), et le taureau un peu à l'écart
+  if (o.vaches) {
+    let c0 = null; for (let k = 0; k < 2000 && !c0; k++) { const a = rand(0, TAU), r = rand(o.pres.rmin, o.pres.rmax), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (o.libre(x, z) && o.pre(x, z) && surPre(x, z)) c0 = [x, z]; }
+    if (c0) { const ps = [];
+      for (let k = 0; k < 600 && ps.length < o.vaches.n; k++) { const a = rand(0, TAU), r = rand(0, 14), x = c0[0] + Math.cos(a) * r, z = c0[1] + Math.sin(a) * r;
+        if (o.libre(x, z) && o.pre(x, z) && ps.every(([p, q]) => Math.hypot(p - x, q - z) > 4)) ps.push([x, z]); }
+      ps.forEach(([x, z], k) => betes.push(['vache.glb', x, z, rand(0, TAU), ['Eating', 'Eating', 'Idle_Headlow', 'Idle', 'Idle_2'][k % 5]]));
+      if (o.vaches.taureau) betes.push(['taureau.glb', c0[0] + 16, c0[1] + 6, rand(0, TAU), 'Idle']); }
+  }
+  bilan.ou = [];   // où sont les bêtes (pour le banc et les captures)
+  const mixers = (await Promise.all(betes.map(([f, x0, z0, a, clip]) => { const p = surPre(x0, z0); if (p) bilan.ou.push([f, +p[0].toFixed(1), +p[1].toFixed(1)]); return p ? beteAuRepos(f, p[0], h(...p), p[1], a, clip) : null; }))).filter(Boolean); bilan.betes = mixers.length;
   bilan.ms = Math.round(performance.now() - t0); BILAN.decor = bilan;
   return (t, dt) => { for (const f of vols) f(t, dt); for (const m of mixers) m.update(dt); };
 }
@@ -1228,7 +1259,8 @@ const FICHES = {
       poteau(ctx, 'gardeguerin');
       // la vie du village (Eugène, 5 octobre) : devant les maisons, bancs, tonneaux et géraniums ; les
       // choucas autour de la tour et les hirondelles sur les toits ; sur le plateau, des fleurs, un
-      // troupeau de brebis, et le cheval d'un muletier de la Régordane, au repos à l'entrée du village
+      // troupeau de brebis et des vaches d'Aubrac, et le cheval et l'âne d'un muletier de la Régordane,
+      // au repos à l'entrée du village
       const tour = BILAN.corps.find((c) => c.sp.tour), enceinte = PLAN.garde.enceinte.map((e) => e.pts);
       const dansEnceinte = (x, z) => enceinte.some((p) => p.length > 2 && dansPoly(x, z, p));
       const pente = (x, z) => Math.hypot(ctx.hauteur(x + 1, z) - ctx.hauteur(x - 1, z), ctx.hauteur(x, z + 1) - ctx.hauteur(x, z - 1)) / 2;
@@ -1242,7 +1274,8 @@ const FICHES = {
           { centre: tour ? [tour.cx, tour.cz] : [1817, -5362], y: (tour ? tour.avt : ctx.hauteur(1817, -5362) + 21) + 6, rayon: [7, 26], n: 14, taille: 0.7, vitesse: 7, couleur: 0x1e1e22, battement: 10, plane: 0.35 },
           { centre: [1815, -5320], y: ctx.hauteur(1815, -5320) + 11, rayon: [12, 45], n: 10, taille: 0.35, vitesse: 13, couleur: 0x1a2030, battement: 16, plane: 0.2 },
         ],
-        chevaux: [['cheval.glb', 1857, -5243, Math.atan2(-15, -60) + 1.9, 'Eating']],
+        betes: [['cheval.glb', 1857, -5243, Math.atan2(-15, -60) + 1.9, 'Eating'], ['ane.glb', 1861, -5247, Math.atan2(-15, -60) + 2.4, 'Idle_Headlow']],
+        vaches: { n: 6, taureau: true },
       }).then((f) => { FICHES.gardeguerin._anime = f; });
     },
     anime(now) {

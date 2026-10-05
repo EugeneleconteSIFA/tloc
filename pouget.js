@@ -241,10 +241,12 @@ async function build() {
   // ---------- la vie du hameau (Eugène, 5 octobre : « ça manque de bancs, tonneaux, fleurs, oiseaux,
   // animaux et troupeaux ») : la fabrique de lozere.js, comme à la Garde-Guérin. Devant les maisons,
   // bancs, tonneaux et géraniums ; les hirondelles sur les toits et une buse très haut au-dessus de la
-  // vallée ; sur les prés, des fleurs, un second troupeau hors de l'enclos, et un cheval blanc ----------
+  // vallée ; sur les prés, des fleurs, un second troupeau hors de l'enclos, quatre vaches d'Aubrac et
+  // un cheval blanc ----------
   { const tous = [...routesHameau, ...cheminsHameau];
     const pente = (x, z) => Math.hypot(hauteur(x + 1, z) - hauteur(x - 1, z), hauteur(x, z + 1) - hauteur(x, z - 1)) / 2;
-    R.anime = await decorDeHameau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)) }, {
+    // sans l'attendre : les bêtes (quatre modèles à charger) arrivent pendant la cinématique d'entrée
+    decorDeHameau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)) }, {
       maisons: MAISONS, rues: tous, centre: CENTRE, pres: { rmin: 30, rmax: PRES },
       libre: (x, z) => !blocked(x, z, 0.7) && solBati(x, z) === -Infinity && Math.hypot(x - DEPART.x, z - DEPART.z) > 3 && Math.hypot(x - PORTE.x, z - PORTE.z) > 3,
       pre: (x, z) => !dansMaison(x, z, 4) && pente(x, z) < 0.45 && distTrace(x, z, tous) > 3 && !(ENCLOS && dansPoly(x, z, ENCLOS.tour)),
@@ -253,8 +255,9 @@ async function build() {
         { centre: CENTRE, y: hauteur(...CENTRE) + 12, rayon: [10, 45], n: 12, taille: 0.35, vitesse: 13, couleur: 0x1a2030, battement: 16, plane: 0.2 },
         { centre: [CENTRE[0] - 40, CENTRE[1] + 90], y: hauteur(...CENTRE) + 70, rayon: [55, 80], n: 1, taille: 1.3, vitesse: 6, couleur: 0x4a3a2a, battement: 4, plane: 0.85 },
       ],
-      chevaux: [['cheval_blanc.glb', CENTRE[0] + 52, CENTRE[1] + 38, 0.8, 'Eating']],
-    }); }
+      betes: [['cheval_blanc.glb', CENTRE[0] + 52, CENTRE[1] + 38, 0.8, 'Eating']],
+      vaches: { n: 4, taureau: false },
+    }).then((f) => { R.anime = f; }); }
 }
 
 function populate() { player.pos.set(DEPART.x, hauteur(DEPART.x, DEPART.z), DEPART.z); player.yaw = DEPART.yaw; G.camYaw = DEPART.yaw; }
