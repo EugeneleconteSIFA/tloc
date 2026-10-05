@@ -690,6 +690,10 @@ export function habillerEaux() {
   const troncs = [];
 
   for (const o of plans) {
+    // LE QUAI DU WAULT est un bassin de ville bordé de quais de pierre (carte.js) : ni
+    // roseaux, ni saules, ni nénuphars. Une ceinture de roseaux en pleine ville, au pied des
+    // façades, disait une mare de campagne.
+    if (/wault/i.test(o.nom || '')) continue;
     const n = o.poly.length, grand = o.aire > 2500;
     for (let i = 0; i < n; i++) {
       const a = o.poly[i], b = o.poly[(i + 1) % n];

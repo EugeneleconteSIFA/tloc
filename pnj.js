@@ -663,6 +663,95 @@ export const ROLES = {
     haut: VERT_GRIS, valeur: 0.7, bas: NOIX, valeurBas: 0.8, idle: 'Sitting_Idle_Loop',
     tete: () => chapeau(0x50453a, 0x3b3128, 0.18), dos: () => besace(LIN_SALE),
   },
+  // ---- l'acte I, à Lille (docs/DECOUPAGE-ACTE1.md) ----
+  // le crieur public de la place : on le reconnaît de loin à son tricorne rouge et à ce
+  // qu'il parle toujours (SCENARIO.md : « toujours là, jamais obligatoire »)
+  crieur: {
+    metier: 'crieur', gabarit: 'droite', h: enUnites(1.78),
+    tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x6a4a2a,
+    haut: GARANCE, valeur: 0.85, bas: ECRU, valeurBas: 1.1, idle: 'Idle_Talking_Loop',
+    tete: () => chapeau(0x7a1c18, 0xd0b060, 0.17),
+  },
+  // l'allumeur de lanternes : vieux, sec, la lanterne à la main — il a peur du noir depuis la cloche
+  allumeur: {
+    metier: 'allumeur', gabarit: 'sec', h: enUnites(1.70),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: BLANC_VIEUX,
+    haut: ARDOISE, valeur: 0.9, bas: NOIX, valeurBas: 0.8, idle: 'Idle_Lantern_Loop',
+    tete: () => chapeau(0x2e2a26, 0x2e2a26, 0.15),
+  },
+  // le gardien de la chapelle Saint-Roch, sur le parvis : la robe sombre du sacristain
+  gardien: {
+    metier: 'gardien', gabarit: 'ronde', h: enUnites(1.68),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    sourcils: 'coiffures_r:Eyebrows_Regular', barbe: 'coiffures_r:Hair_Beard', cheveuxC: 0x8a8278,
+    haut: ROBE, valeur: 0.45, bas: ROBE, valeurBas: 0.5, idle: 'Idle_FoldArms_Loop',
+  },
+  // le vieux pêcheur du quai : assis au bord de l'eau, chapeau de paille, besace d'osier
+  pecheur: {
+    metier: 'pecheur', gabarit: 'sec', h: enUnites(1.72),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    sourcils: 'coiffures_r:Eyebrows_Regular', barbe: 'coiffures_r:Hair_Beard', cheveuxC: BLANC_VIEUX,
+    haut: VERT_GRIS, valeur: 0.8, bas: NOIX, valeurBas: 0.75, idle: 'Sitting_Idle_Loop',
+    tete: () => chapeau(0xc8a868, 0x6a4a2a, 0.2), dos: () => besace(OSIER),
+  },
+  // ---- l'acte IV, les Pouilles (STORY.md ; docs/DECISIONS-RECIT.md, § 1) ----
+  // Nunzia à quinze ans, sur le port de Gallipoli : mince, les cheveux noirs longs, la blouse de
+  // lin et la jupe bleu de mer — elle vieillira à chaque retour, ce rôle est son premier âge
+  nunzia: {
+    metier: 'nunzia', gabarit: 'mince', h: enUnites(1.58),
+    tenue: 'tenues:Female_Peasant', corps: 'corps:Superhero_Female_FullBody',
+    cheveux: 'coiffures_r:Hair_Long', sourcils: 'coiffures_r:Eyebrows_Female', cheveuxC: 0x1a1210,
+    haut: LIN, valeur: 1.1, bas: 0x2f5a7a, valeurBas: 0.85, idle: 'Idle_Loop',
+  },
+  // Cosimo, l'apprenti mécanicien du petit train, à la gare d'Alberobello : le bleu de travail
+  // taché de cambouis, la casquette, les bras croisés de qui attend le prochain train
+  cosimo: {
+    metier: 'cosimo', gabarit: 'sec', h: enUnites(1.76),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_Buzzed', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x241a14,
+    haut: GUEDE, valeur: 0.75, bas: 0x2e3440, valeurBas: 0.7, idle: 'Idle_FoldArms_Loop',
+    tete: () => chapeau(0x2e3440, 0x2e3440, 0.12),
+  },
+  // le Colosse de Gallipoli : la silhouette d'un empereur en armure et manteau (celle du
+  // colosse de Barletta), que gallipoli.js grandit et coule dans le bronze
+  colosse: {
+    metier: 'colosse', gabarit: 'droite', h: enUnites(1.85),
+    tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x6a5a3a,
+    haut: 0x7a6a40, valeur: 1, bas: 0x7a6a40, valeurBas: 1, idle: 'Idle_Torch_Loop',
+  },
+  // ---- l'acte II, l'Aveyron de la grande sécheresse (STORY.md ; aveyron.js) ----
+  // les Roquette en cavaliers, « comme des cow-boys » (docs/SCENARIO.md) : le feutre à large
+  // bord, la veste de drap, assis en selle (aveyron.js les monte sur leurs chevaux). Chaque
+  // branche a la couleur des volets de sa maison : le bleu d'ardoise au Batut, la garance à
+  // Beauregard — on les reconnaît de loin, ce qui compte dans une querelle.
+  roquette_batut: {
+    metier: 'cavalier', gabarit: 'droite', h: enUnites(1.80),
+    tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_SimpleParted', sourcils: 'coiffures_r:Eyebrows_Regular',
+    barbe: 'coiffures_r:Hair_Beard', cheveuxC: 0x3a2a1c,
+    haut: 0x5a6e80, valeur: 0.8, bas: NOIX, valeurBas: 0.75, idle: 'Sitting_Idle_Loop',
+    tete: () => chapeau(0x2a2622, 0x5a6e80, 0.21),
+  },
+  roquette_beauregard: {
+    metier: 'cavalier', gabarit: 'trapu', h: enUnites(1.78),
+    tenue: 'tenues:Male_Ranger', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_Buzzed', sourcils: 'coiffures_r:Eyebrows_Regular',
+    barbe: 'coiffures_r:Hair_Beard', cheveuxC: 0x5a3a22,
+    haut: GARANCE, valeur: 0.75, bas: NOIX, valeurBas: 0.8, idle: 'Sitting_Idle_Loop',
+    tete: () => chapeau(0x4b3a2c, GARANCE, 0.21),
+  },
+  // l'aïeule du Pouget, chez qui les familles se retrouvent : le noir des veuves, le fichu de
+  // lin, les cheveux blancs ; debout sur le seuil de la grande maison
+  aieule_pouget: {
+    metier: 'aieule', gabarit: 'ronde', h: enUnites(1.56),
+    tenue: 'tenues:Female_Peasant', corps: 'corps:Superhero_Female_FullBody',
+    cheveux: 'coiffures_r:Hair_Buns', sourcils: 'coiffures_r:Eyebrows_Female', cheveuxC: BLANC_VIEUX,
+    haut: 0x2a2624, valeur: 0.6, bas: 0x2a2624, valeurBas: 0.6, idle: 'Idle_FoldArms_Loop',
+    epaules: () => fichu(LIN),
+  },
 };
 
 /**

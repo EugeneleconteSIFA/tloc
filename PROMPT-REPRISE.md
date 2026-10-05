@@ -1294,6 +1294,83 @@ les unes par rapport aux autres. Plans et reliefs complets d'avant : `carte/mond
 - **Défauts vus et pas corrigés** : la vue d'ensemble de la baie est mangée par la brume
   (`brume: [.., 260, 3200]`) ; deux 404 au chargement, sans requête visible (sans doute l'icône).
 
+### Lille — la ville resserrée (nuit du 4 au 5 octobre) — **faite et vérifiée, PAS ENCORE PUBLIÉE**
+
+**Ce qui est fait** (en local, `carte.js` et `quartier.js`) :
+- **L'emprise** (`VILLE`, `sdVille`, `dansVille`, carte.js) : le bourg et 200 m autour (accord
+  d'Eugène), la rive du quai du Wault (70 m de part et d'autre) et un cercle de 200 m à sa droite,
+  centré en (60 ; 770). Les trois se touchent : une seule ville. 546 bâtiments gardés sur 1 981.
+- **Au-delà** (quartier.js) : le premier rang (35 m) reste en vraies maisons, sans collision — en
+  volumes nus, il montrait des pignons aveugles au bout des rues ; puis, jusqu'à 260 m, des volumes
+  bas (quatre murs, deux pans, sans ombre portée) ; plus loin, rien. 694 volumes lointains.
+- **Les rues coupées** finissent sur un mur de brique à chaperon de pierre et une porte cochère
+  fermée (`portesDeVille`) : 162 murs. **Le tissu coupé ne se parcourt plus** (`horsVille`, grille de
+  6 m, lue par `levelBlocked`) : à moins de 30 m d'un bâtiment ôté et à moins de 420 m de
+  l'emprise. Épargnés : le moulin d'Émile (110 m), la chaumière du mage (200 m), la maison de
+  Camille, le petit coffre de l'ouest (−91 ; 539).
+- **(a) choisi** : PLAINE_R (1 275 m) et l'enceinte de 1858 ne bougent pas.
+
+**Vérifié** : banc d'accès (`acces.mjs index`) 23 interactions, 0 hors d'atteinte. Le premier essai
+fermait le chemin de la chaumière du mage ; corrigé par la limite des 420 m. Banc des sauts sur
+la ville : 2 capsules signalées, sur la voie des combattants (campagne.js:462, en (−7 ; 421)), sans
+rapport avec la ville. Prologue joué en headless sans erreur, minicarte comprise. Le multi : les
+drapeaux sont proposés à chaque partie par le client, d'après la grille des chemins, qui passe par
+`blocked` ; le tissu coupé en est donc exclu tout seul. Les aires (parc, citadelle) se mesurent
+depuis la citadelle, intacte.
+
+**§ 4.E — ce que la ville coûtait, ce qu'elle coûte** (`charge.mjs` au calme, somme des étapes à froid) :
+avant **14,4 s** (quartier 2,2 s, fusion des décors 1,8 s, préparation du rendu 3,8 s, tas 346 Mo) ;
+après **11,5 s** (quartier 1,0 s, fusion 1,3 s, préparation du rendu 2,9 s, tas 294 Mo).
+Relevés : `bancs/resultats/charge-2026-10-04-ville-avant.json` et `-ville-apres.json`. Les 36,8 s du
+2 octobre venaient surtout d'un Mac saturé, pas du code.
+
+**Pourquoi rien n'est publié** : le premier contrôle (4 octobre, 23 h) a mesuré 27,0 s en médiane
+(27,4 / 27,0 / 25,8) avec les bancs des autres sessions dans la même fenêtre. Je l'ai remis en file
+avec des seuils de calme trop stricts (5 min < 3,5) : la nuit est passée sans qu'il parte. Il est
+relancé le 5 au matin avec la règle d'Eugène (1 min < 3).
+- Les correctifs du **réalisme** (trottoirs montés de 14 cm avec leur bordure visible, caniveau de
+  grès, trottoir coupé au droit des carrefours) et des **passants** (une lavandière au quai du
+  Wault, une marchande, un brasseur rue du Gros Gérard, un garde du guet à une porte coupée ; le
+  quai du Wault devient un lieu découvert) sont **écrits, pas encore appliqués** : ils touchent
+  les fichiers du lot à publier, qu'il faut d'abord envoyer seul. Ils sont dans le dossier de
+  travail de la session (`patch-routes.py`, `patch-passants.py`).
+- **Seul appliqué en plus** : `nature.js` — plus de roseaux, de saules ni de nénuphars dans le
+  bassin du quai du Wault (un bassin de ville bordé de quais de pierre, pas une mare). Non publié.
+
+**Captures à regarder** : `bancs/resultats/ville-avant-*-yeux.jpg` et `-plongee.jpg` (garde, place,
+chemin, rue, wault) — l'état avant les corrections de réalisme. Le banc qui les prend :
+`bancs/regard-ville.mjs` (Camille y est maintenant placée hors du champ ; sur ces premières
+captures, son corps se voit encore devant l'objectif).
+
+**Écarts relevés, du plus visible au moins visible** :
+1. Le dallage du bourg (rue de la salle de la garde) : une texture de pierre floue, étirée —
+   **c'est village.js** (interdit cette nuit) : à faire par la session qui le possède.
+2. Les rues de la ville : trottoir au ras de la chaussée (3 cm sous elle), ni bordure, ni caniveau,
+   ni bombé ; au cœur des îlots, un sol brun uni.
+3. Le chemin du pont au bourg : un ruban brun à bords francs dans le bois.
+4. Le quai du Wault : une berge à roseaux (corrigé, non publié) et pas de quai de pierre ; les
+   façades de pierre trop blanches et toutes pareilles.
+
+**Demandes pour d'autres fichiers** :
+- `hud.js` (minicarte et carte M) trace encore toutes les rues et tout le bâti relevé, coupé
+  compris : les rues coupées y paraissent ouvertes. Il faudrait griser ce qui est hors de
+  `dansVille`, ou n'y dessiner que l'emprise.
+- `village.js` : le dallage flou du bourg (écart n° 1).
+
+**Questions pour Eugène** :
+1. « Le bourg doit être enlevé et les bâtiments faire partie à part entière de cette nouvelle
+   ville » : je ne l'ai pas fait. Le bourg (village.js) porte la place, le beffroi, la chapelle,
+   l'estaminet, la salle de la garde et tous les personnages du prologue et de l'acte I, et
+   village.js était interdit. Pour l'instant, le bourg est fondu dans la ville resserrée. Veux-tu
+   qu'il disparaisse au profit des bâtiments relevés (il faudrait reloger beffroi, chapelle,
+   estaminet et salle de la garde dans des emprises réelles) ?
+2. Le cercle « à droite du quai du Wault » est centré en (60 ; 770), son bord ouest touche le quai.
+   Est-ce bien là que tu le voulais ?
+
+Sources de la recherche sur le quai du Wault (dernier bassin portuaire de Lille, aménagé vers 1750,
+fermé en 1865, remis en eau en 1994, quais pavés, couvent des Minimes) : fr.wikipedia.org/wiki/Quai_du_Wault,
+caue-nord.com (observatoire, le quai du Wault), lilledantan.com.
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**

@@ -190,6 +190,8 @@ export function onLoad(snap) {
   if (killsLeft() === 0 && !state.gateOpen) openGate();
   // TOWN.y : le chat se pose sur le dallage du bourg, qui n'est plus à la cote 0
   if (state.catFound && PARTAGE.pralin) { PARTAGE.pralin.position.set(...(([a, b]) => [a, TOWN.y, b])(townWorld(-8.6, -1.4))); PARTAGE.pralin.rotation.y = 1.2 + TOWN.a; }
+  // l'acte I : la grande grille reste baissée tant que la citadelle n'est pas reprise
+  if (acte1() && !atteint('citadelle') && PARTAGE.herse) PARTAGE.herse.userData.poser(1);
   if (state.princeFreed && PARTAGE.prince) { PARTAGE.prince.visible = true; PARTAGE.prince.position.set(player.pos.x - Math.sin(player.yaw) * 2, 0, player.pos.z - Math.cos(player.yaw) * 2); }
 }
 // =====================================================================
@@ -205,6 +207,7 @@ export function inWater(x, z, y) { return sdEau(x, z) < -1.5 && eauVisible(x, z)
 export function update(dt) {
   const p = player;
   if (PRO.etape) suivrePrologue();
+  tickActe1(dt);
   if (FOULE.aFaire.length) grossirFoule();
   if (FOULE.geants && FOULE.geants.length) avancerProcession(dt);
   for (const v of [PARTAGE.houtland, PARTAGE.mageBourg]) if (v && v.visible) PNJ.animeVillageois(v, dt, false);
@@ -302,6 +305,7 @@ function osier(L, oui) {
 // dialogue avec Lydéric selon l'avancement (Entrée)
 
 export function talkLyderic() {
+  if (acte1()) { lydericActe1(); return; }
   const alive = killsLeft(); const L = (t, fn) => ({ who: 'Lydéric', text: t, fn });
   if (!PARTAGE.lyderic.userData.osier) PARTAGE.lyderic.rotation.y = Math.atan2(player.pos.x - PARTAGE.lyderic.position.x, player.pos.z - PARTAGE.lyderic.position.z);
   let lines;
@@ -710,7 +714,10 @@ export function introScene(serment = false) {
     // Porte Royale. Qu'elle reste baissée — la « grande grille » que dix hommes poussent à
     // l'acte I — se décidera avec l'acte I (docs/DECOUPAGE-PROLOGUE.md).
     // dans le noir aussi, la foule s'enfuit (découpage, plan 17 : « La foule s'est enfuie »)
-    { fade: 1, dur: 2, skippable: false, fn: () => { PRO.herseT = -1; if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); disperserFoule(); } },
+    // L'ACTE I LA LAISSE BAISSÉE (docs/DECOUPAGE-ACTE1.md, étape 1) : c'est « la grande grille »
+    // que dix hommes poussent encore ; on n'entrera plus dans la place que par les souterrains.
+    // Sans serment (l'ancienne intro), elle se relève comme avant.
+    { fade: 1, dur: 2, skippable: false, fn: () => { PRO.herseT = -1; if (PARTAGE.herse) PARTAGE.herse.userData.poser(serment ? 1 : 0); disperserFoule(); } },
     { cam: [-3, 2.2, lz + 11], at: [-0.6, 0.8, lz + 6.5], cam2: [-2.4, 2.5, lz + 10], at2: [-0.6, 1.2, lz + 6.5], dur: 4, fade: 0, text: 'Le silence retombe sur le pont. Camille rouvre les yeux…' },
     { say: "« Camille ! Tu es vivante ! Viens, viens me parler, vite… »", who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz],
       fn: () => { player.pose = null; player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5); } },
@@ -729,6 +736,7 @@ export function introScene(serment = false) {
 function rappel() {
   const lx = LYD_X, lz = LYD_Z, hy = getH(0, lz), cl = PARTAGE.cloche, lyd = PARTAGE.lyderic;
   PRO.fendue = true; state.lydericOsier = true;
+  state.sword = true;          // l'épée d'apprentie, que le mage donne au prologue joué
   lyd.position.set(lx, getH(lx, lz), lz); lyd.rotation.y = 0;
   player.pos.set(-0.6, hy, lz + 6.5); player.yaw = Math.atan2(lx + 0.6, -6.5);
   const V = (x, y, z) => cl.joug.localToWorld(new THREE.Vector3(x, y, z)).toArray();
@@ -740,8 +748,8 @@ function rappel() {
     { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 4.5, text: 'Il a changé Lydéric en géant d’osier et enlevé Eugène, le sonneur.' },
     { cam: [-9, 6, lz - 14], at: [0, 6, APO], dur: 4, text: 'Puis il est entré dans la citadelle, et la grande grille est retombée derrière lui.',
       fn: () => { if (PARTAGE.herse) PARTAGE.herse.userData.poser(1); } },
-    // relevée dans le noir du fondu, comme au prologue joué (la partie d'aujourd'hui passe par là)
-    { fade: 1, dur: 1.2, skippable: false, fn: () => { if (PARTAGE.herse) PARTAGE.herse.userData.poser(0); } },
+    // baissée pour de bon, comme au prologue joué : l'acte I commence (docs/DECOUPAGE-ACTE1.md)
+    { fade: 1, dur: 1.2, skippable: false },
     { cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz], dur: 1.2, fade: 0 },
     { say: '« Camille ! Tu es vivante ! Viens, viens me parler, vite… »', who: 'Lydéric', cam: [3, 3.4, lz + 17], at: [lx, 3.4, lz] },
   ], () => {
@@ -761,6 +769,220 @@ function finPrologue() {
     { label: 'Retour à l’accueil', fn: () => { naviguer('accueil.html'); } },
   ]);
 }
+// =====================================================================
+//  L'ACTE I — « La Grande Cloche » (STORY.md ; docs/DECOUPAGE-ACTE1.md)
+// =====================================================================
+// L'acte commence quand le prologue est joué (state.prologueFait). Une sauvegarde d'avant
+// (sans ce drapeau) garde l'ancienne histoire — les dix monstres, la poterne — jusqu'au bout.
+// L'étape (state.acte1) porte les noms de DIALOGUES-ACTE1.md : chaque habitant dit la
+// réplique de l'étape la plus récente qui lui en donne une. Les indices entendus
+// (state.ind) font le carnet du journal et le point d'or de la carte.
+const ETAPES = ['grille', 'canne', 'cle', 'lanterne', 'souterrains', 'arc', 'citadelle', 'bombes', 'donjon', 'temple'];
+export const acte1 = () => (state.prologueFait ? (state.acte1 || 'grille') : null);
+const rang = (e) => ETAPES.indexOf(e);
+const atteint = (e) => acte1() !== null && rang(acte1()) >= rang(e);
+function passerA(e) { if (rang(e) > rang(acte1())) { state.acte1 = e; saveGame(true); } }
+
+// Le carnet : chaque indice en gras s'y écrit, et se barre quand il a servi (SCENARIO.md § 7,
+// règle 6). `ou` pose la marque de la carte quand on sait où ET comment.
+const INDICES = {
+  crypte:   { txt: 'La crypte de la chapelle Saint-Roch descend jusqu’aux souterrains de la citadelle.', qui: 'Lydéric', fait: () => atteint('souterrains') },
+  lanterne: { txt: 'Sous terre, il faut la lanterne de Désiré, le guetteur du beffroi.', qui: 'Lydéric', fait: () => !!state.lanterne },
+  cornelie: { txt: 'Désiré a filé vers la chapelle cette nuit, sa lanterne sous le bras.', qui: 'Cornélie', fait: () => !!state.ind?.gustave },
+  gustave:  { txt: 'Gustave, à l’estaminet, connaît Désiré mieux que personne.', qui: 'le gardien de la chapelle', fait: () => !!state.ind?.escalier },
+  nuit:     { txt: 'Désiré monte au beffroi à minuit ; sa lumière ne se voit là-haut que la nuit.', qui: 'l’allumeur', fait: () => !!state.lanterne },
+  escalier: { txt: 'La petite porte du beffroi est fermée ; Émile en a la clé.', qui: 'Gustave', fait: () => !!state.ind?.canal },
+  canal:    { txt: 'La clé est tombée dans le canal de la Tortue, derrière le moulin.', qui: 'Émile', fait: () => !!state.cleBeffroi },
+  pecheur:  { txt: 'Le vieux pêcheur du quai, devant la maison, a une canne.', qui: 'Émile', fait: () => !!state.canne },
+  vers:     { txt: 'Des vers dans la terre du champ d’Émile, là où le blé est coupé.', qui: 'le vieux pêcheur', fait: () => !!state.vers },
+};
+function noter(cle) {
+  state.ind = state.ind || {};
+  if (state.ind[cle]) return;
+  state.ind[cle] = true; saveGame(true);
+  setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300);
+}
+// la section du journal (engine.js, openJournal) : la suite de ce qu'on a appris, barrée quand ça a servi
+function indicesJournal() {
+  if (!acte1() || !state.ind) return '';
+  const l = Object.keys(INDICES).filter((k) => state.ind[k]).map((k) => { const i = INDICES[k], f = i.fait();
+    return `<div style="margin:4px 0;${f ? 'opacity:.5;text-decoration:line-through' : ''}">${i.txt} <span style="opacity:.6">— ${i.qui}</span></div>`; });
+  return l.length ? `<h3 style="margin:18px 0 6px;color:#9fd0ff;font-size:16px;letter-spacing:1px">INDICES</h3><div style="padding:8px 14px;border-left:4px solid #9fd0ff;background:rgba(255,255,255,.06);border-radius:6px">${l.join('')}</div>` : '';
+}
+
+// Les habitants nouveaux de l'acte I (pnj.js, ROLES) : nés APRÈS le chargement, un par image,
+// comme la foule du prologue — le banc n'en paie rien (règle 8). Houtland et le mage restent
+// devant la salle de la garde : la crise les y a trouvés.
+const A1 = { gens: {}, aFaire: [], pret: false, lieux: null };
+function lieuxActe1() {
+  if (A1.lieux) return A1.lieux;
+  const E_ = PARTAGE.ecole, L = {};
+  // sur le parvis de la chapelle, à cinq mètres du portail (sa portée, 2,3 m, et celle du
+  // gardien ne se recouvrent pas : Entrée parlerait au portail au lieu du gardien)
+  { const [px, pz] = townWorld(-1.5, -13), [qx, qz] = townWorld(3.5, -12);
+    L.gardien = [...placeLibre(qx, qz, qx - px, qz - pz), Math.atan2(px - qx, pz - qz)]; }
+  // le crieur, au bord de la place, tourné vers elle
+  { const [cx, cz] = townWorld(0, 0), [qx, qz] = townWorld(6, 6.5); L.crieur = [...placeLibre(qx, qz, qx - cx, qz - cz), Math.atan2(cx - qx, cz - qz)]; }
+  // l'allumeur, à l'angle de l'estaminet, sa lanterne éteinte à la main
+  { const x0 = 223, z0 = 668; L.allumeur = [...placeLibre(x0, z0, 1, 0), Math.atan2(200 - x0, 660 - z0)]; }
+  // le vieux pêcheur, au bord de l'eau devant la maison de Camille : le premier point de berge
+  // sèche (1 à 2 m de l'eau), tourné vers l'eau
+  { let best = null;
+    for (let r = 4; r < 40 && !best; r += 1) for (let k = 0; k < 32; k++) {
+      const a = k / 32 * TAU, x = 166 + Math.cos(a) * r, z = 607 + Math.sin(a) * r, d = sdEau(x, z);
+      if (d > 1 && d < 2.2 && !blocked(x, z, 0.8, false, getH(x, z) + 0.5)) { best = [x, z]; break; } }
+    best = best || [170, 615];
+    // vers l'eau : la pente de la distance à la nappe
+    const g = [sdEau(best[0] + 1, best[1]) - sdEau(best[0] - 1, best[1]), sdEau(best[0], best[1] + 1) - sdEau(best[0], best[1] - 1)];
+    L.pecheur = [best[0], best[1], Math.atan2(-g[0], -g[1])]; }
+  // Houtland et le mage : à la place que leur donnait le prologue, devant la salle de la garde
+  L.houtland = [E_.eugene[0], E_.eugene[1], Math.atan2(E_.x - E_.eugene[0], E_.z - E_.eugene[1])];
+  { const [mx, mz] = placeLibre(E_.x - Math.sin(E_.yaw) * 3 + Math.cos(E_.yaw) * 1.6, E_.z - Math.cos(E_.yaw) * 3 - Math.sin(E_.yaw) * 1.6, -Math.sin(E_.yaw), -Math.cos(E_.yaw));
+    L.mage = [mx, mz, Math.atan2(E_.x - mx, E_.z - mz)]; }
+  return (A1.lieux = L);
+}
+const NOMS = { crieur: 'le crieur public', allumeur: 'l’allumeur de lanternes', gardien: 'le gardien de la chapelle', pecheur: 'le vieux pêcheur', houtland: 'Houtland', mage: 'le vieux mage' };
+// « parler à le… » : l'article se contracte
+const A_QUI = (n) => n.replace(/^le /, 'au ').replace(/^(?!au )/, 'à ');
+function preparerActe1() {
+  if (A1.pret || !acte1()) return;
+  A1.pret = true;
+  if (G.level) G.level.indices = indicesJournal;
+  const L = lieuxActe1();
+  // les deux qu'on a déjà (le prologue les a bâtis) : on les pose et on leur donne la parole
+  for (const [cle, qui] of [['houtland', 'houtland'], ['mageBourg', 'mage']]) {
+    const v = PARTAGE[cle]; if (!v) continue;
+    const [x, z, yaw] = L[qui]; v.position.set(x, getH(x, z), z); v.rotation.y = yaw; v.visible = true;
+    A1.gens[qui] = v; parlerA(v, qui); addCap(x, z, x, z, 0.4);
+  }
+  A1.aFaire = ['crieur', 'allumeur', 'gardien', 'pecheur'];
+}
+// un par image : une demi-douzaine de personnages riggés d'un coup, c'était une image figée
+function naitreActe1() {
+  const qui = A1.aFaire.shift(), v = PNJ.buildRole(qui);
+  if (!v) { A1.aFaire.length = 0; return; }
+  const [x, z, yaw] = lieuxActe1()[qui];
+  v.position.set(x, getH(x, z), z); v.rotation.y = yaw; v.scale.setScalar(G.echelle);
+  // le pêcheur se tient debout, sa canne tendue au-dessus de l'eau
+  if (qui === 'pecheur') { v.userData.idle = 'Idle_Loop'; v.add(canneAPeche()); }
+  scene.add(v); A1.gens[qui] = v; addCap(x, z, x, z, 0.4); parlerA(v, qui);
+}
+// la canne du pêcheur : une perche de frêne, la ligne qui tombe à l'eau. Bois photographié.
+function canneAPeche() {
+  const g = new THREE.Group(), L = 3.6 / G.echelle;
+  const perche = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, L, 6), phMat('wood_planks', 0.3, 2, { color: 0xb89a70 }));
+  perche.position.set(0.25, 1.1 + L / 2 * Math.sin(0.5), L / 2 * Math.cos(0.5)); perche.rotation.x = Math.PI / 2 - 0.5; g.add(perche);
+  const bout = [0.25, 1.1 + L * Math.sin(0.5), L * Math.cos(0.5)];
+  const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, bout[1] + 0.6, 3), new THREE.MeshStandardMaterial({ color: 0xd8d4c8, roughness: 0.6 }));
+  fil.position.set(bout[0], (bout[1] - 0.6) / 2, bout[2]); g.add(fil);
+  g.traverse((o) => { o.castShadow = true; });
+  return g;
+}
+function parlerA(v, qui) {
+  addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible && !!acte1(), prompt: () => `parler ${A_QUI(NOMS[qui])}`,
+    fn: () => { v.rotation.y = Math.atan2(player.pos.x - v.position.x, player.pos.z - v.position.z); v.userData.talk = 4;
+      dialogue(repliques(qui) || [{ who: NOMS[qui], text: '« … »' }], () => { v.userData.talk = 0; }); } });
+}
+
+// LES RÉPLIQUES (DIALOGUES-ACTE1.md, recopiées mot pour mot ; le gras entre **…** est
+// celui du fichier). Une fonction par habitant : elle lit l'étape et le carnet, et rend
+// la réplique de l'étape la plus récente. Les habitants du bourg (village.js) passent
+// aussi par ici, par PARTAGE.repliquesActe1 : un seul endroit sait où en est l'histoire.
+const ind = (k) => !!(state.ind && state.ind[k]);
+const dit = (who, text, fn) => ({ who, text, fn });
+function repliques(qui) {
+  const e = acte1(); if (!e) return null;
+  switch (qui) {
+    case 'houtland':
+      return [dit('Houtland', '« J’ai envoyé dix hommes soulever la grande grille. Ils poussent encore. »')];
+    case 'mage':
+      if (atteint('lanterne')) return [dit('Le vieux mage', '« Cette lanterne a éclairé plus de nuits que tu ne crois. »')];
+      return [dit('Le vieux mage', '« Phinaert. Je pensais ne plus jamais entendre ce nom. »'),
+        dit('Le vieux mage', '« Désiré a quitté le beffroi cette nuit. **Cornélie** voit tout ce qui passe dans le bourg : demande-lui. »')];
+    case 'crieur':
+      if (atteint('lanterne')) return [dit('Le crieur public', '« Oyez ! La garde descend sous la chapelle ! Que saint Roch la garde ! »')];
+      return [dit('Le crieur public', '« Oyez ! La Grande Cloche est fendue, le géant d’osier ne bouge plus ! On cherche le guetteur Désiré, qui l’a vu ? »')];
+    case 'gardien':
+      if (state.lanterne) return [dit('Le gardien de la chapelle', '« La crypte ? **L’escalier est derrière l’autel.** Que saint Roch te garde. »')];
+      return [dit('Le gardien de la chapelle', '« Il est passé, mais il n’est pas resté. Il voulait **voir la ville sans être vu**, qu’il a dit. **Gustave** le connaît mieux que moi. »', () => noter('gustave')),
+        dit('Le gardien de la chapelle', '« La Grande Cloche est plus vieille que cette chapelle. On dit qu’un ermite l’a fait fondre, au temps des géants. »')];
+    case 'allumeur':
+      if (state.lanterne) return [dit('L’allumeur', '« Tu as la lanterne de Désiré ! **Rallume les lanternes de la rue du Cygne**, veux-tu ? Moi, j’ai peur du noir, maintenant. »')];
+      return [dit('L’allumeur', '« Désiré ? Je l’ai vu cette nuit, à minuit, **monter vers le beffroi** avec sa lanterne. Depuis, on voit sa lumière là-haut, mais **seulement la nuit**. Il ne m’a pas dit bonsoir. Il me dit toujours bonsoir. »', () => noter('nuit')),
+        dit('L’allumeur', '« Je n’ose plus sortir faire ma tournée. Les rues sont trop noires. »')];
+    case 'pecheur':
+      if (state.canne) return [dit('Le vieux pêcheur', state.cleBeffroi ? '« Il y a un brochet dans la Deûle, vieux comme la citadelle. Personne ne l’a jamais pris. On dit qu’il ne sort qu’à la pleine lune. »' : '« Alors, ça mord ? »')];
+      if (state.vers) return [dit('Le vieux pêcheur', '« Bien gras. **Tiens, la canne.** Lance, attends que le bouchon plonge, et ramène doucement. Doucement, j’ai dit. »',
+        () => { state.canne = true; passerA('canne'); SFX.win(); burst(player.pos.x, player.pos.y + 1.5, player.pos.z, 0xffe070, 24, 3, 1.2, 2, 1.2); saveGame(true); })];
+      if (ind('pecheur')) return [dit('Le vieux pêcheur', '« Ma canne ? Je veux bien te la prêter. Mais on ne pêche pas sans vers : **il y en a plein dans le champ d’Émile, là où tu as coupé le blé.** »', () => noter('vers'))];
+      return [dit('Le vieux pêcheur', '« La cloche s’est tue, et les poissons aussi. Ils sentent ces choses-là, les poissons. »')];
+    // ---- les habitants du bourg, que bâtit village.js ----
+    case 'Cornélie':
+      if (state.lanterne) return [dit('Cornélie', '« Tu l’as trouvé ! Et Pralin, toujours rien ? »')];
+      return [dit('Cornélie', '« Désiré ? Je l’ai vu filer **vers la chapelle** cette nuit, sa lanterne sous le bras. »', () => noter('cornelie'))];
+    case 'Émile':
+      if (state.lanterne) return [dit('Émile', '« Tu l’as trouvé, ce vieux hibou ? Il t’a posé une devinette, je parie. »')];
+      if (state.cleBeffroi) return [dit('Émile', '« Désiré ne se montre qu’à la nuit, tu sais. **Dors un peu chez toi, et monte après minuit.** »')];
+      if (state.canne) return [dit('Émile', '« Tu as la canne du vieux ? **Lance dans le canal de la Tortue, derrière le moulin**, c’est là qu’elle est tombée. Et dis à Désiré que sa bouteille l’attend. »')];
+      if (ind('escalier')) return [dit('Émile', '« La clé de l’escalier du beffroi ? Ah… Ce matin, en courant à la fête, elle m’a glissé de la poche. **Elle est au fond du canal de la Tortue, derrière le moulin.** **Le vieux pêcheur du quai** a une canne, lui. »', () => { noter('canal'); noter('pecheur'); })];
+      return [dit('Émile', '« Le canyon, derrière le bois ? Personne n’en est jamais revenu. Au fond, l’eau est si froide qu’elle coupe le souffle. »')];
+    // Désiré n'est plus dans les rues : il se cache au beffroi (village.js le retire)
+    // Ceux qui n'ont rien à dire de l'enquête disent la ville qui s'est fermée (ambiance)
+    case 'Aldegonde': return [dit('Aldegonde', '« Les volets sont fermés partout. Ma mère disait que la Grande Cloche ne se fendrait jamais. »')];
+    case 'Baptiste': return [dit('Baptiste', '« Personne n’a mangé une gaufre depuis midi. Un jour de fête, ça ne s’était jamais vu. »')];
+    case 'Fernande': return [dit('Fernande', '« Mon homme est des dix qui poussent la grille. Il rentrera trempé de sueur, et bredouille. »')];
+  }
+  return null;
+}
+PARTAGE.repliquesActe1 = repliques;
+
+// Lydéric, en osier : il ne tourne plus la tête, mais il parle (SCENARIO.md)
+function lydericActe1() {
+  const L = (t, fn) => ({ who: 'Lydéric', text: t, fn });
+  let lines;
+  if (atteint('lanterne')) lines = [L('« Je ne peux plus tourner la tête. Dis-moi ce que tu vois de la citadelle. »')];
+  else if (ind('crypteNoire')) lines = [L('« Sous terre, il faut une lumière qui ne s’éteint pas. **La lanterne de Désiré**, le guetteur du beffroi. Il ne la quitte jamais. »', () => noter('lanterne')),
+    L('« Tu as prêté serment ce matin. Tu ne savais pas que ce serait pour ça. »')];
+  else lines = [L('« Il est entré dans la citadelle et il a fait tomber la grande grille de l’entrée. Il y a un autre chemin : **la crypte de la chapelle Saint-Roch**, la cave sous l’église, descend jusqu’aux souterrains de la citadelle. »', () => noter('crypte')),
+    L('« Tu as prêté serment ce matin. Tu ne savais pas que ce serait pour ça. »')];
+  dialogue(lines, () => { state.metLyderic = true; saveGame(true); });
+}
+
+// ce qu'il reste à faire, dans l'ordre du fil — l'objectif du journal et le point d'or
+function suiteActe1() {
+  const E_ = PARTAGE.ecole, [bx, bz] = [194, 681], [cx, cz] = [210, 691];
+  if (!ind('crypte')) return ['Va parler à Lydéric, sur le pont (Entrée)', { x: LYD_X, z: LYD_Z }];
+  if (!ind('crypteNoire')) return ['Descends dans la crypte de la chapelle Saint-Roch, au bourg', { x: cx, z: cz }];
+  if (!ind('lanterne')) return ['Retourne voir Lydéric, sur le pont', { x: LYD_X, z: LYD_Z }];
+  if (!ind('escalier')) {
+    if (ind('gustave')) return ['Demande à Gustave, à l’estaminet, où se cache Désiré', { x: 218, z: 662 }];
+    if (ind('cornelie')) return ['Interroge le gardien de la chapelle Saint-Roch', { x: cx, z: cz }];
+    return ['Trouve Désiré, le guetteur du beffroi : demande dans le bourg (le vieux mage, devant la salle de la garde)', { x: E_.x, z: E_.z }];
+  }
+  if (!ind('canal')) return ['Demande à Émile la clé de la petite porte du beffroi', null];
+  if (!state.canne) {
+    if (state.vers) return ['Rapporte les vers au vieux pêcheur, sur le quai devant ta maison', A1.gens.pecheur ? { x: A1.gens.pecheur.position.x, z: A1.gens.pecheur.position.z } : null];
+    if (ind('vers')) { const ch = champDuNord(); return ['Trouve des vers dans le champ du nord d’Émile : frappe la terre retournée à l’épée', ch ? { x: ch.cx, z: ch.cz } : null]; }
+    return ['Demande sa canne au vieux pêcheur, sur le quai devant ta maison', A1.gens.pecheur ? { x: A1.gens.pecheur.position.x, z: A1.gens.pecheur.position.z } : null];
+  }
+  if (!state.cleBeffroi) return ['Pêche la clé dans le canal de la Tortue, derrière le moulin', { x: CANAL.x, z: CANAL.z }];
+  return ['Désiré ne se montre que la nuit : dors chez toi jusqu’au soir, puis monte au beffroi (la suite de l’acte I est en chantier)', { x: bx, z: bz }];
+}
+const CANAL = { x: 436, z: 12 };
+
+// appelé par update() : naissances, point d'or
+function tickActe1(dt) {
+  if (!acte1()) return;
+  if (!A1.pret) preparerActe1();
+  if (A1.aFaire.length) naitreActe1();
+  // Houtland et le mage sont déjà animés par update() ; les nouveaux, seulement s'ils sont près
+  const c = camera.position;
+  for (const [qui, v] of Object.entries(A1.gens)) if (v.visible && qui !== 'houtland' && qui !== 'mage' && Math.abs(v.position.x - c.x) + Math.abs(v.position.z - c.z) < 60) PNJ.animeVillageois(v, dt, false);
+  if (!PRO.etape && !cut.active) { const s = suiteActe1(); PARTAGE.repere = s[1]; }
+  // Désiré a quitté les rues : il se cache au beffroi, et n'en redescend qu'avec la lanterne donnée
+  if (PARTAGE.desire) PARTAGE.desire.visible = !!state.lanterne;
+}
+
 // ---------- situation finale ----------
 
 export function finalScene() {
@@ -779,5 +1001,6 @@ export function finalScene() {
 }
 
 export function objective() {
+  if (acte1() && !PRO.etape) return suiteActe1()[0];
   return PRO.etape ? PRO.objectif() : state.princeFreed ? 'Ramène Eugène à Lydéric, près du pont' : !state.metLyderic ? 'Va parler à Lydéric, le géant, près du pont (Entrée)' : state.galleryOpen ? 'Descends dans les galeries par la poterne (est de la place d\'Armes) et délivre Eugène' : state.key ? 'Ouvre la grille de la poterne avec la clé du donjon' : state.bossDead ? 'Monte au sommet du donjon (escalier en colimaçon) chercher la clé' : state.gateOpen ? 'Affronte Phinaert dans l\'enclos du donjon' : (state.bow ? `Vaincs encore ${killsLeft()} monstres (fossés à l'arc, remparts, bastions) pour ouvrir l'enclos du donjon` : `Trouve l'arc (bastion de Turenne, à gauche de la porte) et vaincs ${killsLeft()} monstres`);
 }

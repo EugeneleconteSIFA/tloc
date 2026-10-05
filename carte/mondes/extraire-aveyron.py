@@ -200,6 +200,9 @@ def batiment(p, d, trous=None):
     for cle, v in (('niv', niveaux(d)), ('h', hauteur(d)), ('nom', d.get('name'))):
         if v: e[cle] = v
     if d.get('roof:material'): e['toit'] = d['roof:material']
+    # la forme et le sens du toit quand OSM les donne : aveyron.js les préfère à sa règle
+    for cle, tag in (('forme', 'roof:shape'), ('sens', 'roof:direction'), ('nivToit', 'roof:levels')):
+        if d.get(tag): e[cle] = d[tag]
     if trous: e['trous'] = trous
     out['batiments'].append(e)
 
@@ -229,9 +232,9 @@ for wid, (refs, d) in W.items():
     # ---- voirie ----
     h = d.get('highway')
     if h in CLS_ROUTE:
-        pose(out['routes'], refs, 1.2, r=CLS_ROUTE[h], nom=nom, **flags(d)); continue
+        pose(out['routes'], refs, 1.2, r=CLS_ROUTE[h], nom=nom, surface=d.get('surface'), **flags(d)); continue
     if h in CLS_CHEMIN:
-        pose(out['chemins'], refs, 1.5, r=CLS_CHEMIN[h], k=h if h == 'steps' else None, nom=nom, **flags(d)); continue
+        pose(out['chemins'], refs, 1.5, r=CLS_CHEMIN[h], k=h if h == 'steps' else None, nom=nom, surface=d.get('surface'), **flags(d)); continue
     if d.get('man_made') == 'bridge' and ferme(p):
         s = surface(p, 0.5)
         if s: out['ponts'].append({'pts': s, 'nom': nom})

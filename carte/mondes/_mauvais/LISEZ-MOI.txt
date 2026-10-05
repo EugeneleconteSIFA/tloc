@@ -1,0 +1,6 @@
+relief-lozere-pouget.json et relief-lozere-garde.json : récoltés le 1er octobre au pas de 2 m sur
+ign_rge_alti_wld, qui ne rend qu'une grille d'environ 5 m (valeurs par paires, marches dans
+l'ombrage). Refaits au LiDAR HD ; gardés ici pour mémoire.
+
+relief-aveyron-bourg.json (2 m) et relief-aveyron-lac.json (5 m) : même piège, récoltés le 1er octobre
+sur ign_rge_alti_wld (42 % et 12 % de voisins égaux). Refaits au LiDAR HD ; gardés ici pour mémoire.

@@ -14,6 +14,8 @@ constantes, 0,7 % d'écart. Ici on demande à l'IGN l'altitude AUX nœuds de la 
     python3 recolter-relief-lozere.py monde    tout le monde au pas de 10 m  (~1 750 requêtes)
     python3 recolter-relief-lozere.py pouget   le hameau au pas de 2 m      (~ 450 requêtes)
     python3 recolter-relief-lozere.py garde    la Garde-Guérin au pas de 2 m (~ 410 requêtes)
+    python3 recolter-relief-lozere.py lac      le lac de Villefort au pas de 5 m (~2 090 requêtes)
+    python3 recolter-relief-lozere.py bourg    le bourg de Villefort et la gare, 5 m (~ 170 requêtes)
 
 Écrit relief-lozere-<zone>.json. Reprenable : relancer repart où ça s'était arrêté.
 Altitudes en mètres NGF, absolues (le jeu choisira son zéro — à Lille, la place d'Armes).
@@ -41,6 +43,10 @@ def zones():
     for k in ('pouget', 'garde', 'lac'):
         z[k] = dict(L['cadrages'][k], pas=2.0 if k != 'lac' else 5.0,
                     res='ign_lidar_hd_mnt_mono_wld' if k != 'lac' else 'ign_rge_alti_wld')
+    # le bourg de Villefort et sa gare : le cadrage « lac » s'arrête à z = -1 627, juste au nord
+    # du bourg (z = -1 149) et de la gare (z = -1 098). Même pas et même ressource que le lac,
+    # et 25 m de recouvrement avec lui : villefort.js les recoud en un seul relief
+    z['bourg'] = dict(x0=800, x1=1800, z0=-1655, z1=-820, pas=5.0, res='ign_rge_alti_wld')
     return z
 
 def get(url, essais=4):

@@ -368,10 +368,11 @@ def extraire(m):
                 s = surface(p, 0.5)
                 if s: out['routes'].append({'pts': s, 'r': 1, 'surface': True, 'nom': nom} if nom else {'pts': s, 'r': 1, 'surface': True})
                 continue
-            pose(out['routes'], refs, 0.8, r=CLS_ROUTE[h], nom=nom, **flags(d)); continue
+            # `s` : le revêtement d'OSM (béton, sable, carrelage…) — thailande.js en tire la matière de la voie
+            pose(out['routes'], refs, 0.8, r=CLS_ROUTE[h], nom=nom, s=d.get('surface'), **flags(d)); continue
         if h in CLS_CHEMIN:
             # les escaliers sont la moitié des rues des Sassi : on les garde marqués
-            pose(out['chemins'], refs, 0.8, r=CLS_CHEMIN[h], k=h if h == 'steps' else None, nom=nom, **flags(d)); continue
+            pose(out['chemins'], refs, 0.8, r=CLS_CHEMIN[h], k=h if h == 'steps' else None, nom=nom, s=d.get('surface'), **flags(d)); continue
         if d.get('man_made') == 'bridge' and ferme(p):
             s = surface(p, 0.5)
             if s: out['ponts'].append({'pts': s, 'nom': nom})

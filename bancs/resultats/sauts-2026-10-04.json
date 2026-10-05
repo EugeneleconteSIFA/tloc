@@ -1,0 +1,26 @@
+[
+ {
+  "vu": 0.35,
+  "coll": 2.19,
+  "x": -7.2,
+  "z": 420.8,
+  "y": 0.21,
+  "r": 0.95,
+  "L": 3.4,
+  "src": "campagne.js:462",
+  "pile": "campagne.js:462 < campagne.js:1262 < campagne.js:1318",
+  "lieu": "La voie des combattants"
+ },
+ {
+  "vu": 0.35,
+  "coll": 1.79,
+  "x": -36,
+  "z": 533.9,
+  "y": 0.61,
+  "r": 0.95,
+  "L": 5.4,
+  "src": "campagne.js:462",
+  "pile": "campagne.js:462 < campagne.js:1262 < campagne.js:1318",
+  "lieu": "Bois de Boulogne"
+ }
+]

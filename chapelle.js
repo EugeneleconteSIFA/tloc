@@ -244,6 +244,25 @@ function build() {
       re.add(mesh(boxG(4.6, 0.3, 0.55), chene, 0, 4.4, 0));
       re.add(mesh(boxG(0.22, 1.9, 0.22), orM, 0, 5.4, 0)); re.add(mesh(boxG(1.1, 0.22, 0.22), orM, 0, 5.6, 0)); }
     { const l = new THREE.PointLight(0xffd8a0, 6, 16, 1.5); l.position.set(0, CH + 3.4, AZ + 2.2); scene.add(l); }
+    // LA CRYPTE (l'acte I, docs/DECOUPAGE-ACTE1.md, étapes 1 et 7) : « l'escalier est derrière
+    // l'autel ». Une dalle de pierre à anneau de fer, sur le chœur, entre l'autel et le mur de
+    // l'abside — à droite, hors du passage vers le retable. Sans lanterne, Camille recule
+    // devant le noir : c'est ce qui la renvoie à Lydéric, et Lydéric à Désiré.
+    { const tx = 2.7, tz = AZ + 1.1;
+      const dal = mesh(rboxG(1.3, 0.08, 1.0, 0.03, 2), phMat('old_stone_wall_02', 1.3, 1.0, { color: 0xb8ae9c }), tx, CH + 0.04, tz); dal.receiveShadow = true; scene.add(dal);
+      const ann = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 16), IRON()); ann.rotation.x = Math.PI / 2; ann.position.set(tx, CH + 0.1, tz + 0.25); scene.add(ann);
+      // le joint noir autour de la dalle : l'air froid qui remonte se devine
+      const joint = mesh(boxG(1.38, 0.02, 1.08), mat(0x0a0806, { roughness: 1 }), tx, CH + 0.005, tz); scene.add(joint);
+      addInteract({ pos: V(tx, CH, tz), r: 1.8, prompt: () => (state.prologueFait ? 'soulever la dalle de la crypte' : 'regarder la dalle'),
+        fn: () => {
+          if (!state.prologueFait) { dialogue([{ text: 'Une dalle à anneau, scellée par la poussière. Personne ne l’a soulevée depuis longtemps.' }]); return; }
+          if (!state.lanterne) {
+            state.ind = state.ind || {}; const neuf = !state.ind.crypteNoire; state.ind.crypteNoire = true; saveGame(true);
+            dialogue([{ text: 'Camille soulève la dalle. Des marches s’enfoncent dans un noir complet ; un air froid remonte.' },
+              { who: 'Camille', text: '« Trop sombre. Il me faudrait une lumière. »' }], () => { if (neuf) showMessage('Lydéric saura peut-être où trouver une lumière.', 5); });
+            return; }
+          showMessage('La lanterne éclaire les marches… (la descente aux souterrains arrive bientôt)', 5);
+        } }); }
     addInteract({ pos: V(0, 0, az2 + 2.4), r: 2.6, prompt: () => "lire le retable",
       fn: () => dialogue([
         { text: "Le panneau de gauche montre un homme au bâton, la jambe découverte, un chien tenant un pain dans la gueule : saint Roch, invoqué contre la peste, patron de la chapelle." },

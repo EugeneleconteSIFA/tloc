@@ -177,6 +177,16 @@ l'ancienne est dans `_mauvais/`. Le monde, au pas de 10 m, n'est pas touché.
 
 `python3 recolter-relief-aveyron.py monde lac bourg` : 1 091 requêtes.
 
+**Le relief et le plan JOUÉS (2 octobre, version 2 du lieu).** `monde.js` prend la zone
+jouable dans l'emprise du relief « fin » : avec `relief-aveyron-lac.json`, Saint-Symphorien
+restait hors du jeu. `fondre-relief-aveyron.py` fond le bourg (LiDAR 2 m), le lac (LiDAR 5 m),
+le monde (10 m) et les environs (50 m) en **une grille de 5 m** de -525 à 4 200 en x et de -730
+à 625 en z (`relief-aveyron-jeu.json`, 946 × 272 nœuds, 1,7 Mo). Il y creuse la **sécheresse** :
+le LiDAR voit la surface du lac (702,9 m) ; on y creuse une cuvette (pente 1/8, 9 m au plus) et
+l'eau ne reste que là où elle a plus de 4 m de fond — 10,1 ha sur 17,4. `aveyron-jeu.json` est
+`aveyron.json` pendant la sécheresse : le contour d'étiage à la place du lac, les ruisseaux à
+sec (`eau.lits`), le lac plein gardé pour la grève (`eau.lacPlein`). `aveyron.json` ne change pas.
+
 **Les environs, pour le Dormeur (2 octobre).** Le monde est un plateau doux (698 à 826 m) :
 aucune falaise pour le géant couché. `python3 recolter-relief-aveyron.py environs` récolte
 14 × 12 km autour du lac au pas de 50 m (339 requêtes, `relief-aveyron-environs.json`, de 279

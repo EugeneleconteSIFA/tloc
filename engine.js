@@ -2675,7 +2675,7 @@ export function newGame() {
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
 export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html', pouget: 'pouget.html', aveyron: 'aveyron.html',
-  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html', thailande: 'thailande.html' };
+  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html', thailande: 'thailande.html', villefort: 'villefort.html', gardeguerin: 'garde-guerin.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
 
 // ---------------------------------------------------------------------
@@ -3441,7 +3441,13 @@ export function cutscene(steps, onEnd) {
 }
 function showSub(text, who) {
   if (!text) { cineUI.sub.style.opacity = 0; return; }
-  cineUI.who.textContent = who || ''; cineUI.who.style.display = who ? '' : 'none'; cineUI.txt.textContent = pourTactile(text); cineUI.sub.style.opacity = 1; cut.typed = 0;
+  cineUI.who.textContent = who || ''; cineUI.who.style.display = who ? '' : 'none';
+  // LE GRAS DIT CE QUI SERT (SCENARIO.md § 7) : un indice marque entre **…** ce qu'il faut
+  // retenir. Le texte passe d'abord par l'échappement : une réplique n'injecte jamais de HTML.
+  const t = pourTactile(text);
+  if (t.includes('**')) cineUI.txt.innerHTML = t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]).replace(/\*\*(.+?)\*\*/g, '<b style="color:#ffe7a3">$1</b>');
+  else cineUI.txt.textContent = t;
+  cineUI.sub.style.opacity = 1; cut.typed = 0;
 }
 function cutNext() {
   cut.i++; cut.t = 0; cut.cur = cut.steps[cut.i] || null;
@@ -3527,6 +3533,7 @@ export function openJournal() {
   cineUI.journal.innerHTML = `<div style="max-width:760px;width:88%;max-height:84vh;overflow:auto;background:radial-gradient(ellipse at top,rgba(30,40,80,.95),rgba(8,10,22,.97));border:2px solid rgba(255,231,163,.6);border-radius:16px;padding:26px 34px;box-shadow:0 20px 60px rgba(0,0,0,.7)">
     <h2 style="margin:0 0 4px;color:#ffe7a3;letter-spacing:2px">JOURNAL DE CAMILLE</h2><div style="opacity:.75;font-size:14px;margin-bottom:14px">Vie : ${hearts} &nbsp;·&nbsp; Équipement : ${items} &nbsp;·&nbsp; Monstres vaincus : ${state.kills}</div>
     <h3 style="margin:14px 0 6px;color:#ff9fb0;font-size:16px;letter-spacing:1px">QUÊTE PRINCIPALE — Sauver Eugène</h3><div style="padding:10px 14px;border-left:4px solid #ff9fb0;background:rgba(255,255,255,.06);border-radius:6px">${main}</div>
+    ${G.level && G.level.indices ? G.level.indices() : ''}
     <h3 style="margin:18px 0 6px;color:#ffe7a3;font-size:16px;letter-spacing:1px">QUÊTES SECONDAIRES</h3>${side}
     <div style="margin-top:16px;font-size:13px;opacity:.7;text-align:center">${TACTILE ? 'Touche l’écran pour fermer' : '<kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">J</kbd> ou <kbd style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:2px 8px">Échap</kbd> pour fermer'}</div></div>`;
   cineUI.journal.style.display = 'flex';

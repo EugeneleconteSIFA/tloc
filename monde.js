@@ -14,7 +14,7 @@
 import * as PNJ_E from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { THREE, TAU, rand, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG,
-  addInteract, goToLevel, showMessage, showMenu, hideMenu, bootLevel, minimapDots, makeSky, player, state } from './engine.js?v=41';
+  addInteract, goToLevel, showMessage, showMenu, hideMenu, bootLevel, minimapDots, makeSky, player, state, addLieu, estDecouvert } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -45,6 +45,8 @@ function densifier(pts, pas = 2) {
  *   gare: { x, z, lignes: [[nom, lieu, pos, yaw]] } | null, plus(ctx) pour ce qui est propre au lieu,
  *   socleMax (m) et socle: [slug, couleur] — le soubassement de pierre des bâtiments en pente,
  *   toitSur(b, geo) pour coiffer soi-même un bâtiment, anime(now), solLieu(x, z) → un sol à soi (ou null),
+ *   reperes: [{ id, nom, x, z, r, type: 'lieu'|'pnj'|'quete'|'passage' }] — les endroits qui
+ *     comptent : lieux à découvrir (atlas, touche M), et repères sur la minicarte,
  *   musique, counts, start, entry
  */
 export async function monde(f) {
@@ -239,7 +241,16 @@ export async function monde(f) {
           [...lignes.map(([nom, lieu, pos, yaw]) => ({ label: nom, fn: () => { hideMenu(); goToLevel(lieu, pos, yaw, 'Le petit train file à travers les oliviers…'); } })),
             { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) }); }
     if (f.plus) f.plus({ hauteur, scene, PLAN, H0, bloque, addInteract, inscrire, CADRE });
+
+    // ---------- les repères : lieux à découvrir, et la minicarte ----------
+    // (Eugène, 4 octobre : « les endroits importants visibles sur la minicarte, et comptés
+    // comme lieux découverts », la même forme pour tous les mondes.) L'id est préfixé du nom
+    // du monde : la découverte se garde dans la sauvegarde avec celles de Lille, sans les croiser.
+    for (const r of f.reperes || []) addLieu({ id: f.name + ':' + r.id, nom: r.nom, x: r.x, z: r.z, r: r.r || 18, type: r.type || 'lieu' });
+    // les rues et les chemins de la minicarte, en traits clairs : de quoi s'orienter
+    TRAITS = [...PLAN.routes, ...PLAN.chemins].filter((c) => dansCadre(c.pts, 40)).map((c) => ({ pts: c.pts, w: c.r >= 3 ? 6 : c.r === 2 ? 4.5 : c.r === 1 ? 3 : 2 }));
   }
+  let TRAITS = [];
 
   // la caméra : à l'arrivée par une porte, la sauvegarde rend l'angle du lieu qu'on quitte —
   // on la remet une fois dans le dos de Camille (camYaw = yaw : derrière elle, cf. engine.js)
@@ -262,17 +273,44 @@ export async function monde(f) {
     for (let r = 0; r < 40 && bloque(x, z, 0.6); r += 1.5) for (let k = 0; k < 12; k++) { const a = k / 12 * TAU, xx = f.depart.x + Math.cos(a) * r, zz = f.depart.z + Math.sin(a) * r; if (!bloque(xx, zz, 0.6)) { x = xx; z = zz; break; } }
     player.pos.set(x, hauteur(x, z), z); player.yaw = f.depart.yaw; G.camYaw = f.depart.yaw;
   }
+  // un repère de la minicarte, par type : un losange doré (un lieu), un rond bleu (quelqu'un à
+  // qui parler), un « ! » (une quête), une arche violette (une porte, une gare, un passeur)
+  function repere(g, a, b, type, vu) {
+    g.save(); g.translate(a, b); g.globalAlpha = vu ? 1 : 0.45; g.lineWidth = 1.5; g.strokeStyle = '#1a1410';
+    if (type === 'pnj') { g.fillStyle = '#6ab0ff'; g.beginPath(); g.arc(0, 0, 3.6, 0, TAU); g.fill(); g.stroke(); }
+    else if (type === 'quete') { g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(0, 0, 4.6, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#1a1410'; g.fillRect(-0.9, -3, 1.8, 3.6); g.fillRect(-0.9, 1.4, 1.8, 1.5); }
+    else if (type === 'passage') { g.fillStyle = '#c8a8f0'; g.beginPath(); g.moveTo(-4, 4); g.lineTo(-4, -1); g.arc(0, -1, 4, Math.PI, 0); g.lineTo(4, 4); g.closePath(); g.fill(); g.stroke(); }
+    else { g.fillStyle = '#ffd890'; g.beginPath(); g.moveTo(0, -5); g.lineTo(4, 0); g.lineTo(0, 5); g.lineTo(-4, 0); g.closePath(); g.fill(); g.stroke(); }
+    g.restore();
+  }
   function minimap(g, W2) {
-    const sc = W2 / 300, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc, W2 / 2 + (z - player.pos.z) * sc];
+    const sc = W2 / 300, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc, W2 / 2 + (z - player.pos.z) * sc], px = player.pos.x, pz = player.pos.z;
     g.fillStyle = f.carteFond || '#7a8a5a'; g.fillRect(0, 0, W2, W2);
+    // les rues et les chemins d'abord, sous le bâti
+    g.strokeStyle = 'rgba(244, 236, 214, 0.8)'; g.lineCap = g.lineJoin = 'round';
+    for (const t of TRAITS) { if (!t.pts.some(([x, z]) => Math.abs(x - px) < 180 && Math.abs(z - pz) < 180)) continue;
+      g.lineWidth = Math.max(1.2, t.w * sc); g.beginPath(); t.pts.forEach(([x, z], k) => { const [a, b] = P(x, z); k ? g.lineTo(a, b) : g.moveTo(a, b); }); g.stroke(); }
     g.fillStyle = '#4a6a3a'; for (const [x, z] of arbres) { const [a, b] = P(x, z); if (a > -2 && a < W2 + 2 && b > -2 && b < W2 + 2) g.fillRect(a - 1, b - 1, 2, 2); }
     g.fillStyle = '#6a6460';
-    for (const m of B) { if (Math.abs(m.cx - player.pos.x) > 170 || Math.abs(m.cz - player.pos.z) > 170) continue;
+    for (const m of B) { if (Math.abs(m.cx - px) > 170 || Math.abs(m.cz - pz) > 170) continue;
       g.beginPath(); m.pts.forEach(([x, z], k) => { const [a, b] = P(x, z); k ? g.lineTo(a, b) : g.moveTo(a, b); }); g.fill(); }
+    // les repères : découverts en plein, les autres à peine (on sait qu'il y a quelque chose) ;
+    // le nom du plus proche des découverts, en bas du carré
+    let proche = null, dp = 1e9;
+    for (const r of f.reperes || []) { const [a, b] = P(r.x, r.z); if (a < -6 || a > W2 + 6 || b < -6 || b > W2 + 6) continue;
+      const vu = estDecouvert(f.name + ':' + r.id); repere(g, a, b, r.type, vu);
+      const d = Math.hypot(r.x - px, r.z - pz); if (vu && d < dp) { dp = d; proche = r; } }
     minimapDots(g, P);
+    if (proche && dp < 120) { g.font = 'bold 11px "Trebuchet MS", sans-serif'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(10, 14, 30, 0.85)';
+      g.strokeText(proche.nom, W2 / 2, W2 - 26); g.fillStyle = '#ffe7a3'; g.fillText(proche.nom, W2 / 2, W2 - 26); }
+  }
+  // le nom de la zone (en haut de l'écran) : le lieu repéré où l'on entre, sinon le monde
+  function zone(x, z) {
+    for (const r of f.reperes || []) if (r.type === 'lieu' && Math.hypot(x - r.x, z - r.z) < (r.r || 18)) return r.nom;
+    return f.titre;
   }
   const level = {
-    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: () => f.titre,
+    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: zone,
     build, populate, animate, minimap,
     counts: () => `<small>${f.counts}</small>`,
     start: () => showMessage(f.start, 6), arriveMessage: () => f.titre + '.',

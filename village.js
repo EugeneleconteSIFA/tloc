@@ -1697,6 +1697,7 @@ export function buildTown() {
     v.rotation.y = yaw; v.scale.setScalar(E.G.echelle); E.scene.add(v);   // même taille que Camille
     v.userData.anim = rand(0, 10); v.userData.name = lines[i][0]; PARTAGE.villagers.push(v);
     if (lines[i][0] === 'Émile') PARTAGE.emile = v;     // le prologue l'attend à son moulin
+    if (lines[i][0] === 'Désiré') PARTAGE.desire = v;   // l'acte I le cache au beffroi (quetes.js)
     if (i === 1 || i === 3 || i === 5) { // trois villageois se promènent dans les rues
       // Tracés recalés hors de la fontaine (bassin de 3,3 en local) et hors des étals :
       // ils passaient tous les trois en plein milieu du bassin.
@@ -1710,7 +1711,9 @@ export function buildTown() {
       };
       v.userData.route = routes[i].map(([rx, rz]) => { const [wx, wz] = W2(rx, rz); return new THREE.Vector3(wx, TOWN.y, wz); }); v.userData.wp = 0; v.userData.pause = rand(0, 3);
     } else addCap(x, z, x, z, 0.5);
-    E.addInteract({ pos: v.position, r: 2.6, prompt: () => `parler à ${lines[i][0]}`, fn: () => { v.userData.talk = 4; v.rotation.y = Math.atan2(player.pos.x - v.position.x, player.pos.z - v.position.z); dialogue(lines[i][1](), () => { v.userData.talk = 0; if (lines[i][0] === 'Émile') offrirFaux(); }); } });
+    // L'ACTE I parle d'abord (quetes.js, PARTAGE.repliquesActe1) : c'est lui qui sait où en est
+    // l'histoire ; sans réplique de l'acte pour cet habitant, il garde la sienne
+    E.addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible, prompt: () => `parler à ${lines[i][0]}`, fn: () => { v.userData.talk = 4; v.rotation.y = Math.atan2(player.pos.x - v.position.x, player.pos.z - v.position.z); dialogue((PARTAGE.repliquesActe1 && PARTAGE.repliquesActe1(lines[i][0])) || lines[i][1](), () => { v.userData.talk = 0; if (lines[i][0] === 'Émile') offrirFaux(); }); } });
   });
   // ---------- le colporteur ----------
   // Au débouché de la rue du marché, là où elle s'ouvre sur l'esplanade, derrière sa

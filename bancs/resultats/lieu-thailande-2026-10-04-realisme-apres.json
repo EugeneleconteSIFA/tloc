@@ -1,0 +1,338 @@
+{
+ "date": "2026-10-04T21:08:44.399Z",
+ "chargement_s": 5.351,
+ "etapes": {
+  "Chargement…": 2725,
+  "personnages": 39,
+  "collisions": 69,
+  "fusion des décors": 233,
+  "réglages": 36,
+  "préparation du rendu": 197,
+  "préparation du rendu — textures 19/214": 406,
+  "préparation du rendu — lumières et matières": 602
+ },
+ "rendu": {
+  "maillages": 460,
+  "triangles": 1958473,
+  "instances": 7320
+ },
+ "erreurs": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ],
+ "tot": {
+  "points": 7445,
+  "bloques": 70,
+  "raides": 75,
+  "enMer": 576
+ },
+ "par": {
+  "panyi": {
+   "points": 1479,
+   "bloques": 39,
+   "raides": 0,
+   "enMer": 97
+  },
+  "tapu": {
+   "points": 125,
+   "bloques": 0,
+   "raides": 0,
+   "enMer": 0
+  },
+  "suea": {
+   "points": 614,
+   "bloques": 1,
+   "raides": 17,
+   "enMer": 248
+  },
+  "railay": {
+   "points": 3036,
+   "bloques": 8,
+   "raides": 32,
+   "enMer": 175
+  },
+  "phiphi": {
+   "points": 2191,
+   "bloques": 22,
+   "raides": 26,
+   "enMer": 56
+  }
+ },
+ "pires": [
+  {
+   "m": "panyi",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 17,
+   "bloques": 17,
+   "raides": 0,
+   "x": 34,
+   "z": 26
+  },
+  {
+   "m": "suea",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 125,
+   "bloques": 0,
+   "raides": 11,
+   "x": 1210,
+   "z": 275
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 11,
+   "bloques": 11,
+   "raides": 0,
+   "x": 2349,
+   "z": 1918
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 23,
+   "bloques": 8,
+   "raides": 0,
+   "x": 77,
+   "z": 7
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 84,
+   "bloques": 0,
+   "raides": 7,
+   "x": -406,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 53,
+   "bloques": 0,
+   "raides": 7,
+   "x": -290,
+   "z": 1642
+  },
+  {
+   "m": "phiphi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 190,
+   "bloques": 6,
+   "raides": 0,
+   "x": 2215,
+   "z": 1913
+  },
+  {
+   "m": "suea",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 25,
+   "bloques": 0,
+   "raides": 5,
+   "x": 1009,
+   "z": 236
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 83,
+   "bloques": 0,
+   "raides": 5,
+   "x": -309,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 157,
+   "bloques": 5,
+   "raides": 0,
+   "x": -606,
+   "z": 1600
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 188,
+   "bloques": 0,
+   "raides": 5,
+   "x": -364,
+   "z": 1909
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 39,
+   "bloques": 0,
+   "raides": 5,
+   "x": 2298,
+   "z": 1818
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 65,
+   "bloques": 0,
+   "raides": 5,
+   "x": 2298,
+   "z": 1818
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 32,
+   "bloques": 0,
+   "raides": 4,
+   "x": -595,
+   "z": 1745
+  },
+  {
+   "m": "phiphi",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 53,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2192,
+   "z": 1813
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 79,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2441,
+   "z": 1958
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 46,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2449,
+   "z": 1755
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 107,
+   "bloques": 0,
+   "raides": 4,
+   "x": 2588,
+   "z": 2060
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 23,
+   "bloques": 4,
+   "raides": 0,
+   "x": -219,
+   "z": 14
+  },
+  {
+   "m": "phiphi",
+   "type": "routes",
+   "nom": "",
+   "k": "",
+   "points": 36,
+   "bloques": 3,
+   "raides": 0,
+   "x": 2194,
+   "z": 1982
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 182,
+   "bloques": 0,
+   "raides": 2,
+   "x": -489,
+   "z": 1930
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 61,
+   "bloques": 2,
+   "raides": 0,
+   "x": -465,
+   "z": 1807
+  },
+  {
+   "m": "railay",
+   "type": "chemins",
+   "nom": "",
+   "k": "",
+   "points": 29,
+   "bloques": 0,
+   "raides": 2,
+   "x": -603,
+   "z": 1802
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 16,
+   "bloques": 2,
+   "raides": 0,
+   "x": 99,
+   "z": 60
+  },
+  {
+   "m": "panyi",
+   "type": "ponts",
+   "nom": "",
+   "k": "pier",
+   "points": 19,
+   "bloques": 2,
+   "raides": 0,
+   "x": -170,
+   "z": 28
+  }
+ ]
+}

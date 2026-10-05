@@ -1,0 +1,11 @@
+Model Information:
+* title:	Animated Sheep
+* source:	https://sketchfab.com/3d-models/animated-sheep-b99698502dea4905b916fce0bcf2dfc0
+* author:	igor-lir (https://sketchfab.com/igor-lir)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Animated Sheep" (https://sketchfab.com/3d-models/animated-sheep-b99698502dea4905b916fce0bcf2dfc0) by igor-lir (https://sketchfab.com/igor-lir) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
