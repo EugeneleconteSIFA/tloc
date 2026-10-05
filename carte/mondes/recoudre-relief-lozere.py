@@ -15,10 +15,11 @@ Rien n'est demandé à l'IGN ici : il faut d'abord `recolter-relief-lozere.py la
 import json, os
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-# l'emprise de plans-lieux-lozere.py (1420…1800, −1430…−820), plus 60 m à l'ouest et au nord : un
-# débord qu'on ne parcourt pas (lozere.js le bloque et le boise). Sans lui, le relief de l'horizon,
-# maillé à 60 m, remontait en marche sombre juste derrière les derniers murs.
-CADRE = dict(x0=1360.0, x1=1800.0, z0=-1490.0, z1=-820.0, pas=5.0)
+# l'emprise de plans-lieux-lozere.py (1420…1800, −1430…−820), plus 60 m tout autour : un débord
+# qu'on ne parcourt pas (lozere.js le bloque et le boise). Sans lui, le relief de l'horizon, maillé
+# à 60 m, remontait en marche sombre juste derrière les derniers murs. À l'est et au sud, au-delà du
+# cadrage « bourg », le débord vient du relief « monde » (10 m, interpolé) : on n'y marche pas.
+CADRE = dict(x0=1360.0, x1=1860.0, z0=-1490.0, z1=-760.0, pas=5.0)
 
 def charge(nom):
     return json.load(open(os.path.join(ICI, 'relief-lozere-%s.json' % nom)))

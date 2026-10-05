@@ -463,11 +463,11 @@ function poteau(ctx, ici) {
         { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) });
 }
 
-// Le bord du lieu resserré (Villefort, 5 octobre) : au-delà du cadre, monde.js bloque Camille sans
-// rien montrer. Là où une rue sort du cadre, elle bute sur un mur de clôture et son portail fermé
+// Le bord du lieu resserré (Villefort, 5 octobre) : au-delà de l'emprise, rien n'arrête Camille ni le
+// regard. Là où une rue sort du cadre, elle bute sur un mur de clôture et son portail fermé
 // (une cour, un jardin : le bourg continue derrière, on n'y entre pas) ; le long des bords `cotes`,
 // une lisière de chênes serrés (la ripisylve de l'Altier au nord, le bois de la pente à l'ouest) cache
-// le bout du relief fin. Seuls les bords donnés : les deux autres sont ceux d'avant le resserrement.
+// le bout du relief fin. Seuls les bords donnés (`cotes`).
 function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
   const h = ctx.dessin, pierre = phMat('granit_lozere', 1, 1, { color: 0xa8a69e });
   const bois = phMat('wood_planks', 1, 1, { color: 0x6e5a44 }), portails = [], murs = [];
@@ -478,6 +478,8 @@ function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
   const { CADRE } = ctx, B = 200;
   if (cotes.includes('ouest')) ctx.inscrire([[CADRE.x0 - B, CADRE.z0 - B], [E.x0, CADRE.z0 - B], [E.x0, CADRE.z1 + B], [CADRE.x0 - B, CADRE.z1 + B]], E.x0 - 30, (E.z0 + E.z1) / 2);
   if (cotes.includes('nord')) ctx.inscrire([[CADRE.x0 - B, CADRE.z0 - B], [CADRE.x1 + B, CADRE.z0 - B], [CADRE.x1 + B, E.z0], [CADRE.x0 - B, E.z0]], (E.x0 + E.x1) / 2, E.z0 - 30);
+  if (cotes.includes('est')) ctx.inscrire([[E.x1, CADRE.z0 - B], [CADRE.x1 + B, CADRE.z0 - B], [CADRE.x1 + B, CADRE.z1 + B], [E.x1, CADRE.z1 + B]], E.x1 + 30, (E.z0 + E.z1) / 2);
+  if (cotes.includes('sud')) ctx.inscrire([[CADRE.x0 - B, E.z1], [CADRE.x1 + B, E.z1], [CADRE.x1 + B, CADRE.z1 + B], [CADRE.x0 - B, CADRE.z1 + B]], (E.x0 + E.x1) / 2, E.z1 + 30);
   for (const c of rs) for (const pts of [c.pts, c.pts.slice().reverse()]) {
     const d = densifier(pts, 0.5); if (!dehors(...d[0])) continue;
     // le premier point franchement dedans, et la direction de la rue à cet endroit
@@ -493,9 +495,10 @@ function lisiere(ctx, rs, { cotes, libre, emprise: E }) {
   }
   if (portails.length) { const m = new THREE.Mesh(mergeGeometries(portails), bois); m.castShadow = m.receiveShadow = true; ctx.scene.add(m); }
   // la lisière : serrée sur tout le débord, et 10 m dans l'emprise (là, hors des rues et du bâti)
-  const bande = (x, z) => (cotes.includes('ouest') && x < E.x0 + 10) || (cotes.includes('nord') && z < E.z0 + 10);
+  const bande = (x, z) => (cotes.includes('ouest') && x < E.x0 + 10) || (cotes.includes('nord') && z < E.z0 + 10)
+    || (cotes.includes('est') && x > E.x1 - 10) || (cotes.includes('sud') && z > E.z1 - 10);
   const dedans = (x, z) => x > E.x0 && x < E.x1 && z > E.z0 && z < E.z1;
-  arbres(ctx, { espece: 'chene', n: 900, h: [9, 15], bois: bande, libre: (x, z) => bande(x, z) && (!dedans(x, z) || libre(x, z)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1) });
+  arbres(ctx, { espece: 'chene', n: 1500, h: [9, 15], bois: bande, libre: (x, z) => bande(x, z) && (!dedans(x, z) || libre(x, z)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1) });
   BILAN.bouts = murs;
 }
 
@@ -740,8 +743,8 @@ const FICHES = {
   villefort: {
     ...COMMUN, name: 'villefort', titre: 'Villefort', plan: 'lozere-villefort.json', fin: 'relief-lozere-villefort.json', h0: 610,
     grille: { x0: 1360, z0: -1490, pas: 5 },
-    // où l'on marche : le relief fin (carte/mondes/recoudre-relief-lozere.py) déborde de 60 m à l'ouest
-    // et au nord, un débord boisé qu'on ne parcourt pas (lisiere) ; monde.js rentre de 8 m les deux autres bords
+    // où l'on marche : le relief fin (carte/mondes/recoudre-relief-lozere.py) déborde de 60 m tout
+    // autour, un débord boisé qu'on ne parcourt pas (lisiere)
     emprise: { x0: 1428, x1: 1792, z0: -1422, z1: -828 },
     // les endroits qui comptent : la minicarte et les lieux découverts (monde.js)
     reperes: [
@@ -798,8 +801,8 @@ const FICHES = {
       const bois = (PLAN.verdure.bois || []).filter((b) => dansCadre(CADRE, b.pts)), lacs = (PLAN.eau.plans || []).filter((l) => l.pts.length > 2);
       arbres(ctx, { espece: 'chene', n: 500, h: [8, 13], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
         libre: (x, z) => !ctx.bloque(x, z, 3) && FICHES.villefort._sol(x, z) === null && !lacs.some((l) => dansPoly(x, z, l.pts)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2.5) });
-      // le cadre resserré à l'ouest et au nord ; l'est et le sud sont les bords d'avant
-      lisiere(ctx, [...rs, ...PLAN.regordane.filter((c) => dansCadre(CADRE, c.pts, 20))], { cotes: ['ouest', 'nord'], emprise: FICHES.villefort.emprise,
+      // les quatre bords : l'ouest et le nord du resserrement, l'est et le sud d'avant (la même lisière)
+      lisiere(ctx, [...rs, ...PLAN.regordane.filter((c) => dansCadre(CADRE, c.pts, 20))], { cotes: ['ouest', 'nord', 'est', 'sud'], emprise: FICHES.villefort.emprise,
         libre: (x, z) => !ctx.bloque(x, z, 2.5) && FICHES.villefort._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1.5) });
       poteau(ctx, 'villefort');
       const t0 = performance.now(); gensDuBourg(ctx, GENS_VILLEFORT, FICHES.villefort._sol); BILAN.msGens = Math.round(performance.now() - t0);   // règle 8 : ≤ 300 ms

@@ -1,0 +1,165 @@
+{
+ "lieu": "villefort",
+ "date": "2026-10-05T10:55:03.115Z",
+ "chargement_s": 3.3,
+ "erreurs": [],
+ "pointsDeRue": 1464,
+ "libres": 1455,
+ "praticable": 99.39,
+ "tropRaides": 9,
+ "bloques": [
+  [
+   1790.3,
+   -884.4,
+   "Rue du Chazalet"
+  ],
+  [
+   1522.8,
+   -1420.2,
+   "Impasse du Lavoir"
+  ],
+  [
+   1540.6,
+   -1420.9,
+   "Rue de la Vignette"
+  ],
+  [
+   1670.5,
+   -829.9,
+   "Avenue des Cévennes"
+  ],
+  [
+   1430,
+   -1274.6,
+   "Avenue de la Gare"
+  ],
+  [
+   1619.8,
+   -830,
+   ""
+  ],
+  [
+   1596.2,
+   -1420.4,
+   "Route de Mende"
+  ],
+  [
+   1748.4,
+   -829.2,
+   ""
+  ],
+  [
+   1580.9,
+   -829.6,
+   ""
+  ]
+ ],
+ "bati": {
+  "mesure": true,
+  "batiments": 332,
+  "avant": false,
+  "corps": 387,
+  "toitsChezLeVoisin": 0,
+  "toitsQuiCouvrentMal": 0,
+  "soubassementsSup15": 10,
+  "soubassementMax": 5.97,
+  "mursQuiSeChevauchent": 11,
+  "pires": [
+   [
+    "soubassement",
+    142,
+    1.54
+   ],
+   [
+    "soubassement",
+    180,
+    2.05
+   ],
+   [
+    "soubassement",
+    185,
+    1.52
+   ],
+   [
+    "soubassement",
+    204,
+    5.97
+   ],
+   [
+    "soubassement",
+    205,
+    3.15
+   ],
+   [
+    "soubassement",
+    220,
+    3.74
+   ],
+   [
+    "soubassement",
+    230,
+    1.6
+   ],
+   [
+    "soubassement",
+    269,
+    2.24
+   ],
+   [
+    "soubassement",
+    269,
+    3.08
+   ],
+   [
+    "soubassement",
+    296,
+    3.37
+   ]
+  ]
+ },
+ "sols": {
+  "mesure": true,
+  "echantillons": 3588,
+  "flottent": 97,
+  "enfonces": 37,
+  "ecartMax": 0.206,
+  "combats": 16
+ },
+ "cadre": {
+  "x0": 1420,
+  "x1": 1800,
+  "z0": -1430,
+  "z1": -820
+ },
+ "marche": [
+  {
+   "quoi": "le poteau des vieux chemins",
+   "ok": true,
+   "raison": "",
+   "longueur": 4,
+   "secondes": 0.7
+  },
+  {
+   "quoi": "l’église Saint-Victorin",
+   "ok": true,
+   "raison": "",
+   "longueur": 186,
+   "secondes": 31.9
+  },
+  {
+   "quoi": "devant Chez Fernand",
+   "ok": true,
+   "raison": "",
+   "longueur": 209,
+   "secondes": 35.6
+  },
+  {
+   "quoi": "le pont Saint-Jean",
+   "ok": true,
+   "raison": "",
+   "longueur": 336,
+   "secondes": 57.9
+  }
+ ],
+ "vert": false
+}
