@@ -438,9 +438,14 @@ function grossirFoule() {
 // Elles sont de la fête, comme la foule : nées avec le prologue, décrochées après.
 const RUE_L = 4.4;                       // demi-largeur de la chaussée du bourg (village.js)
 function tendreFanions() {
-  const parCouleur = [[], [], []], cordes = [], H = 5.6;
+  const parCouleur = [[], [], []], cordes = [], H = 5.6, mats = [];
+  // (5 octobre) les guirlandes allaient d'une rangée de façades à l'autre ; il n'y a plus de
+  // maisons au sud de la grand-rue (le bâti relevé s'arrête à la rangée nord, au sud c'est
+  // l'Esplanade) : elles partent des façades relevées et finissent sur un mât de fête planté au
+  // bord de la rue — un mât par guirlande, de la fête comme elles
   for (const lx of [-17, -12.5, -8, -3.5, 1, 5.5, 10]) {
     const [ax, az] = townWorld(lx - 0.6, -RUE_L - 0.3), [bx, bz] = townWorld(lx + 0.6, RUE_L + 0.3);
+    mats.push(new THREE.CylinderGeometry(0.07, 0.09, H * TOWN.s + 0.4, 6).translate(bx, TOWN.y + (H * TOWN.s + 0.4) / 2, bz));
     const L = Math.hypot(bx - ax, bz - az), n = Math.floor(L / 0.5), ux = (bx - ax) / L, uz = (bz - az) / L;
     const y0 = TOWN.y + H * TOWN.s, fleche = 0.06 * L;
     // la cordelette, sur la même chaînette que les fanions
@@ -458,6 +463,7 @@ function tendreFanions() {
   FOULE.fanions = parCouleur.map((gs, i) => { const m = new THREE.Mesh(mergeGeometries(gs), etoffe([0xb8282a, 0xf2ece0, 0xe0b440][i]));
     m.castShadow = true; m.userData.dynamic = true; scene.add(m); return m; });
   const c = new THREE.Mesh(mergeGeometries(cordes), phMat('withered_grass', 0.3, 0.3, { color: 0x4a3a2a })); c.userData.dynamic = true; scene.add(c); FOULE.fanions.push(c);
+  const m = new THREE.Mesh(mergeGeometries(mats), phMat('wood_planks', 0.3, 2, { color: 0x8a6a48 })); m.castShadow = true; m.userData.dynamic = true; scene.add(m); FOULE.fanions.push(m);
 }
 // LES GÉANTS DE PROCESSION (découpage, plan 1 ; STORY.md § 2 « Les géants passent » ; validés
 // par Eugène le 1er octobre). Pas de nouveau modèle : le géant riggé de Lydéric, réduit à
@@ -955,7 +961,8 @@ function suiteActe1() {
   if (!ind('crypteNoire')) return ['Descends dans la crypte de la chapelle Saint-Roch, au bourg', { x: cx, z: cz }];
   if (!ind('lanterne')) return ['Retourne voir Lydéric, sur le pont', { x: LYD_X, z: LYD_Z }];
   if (!ind('escalier')) {
-    if (ind('gustave')) return ['Demande à Gustave, à l’estaminet, où se cache Désiré', { x: 218, z: 662 }];
+    // (l'estaminet est une porte dans une façade relevée depuis le 5 octobre : PARTAGE.estaminet)
+    if (ind('gustave')) return ['Demande à Gustave, à l’estaminet, où se cache Désiré', PARTAGE.estaminet ? { x: PARTAGE.estaminet.x, z: PARTAGE.estaminet.z } : { x: 218, z: 662 }];
     if (ind('cornelie')) return ['Interroge le gardien de la chapelle Saint-Roch', { x: cx, z: cz }];
     return ['Trouve Désiré, le guetteur du beffroi : demande dans le bourg (le vieux mage, devant la salle de la garde)', { x: E_.x, z: E_.z }];
   }

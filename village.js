@@ -12,7 +12,7 @@ import { mouldingProfile,
   wallBox, world,
 } from './engine.js?v=41';
 import {
-  COBBLE_M, TOWN, TOWN_BOITE, calerBourg, cobbles, levelH, lisse, normale, patinerMat, townWorld,
+  COBBLE_M, TOWN, TOWN_BOITE, calerBourg, cobbles, levelH, lisse, normale, patinerMat, townLocal, townWorld,
 } from './carte.js';
 import * as ATLAS from './atlas.js';
 import { especeGeo } from './foret.js';
@@ -710,6 +710,14 @@ function forge(ctx) {
   const { scene, addCap } = ctx;
   const FX = 6.1, FZ = 14;                       // façade de la maison du forgeron, ouverte vers -x
   const bois = CHENE(0.3, 3.1, { color: 0x53402c });
+  // (5 octobre) LE MUR DE LA FORGE. Elle s'adossait à la maison du forgeron, une maison du bourg
+  // inventé ; le bourg a cédé la place au bâti relevé, et il n'y a pas de maison relevée sur
+  // l'Esplanade. La forge garde sa place (le multi y pose un objet) et s'adosse à un mur de
+  // brique à chaperon de pierre, qui porte aussi l'étal du forgeron (buildVie).
+  { const L = 7.6, H = 3.6, Z0 = FZ - 3.7;
+    scene.add(mesh(boxG(0.5, H, L), BRIQV(L, H, { color: 0x9a6a54 }), FX + 0.25, H / 2, Z0 + L / 2));
+    scene.add(mesh(boxG(0.7, 0.16, L + 0.2), PIERV(L, 0.7, { color: 0xbcb19b }), FX + 0.25, H + 0.08, Z0 + L / 2));
+    addCap(FX + 0.25, Z0 + 0.25, FX + 0.25, Z0 + L - 0.25, 0.3, H + 0.2); }
   for (const dz of [-2.3, 2.3]) {
     scene.add(mesh(boxG(0.26, 3.05, 0.26), bois, FX - 1.85, 1.52, FZ + dz));
     scene.add(mesh(boxG(0.34, 0.16, 0.34), PIERV(0.4, 0.2, { color: 0xbcb19b }), FX - 1.85, 0.08, FZ + dz));
@@ -1067,7 +1075,8 @@ function kitBrasseur(ctx, hx, hz) {
 // et une échelle. Une ville qui n'entretient rien n'a pas l'air habitée non plus.
 function chantierChapelle(ctx) {
   const { scene, addCap } = ctx;
-  const CX2 = -6.8, CZ2 = -18.6;
+  // (5 octobre) entre le cimetière et la nef : à (−6,8 ; −18,6), il tombait sur une maison relevée
+  const CX2 = -6.9, CZ2 = -24.5;
   tasCone(ctx, CX2, CZ2, 1.15, 0.8, 0xc9b48a);
   tasTuiles(ctx, CX2 + 2.2, CZ2 + 0.6, 0.4);
   { const b = mesh(new THREE.CylinderGeometry(0.55, 0.5, 0.55, 12), CHENE(1.1, 0.55, { color: 0x6a5238 }), CX2 + 1.5, 0.27, CZ2 - 1.5); scene.add(b);
@@ -1090,27 +1099,30 @@ function marche(ctx) {
   const { prop } = ctx;
   // deux rangs qui se font face de part et d'autre de la rue nord-sud : c'est le
   // plan d'un marché, et il laisse la chaussée libre entre les deux.
-  etalMarche(ctx, -5.5, -6.7, Math.PI / 2, 'legumes');
+  // (5 octobre) l'étal aux légumes et le poids public tombaient dans une maison relevée de la
+  // rangée nord : ils passent du côté de l'Esplanade
+  etalMarche(ctx, -5.5, 14.0, Math.PI / 2, 'legumes');
   etalMarche(ctx, 5.5, -6.7, -Math.PI / 2, 'poisson');
   etalMarche(ctx, -5.5, 6.7, Math.PI / 2, 'fromage');
   etalMarche(ctx, 5.5, 6.7, -Math.PI / 2, 'volaille');
   etalMarche(ctx, -5.3, 10.3, Math.PI / 2, 'gaufres');
   etalMarche(ctx, 5.3, 9.8, -Math.PI / 2, 'poterie');
-  poidsPublic(ctx, -5.9, -10.4);
+  poidsPublic(ctx, -9.6, 12.4);
   paille(ctx, 0, -7.2, 6.2, 170); paille(ctx, 0, 7.6, 6.2, 170); paille(ctx, 0, 0, 8.6, 130);
   // marchandise au sol entre les étals
-  for (const [x, z, n] of [[-6.4, -8.6, 2], [6.4, -8.5, 2], [-6.4, 8.7, 2], [6.3, 8.0, 2]]) {
+  for (const [x, z, n] of [[-6.4, 15.9, 2], [6.4, -8.5, 2], [-6.4, 8.7, 2], [6.3, 8.0, 2]]) {
     for (let k = 0; k < n; k++) { const c = cageot(0.55, 0.36, 0.42); c.position.set(x + rand(-0.25, 0.25), k * 0.37, z + rand(-0.25, 0.25)); c.rotation.y = rand(0, TAU); ctx.scene.add(c); }
     ctx.addCap(x, z, x, z, 0.45, 0.4);
   }
-  for (const [x, z] of [[-7.0, -5.6], [7.0, 5.6]]) { const t = tonneau(0.34, 0.74); t.position.set(x, 0, z); ctx.scene.add(t); ctx.addCap(x, z, x, z, 0.38, 0.8); }
+  for (const [x, z] of [[-6.6, -4.3], [7.0, 5.6]]) { const t = tonneau(0.34, 0.74); t.position.set(x, 0, z); ctx.scene.add(t); ctx.addCap(x, z, x, z, 0.38, 0.8); }
   { const pa = panier(0.38, 0.42); pa.position.set(4.6, 0, -8.8); ctx.scene.add(pa);
     for (let k = 0; k < 6; k++) pa.add(mesh(sphG(0.13, 7), UNI(0x7f9a4a), rand(-0.16, 0.16), 0.42, rand(-0.16, 0.16))); }
   // bannières aux angles de la place, si la banque d'assets est là
-  for (const sx of [-1, 1]) { prop('props:Banner_1', sx * 7.6, -8.6, 0); prop('props:Banner_2', sx * 7.6, 8.6, Math.PI); }
-  prop('props:Barrel_Apples', -7.4, -7.9, 0.4, 0.4);
+  prop('props:Banner_1', -7.6, 4.9, 0); prop('props:Banner_1', 7.6, -8.6, 0);
+  for (const sx of [-1, 1]) prop('props:Banner_2', sx * 7.6, 8.6, Math.PI);
+  prop('props:Barrel_Apples', -1.8, -6.6, 0.4, 0.4);
   prop('props:Barrel', 7.45, 7.9, -0.2, 0.4);
-  prop('props:Crate_Wooden', 7.4, -7.7, 0.6, 0.5);
+  prop('props:Crate_Wooden', 6.2, -7.4, 0.6, 0.5);
   prop('props:FarmCrate_Apple', -7.35, 7.7, 0.2, 0.4);
   prop('props:FarmCrate_Carrot', -6.95, 8.35, -0.3, 0.4);
 }
@@ -1119,51 +1131,176 @@ function marche(ctx) {
 function divers(ctx, RUE) {
   const { scene, addCap } = ctx;
   const ZN = -RUE - 0.4, ZS = RUE + 0.4;                  // plans de façade nord et sud de la grand-rue
-  linge(ctx, -16.5, ZN + 0.1, -16.5, ZS - 0.1, 5.35, 7);
-  linge(ctx, -8.15, ZN + 0.1, -8.15, ZS - 0.1, 5.6, 6);
-  linge(ctx, 16.2, ZN + 0.1, 16.2, ZS - 0.1, 5.2, 7);
-  for (const [x, z] of [[-7.4, -4.55], [-7.85, 4.55], [7.85, -4.55], [7.5, 4.55], [-21.6, -2.95], [-21.6, 2.95], [14.45, 4.55], [-14.4, -4.55]]) chasseRoue(ctx, x, z);
+  // (5 octobre) Il n'y a plus de façade au sud : la rangée nord est le bâti relevé, le sud est
+  // l'Esplanade. Le linge part des façades relevées et finit sur un mât planté au bord de la rue ;
+  // les chasse-roues ne gardent que les angles du nord.
+  for (const [x, y, n] of [[-16.5, 5.35, 7], [16.2, 5.2, 7]]) {
+    linge(ctx, x, ZN + 0.1, x, ZS - 0.1, y, n);
+    scene.add(mesh(boxG(0.16, y + 0.35, 0.16), CHENE(0.2, y + 0.35, { color: 0x6a5238 }), x, (y + 0.35) / 2, ZS - 0.1));
+    addCap(x, ZS - 0.1, x, ZS - 0.1, 0.2, y + 0.4);
+  }
+  for (const [x, z] of [[-7.4, -4.55], [7.85, -4.55], [-14.4, -4.55]]) chasseRoue(ctx, x, z);
   ornieres(ctx, -22.5, 0.25, 17.5, 0.25, 1.05);        // à plat : elles s'arrêtent avant la rampe du bord
   ornieres(ctx, 0.3, -17, 0.3, 17, 1.05);
   for (const [x, z, r] of [[-1.8, 3.95, 0.6], [2.6, -3.85, 0.45], [-18.4, 0.8, 0.55], [14.2, 1.3, 0.5], [-22.5, -0.6, 0.7], [4.4, -1.3, 0.4]]) flaque(ctx, x, z, r);
   { const e = echelle(4.2); e.position.set(-15.0, 0, ZN + 0.62); e.rotation.x = -0.16; scene.add(e); }   // appuyée contre la façade, donc DEVANT elle
-  { const r = roueCharrette(0.62); r.position.set(14.6, 0.64, ZN + 0.42); r.rotation.z = 0.3; scene.add(r);
-    addCap(14.6, ZN + 0.42, 14.6, ZN + 0.42, 0.35, 1.2); }
+  // la roue, contre la façade relevée, entre la salle de la garde et la courée
+  { const r = roueCharrette(0.62); r.position.set(-17.6, 0.64, -4.15); r.rotation.z = 0.3; scene.add(r);
+    addCap(-17.6, -4.15, -17.6, -4.15, 0.35, 1.2); }
   for (const [x, z] of [[-2.6, 3.7], [3.1, -3.6]]) { const s = seau(); s.position.set(x, 0, z); scene.add(s); }
   tasBuches(ctx, -16.6, ZS - 0.55, 0, 2.6, 1.2);
-  tasBuches(ctx, 15.4, ZN + 0.55, 0, 2.2, 1.0);
-  millesime(ctx, -17, 3.8, ZN + 0.04, 0, 'IN DEN ZWAAN — 1648');
-  millesime(ctx, 17, 3.8, ZS - 0.04, Math.PI, 'DE DRIE SLEUTELS — 1655');
-  // devant la Porte des Flandres : la boue, le crottin et le fagot du corps de garde
-  tache(ctx, -21.2, 0, 2.2, 0x6f5f47, 0.5);
-  for (let k = 0; k < 3; k++) { const f = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8), ECORCE(), -21.2, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5);
+  // (les deux plaques gravées des maisons inventées sont parties avec elles : chaque commerce
+  // posé sur une façade relevée porte la sienne)
+  // le fagot du corps de garde, à côté de la salle de la garde, au bout ouest de la rue
+  tache(ctx, -25.4, 0.5, 2.2, 0x6f5f47, 0.5);
+  for (let k = 0; k < 3; k++) { const f = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.9, 8), ECORCE(), -25.6, 0.24 + k * 0.42, -3.0 + (k % 2) * 0.5);
     f.rotation.z = Math.PI / 2; f.rotation.y = rand(-0.2, 0.2); scene.add(f);
-    for (const sy of [-0.3, 0.3]) scene.add(mesh(new THREE.TorusGeometry(0.23, 0.02, 4, 10), UNI(0x7a6a4a), -21.2 + sy, 0.24 + k * 0.42, -3.4 + (k % 2) * 0.5).rotateY(Math.PI / 2)); }
-  addCap(-21.2, -3.6, -21.2, -2.9, 0.4, 1.1);
+    for (const sy of [-0.3, 0.3]) scene.add(mesh(new THREE.TorusGeometry(0.23, 0.02, 4, 10), UNI(0x7a6a4a), -25.6 + sy, 0.24 + k * 0.42, -3.0 + (k % 2) * 0.5).rotateY(Math.PI / 2)); }
+  addCap(-25.6, -3.2, -25.6, -2.5, 0.4, 1.1);
 }
 // Le point d'entrée du secteur. Appelé en fin de buildTown.
+// Un repère tourné dans le repère du bourg : (ox, oz) son origine, `yaw` son orientation
+// (même convention que devanture : +z local tourné de yaw). Ce qu'on y pose — un étal, un kit,
+// une terrasse — s'écrit comme devant une façade droite ; collisions et interactions sont
+// ramenées dans le repère du bourg. `L` convertit un point du repère en point du bourg.
+function cadre(ctx, ox, oz, yaw) {
+  const g = new THREE.Group(); g.position.set(ox, 0, oz); g.rotation.y = yaw; ctx.scene.add(g);
+  const c = Math.cos(yaw), s = Math.sin(yaw), L = (x, z) => [ox + x * c + z * s, oz - x * s + z * c];
+  return { ...ctx, scene: g, L, yaw,
+    addCap: (ax, az, bx, bz, r, top) => ctx.addCap(...L(ax, az), ...L(bx, bz), r, top),
+    addInteract: (it) => { const [x, z] = L(it.pos.x, it.pos.z); return ctx.addInteract({ ...it, pos: new THREE.Vector3(x, it.pos.y, z) }); } };
+}
+
+// LES COMMERCES DANS LES FAÇADES RELEVÉES (5 octobre, Eugène : « le bourg doit disparaître au
+// profit des bâtiments relevés, et les éléments qui existaient s'y insérer »). Les douze
+// maisons inventées sont parties ; la rangée nord de la grand-rue, c'est maintenant le bâti
+// relevé (quartier.js), dont les façades tombent à 30 cm de l'ancienne. Chaque commerce y
+// réserve son morceau de façade, à son abscisse dans le repère du bourg : quartier.js, en
+// élevant chaque mur, demande s'il est réservé (PARTAGE.facadeBourg), n'y perce alors pas de
+// rez-de-chaussée, et le commerce se pose sur ce mur-là, tel qu'il est DESSINÉ — le relevé
+// et les murs dessinés diffèrent d'un mètre par endroits. L'estaminet et le brasseur restent
+// où ils étaient ; la salle de la garde, qui était sur la rangée sud (il n'y a pas de maison
+// relevée sur l'Esplanade), passe à la façade voisine, à l'ouest ; le drapier, à côté du
+// brasseur. `demi` : la demi-largeur réservée, en unités du bourg.
+const COMMERCES = [
+  { id: 'garde', lx: -21.2, demi: 2.9 },
+  // (lx −11 : une courée du relevé y traverse l'îlot, quartier.js y laisse le passage ouvert ;
+  // le seul mur qui regarde la rue entre elle et la rue du beffroi va de −6,9 à −1,7)
+  { id: 'estaminet', lx: -4.3, demi: 2.6 },
+  { id: 'brasseur', lx: 10.5, demi: 2.6 },
+  { id: 'drapier', lx: 17.0, demi: 2.6 },
+];
+// Ce que chaque commerce pose dans son repère : la façade à z = 0, la rue vers +z.
+function poserCommerce(ctx, id, fr) {
+  const w = 5, d = 7, devant = (m, extra = {}) => devanture(fr, { hx: 0, hz: -d / 2, yaw: 0, w, d, metier: m, ...extra });
+  if (id === 'garde') {
+    devant('garde');
+    // la claie aux morions, les sacs, le balai : posés pour une rue en −z, d'où le demi-tour
+    kitBoulanger(cadre(fr, 0, 0, Math.PI), 0, 0);
+    // la salle de la garde : là où commence le prologue, Camille face à l'étal (quetes.js)
+    const W = (x, z) => townWorld(...fr.L(x, z)), [x, z] = W(0, 2.0), [ex, ez] = W(-2.4, 1.6), [sx, sz] = W(2.2, 0.8), [lx, lz] = W(0, -3.5);
+    PARTAGE.ecole = { x, z, yaw: TOWN.a + fr.yaw + Math.PI, eugene: [ex, ez], enseigne: [sx, TOWN.y + 4.2 * TOWN.s, sz] };
+    E.addLieu({ id: 'ecole', nom: 'la salle de la garde', x: lx, z: lz, r: 12 });
+  } else if (id === 'brasseur') {
+    devant('brasseur');
+    kitBrasseur(fr, -1.5, 0);                    // tonneaux devant la baie de droite, sacs vers le beffroi
+  } else if (id === 'drapier') devant('drapier');
+  else if (id === 'estaminet') estaminet(fr);
+}
+// L'estaminet : plus une maison à lui, une porte dans la façade relevée, avec sa lanterne, son
+// enseigne à potence, sa chope, et sa terrasse sur la rue.
+function estaminet(fr) {
+  const { scene, addCap } = fr;
+  const dg = makeDoor(1.5, 2.7, { color: 0x6e2b28, arc: true, pierre: PIERRE_TAILLE(), lanterne: true, chaud: true });
+  dg.position.set(0, 0, 0.05); scene.add(dg);
+  fr.addInteract({ pos: new THREE.Vector3(0, 0, 1.7), r: 2.4, prompt: () => "entrer dans l'estaminet",
+    fn: () => goToLevel('tavern', [0, 0, 4.4], Math.PI, "Camille pousse la porte de l'estaminet…") });
+  // la sortie de l'estaminet (tavern.js) : devant la porte, face à la rue
+  // (aussi dans `state` : l'estaminet s'ouvre dans sa propre page, au-dessus de la ville, et
+  // n'en connaît que la sauvegarde — saveGame la fait en entrant)
+  { const [x, z] = townWorld(...fr.L(0, 2.4)); PARTAGE.estaminet = { x, z, yaw: TOWN.a + fr.yaw }; state.sortieEstaminet = PARTAGE.estaminet;
+    // le lieu de la carte (citadelle.js le déclare à l'ancienne porte) suit la vraie
+    const l = E.lieux.find((q) => q.id === 'estaminet'); if (l) { [l.x, l.z] = townWorld(...fr.L(0, -1)); } }
+  // terrasse : deux guéridons, des tabourets, un tonneau-table
+  for (const x of [-2.9, 2.9]) {
+    const z = 1.35;
+    scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 14), CHENE(1.5, 1.5, { color: 0x9a7a58 }), x, 1.0, z));
+    scene.add(mesh(new THREE.CylinderGeometry(0.1, 0.28, 1.0, 8), FERN(), x, 0.5, z));
+    scene.add(mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.08, 12), FERN(), x, 0.06, z));
+    { const c = cruche(0.34, 0x9a8a72, true); c.position.set(x + 0.22, 1.05, z); scene.add(c); }
+    for (const a of [0.7, 2.9, 4.6]) {                       // tabourets
+      const sx2 = x + Math.cos(a) * 1.5, sz2 = z + Math.sin(a) * 1.5;
+      if (sz2 < 0.45) continue;                               // pas dans le mur
+      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.1, 10), CHENE(0.6, 0.6, { color: 0x9a7a58 }), sx2, 0.66, sz2));
+      for (let k = 0; k < 3; k++) scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.62, 5), CHENE(0.1, 0.62, { color: 0x6a5238 }), sx2 + Math.cos(k * 2.1) * 0.17, 0.31, sz2 + Math.sin(k * 2.1) * 0.17));
+      addCap(sx2, sz2, sx2, sz2, 0.3, 0.8);
+    }
+    addCap(x, z, x, z, 0.78, 1.15);
+  }
+  // (les paravents serrés à ±4,3 : à ±5,6, l'un fermait l'entrée de la courée, l'autre la rue du beffroi)
+  for (const [sx, col] of [[-1, 0x8a2a2a], [1, 0x2a5a4a]]) {
+    const pv = makeParavent(1.6, 1.95, col); pv.position.set(sx * 4.3, 0, 2.1); pv.rotation.y = Math.PI / 2; scene.add(pv);
+    addCap(sx * 4.3, 1.4, sx * 4.3, 2.8, 0.2, 2.0);
+  }
+  { const x = 3.4, z = 3.0;                                    // tonneau-table, au bord de la terrasse
+    scene.add(mesh(new THREE.CylinderGeometry(0.52, 0.46, 1.1, 14), CHENE(3.2, 1.1, { color: 0x8a6440 }), x, 0.55, z));
+    for (const yy of [0.2, 0.9]) scene.add(mesh(new THREE.TorusGeometry(0.52, 0.05, 6, 16), FERN(), x, yy, z).rotateX(Math.PI / 2));
+    addCap(x, z, x, z, 0.55, 1.2); }
+  { const ens = enseignePeinte("L'ESTAMINET", 'chope', 2.5, 1.3); ens.position.set(-2.5, 5.05, 0.06); ens.rotation.y = -Math.PI / 2; scene.add(ens); }
+  { const eo = emblemeObjet('chope'); eo.position.set(2.4, 3.55, 0.04); scene.add(eo); }
+  anneauMur(fr, -3.0, 1.45, -0.04, 0);
+  grattoir(fr, -1.2, 0.35, 0);
+}
+// Les monuments que le bâti relevé ne recouvre pas (Eugène : « garder sur place ») : le
+// beffroi, la chapelle avec son porche et son parvis, et le cimetière. Repère du bourg.
+const MONUMENTS = [[5.0, 11.0, -15.0, -9.0], [-5.0, 5.0, -33.8, -12.5], [-18.4, -8.6, -29.0, -18.2]];
+
 export function buildVie(ctx) {
   const RUE = ctx.RUE;
-  devanture(ctx, { hx: -11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6, d: 7, metier: 'garde' });
-  // l'école Lequeuche : là où commence le prologue, Camille face à l'étal (quetes.js)
-  { const [x, z] = townWorld(-11, RUE - 1.6), [ex, ez] = townWorld(-8.6, RUE - 1.2);
-    const [sx, sz] = townWorld(-13.2, RUE - 0.4);        // l'enseigne, au bout de la façade
-    PARTAGE.ecole = { x, z, yaw: TOWN.a, eugene: [ex, ez], enseigne: [sx, TOWN.y + 4.2 * TOWN.s, sz] };
-    const [lx, lz] = townWorld(-11, RUE + 3.9); E.addLieu({ id: 'ecole', nom: 'la salle de la garde', x: lx, z: lz, r: 12 }); }
-  devanture(ctx, { hx: 11, hz: RUE + 3.5 + 0.4, yaw: Math.PI, w: 6.5, d: 7, metier: 'drapier' });
-  devanture(ctx, { hx: 10.5, hz: -RUE - 3.5 - 0.4, yaw: 0, w: 5, d: 7, metier: 'brasseur' });
+  // un bâtiment relevé qui recouvre un monument n'est pas élevé (quartier.js)
+  PARTAGE.batiBourg = (p) => {
+    const loc = p.map(([x, z]) => townLocal(x, z));
+    return MONUMENTS.some(([x0, x1, z0, z1]) => {
+      if (loc.some(([x, z]) => x > x0 && x < x1 && z > z0 && z < z1)) return true;
+      // le monument entier dans l'emprise : son centre est dedans
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2; let dedans = false;
+      for (let i = 0, j = loc.length - 1; i < loc.length; j = i++) { const [xi, zi] = loc[i], [xj, zj] = loc[j];
+        if ((zi > cz) !== (zj > cz) && cx < (xj - xi) * (cz - zi) / (zj - zi) + xi) dedans = !dedans; }
+      return dedans;
+    });
+  };
+  // un mur relevé réservé par un commerce : quartier.js y laisse le rez-de-chaussée aveugle,
+  // et le commerce se pose sur ce mur (le premier qui porte son abscisse)
+  const poses = new Set();
+  PARTAGE.facadeBourg = (a, c, nx, nz) => {
+    const [ax, az] = townLocal(a[0], a[1]), [cx, cz] = townLocal(c[0], c[1]);
+    if (Math.min(ax, cx) > TOWN_BOITE.x1 + 3 || Math.max(ax, cx) < TOWN_BOITE.x0 - 3 || (az + cz) / 2 < -9 || (az + cz) / 2 > -2.5) return false;
+    const [qx, qz] = townLocal(a[0] + nx, a[1] + nz), lnx = (qx - ax) * TOWN.s, lnz = (qz - az) * TOWN.s;
+    if (lnz < 0.8) return false;                               // il regarde la grand-rue
+    let reserve = false;
+    for (const C of COMMERCES) {
+      if (Math.min(ax, cx) > C.lx + C.demi - 0.3 || Math.max(ax, cx) < C.lx - C.demi + 0.3) continue;
+      reserve = true;
+      if (poses.has(C.id) || C.lx < Math.min(ax, cx) || C.lx > Math.max(ax, cx)) continue;
+      const t = (C.lx - ax) / ((cx - ax) || 1e-6), fz = az + (cz - az) * t;
+      poses.add(C.id); poserCommerce(ctx, C.id, cadre(ctx, C.lx, fz, Math.atan2(lnx, lnz)));
+    }
+    return reserve;
+  };
+  // après le quartier : un commerce dont aucun mur dessiné n'a porté l'abscisse se pose sur
+  // l'ancien plan de façade (il ne doit jamais manquer — la garde porte le prologue)
+  PARTAGE.facadeBourgFin = () => {
+    for (const C of COMMERCES) if (!poses.has(C.id)) {
+      console.warn('bourg : pas de façade relevée pour', C.id, '— posé sur l’ancien plan');
+      poses.add(C.id); poserCommerce(ctx, C.id, cadre(ctx, C.lx, -RUE - 0.4, 0));
+    }
+  };
   devanture(ctx, { hx: 9.6, hz: 14, yaw: -Math.PI / 2, w: 6, d: 7, metier: 'forgeron', cotes: [1], objetY: 4.15, sansPlaque: true });
-  kitBoulanger(ctx, -11, RUE + 0.4);
-  kitBrasseur(ctx, 10.5, -RUE - 0.4);
   forge(ctx);
   sechoirDrapier(ctx);
   marche(ctx);
   chantierChapelle(ctx);
   divers(ctx, RUE);
-  // l'estaminet reçoit son enseigne-objet et ses anneaux : il est déjà meublé dehors
-  { const eo = emblemeObjet('chope'); eo.position.set(-8.6, 3.55, -RUE - 0.36); ctx.scene.add(eo);
-    anneauMur(ctx, -14.0, 1.45, -RUE - 0.44, 0);
-    grattoir(ctx, -12.2, -RUE - 0.05, 0); }
 }
 
 export function buildTown() {
@@ -1299,21 +1436,10 @@ export function buildTown() {
   paved(0, 0, TOWN_BOITE.x1 - TOWN_BOITE.x0, RUE * 2); paved(0, 2, RUE * 1.8, R2 * 2 + 8); paved(0, 0, 18, 18);
   // trottoirs/bordures en pierre le long de la grand-rue
   for (const sz of [-1, 1]) scene.add(mesh(boxG(R2 * 2 + 4, 0.18, 0.4), phLocal('old_stone_wall_02', R2 * 2 + 4, 0.4, { color: 0xc8c0b0 }), tx, 0.09, tz + sz * (RUE - 0.3)));
-  // maisons de part et d'autre de la grand-rue (façades vers la rue)
-  const tints = [0xd08a6a, 0xb8654a, 0xe0c090, 0xf0e6d6, 0xc07060, 0xd9a070];
-  // La dernière maison de la rangée n'a que 3,5 de profondeur : elle est adossée au beffroi.
-  // Avec ses 7 unités, elle entrait de 2,9 dans le fût — invisible tant qu'il était plein,
-  // mais sa collision barrait le colimaçon.
-  const north = [[-17, 6, 7, 2, 0], [-11, 6.5, 7, 3, 1], [16, 6, 7, 2, 4], [10.5, 5, 3.5, 3, 5]];
-  // i === 1 : l'estaminet. Pas d'auvent de boutique — il masquait la porte — mais des vitres
-  // chaudes, une lanterne et une enseigne à potence, pour qu'on voie de loin que ça s'ouvre.
-  const mursN = ['brique', 'rouge', 'enduit', 'flamande'], mursS = ['enduit', 'brique', 'flamande', 'pierre'];
-  north.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz - RUE - d / 2 - 0.4, 0, w, d, fl, tints[t], { mur: mursN[i], shutter: [0x3a6a4a, 0x8a2a2a, 0x2a4a7a][i % 3], shop: false, oriel: i === 3, balcony: i === 1 ? 'left' : false, chaud: i === 1, lanterne: i === 1, doorColor: i === 1 ? 0x6e2b28 : undefined }));
-  const south = [[-17, 6, 7, 2, 2], [-11, 6, 7, 2, 3], [11, 6.5, 7, 3, 0], [17, 5.5, 7, 2, 1]];
-  south.forEach(([x, w, d, fl, t], i) => placeHouse(tx + x, tz + RUE + d / 2 + 0.4, Math.PI, w, d, fl, tints[t], { mur: mursS[i], shutter: [0x8a2a2a, 0x3a6a4a, 0x2a4a7a][i % 3], shop: false, oriel: i === 2, balcony: i === 0 }));
-  // maisons le long de la rue nord-sud
-  placeHouse(tx - 9.6, tz - 14, Math.PI / 2, 6, 7, 2, tints[4], { mur: 'rouge', shutter: 0x3a6a4a }); placeHouse(tx + 14.6, tz - 14.8, -Math.PI / 2, 6, 7, 2, tints[2], { mur: 'enduit', shutter: 0x8a2a2a });   // reculée à l'est : elle occupait le tiers du fût du beffroi
-  placeHouse(tx - 9.6, tz + 14, Math.PI / 2, 6, 7, 3, tints[3], { mur: 'flamande', shutter: 0x2a4a7a, balcony: true }); placeHouse(tx + 9.6, tz + 14, -Math.PI / 2, 6, 7, 2, tints[5], { shutter: 0x2a2a30, shop: false });   // le forgeron : volets de fer, auvent de forge (cf. forge())
+  // (5 octobre) PLUS DE MAISONS INVENTÉES. Les douze maisons du bourg (quatre au nord de la
+  // grand-rue, quatre au sud, quatre sur la rue nord-sud) ont cédé la place au bâti relevé
+  // (quartier.js) ; les commerces qu'elles portaient sont posés dans les façades relevées
+  // (buildVie, COMMERCES), la forge contre son propre mur.
   // beffroi (coin nord-est de la place)
   { const bx = tx + 8, bz = tz - 12, BH = 26;
     const bf = new THREE.Group(); bf.position.set(bx, 0, bz); const stoneB = PIERRE_TAILLE(), dark = mat(0x10141c);
@@ -1556,7 +1682,9 @@ export function buildTown() {
   // lanternes de rue
   // Le réverbère était un fût et une boîte jaune lumineuse : une lanterne de fer à quatre
   // montants, vitres chaudes, chapeau et bague, sur un fût à base moulurée.
-  for (const [x, z] of [[-12, -3.4], [-4, -3.4], [4, 3.4], [12, 3.4], [-3.4, -12], [3.4, 12]]) {
+  // (5 octobre : celle de (−4 ; −3,4) est passée à (−1,9 ; −3,4) — la porte de l'estaminet, dans
+  // la façade relevée, est maintenant derrière elle)
+  for (const [x, z] of [[-12, -3.4], [-1.9, -3.4], [4, 3.4], [12, 3.4], [-3.4, -12], [3.4, 12]]) {
     const lx = tx + x, lz = tz + z, g = new THREE.Group(); g.position.set(lx, 0, lz); scene.add(g);
     g.add(mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.4, 10), PIERV(0.6, 0.4, { color: 0xbdb29c }), 0, 0.2, 0));
     g.add(mesh(new THREE.CylinderGeometry(0.07, 0.1, 3.3, 8), FERN(), 0, 2.0, 0));
@@ -1649,7 +1777,8 @@ export function buildTown() {
       fn: () => goToLevel('chapelle', [-1.5, 0, 9.0], Math.PI, 'Camille pousse le portail de la chapelle…') });
     { const [lx, lz] = W2(cx, cz); E.addLieu({ id: 'chapelle', nom: 'la chapelle Saint-Roch', x: lx, z: lz, r: 26 }); }
     // cimetière : muret, tombes, if — décalé vers l'ouest, la nef ayant gagné 2 unités de large
-    const gx = cx - 13, gz = cz;
+    // (5 octobre) 1,6 plus au nord : il mordait sur la maison relevée qui porte l'estaminet
+    const gx = cx - 13, gz = cz - 1.6;
     for (const [ax, az, bx2, bz2] of [[gx - 5, gz - 5, gx + 4, gz - 5], [gx - 5, gz + 5, gx + 4, gz + 5], [gx - 5, gz - 5, gx - 5, gz + 5]]) { wallBox(ax, az, bx2, bz2, 0.9, 0.4, stoneMat, 0, 'old_stone_wall_02'); addCap(ax, az, bx2, bz2, 0.25, 0.9); }
     for (let k = 0; k < 8; k++) { const px = gx - 3.5 + (k % 4) * 2.2, pz = gz - 2.5 + Math.floor(k / 4) * 4;
       const st = mesh(boxG(0.9, 1.3, 0.25), phLocal('old_stone_wall_02', 0.9, 1.3, { color: [0xd8d0c0, 0xc4bcb4, 0xd0c8cc][k % 3] }), px, 0.65, pz); st.rotation.y = rand(-0.12, 0.12); st.rotation.z = rand(-0.06, 0.06); scene.add(st);
@@ -1753,54 +1882,13 @@ export function buildTown() {
         if (!BOURSE.aBourse()) { dialogue([{ who: 'Le colporteur', text: '« Pas de bourse, pas d’affaires, ma belle. Reviens quand tu auras de quoi compter. »' }]); return; }
         BOURSE.colporteur(); } });
   }
-  // ---------- l'estaminet ----------
-  // La zone d'interaction était posée au milieu de la rue, à trois mètres de la porte : on ne
-  // pouvait pas entrer. Elle est maintenant calée sur le seuil de la maison n° 1 de la rangée
-  // nord, et les tables — qui étaient À L'INTÉRIEUR du bâtiment — sont sorties en terrasse.
-  const EST_X = -11, EST_Z = -RUE - 0.4;                    // x de la porte, z de la façade
-  addInteract({ pos: new THREE.Vector3(tx + EST_X, 0, tz + EST_Z + 1.7), r: 2.4,
-    prompt: () => "entrer dans l'estaminet",
-    fn: () => goToLevel('tavern', [0, 0, 4.4], Math.PI, "Camille pousse la porte de l'estaminet…") });
-  // terrasse : deux guéridons, des tabourets, un tonneau-table
-  for (const [x, z] of [[EST_X - 2.9, EST_Z + 1.35], [EST_X + 2.9, EST_Z + 1.35]]) {
-    const bx = tx + x, bz = tz + z;
-    scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.1, 14), CHENE(1.5, 1.5, { color: 0x9a7a58 }), bx, 1.0, bz));
-    scene.add(mesh(new THREE.CylinderGeometry(0.1, 0.28, 1.0, 8), FERN(), bx, 0.5, bz));
-    scene.add(mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.08, 12), FERN(), bx, 0.06, bz));
-    // une chope de grès, pas un cylindre doré
-    { const c = cruche(0.34, 0x9a8a72, true); c.position.set(bx + 0.22, 1.05, bz); scene.add(c); }
-    for (const a of [0.7, 2.9, 4.6]) {                       // tabourets
-      const sx2 = bx + Math.cos(a) * 1.5, sz2 = bz + Math.sin(a) * 1.5;
-      scene.add(mesh(new THREE.CylinderGeometry(0.28, 0.26, 0.1, 10), CHENE(0.6, 0.6, { color: 0x9a7a58 }), sx2, 0.66, sz2));
-      for (let k = 0; k < 3; k++) scene.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.62, 5), CHENE(0.1, 0.62, { color: 0x6a5238 }), sx2 + Math.cos(k * 2.1) * 0.17, 0.31, sz2 + Math.sin(k * 2.1) * 0.17));
-      addCap(sx2, sz2, sx2, sz2, 0.3, 0.8);
-    }
-    addCap(bx, bz, bx, bz, 0.78, 1.15);
-  }
-  // paravents : la terrasse d'un estaminet flamand se garde du vent, et ça donne
-  // la tache de couleur qui manquait devant la façade de brique
-  for (const [sx, col] of [[-1, 0x8a2a2a], [1, 0x2a5a4a]]) {
-    const pv = makeParavent(1.6, 1.95, col);
-    pv.position.set(tx + EST_X + sx * 5.6, 0, tz + EST_Z + 2.1); pv.rotation.y = Math.PI / 2; scene.add(pv);
-    // la collision faisait trois unités pour un paravent de 1,6 : 1,4 de mur invisible sur la rue
-    addCap(tx + EST_X + sx * 5.6, tz + EST_Z + 1.4, tx + EST_X + sx * 5.6, tz + EST_Z + 2.8, 0.2, 2.0);
-  }
-  { const bx = tx + EST_X - 4.6, bz = tz + EST_Z + 1.1;      // tonneau-table et son ardoise
-    scene.add(mesh(new THREE.CylinderGeometry(0.52, 0.46, 1.1, 14), CHENE(3.2, 1.1, { color: 0x8a6440 }), bx, 0.55, bz));
-    for (const yy of [0.2, 0.9]) scene.add(mesh(new THREE.TorusGeometry(0.52, 0.05, 6, 16), FERN(), bx, yy, bz).rotateX(Math.PI / 2));
-    addCap(bx, bz, bx, bz, 0.55, 1.2); }
+  // l'estaminet : posé dans sa façade relevée (estaminet(), par buildVie)
   // ---------- props MegaKit : charrette, caisses, barrière, vigne vierge ----------
   prop('megakit:Prop_Wagon', tx + 11, tz + 3.4, Math.PI / 2, 0.9);
   prop('megakit:Prop_Crate', tx - 13.1, tz + 3.6, 0.3, 0.5);
   prop('megakit:Prop_Crate', tx - 12.35, tz + 3.8, -0.4, 0.5);
   prop('megakit:Prop_Crate', tx - 13.0, tz + 3.65, 0.9, 0, 1.06);
-  for (let i = 0; i < 4; i++) prop('megakit:Prop_WoodenFence_Single', tx - 5 + i * (2.04 / S), tz - RUE - 0.5);
-  prop('megakit:Prop_Vine1', tx - 16.6, tz - RUE - 0.6);
-  prop('megakit:Prop_Vine1', tx + 10.2, tz + RUE + 0.6, Math.PI);
-  // enseigne de l'estaminet : panneau peint à emblème (une chope), comme les quatre
-  // commerces — le texte seul se perd dès qu'on s'éloigne de dix mètres
-  { const ens = enseignePeinte("L'ESTAMINET", 'chope', 2.5, 1.3);
-    ens.position.set(tx + EST_X - 2.5, 5.05, tz + EST_Z + 0.06); ens.rotation.y = -Math.PI / 2; scene.add(ens); }
+  // (la barrière et les deux vignes étaient contre des maisons inventées : parties avec elles)
   // la vie du bourg : commerces, marché, linge, tas, traces d'usage.
   // tx et tz valent 0 — buildVie travaille donc directement en coordonnées locales.
   buildVie({ scene, addCap, addBox, addInteract, prop, S, RUE });

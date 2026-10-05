@@ -677,11 +677,12 @@ export function batirQuartier() {
     // emprises que la BD TOPO y relève sont le zoo et le parc d'aujourd'hui, pas 1670.
     if (sdPent(cx, cz) < MOAT_OUT + 10) { ecarte++; continue; }
     if (b.n === 'Fort, blockhaus, casemate') { ecarte++; continue; }   // un blockhaus de 1940 n'a rien à faire là
-    // L'îlot du bourg : la place, le marché, l'estaminet et la chapelle sont dessinés à la
-    // main par village.js, et ils sont posés SUR un îlot du quartier. Le relevé y cède la
-    // place — une quinzaine d'emprises, celles de l'îlot et pas une de plus.
+    // L'îlot du bourg. Il cédait toute sa place aux maisons inventées de village.js ; depuis le
+    // 5 octobre (Eugène), le bâti relevé y revient, et ne cède plus qu'aux monuments gardés —
+    // le beffroi, la chapelle et son cimetière (village.js, PARTAGE.batiBourg). Les commerces
+    // du bourg se posent dans ses façades (PARTAGE.facadeBourg, plus bas).
     { const [lx, lz] = townLocal(cx, cz), B = TOWN_BOITE;
-      if (lx > B.x0 - 3 && lx < B.x1 + 3 && lz > B.z0 - 3 && lz < B.z1 + 3) { ecarte++; bourg++; continue; } }
+      if (lx > B.x0 - 12 && lx < B.x1 + 12 && lz > B.z0 - 12 && lz < B.z1 + 12 && PARTAGE.batiBourg && PARTAGE.batiBourg(p)) { ecarte++; bourg++; continue; } }
     if (!dansEnceinte(cx, cz) || Math.hypot(cx, cz) > PLAINE_R - 25) { ecarte++; continue; }
     if (sdEau(cx, cz) < 2) { ecarte++; continue; }            // le relevé pose quelques hangars sur la rive
     // une emprise sur l'axe d'un pont (culées prolongées comprises) : la passerelle de
@@ -965,7 +966,11 @@ export function batirQuartier() {
         const nc = Math.floor(L / 2.9);
         if (nc < 1) continue;
         const pas = L / nc;
-        const colPorte = i === iPorte ? Math.floor(nc / 2) : -1;
+        // un mur de la grand-rue du bourg réservé par un commerce (village.js) : le commerce s'y
+        // pose, et le rez-de-chaussée reste aveugle derrière lui — ni porte, ni boutique, ni baie
+        const sensP = aireSignee(p2) < 0 ? -1 : 1;
+        const reserve = !premierRang && PARTAGE.facadeBourg ? PARTAGE.facadeBourg(a, c, nx * sensP, nz * sensP) : false;
+        const colPorte = i === iPorte && !reserve ? Math.floor(nc / 2) : -1;
         // une boutique : façade de la porte, sur une voie, une maison sur quatre
         const surRue = colPorte >= 0 && surVoie(a[0] + tx * L / 2 + nx * 5, a[1] + tz * L / 2 + nz * 5);
         const boutique = surRue && hache(gr * 31 + 7) < 0.26 && nc >= 2 && ySol + 3.4 < yEgout;
@@ -1006,7 +1011,7 @@ export function batirQuartier() {
           for (let f = 0; f < 7; f++) {
             const appui = ySol + 0.95 + f * 3.15;
             if (appui + 1.6 > yEgout - 0.4) break;
-            if (f === 0 && (ci === colPorte || boutique)) continue;
+            if (f === 0 && (reserve || ci === colPorte || boutique)) continue;
             baie(sFen, sc, appui, 1.24, 1.56); reliefBaie(sc, appui, 1.24, 1.56); baies++;
           }
         }
@@ -1109,6 +1114,8 @@ export function batirQuartier() {
     bati++;
   }
 
+  // un commerce du bourg qu'aucun mur n'a porté se pose quand même (village.js)
+  if (PARTAGE.facadeBourgFin) PARTAGE.facadeBourgFin();
   for (const s of sacs.values()) { const o = cuire(s); if (o) grp.add(o); }
   grp.add(decorLointain(M, lointains));
   grp.add(portesDeVille(M));

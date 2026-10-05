@@ -41,8 +41,14 @@ const put = (o) => { room.add(o); return o; };
 // Le parvis se calcule depuis TOWN : le bourg a déménagé DANS le vrai quartier et il
 // est tourné. Une position monde en dur ne survit pas à ça — celle d'avant pointait
 // à des centaines de mètres de la porte. townWorld() fait la conversion.
+// (5 octobre) l'estaminet est une porte dans une façade relevée (village.js) : on ressort devant
+// elle, face à la rue. L'estaminet s'ouvre dans sa propre page, au-dessus de la ville : il n'en
+// connaît que la sauvegarde, où village.js a rangé la porte (state.sortieEstaminet) ; à défaut
+// (une vieille partie), l'ancien parvis. Lue au moment de sortir.
 const [SX, SZ] = townWorld(-11, -6.8);
-const EXIT = { level: 'citadel', pos: [SX, 0, SZ], yaw: -TOWN.a };
+const EXIT = { level: 'citadel',
+  get pos() { const e = PNJ_E.state.sortieEstaminet; return e ? [e.x, 0, e.z] : [SX, 0, SZ]; },
+  get yaw() { const e = PNJ_E.state.sortieEstaminet; return e ? e.yaw : -TOWN.a; } };
 let fire, patrons = [], barman, braise, chat, flammes = [], raisSoleil = [], poussiere = null;
 
 // Hauteur à laquelle poser un client riggé assis. Le clip Sitting_Idle_Loop ne baisse pas
