@@ -229,6 +229,7 @@ export const ARENES = {
   lille: { nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
   gardeguerin: { nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
   pouget: { nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
+  batut: { nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
 };
 export const pageArene = (id) => (ARENES[id] || ARENES.lille).page;
 export const instance = () => lire(CLE_INSTANCE);

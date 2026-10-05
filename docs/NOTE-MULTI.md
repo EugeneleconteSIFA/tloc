@@ -481,13 +481,22 @@ bannières restent ceux de Lille : hors de Lille, aucun objet n'est posé (ils n
 dans l'aire), et la fête de la moisson (on fauche l'herbe de Lille) n'a pas de sens. À déclarer
 par l'arène quand on en voudra.
 
-**Idée d'Eugène, à faire — la bataille dans la maison** (le Batut, Aveyron) : « c'est surtout le
-gameplay inside house que j'aime, pas mal pour se cacher ». Une arène faite de deux grandes
-maisons et d'un jardin entre elles : le Batut et Beauregard, la querelle de STORY.md. En
-équipes, on arrive dans sa maison selon son camp (`departsCamps`). Il faut d'abord de vrais
-intérieurs aménagés (pièces, couloirs, escaliers, meubles derrière lesquels se cacher) :
-aujourd'hui, les grandes maisons d'aveyron.js ne sont que des façades. aveyron.js est à la
-session de l'Aveyron le 5 octobre : à reprendre après elle.
+**Le Batut et Beauregard (5 octobre, le soir)** — la bataille dans la maison (Eugène : « c'est
+surtout le gameplay inside house que j'aime, pas mal pour se cacher »). Un niveau à lui, comme
+l'estaminet : `batut.html`, `batut.js`, bâti de zéro d'après les grandes maisons d'aveyron.js
+sans en dépendre (aveyron.js ne fait que des façades, et une autre session le tenait). Un domaine
+clos de 124 × 68 m : le Batut à l'ouest, Beauregard à l'est, la même maison en miroir (une
+arène d'équipes se veut juste), le jardin entre les deux (l'allée, le bassin à sec, quatre
+parterres de buis d'1,40 m, deux rangs de hêtres). Chaque maison : sept pièces au
+rez-de-chaussée (vestibule, grand salon, salle à manger, galerie, bibliothèque à trois
+rayonnages de 2,20 m, cuisine, chambre), six issues (porte, porte-fenêtre, deux bouts de
+galerie, cuisine, et le vestibule ouvert sur la galerie). L'étage est plein (on n'y monte pas).
+Dedans, la caméra reste sous le plafond (`G.camMaxY`) et se rapproche. En équipes, chacun
+arrive dans son vestibule (`departsCamps`, `dispersion: 2.5`) ; l'aire se resserre ensuite sur
+le jardin : il faut sortir. Les pierres de l'Aveyron s'inscrivent au registre (PH) dans le
+fichier même, comme aveyron.js — sans quoi phMat rendait un gris uni. Charge en 2,5 s.
+Banc : 3 rencontres en 60 s à 2 joueurs et 2 bots, voisin à 16 m. À faire : un étage où l'on
+monte, des meubles moins carrés, des portes qu'on ferme.
 
 Banc : `bancs/rencontres.mjs` — comptes de test sur le serveur LOCAL, quatre joueurs sans tête
 qui marchent au hasard, quatre bots, chrono de 10 min observé sur ses 3 premières minutes ; il

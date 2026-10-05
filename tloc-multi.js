@@ -814,8 +814,9 @@ function arriveeAuto() {
   const base = dc ? { x: dc[0], z: dc[1] } : (monRdv() || lieuDepart());
   if (!base) return null;
   for (let k = 0; k < 40; k++) {
-    // à quelques mètres du point, au hasard : deux joueurs arrivaient l'un dans l'autre
-    const a = Math.random() * TAU, r = 3 + Math.random() * (5 + k);
+    // à quelques mètres du point, au hasard : deux joueurs arrivaient l'un dans l'autre ;
+    // `dispersion` les garde dans la pièce d'arrivée (au Batut, le vestibule fait 6 m)
+    const D = (arene && arene.dispersion) || 8, a = Math.random() * TAU, r = Math.min(D, 1 + Math.random() * (D * 0.6 + k * 0.4));
     const q = praticableOuvertIci(base.x + Math.cos(a) * r, base.z + Math.sin(a) * r);
     if (q && !horsAire(q.x, q.z, premiereAire())) return q;
   }

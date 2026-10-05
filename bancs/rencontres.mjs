@@ -16,7 +16,7 @@
 //
 //   bancs/tour.sh node bancs/rencontres.mjs [http://127.0.0.1:8000]
 //   TLOC_REGLE=temps|survie|balade  TLOC_DUREE=600  TLOC_JOUEURS=4  TLOC_BOTS=4
-//   TLOC_FENETRE=180  TLOC_ETIQUETTE=avant  TLOC_ARENE=lille|gardeguerin|pouget  TLOC_MODE=libre|equipes
+//   TLOC_FENETRE=180  TLOC_ETIQUETTE=avant  TLOC_ARENE=lille|gardeguerin|pouget|batut  TLOC_MODE=libre|equipes
 //
 // Il crée des comptes de test sur le serveur LOCAL (pseudos banc_xxxxxx, mots de passe tirés au
 // hasard et jamais écrits) : ne jamais le lancer contre le dev ni la prod.
@@ -38,7 +38,7 @@ const ETIQ = process.env.TLOC_ETIQUETTE || 'essai';
 const PRES = 30, LOIN = 40;
 const ARENE = process.env.TLOC_ARENE || 'lille', MODE = process.env.TLOC_MODE || 'libre';
 // la page de chaque arène (= C.ARENES, tloc-compte.js)
-const PAGE = { lille: 'index.html', gardeguerin: 'garde-guerin.html', pouget: 'pouget.html' }[ARENE];
+const PAGE = { lille: 'index.html', gardeguerin: 'garde-guerin.html', pouget: 'pouget.html', batut: 'batut.html' }[ARENE];
 
 async function api(chemin, corps, jeton) {
   const r = await fetch(ORIGINE + chemin, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: 'Bearer ' + jeton } : {}) }, body: JSON.stringify(corps || {}) });

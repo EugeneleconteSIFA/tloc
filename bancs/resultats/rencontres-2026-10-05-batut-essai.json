@@ -1,0 +1,27 @@
+{
+ "date": "2026-10-05T10:25:24.432Z",
+ "etiquette": "batut-essai",
+ "regle": "temps",
+ "duree": 600,
+ "fenetre": 60,
+ "joueurs": 2,
+ "bots": 2,
+ "arene": "batut",
+ "arrivees": [
+  [
+   33,
+   7
+  ],
+  [
+   43,
+   2
+  ]
+ ],
+ "rencontres": {
+  "total": 3,
+  "humains": 1,
+  "mixtes": 2,
+  "bots": 0
+ },
+ "voisinMedianM": 16
+}
