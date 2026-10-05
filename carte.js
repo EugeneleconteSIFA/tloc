@@ -180,6 +180,66 @@ export function sdEnceinte(x, z) { return sdPoly(x, z, ENCEINTE) + 4; }
 
 export function dansEnceinte(x, z) { return sdEnceinte(x, z) < 0; }
 
+// LA VILLE RESSERRÉE (PLAN-2026-10-04-CARTES.md ; Eugène, 4 octobre). La citadelle est à la
+// bonne taille, la ville était trop grande : 1 780 bâtiments jusqu'à 1 250 m, dont presque
+// aucun ne servait. On garde le bourg et 200 m autour, la rive du quai du Wault et un cercle
+// de 200 m à sa droite — les trois se touchent, c'est une seule ville. Au-delà, le tissu
+// urbain n'est plus qu'un décor (quartier.js) : on ne s'y promène plus.
+export const VILLE = {
+  cercles: [[200, 660, 200], [60, 770, 200]],
+  // les deux rives du quai du Wault, relevées (« Quai du Wault », lille.json)
+  quai: [[-245, 832], [-233, 820], [-170, 740], [-151, 684], [-130, 690], [-154, 762], [-146, 785], [-144, 828], [-217, 907], [-251, 874], [-245, 832]],
+  quaiDemi: 70,
+};
+const distSegV = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz); };
+// distance signée à l'emprise de la ville : négative dedans
+export function sdVille(x, z) {
+  let d = Infinity;
+  for (const [cx, cz, r] of VILLE.cercles) d = Math.min(d, Math.hypot(x - cx, z - cz) - r);
+  const q = VILLE.quai; for (let i = 0; i < q.length - 1; i++) d = Math.min(d, distSegV(x, z, q[i], q[i + 1]) - VILLE.quaiDemi);
+  return d;
+}
+export const dansVille = (x, z) => sdVille(x, z) < 0;
+// LE TISSU COUPÉ. Hors de l'emprise, là où la ville était bâtie (à moins de 30 m d'un
+// bâtiment relevé), on ne passe plus : les rues y finissent sur un mur et une porte
+// (quartier.js). Le parc, les berges et la campagne restent ouverts — il n'y a pas de
+// bâtiments. Une grille de 6 m, calculée une fois, que levelBlocked lit en O(1). Les lieux
+// qui servent hors de la ville en sont épargnés, avec leur abord : le moulin d'Émile, la
+// chaumière du mage, la maison de Camille, et le petit coffre de l'ouest (−91 ; 539).
+const VG = { pas: 6, x0: -800, z0: -900, n: 0, m: 0, g: null };
+function grilleVille() {
+  if (VG.g || !IGN.bati.length) return VG.g;
+  VG.n = Math.ceil(1700 / VG.pas); VG.m = Math.ceil(2200 / VG.pas);
+  const g = new Uint8Array(VG.n * VG.m), R = 30, k = Math.ceil(R / VG.pas);
+  for (const b of IGN.bati) {
+    const p = b.p; if (!p || p.length < 3) continue;
+    const cx = p.reduce((t, q) => t + q[0], 0) / p.length, cz = p.reduce((t, q) => t + q[1], 0) / p.length;
+    // seulement le tissu qui borde la ville (420 m suffisent à la sceller jusqu'à l'enceinte) :
+    // plus loin, les îlots isolés — près de la chaumière du mage — fermaient le chemin du bois
+    if (sdPent(cx, cz) < MOAT_OUT + 10 || dansVille(cx, cz) || sdVille(cx, cz) > 420) continue;
+    // le rayon du bâtiment lui-même, pour que la rue entre deux façades soit couverte
+    const rb = Math.max(...p.map((q) => Math.hypot(q[0] - cx, q[1] - cz)));
+    const i0 = Math.round((cx - VG.x0) / VG.pas), j0 = Math.round((cz - VG.z0) / VG.pas), kk = k + Math.ceil(rb / VG.pas);
+    for (let j = j0 - kk; j <= j0 + kk; j++) for (let i = i0 - kk; i <= i0 + kk; i++) {
+      if (i < 0 || j < 0 || i >= VG.n || j >= VG.m) continue;
+      if (Math.hypot(i - i0, j - j0) * VG.pas <= R + rb) g[j * VG.n + i] = 1;
+    }
+  }
+  // l'emprise elle-même, les lieux épargnés et leur abord
+  const epargne = [[FERME.x, FERME.z, 110], [MAGE.x, MAGE.z, 200], [HOUSE.x, HOUSE.z, 40], [-91, 539, 30]];
+  for (let j = 0; j < VG.m; j++) for (let i = 0; i < VG.n; i++) {
+    const k2 = j * VG.n + i; if (!g[k2]) continue;
+    const x = VG.x0 + i * VG.pas, z = VG.z0 + j * VG.pas;
+    if (dansVille(x, z) || epargne.some(([ex, ez, r]) => Math.hypot(x - ex, z - ez) < r)) g[k2] = 0;
+  }
+  return (VG.g = g);
+}
+export function horsVille(x, z) {
+  const g = grilleVille(); if (!g) return false;
+  const i = Math.round((x - VG.x0) / VG.pas), j = Math.round((z - VG.z0) / VG.pas);
+  return i >= 0 && j >= 0 && i < VG.n && j < VG.m && g[j * VG.n + i] === 1;
+}
+
 export const BASTION_NAMES = ['Bastion du Roi', 'Bastion de la Reine', 'Bastion du Dauphin', 'Bastion de Turenne', "Bastion d'Anjou"];
 // Repères du monde. Les POSITIONS suivent l'échelle du plan ; les BÂTIMENTS gardent
 // leurs dimensions réelles (une maison ne grandit pas parce que la carte s'agrandit).
@@ -2788,6 +2848,7 @@ export function levelH(x, z) {
 export function levelBlocked(x, z, r, flying, y) {
   const sd = sdPent(x, z);
   if (!dansEnceinte(x, z)) return true;          // l'enceinte urbaine ferme la carte
+  if (horsVille(x, z)) return true;              // la ville resserrée : le tissu coupé ne se parcourt plus
   // UNE SEULE RÈGLE D'EAU. La bande MOAT_IN..MOAT_OUT était une approximation du fossé
   // par décalage du pentagone ; le fossé est maintenant relevé comme le reste de l'eau,
   // et le trait de rive est celui du terrain creusé, pas celui d'un polygone théorique.

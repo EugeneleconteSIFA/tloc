@@ -18,8 +18,8 @@ import {
   THREE, addCap, cleTuile, makeCanvas, mat, patiner, phMat, phPeint,
 } from './engine.js?v=41';
 import {
-  ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
-  solPlaine, surVoie, townLocal, voieCombattants,
+  ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
+  solPlaine, surVoie, townLocal, voieCombattants, dansVille, horsVille, sdVille,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -651,7 +651,8 @@ export function batirQuartier() {
   const prendreRelief = () => { let s = reliefs.get(tuile); if (!s) reliefs.set(tuile, s = sac(M.pierreT)); return s; };
   const grp = new THREE.Group();
   grp.name = 'quartier';
-  let porches = 0, degages = 0;
+  let porches = 0, degages = 0, horsEmprise = 0;
+  const lointains = [];
   let bati = 0, ecarte = 0, caps = 0, baies = 0, bourg = 0, pignons = 0, cheminees = 0, lucarnes = 0, boutiques = 0;
   const lanternes = [], tonneaux = [], caisses = [], vitrines = [];   // vitrines : pour les bancs d'essai
   const compteToit = { pans: 0, croupe: 0, terrasse: 0 };
@@ -683,6 +684,19 @@ export function batirQuartier() {
     // une emprise sur l'axe d'un pont (culées prolongées comprises) : la passerelle de
     // Soubise arrivait droit dans une façade, on ne la traversait plus
     if (barrePont(p)) { ecarte++; continue; }
+    // LA VILLE RESSERRÉE (carte.js, VILLE) : hors de l'emprise, plus de maison praticable.
+    // Jusqu'à 260 m au-delà, un volume bas — quatre murs et deux pans — pour que l'horizon
+    // ne soit pas vide ; plus loin, rien. On ne s'en approche pas (horsVille, levelBlocked).
+    // Le premier rang hors de l'emprise (35 m) reste une vraie maison, sans collision : c'est
+    // lui qu'on voit au bout des rues, et en volume nu il montrait des pignons aveugles.
+    const premierRang = !dansVille(cx, cz) && sdVille(cx, cz) < 35;
+    if (!dansVille(cx, cz) && !premierRang) {
+      ecarte++; horsEmprise++;
+      if (sdVille(cx, cz) < LOINTAIN) { const r = rectMin(p);
+        if (r) { let y = Infinity; for (const q of p) y = Math.min(y, solPlaine(q[0], q[1]));
+          lointains.push({ r, y, H: b.n === 'Eglise' ? Math.min(b.h || 19, 24) : Math.min(Math.max(b.h > 0 ? b.h : 9.5, 4), 15.5), g: idx }); } }
+      continue;
+    }
 
     const rB = rectMin(p);
     if (!rB) { ecarte++; continue; }
@@ -773,7 +787,7 @@ export function batirQuartier() {
     // capsule est donc posée sur un mur de parcelle, décalée vers l'intérieur de son rayon :
     // son bord affleure la façade. Les murs mitoyens en reçoivent une aussi ; on ne les
     // atteint jamais, elles ne coûtent qu'un peu de mémoire.
-    for (const PA of parcelles) {
+    if (!premierRang) for (const PA of parcelles) {
       const q = PA.poly, sens = aireSignee(q) < 0 ? -1 : 1;   // les lots découpés ne sont pas orientés
       for (let i = 0; i < q.length; i++) {
         const a = q[i], c = q[(i + 1) % q.length], L = Math.hypot(c[0] - a[0], c[1] - a[1]);
@@ -1078,6 +1092,8 @@ export function batirQuartier() {
   }
 
   for (const s of sacs.values()) { const o = cuire(s); if (o) grp.add(o); }
+  grp.add(decorLointain(M, lointains));
+  grp.add(portesDeVille(M));
   // le relief, par tuile, sous un LOD : présent de près, rien au-delà de 140 m. Pas de
   // `fusionne` : mergeStatics le regrouperait, et le LOD ne pourrait plus l'éteindre.
   let triRelief = 0;
@@ -1099,6 +1115,7 @@ export function batirQuartier() {
     // (il valait 0,95 en cote absolue — un mur de deux mètres là où le relief descend)
     for (const o of [...tonneaux, ...caisses]) addCap(o.x, o.z, o.x, o.z, 0.38, o.y + 0.95);
     console.log('la rue : %d boutiques, %d lanternes, %d tonneaux, %d caisses', boutiques, lanternes.length, tonneaux.length, caisses.length); }
+  console.log('ville resserrée : %d bâtiments hors de l’emprise, dont %d en volumes lointains', horsEmprise, lointains.length);
   console.log('porches : %d lots traversés par une cour relevée, laissés ouverts ; %d lots reculés au bord d’une cour', porches, degages);
   console.log('quartier relevé : %d bâtiments élevés (%d écartés, dont %d sur l’îlot du bourg), %d toits à deux pans, %d à croupe, %d terrasses, %d baies, %d pignons à redents, %d cheminées, %d lucarnes, %d capsules de façade',
     bati, ecarte, bourg, compteToit.pans, compteToit.croupe, compteToit.terrasse, baies, pignons, cheminees, lucarnes, caps);
@@ -1106,6 +1123,87 @@ export function batirQuartier() {
   return grp;
 }
 
+
+// ---------------------------------------------------------------------
+//  Au bord de la ville resserrée
+// ---------------------------------------------------------------------
+const LOINTAIN = 260;              // au-delà de l'emprise, on ne dresse plus rien
+// LE DÉCOR LOINTAIN. Chaque bâtiment ôté redevient son rectangle d'emprise, élevé à sa
+// hauteur, coiffé de deux pans de tuile : la silhouette d'une ville flamande, pour quelques
+// triangles par maison. Deux sacs (brique, tuile), sans ombre portée (pas d'ombre nouvelle :
+// le Mac n'a qu'1,5 Go de mémoire graphique) et sans collision : on n'y va pas.
+function decorLointain(M, liste) {
+  const sMur = sac(M.brique), sToit = sac(M.tuile), g = new THREE.Group(); g.name = 'ville-lointaine';
+  for (const { r, y, H, g: gr } of liste) {
+    const h = hache(gr), col = [0.78 + 0.18 * h, 0.66 + 0.14 * h, 0.58 + 0.1 * h], ct = [0.72 + 0.2 * hache(gr + 7), 0.6, 0.52];
+    const { cx, cz, ux, uz } = r, vx = -uz, vz = ux, hl = r.L / 2, hw = r.W / 2;
+    const P = (s, t, yy) => [cx + ux * s + vx * t, yy, cz + uz * s + vz * t];
+    const b0 = y - 1.5, e = y + H, f = e + Math.min(hw * 0.9, 6);       // assise enfoncée, égout, faîtage
+    const coins = [[-hl, -hw], [hl, -hw], [hl, hw], [-hl, hw]];
+    let s0 = 0;
+    for (let k = 0; k < 4; k++) {
+      const [as, at] = coins[k], [bs, bt] = coins[(k + 1) % 4], L = Math.hypot(bs - as, bt - at);
+      const nx = (ux * (as + bs) + vx * (at + bt)) / 2, nz = (uz * (as + bs) + vz * (at + bt)) / 2;
+      quad(sMur, P(as, at, b0), P(bs, bt, b0), P(bs, bt, e), P(as, at, e), [s0, 0], [s0 + L, 0], [s0 + L, e - b0], [s0, e - b0], col, [nx, 0, nz]);
+      s0 += L;
+    }
+    // deux pans le long du grand côté, deux pignons
+    for (const sg of [1, -1]) {
+      quad(sToit, P(-hl, sg * hw, e), P(hl, sg * hw, e), P(hl, 0, f), P(-hl, 0, f), [0, 0], [r.L, 0], [r.L, hw * 1.3], [0, hw * 1.3], ct, [vx * sg, 1, vz * sg]);
+      tri(sMur, P(sg * hl, -hw, e), P(sg * hl, hw, e), P(sg * hl, 0, f), [0, 0], [r.W, 0], [hw, f - e], col, [ux * sg, 0, uz * sg]);
+    }
+  }
+  for (const s of [sMur, sToit]) { const o = cuire(s); if (o) { o.castShadow = false; g.add(o); } }
+  return g;
+}
+// LES RUES COUPÉES finissent sur un mur et une porte cochère fermée, pas dans le vide : là
+// où une voie relevée sort de l'emprise pour entrer dans le tissu coupé, on dresse en
+// travers un mur de brique à chaperon de pierre, percé d'une porte de bois.
+function portesDeVille(M) {
+  const sMur = sac(M.brique2), sPierre = sac(M.pierreT), sBois = sac(M.boisRue), g = new THREE.Group(); g.name = 'portes-de-ville';
+  const posees = [];
+  const voies = LILLE.routes.map((o) => [o, LARGEUR_ROUTE[Math.min(3, o.r)] || 6]).concat(LILLE.chemins.map((o) => [o, LARGEUR_CHEMIN]));
+  for (const [o, larg] of voies) {
+    const pts = o.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 0.1) continue;
+      const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+      let avant = null;
+      for (let t = 0; t <= L; t += 1.5) {
+        const x = a[0] + ux * t, z = a[1] + uz * t, ici = dansVille(x, z) ? 'dedans' : horsVille(x, z) ? 'coupe' : 'libre';
+        if (avant && avant.e !== ici && (avant.e === 'coupe' || ici === 'coupe') && (avant.e === 'dedans' || ici === 'dedans' || avant.e === 'libre' || ici === 'libre')) {
+          // le mur se dresse côté ouvert, à un mètre et demi du tissu coupé
+          const [px, pz] = ici === 'coupe' ? [avant.x, avant.z] : [x, z];
+          if (!posees.some(([qx, qz]) => Math.hypot(qx - px, qz - pz) < larg + 4)) { posees.push([px, pz]); murPorte(sMur, sPierre, sBois, px, pz, ux, uz, larg); }
+        }
+        avant = { e: ici, x, z };
+      }
+    }
+  }
+  for (const s of [sMur, sPierre, sBois]) { const o = cuire(s); if (o) g.add(o); }
+  console.log('ville resserrée : %d rues coupées, fermées d’un mur et d’une porte', posees.length);
+  return g;
+}
+function murPorte(sMur, sPierre, sBois, x, z, ux, uz, larg) {
+  const vx = -uz, vz = ux, demi = larg / 2 + 1.6, EP = 0.35, H = 4.4, PH = 3.1, PL = Math.min(larg - 0.6, 3.4) / 2;
+  const y = solPlaine(x, z), b0 = y - 0.8;
+  const P = (s, t, yy) => [x + vx * s + ux * t, yy, z + vz * s + uz * t];
+  const col = [0.82, 0.72, 0.64], cp = [0.86, 0.84, 0.8], cb = [1.0, 0.92, 0.84];   // le bois est déjà teinté (boisRue) : une couleur de sommet sombre le noircissait
+  for (const sg of [1, -1]) {                         // les deux faces du mur
+    const t = sg * EP;
+    // de part et d'autre de la porte, puis au-dessus d'elle
+    quad(sMur, P(-demi, t, b0), P(-PL, t, b0), P(-PL, t, y + H), P(-demi, t, y + H), [0, 0], [demi - PL, 0], [demi - PL, H + 0.8], [0, H + 0.8], col, [ux * sg, 0, uz * sg]);
+    quad(sMur, P(PL, t, b0), P(demi, t, b0), P(demi, t, y + H), P(PL, t, y + H), [0, 0], [demi - PL, 0], [demi - PL, H + 0.8], [0, H + 0.8], col, [ux * sg, 0, uz * sg]);
+    quad(sMur, P(-PL, t, y + PH), P(PL, t, y + PH), P(PL, t, y + H), P(-PL, t, y + H), [0, 0], [2 * PL, 0], [2 * PL, H - PH], [0, H - PH], col, [ux * sg, 0, uz * sg]);
+    // les vantaux, en retrait de dix centimètres
+    const tb = sg * (EP - 0.1);
+    quad(sBois, P(-PL, tb, y), P(PL, tb, y), P(PL, tb, y + PH), P(-PL, tb, y + PH), [0, 0], [2 * PL, 0], [2 * PL, PH], [0, PH], cb, [ux * sg, 0, uz * sg]);
+  }
+  // le chaperon de pierre et les bouts du mur
+  quad(sPierre, P(-demi - 0.08, -EP - 0.08, y + H), P(demi + 0.08, -EP - 0.08, y + H), P(demi + 0.08, EP + 0.08, y + H + 0.2), P(-demi - 0.08, EP + 0.08, y + H + 0.2), [0, 0], [2 * demi, 0], [2 * demi, 0.9], [0, 0.9], cp, [0, 1, 0]);
+  for (const sg of [1, -1]) quad(sMur, P(sg * demi, -EP, b0), P(sg * demi, EP, b0), P(sg * demi, EP, y + H), P(sg * demi, -EP, y + H), [0, 0], [2 * EP, 0], [2 * EP, H], [0, H], col, [vx * sg, 0, vz * sg]);
+  addCap(x - vx * demi, z - vz * demi, x + vx * demi, z + vz * demi, EP + 0.1, y + H);
+}
 
 // ---------------------------------------------------------------------
 //  Les remparts de la ville
