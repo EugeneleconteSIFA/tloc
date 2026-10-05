@@ -13,14 +13,17 @@
 //
 // Écrit bancs/resultats/acces-<date>.json ; le résumé s'affiche.
 import { createRequire } from 'module';
+import os from 'os';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 const PAGES = process.argv[2] && !process.argv[2].startsWith('http') ? [process.argv[2]] : ['index', 'house', 'tavern', 'chapelle', 'mage', 'cave'];
 const ORIGINE = process.argv.find((a) => a.startsWith('http')) || 'http://127.0.0.1:8000';
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+// sur le PC, Playwright est dans GitHub/tloc/outils (5 octobre)
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Date().toISOString().slice(0, 10);
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 const bilan = {};
 for (const nom of PAGES) {
   const page = await browser.newPage({ viewport: { width: 800, height: 500 } });

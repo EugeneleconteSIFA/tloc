@@ -359,6 +359,8 @@ function matsCampagne() {
   if (MATS) return MATS;
   MATS = {
     chaussee: phMat('terre_battue', 1, 1, { color: 0xffffff, vertexColors: true }),
+    // la même terre, dont les bords s'effacent dans l'herbe (chausseeEt)
+    chausseeFondue: phMat('terre_battue', 1, 1, { color: 0xffffff, vertexColors: true, transparent: true }),
     accotement: phMat('withered_grass', 1, 1, { color: 0xa8ab74, vertexColors: true }),
     fosse: phMat('brown_mud_03', 1, 1, { color: 0x9a8161 }),
     talus: phMat('grass_ground', 1, 1, { color: 0x8fae5c }),
@@ -384,17 +386,20 @@ function matsCampagne() {
 
 // ---------- ruban : une bande qui suit la route et épouse le relief ----------
 // `lanes` = profil en travers, de gauche à droite : { o } décalage, { dy } altitude
-// relative au sol, { c } teinte (couleur de sommet, multipliée sur l'albédo).
+// relative au sol, { c } teinte (couleur de sommet, multipliée sur l'albédo), { a } opacité
+// (le matériau doit être transparent). `o` peut être une fonction de l'abscisse s : un bord
+// de chemin qui ondule.
 function ruban(s0, s1, lanes, m, pas = 3.2) {
   const NS = Math.max(2, Math.ceil((s1 - s0) / pas)), NO = lanes.length;
-  const pos = [], uv = [], col = [], idx = [];
+  const pos = [], uv = [], col = [], idx = [], alpha = lanes.some((l) => l.a !== undefined);
   for (let i = 0; i <= NS; i++) {
     const s = s0 + (s1 - s0) * i / NS;
     for (const l of lanes) {
-      const p = rte(s, l.o);
+      const o = typeof l.o === 'function' ? l.o(s) : l.o, p = rte(s, o);
       pos.push(p.x, p.y + l.dy, p.z);
-      uv.push(l.o, s);                                     // UV en mètres : phMat(slug, 1, 1)
+      uv.push(o, s);                                       // UV en mètres : phMat(slug, 1, 1)
       const c = l.c === undefined ? 1 : l.c; col.push(c, c, c);
+      if (alpha) col.push(l.a === undefined ? 1 : l.a);
     }
   }
   // (a, c, b) puis (b, c, d) : la normale sort vers +Y, vérifié par le produit tangente × normale
@@ -405,7 +410,7 @@ function ruban(s0, s1, lanes, m, pas = 3.2) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, alpha ? 4 : 3));
   g.setIndex(idx); g.computeVertexNormals();
   if (m !== matsCampagne().eau) graverVoie(g);          // chaussée, accotements, talus : on marche dessus (cf. levelH)
   const me = new THREE.Mesh(g, m); me.receiveShadow = true; scene.add(me);
@@ -514,15 +519,23 @@ function trogne(x, z, h = 2.5) {
 // ---------- fossé, talus, chaussée ----------
 // Profil en travers, de l'axe vers l'extérieur : chaussée bombée avec ses deux ornières,
 // accotement d'herbe rase, fossé de 50 cm, talus de curage sur lequel la haie est plantée.
+// LES BORDS (5 octobre). Le ruban s'arrêtait net à ±3,05 m : dans le bois, un ruban brun à
+// bords francs, tiré au cordeau. Un chemin de terre n'a pas de bord : la terre battue s'y
+// éclaircit, se mêle d'herbe et s'efface. La bande extérieure s'efface donc en 70 cm à 1 m
+// (opacité 0 au bord), et ce bord ondule de ±45 cm, autrement à gauche qu'à droite.
+const ondule = (s, ph) => 0.26 * Math.sin(s * 0.19 + ph) + 0.14 * Math.sin(s * 0.47 + ph * 2.3) + 0.06 * Math.sin(s * 1.3 + ph * 0.7);
 function chausseeEt(s0, s1) {
   const M = matsCampagne();
-  ruban(s0, s1, [
-    { o: -3.05, dy: 0.020, c: 0.80 }, { o: -2.25, dy: 0.052, c: 0.92 },
+  const me = ruban(s0, s1, [
+    { o: (s) => -3.25 - ondule(s, 0), dy: 0.014, c: 0.86, a: 0 },
+    { o: (s) => -2.55 - ondule(s, 0) * 0.5, dy: 0.038, c: 0.84, a: 0.9 }, { o: -2.25, dy: 0.052, c: 0.92 },
     { o: -1.55, dy: 0.036, c: 0.66 }, { o: -1.05, dy: 0.030, c: 0.60 },   // ornière gauche
     { o: -0.55, dy: 0.062, c: 0.96 }, { o: 0.00, dy: 0.075, c: 1.06 }, { o: 0.55, dy: 0.062, c: 0.96 },
     { o: 1.05, dy: 0.030, c: 0.60 }, { o: 1.55, dy: 0.036, c: 0.66 },     // ornière droite
-    { o: 2.25, dy: 0.052, c: 0.92 }, { o: 3.05, dy: 0.020, c: 0.80 },
-  ], M.chaussee, 2.6);
+    { o: 2.25, dy: 0.052, c: 0.92 }, { o: (s) => 2.55 + ondule(s, 4.1) * 0.5, dy: 0.038, c: 0.84, a: 0.9 },
+    { o: (s) => 3.25 + ondule(s, 4.1), dy: 0.014, c: 0.86, a: 0 },
+  ], M.chausseeFondue, 2.6);
+  me.renderOrder = 1;               // avant les flaques, qui sont transparentes elles aussi
 }
 
 function fosseEt(s0, s1, cote) {
@@ -1281,7 +1294,7 @@ export function buildRoute() {
     const s = at(rand(0.05, 0.95)), o = (k % 2 ? 1 : -1) * rand(0.95, 1.5), p = rte(s, o);
     const fl = new THREE.Mesh(new THREE.CircleGeometry(rand(0.5, 1.15), 12), matsCampagne().eau);
     fl.rotation.x = -Math.PI / 2; fl.rotation.z = rand(0, TAU); fl.scale.set(1, 2.4, 1);
-    fl.position.set(p.x, p.y + 0.036, p.z); scene.add(fl);
+    fl.position.set(p.x, p.y + 0.036, p.z); fl.renderOrder = 2; scene.add(fl);
   }
   console.log('campagne : route habitée de', Math.round(A), 'à', Math.round(B), 'm sur', Math.round(RTE.L),
     '—', entrees.length, 'entrées de champ');

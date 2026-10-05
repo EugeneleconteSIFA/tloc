@@ -19,7 +19,7 @@ import {
 } from './engine.js?v=41';
 import {
   ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
-  solPlaine, surVoie, townLocal, voieCombattants, dansVille, horsVille, sdVille,
+  solPlaine, surVoie, townLocal, voieCombattants, dansVille, horsVille, sdVille, epaisseurVoie,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -824,15 +824,25 @@ export function batirQuartier() {
       const h1 = hache(gr), h2 = hache(gr * 7 + 3), h3 = hache(gr * 13 + 11);
       // PLUS DE BÉTON : la pierre, la brique et la chaux. Le code « 3 » du relevé vaut
       // aujourd'hui béton ; ici il vaut enduit à la chaux sur brique.
-      let matMur = cm === '1' || cm === '2' ? M.pierre : cm === '3' ? M.enduit
+      // (5 octobre) LA PIERRE DE LILLE. Les façades déclarées en pierre étaient TOUTES en
+      // pierre grise, presque blanche, et toutes pareilles : au quai du Wault, une rangée
+      // de murs de calcaire uniformes. Lille bâtit en brique et en pierre de Lezennes, une
+      // craie jaunâtre qui grisaille ; le rang-de-Lille mêle les deux. Une sur deux reste en
+      // pierre (teinte chaude, plus ou moins patinée), l'autre passe à la brique.
+      let matMur = cm === '1' || cm === '2' ? (h1 < 0.5 ? M.pierre : h1 < 0.8 ? M.brique2 : M.brique) : cm === '3' ? M.enduit
         : cm === '4' ? (h1 < 0.55 ? M.brique : h1 < 0.93 ? M.brique2 : M.colombage)
           : h1 < 0.48 ? M.brique : h1 < 0.68 ? M.brique2 : h1 < 0.74 ? M.enduit
             : h1 < 0.95 ? M.colombage : M.pierre;
       if (eglise) matMur = M.pierre;
       const tmur = matMur === M.colombage
         ? [melange(0.92, 1.06, h2), melange(0.90, 1.04, h2), melange(0.86, 1.00, h2)]
-        : matMur === M.pierre || matMur === M.enduit
-        ? [melange(0.82, 1.08, h2), melange(0.80, 1.05, h2), melange(0.76, 1.00, h2)]
+        : matMur === M.pierre
+        // de la craie jaune à peine posée (0,92) à la pierre noircie par la suie (0,62)
+        ? [melange(0.66, 0.94, h2), melange(0.60, 0.88, h2), melange(0.48, 0.74, h2)]
+        // l'enduit à la chaux reçoit un badigeon : ocre, crème ou gris rosé, plus ou moins
+        // passé — blanc pur, la longue rangée du quai du Wault (« 30 » au relevé) éblouissait
+        : matMur === M.enduit
+        ? [[0.96, 0.82, 0.58], [0.93, 0.88, 0.76], [0.86, 0.77, 0.73]][Math.floor(h3 * 2.999)].map((c) => c * melange(0.78, 1.0, h2))
         : [melange(0.74, 1.14, h2), melange(0.66, 1.02, h2), melange(0.62, 0.96, h2)];
       // PLUS DE ZINC : tuile de terre cuite, ardoise sur les clochers et quelques combles
       let matToit = forme === 'terrasse' ? M.terrasse
@@ -938,6 +948,10 @@ export function batirQuartier() {
           tablette(sR, sc - w / 2 - 0.18, sc + w / 2 + 0.18, y0 + hh + 0.2, y0 + hh + 0.42, 0.03, 0.15, true);  // le linteau
         };
         const ySol = solPlaine(a[0] + tx * L / 2, a[1] + tz * L / 2);
+        // LE SEUIL (5 octobre). Le trottoir est monté de 14 cm au-dessus de la chaussée et va
+        // jusqu'au pied des murs (carte.js, voiriesLille) : posées au relief, portes, devantures
+        // et marchandises s'y enfonçaient. On les pose sur ce qui est dessiné devant elles.
+        const devant = (sc) => { const [x, , z] = X(sc, 0.6, 0); return solPlaine(x, z) + epaisseurVoie(x, z); };
         if (eglise) {
           const ne = Math.floor(L / 5.2);
           if (ne < 1) continue;
@@ -957,7 +971,7 @@ export function batirQuartier() {
           const sD = prendre(M.devanture), u0 = metier / 4, u1 = u0 + 0.25;
           for (let ci = 0; ci < nc; ci++) {
             if (ci === colPorte) continue;
-            const sc = (ci + 0.5) * pas, w = pas - 0.25, y0 = ySol + 0.1, hh = 2.5;
+            const sc = (ci + 0.5) * pas, w = pas - 0.25, y0 = Math.max(ySol + 0.1, devant(sc) + 0.04), hh = 2.5;
             const ox = a[0] + tx * sc + nx * 0.06, oz = a[1] + tz * sc + nz * 0.06;
             quad(sD, [ox - tx * w / 2, y0, oz - tz * w / 2], [ox + tx * w / 2, y0, oz + tz * w / 2],
               [ox + tx * w / 2, y0 + hh, oz + tz * w / 2], [ox - tx * w / 2, y0 + hh, oz - tz * w / 2],
@@ -967,7 +981,7 @@ export function batirQuartier() {
               const px = a[0] + tx * (sc + 0.4) + nx * 0.8, pz = a[1] + tz * (sc + 0.4) + nz * 0.8;
               // +10 cm : la dalle du trottoir est dessinée 8 à 15 cm au-dessus du relief (solVille,
               // voiriesLille) ; posés sur le relief nu, tonneaux et caisses s'y enfonçaient
-              (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz) + 0.1, z: pz, yaw: hache(gr + ci) * 6.28 });
+              (metier === 1 ? tonneaux : caisses).push({ x: px, y: solPlaine(px, pz) + Math.max(0.1, epaisseurVoie(px, pz)), z: pz, yaw: hache(gr + ci) * 6.28 });
             }
           }
           // l'enseigne en potence, à côté de la porte
@@ -993,7 +1007,8 @@ export function batirQuartier() {
             baie(sFen, sc, appui, 1.24, 1.56); reliefBaie(sc, appui, 1.24, 1.56); baies++;
           }
         }
-        if (colPorte >= 0 && ySol + 2.35 < yEgout - 0.3) { baie(sPor, (colPorte + 0.5) * pas, ySol + 0.02, 1.18, 2.3); reliefPorte((colPorte + 0.5) * pas, ySol + 0.02, 1.18, 2.3); }
+        if (colPorte >= 0 && ySol + 2.35 < yEgout - 0.3) { const sc = (colPorte + 0.5) * pas, y0 = Math.max(ySol, devant(sc)) + 0.02;
+          baie(sPor, sc, y0, 1.18, 2.3); reliefPorte(sc, y0, 1.18, 2.3); }
       }
       // plafond à l'égout : sans lui on voit l'intérieur du volume par-dessous le toit
       {

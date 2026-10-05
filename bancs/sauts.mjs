@@ -16,14 +16,17 @@
 //
 //   node bancs/sauts.mjs [http://127.0.0.1:8000] [xmin,zmin,xmax,zmax]
 import { createRequire } from 'module';
+import os from 'os';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
 const BOITE = (process.argv[3] || '-450,-450,650,800').split(',').map(Number);
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+// sur le PC, Playwright est dans GitHub/tloc/outils (5 octobre)
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname, JOUR = new Date().toISOString().slice(0, 10);
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url)), JOUR = new Date().toISOString().slice(0, 10);
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 await page.route(/\/engine\.js(\?.*)?$/, async (route) => {

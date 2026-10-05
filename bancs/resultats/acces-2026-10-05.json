@@ -1,0 +1,15 @@
+{
+ "index": {
+  "cases": 1185228,
+  "m2": 1185228,
+  "cote": 2600,
+  "essais": 4753792,
+  "interactions": 23,
+  "hors": [],
+  "finesAtteintes": [
+   "ouvrir le coffret",
+   "ouvrir le petit coffre"
+  ],
+  "secondes": 57.9
+ }
+}
