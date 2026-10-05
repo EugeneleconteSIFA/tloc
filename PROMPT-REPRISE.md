@@ -1822,6 +1822,141 @@ praticables 100 % ; le poteau, l'église, Chez Fernand et le pont sont atteints 
   vers l'ouest jusqu'à (−171 ; 554) et finit dans un canal : elle date du bourg d'avant, et ne mène plus au
   bourg (200 ; 660). À revoir avec Eugène : la recaler sur le chemin du pont au bourg, ou la raccourcir.
 
+#### Aveyron : tout en lauze (5 octobre)
+
+Eugène : « oui, passe tout en lauze ». `TUILE()` donne maintenant la lauze (`lauze_lozere`), et les pentes
+suivent, puisque la lauze veut 45° et plus :
+- le bâti d'OSM : `TOIT.pente` passe de 0,3 à 1,0, plafonné à 4,5 m ;
+- les granges : pente 1,0 ;
+- le Batut : le corps central à 45°, les corps bas à 40° et abaissés (5,6 et 6,0 m à l'égout), pour que
+  leurs faîtages passent sous le toit central au lieu de le percer.
+
+Au banc : rues praticables 100 %, 25 cibles sur 25, étape « maisons » 206 ms. Planche :
+`…-regard-lauze-1-vues.png`. Publication : le contrôle échouait sur le banc à froid de Lille (23 s ;
+une mesure à 8,9 s), à cause de la charge des autres sessions. Une boucle réessaie toutes les
+10 minutes, sans forcer.
+
+### Thaïlande — la nuit du 4 au 5 octobre (arrivée du Mac dans ba002ab, sans compte rendu) — **relue et vérifiée le 5 octobre sur le PC (consigne T)**
+
+Ce que la session de nuit avait fait, d'après le diff de `ba002ab` (thailande.js +300 lignes, monde.js,
+extraire-thailande.py, thailande.json, bancs/lieu-thailande.mjs) :
+- **Sous les pieds** (`voies()`, thailande.js) : chaque voie de Railay, Ton Sai et du grand piton prend son
+  revêtement d'OSM (clé `s`, ajoutée par extraire-thailande.py) — dalle de béton à chant visible, carrelage,
+  sentier de terre à bords fondus et largeur irrégulière, marches de 16 cm sur la pente. Les rubans de
+  monde.js (`rocky_trail`) sont retirés. Hauteurs prises sur le MAILLAGE du sol (`solMaille`), pas sur
+  l'interpolation bilinéaire (10 à 30 cm d'écart sur une pente).
+- **Le bâti de Railay et de Ton Sai** (`toitIle`, `batiIles`) : toits à quatre pans à Railay, terrasses à
+  acrotère ou tôle à Ton Sai ; fenêtres à cadre de bois, portes, rideaux de fer des boutiques au
+  rez-de-chaussée de Ton Sai, balcons à garde-corps aux étages. Faces poussées à la main (9 000 boîtes : 1 s
+  avec des BoxGeometry).
+- **Des gens** : les cinq marchandes du marché flottant parlent (répliques qui mènent à Somsak, à Nok, au
+  câble) ; un batelier DANS chaque barque de passeur ; deux pêcheurs (Railay, Ton Sai) ; cinq habitants
+  figés qui finissent leur phrase au gong (comme les moines).
+- **Les repères** : 17 `reperes` déclarés ; monde.js (session Pouilles, même transfert) les inscrit
+  (`addLieu`, id préfixé `thailande:`) et les dessine sur la minicarte avec les rues en traits clairs.
+- **Le départ** tourné vers le marché flottant (il regardait le mur d'une maison) ; chaque morceau de
+  `plus()` chronométré (`window.__lieu.durees`, lu par le banc).
+- Le banc : `TLOC_VUES=realisme` (12 vues à hauteur d'yeux et en plongée) et la planche de minicarte.
+
+Vérifié sur le PC avant d'y toucher (`…-2026-10-05-point*` et `…-realisme-point*`) : praticabilité
+**98,1 %** (inchangée par la nuit), chargement **3,5 s**, somme des étapes 2,5 s, bâti 94 ms (347 sur le Mac
+chargé). La minicarte montre repères et tracés. Mais le parcours (ci-dessous) a trouvé ce que les planches
+ne montraient pas.
+
+### Thaïlande — la consigne T (5 octobre, PC) — **faite, vérifiée en rendu et au banc, publiée (f0ba26c)**
+
+**Le parcours d'un joueur** (`TLOC_PARCOURS=1 bancs/tour.sh node bancs/lieu-thailande.mjs`) : une recherche
+de chemin sur une grille de 1 m depuis le départ, avec `level.blocked` au rayon de Camille et la pente de
+confort du banc (35°), les passeurs reliant les quais et les câbles descendant de leur départ à leur
+arrivée (`window.__lieu.quais`, `.cables`). Il rend chaque repère (découvrable ?) et chaque interaction
+(atteinte à sa portée ET à moins de 3 m de hauteur, comme engine.js). Il a trouvé :
+- **Le sommet du grand piton n'était pas jouable.** C'est un plateau (110–119 m) entouré de falaises ; le
+  câble de Phi Phi arrivait à mi-falaise (976 ; 322, à 74 m, une pente de 4,8 m par mètre), le câble vers le
+  marché partait du bord du plateau. Les trois balayeurs — **la clé du cloître** —, la cour du puits et le
+  chedi ne s'atteignaient qu'en escaladant la paroi. Arrivée et départ sont maintenant SUR le plateau
+  (915 ; 362 et 948 ; 322) ; l'arrivée au nord, pour que la corde passe à 49 m du second chedi (Phra Chedi
+  Khiri) au lieu de le traverser. Le chedi doré coiffe une seconde bosse, qu'un ravin de 30 m sépare du
+  plateau : on le regarde depuis le bord du plateau, en face.
+- Le repère de la cour du puits avait son centre dans un bâtiment ; Ko Tapu (dans l'eau) ne se découvrait
+  de nulle part (r 40 → 95 : depuis la grève) ; deux figés de Railay avaient été posés à 30 et 65 m de haut
+  dans la jungle (remis au pied du sentier du câble et devant une boutique ; les figés s'accrochent
+  maintenant au chemin le plus proche, à la même hauteur, `surChemin`).
+- Après : **19 repères sur 19 découvrables, 36 interactions sur 36 atteintes.**
+
+**Les défauts connus** :
+- les deux 404 : thailande.html n'avait pas d'icône, le navigateur demandait `/favicon.ico`. Corrigé (plus
+  aucune erreur au chargement) ;
+- les points bloqués : une impasse de Ton Sai tout entière dans un hôtel, et une passerelle de Ko Panyi sous
+  le bâtiment « Panyee » (47 × 28 m). `sous_bati()` dans extraire-thailande.py retire une voie dont 80 % des
+  points tombent dans un même bâtiment, et a été appliquée au thailande.json en place : **les .osm de la
+  Thaïlande ne sont pas sur le PC** (restés sur le Mac), l'extraction ne peut pas être relancée ici ;
+- la brume : 260 → **700 m** (elle finit à 3 200 m, là où la caméra coupe). La vue d'arrivée montre les îles ;
+  la vue de très haut (900 m) reste voilée au-delà de 2 km, c'est voulu (la mousson).
+
+**Le réalisme, sous les pieds puis les maisons** (Ko Panyi, où la nuit n'était pas passée) :
+- les ruelles du village : dalles de béton de 2 m (1,3 km d'OSM) et planches (110 m) posées sur le platelage,
+  4 cm plus haut, à plat ; avant, le village n'était qu'un plancher brun d'un seul tenant ;
+- le platelage a une rive : un chant de bois de 35 cm et un pieu de béton tous les 2,5 m là où il donne sur
+  l'eau (InstancedMesh) — vu d'une barque, le village a des jambes ;
+- **les toits des maisons sur pilotis étaient à l'envers** depuis leur création (le prisme tourné de +π/2 :
+  l'arête en bas, des toits en V sur toutes les captures). Remis à l'endroit, en tôle (`metal_plate_02`) ;
+- les murs en quatre teintes de planches peintes passées au sel ; portes et fenêtres par `batiIles`
+  (`BATI.facades` avec `sol` : le plancher à 1,3 m, pas la mer dessous).
+
+**Les gens** (rôles existants ; rien sur l'histoire, aucun secret) :
+
+| où | qui | ce qu'il dit, en une ligne |
+|---|---|---|
+| Ko Panyi, la passerelle du marché | un enfant figé (Nok à 0,72) | « …le dernier dans l'eau a perdu !… » |
+| Ko Panyi, devant l'école | un enfant figé, les mains sur les yeux | « …quatre-vingt-dix-neuf, cent ! J'arrive !… » |
+| Ko Panyi, le bout sud | un pêcheur dans sa barque (vivant) | le village sur pieux ; la mer n'a rien vu ; la porte de pierre au nord, Nok par là |
+| Khao Phing Kan, la grève | une vendeuse de coquillages figée | « …Ko Tapu, le clou ! Un jour, la mer le fera tomber… » |
+| Khao Phing Kan | un pêcheur (vivant) | c'est Ko Tapu ; Mali dit que les pitons mangent le temps |
+| le plateau du grand piton | un moine figé près du câble | « …le câble descend jusqu'au marché. On ne fait que descendre… » |
+| Phi Phi, le belvédère | un moine figé, la main sur la poulie | « …le câble porte jusqu'au grand piton… » |
+
+Avec ceux de la nuit : 5 marchandes, 5 bateliers, 4 pêcheurs, 8 habitants figés, Nok, 3 moines et 3
+balayeurs de l'enquête. Repères ajoutés : les pêcheurs de Railay et de Ton Sai (`pnj`).
+
+**Mesures** : A/B entrelacé, 3 + 3 à froid (A = HEAD servi par interception réseau, B = le dossier) :
+chargement 2,2 → 2,3 s, **somme des étapes 1 888 → 1 998 ms (+110 ms)**, triangles 1,96 → 2,22 M ; pilotis
+56 → 78 ms, habitants 23 → 41 ms. Praticabilité **98,1 → 98,4 %** (Ko Panyi 97,4 → 98,5, Phi Phi 97,8 → 98,3).
+
+**Captures** : `bancs/resultats/lieu-thailande-2026-10-05-realisme-point-vues.png` (avant) et
+`…-realisme-apres-T-vues.png` (après ; trois vues ajoutées en 13–15 : une ruelle de Ko Panyi, le village vu
+d'une barque, le plateau du sommet) ; la baie : `…-point-vues.png` / `…-apres-T-vues.png` ; la minicarte :
+`…-realisme-apres-T-minicarte.png`.
+
+**Ce qui reste** :
+- Railay a l'air provençal (enduit blanc à la chaux, tuiles rouges, rangées de fenêtres égales) : les
+  bungalows de Railay sont de bois, de béton peint, sous des toits de tôle ou de feuilles. À reprendre avec
+  le bâti de la nuit (`toitIle`, `batiIles`) ;
+- les temples du plateau : murs blancs bas sans toit visible sous la jungle, des arbres sur le plateau et
+  contre les temples ;
+- la barque d'un passeur ou d'un pêcheur, vue de près par la proue, ne montre que la proue et le batelier
+  (la coque, basse, se perd dans l'eau) ;
+- la vendeuse de Khao Phing Kan était, comme la grève, sur une crête plus fine que la grille du sol (10 m) :
+  le relief jouable dit « terre », le maillage montre l'eau. Remontée sur le sable sec ;
+- un escalier entre la terrasse des moines (47 m) et le plateau (113 m) : on n'y monte que par le câble de
+  Phi Phi. SCENARIO.md parle d'« escaliers de centaines de marches » ; c'est un lot de relief
+  (recolter-relief-thailande.py, comme l'escalier des moines de Phi Phi) ;
+- 22 points bloqués à Ko Panyi (le ponton qui part du coin du bâtiment Panyee) et 11 à Phi Phi (pontons).
+
+**Demandes pour monde.js** :
+- la minicarte ne dessine pas la mer : à Ko Panyi tout est vert, le village sur pilotis semble sur l'herbe.
+  Un fond de mer (`f.merCouleur`) là où `hauteur < f.mer`, sur une grille grossière précalculée ;
+- `addLieu` d'un repère de type `pnj` dont la place est calculée au chargement (les pêcheurs de Ko Panyi et
+  de Khao Phing Kan posent leur barque eux-mêmes) : accepter un repère ajouté dans `plus()`.
+
+**Demandes pour d'autres fichiers** :
+- pnj.js : un rôle d'enfant (les enfants sont ici le rôle de Nok à l'échelle 0,72) ;
+- assets_back : une tôle ondulée Poly Haven (`corrugated_iron`, CC0, 512 px) pour les toits de Ko Panyi et
+  de Ton Sai, faits de `metal_plate_02` ;
+- les .osm de la Thaïlande (`carte/mondes/thailande-*.osm`) à rapporter du Mac, pour relancer l'extraction.
+
+**Questions pour Eugène** : Railay en bungalows de bois sous la tôle, ça te va ? Et l'escalier du grand piton
+(la terrasse des moines → le plateau) : le veux-tu, ou le câble suffit-il pour le sommet ?
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
@@ -1993,6 +2128,12 @@ praticables 100 % ; le poteau, l'église, Chez Fernand et le pont sont atteints 
   autres sessions, la même version a varié de 8 à 13 s dans la matinée du 5 octobre.
 - **Ne rien éditer pendant `publier-dev.sh`** : le contrôle prend plusieurs minutes, et le commit prend les
   fichiers tels qu'ils sont À LA FIN. Un fichier du lot modifié entre-temps partirait sans avoir été contrôlé.
+- **Une planche de vues ne dit pas si un lieu est jouable** : le sommet du grand piton était beau sur toutes
+  les captures, et inatteignable sans escalader la falaise. Un parcours (recherche de chemin depuis le départ,
+  `TLOC_PARCOURS=1` de `bancs/lieu-thailande.mjs`) le voit tout de suite. Le moteur, lui, ne refuse presque
+  aucune pente (`tryMove` : 0,5 m par pas de trame) ; la règle des 35° est celle du confort, pas du jeu. Une
+  interaction exige la portée ET moins de 3 m d'écart de hauteur (engine.js) : un objet au sommet d'une bosse
+  ne se prend pas d'en dessous.
 
 ---
 
