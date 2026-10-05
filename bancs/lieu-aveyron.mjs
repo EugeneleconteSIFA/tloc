@@ -34,7 +34,7 @@ const REGARD = process.argv[3] === 'regard', ETIQUETTE = REGARD ? '-regard' + (p
 const VUES_REGARD = [
   { nom: 'yeux : Beauregard, depuis le chemin', cam: [365, 1.6, 140], at: [400, 4, 152], sol: true },
   { nom: 'yeux : le Batut, depuis le départ', cam: [-116.7, 1.6, 143.8], at: [-135, 5, 170], sol: true },
-  { nom: 'yeux : le Pouget, la cour', cam: [175, 1.6, -268], at: [185, 4, -312], sol: true },
+  { nom: 'yeux : le Pouget, depuis la grille', cam: [169, 1.6, -287], at: [185, 6, -315], sol: true },
   { nom: 'plongée : le Pouget', cam: [140, 45, -250], at: [185, 0, -315] },
   { nom: 'yeux : le barrage, le duel', cam: [-232, 1.6, -30], at: [-222, 1.2, -100], sol: true, rue: true },
   { nom: 'plongée : le barrage', cam: [-170, 40, -40], at: [-225, 0, -90] },
@@ -106,18 +106,18 @@ try {
     let file = [id(P0.x, P0.z)]; if (file[0] >= 0) vu[file[0]] = file[0];
     while (file.length) { const nf = []; for (const k of file) { const i = k % nx, j = Math.floor(k / nx);
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue; const q = b * nx + a;
-        if (vu[q] >= 0 || !libre[q]) continue; const [x1, z1] = centre(k), [x2, z2] = centre(q); if (B((x1 + x2) / 2, (z1 + z2) / 2)) continue; vu[q] = k; nf.push(q); } } file = nf; }
+        if (vu[q] >= 0 || !libre[q]) continue; const [x1, z1] = centre(k), [x2, z2] = centre(q); if ([0.25, 0.5, 0.75].some((t) => B(x1 + (x2 - x1) * t, z1 + (z2 - z1) * t))) continue; /* trois points, pas le seul milieu : un muret de 70 cm vu en biais passait entre deux cases (5 octobre) */ vu[q] = k; nf.push(q); } } file = nf; }
     const chemin = (k) => { const c = []; while (k >= 0 && vu[k] !== k) { c.push(centre(k)); k = vu[k]; } return c.reverse(); };
     // marcher pour de vrai : tryMove, pas de 15 cm, le long du chemin trouvé
     const marcher = (pts, cible) => { const p = P0.clone(); p.y = H(p.x, p.z); let bloque = 0;
       for (const [x, z] of [...pts, [cible.x, cible.z]]) { for (let g = 0; g < 400; g++) { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d < 0.3) break;
           const s = Math.min(0.15, d), ok = E.tryMove(p, dx / d * s, dz / d * s, 0.4, false); p.y = H(p.x, p.z); if (!ok) { bloque++; break; } } }
-      return { fin: Math.hypot(p.x - cible.x, p.z - cible.z), bloque }; };
+      return { fin: Math.hypot(p.x - cible.x, p.z - cible.z), bloque, ou: [+p.x.toFixed(1), +p.z.toFixed(1)] }; };
     const atteintes = cibles.map((c) => {
       let best = -1, bd = 1e9; const rr = (c.r || 2) + 1; for (let dx = -rr; dx <= rr; dx += 1) for (let dz = -rr; dz <= rr; dz += 1) { const k = id(c.x + dx, c.z + dz); if (k >= 0 && vu[k] >= 0) { const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = k; } } }
       if (best < 0) return { ...c, atteinte: false, pourquoi: 'aucun chemin libre sur la grille de 2 m' };
       const m = marcher(chemin(best), { x: centre(best)[0], z: centre(best)[1] });
-      return { ...c, atteinte: m.fin < 1.5 + (c.r || 0), resteA: +m.fin.toFixed(2), arrets: m.bloque };
+      return { ...c, atteinte: m.fin < 1.5 + (c.r || 0), resteA: +m.fin.toFixed(2), arrets: m.bloque, arreteeA: m.ou };     // où la marche s'est arrêtée
     });
 
     // ---------------- b. le bâti ----------------
@@ -232,7 +232,7 @@ try {
   const p = res.praticabilite, b = res.bati, s = res.sols, ok = res.cibles.filter((c) => c.atteinte).length;
   console.log(`chargé en ${charge.toFixed(1)} s ; ${res.source}${res.durees ? ' ; étapes du lieu (ms) ' + JSON.stringify(res.durees) : ''}`);
   console.log(`a. rues praticables ${p.part} % (${p.libres}/${p.points}), trop raides ${p.tropRaides} ; cibles atteintes en marchant ${ok}/${res.cibles.length}`);
-  for (const c of res.cibles.filter((c) => !c.atteinte)) console.log(`   ✗ ${c.nom} (${c.x.toFixed(0)}, ${c.z.toFixed(0)}) : ${c.pourquoi || 'arrêtée à ' + c.resteA + ' m'}`);
+  for (const c of res.cibles.filter((c) => !c.atteinte)) console.log(`   ✗ ${c.nom} (${c.x.toFixed(0)}, ${c.z.toFixed(0)}) : ${c.pourquoi || 'arrêtée à ' + c.resteA + ' m, en ' + c.arreteeA}`);
   console.log(`b. ${b.batiments} bâtiments : toits qui débordent ${b.toitsQuiDebordent}, sur un voisin ${b.toitsSurVoisin}, soubassements > 1,5 m ${b.soubassementsPlus15}, murs qui se chevauchent ${b.chevauchements}`);
   console.log(`c. rubans : ${s.part} % des points flottent (> 5 cm), ${s.enfoncePlus2cm} enfoncés ; z-fighting : ${s.zFighting.length ? s.zFighting.join(', ') : 'aucun'}`);
   console.log('→ ' + nom + '.json, -carte.png, -vues.png');
