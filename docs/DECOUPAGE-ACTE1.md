@@ -172,11 +172,18 @@ porte de lumière s'ouvre, il y entre avec Eugène. Camille le suit : l'île du 
 
 | étape | état |
 |---|---|
-| 1 | **codée, essayée en headless** (2 octobre au soir) — rien de publié |
-| 2 | **codée, essayée en headless** (sauf Gustave, dans `tavern.js`) — rien de publié |
-| 3 | codée en partie (répliques d'Émile et du pêcheur, la canne donnée) ; **les vers ne se ramassent pas encore** |
-| 4 | à faire (la pêche) |
-| 5 – 10 | à faire. **Eugène a autorisé le 2 octobre** : `tavern.js`, `atlas.js`, `engine.js`, `house.js`, `chapelle.js`, `cave.js` |
+| 1 | **codée, essayée en headless** (2 octobre au soir) |
+| 2 | **codée, jouée en headless** (5 octobre, B1) : Gustave à l'estaminet (`tavern.js`, ses deux répliques, l'indice `escalier`), la porte basse du beffroi fermée (« Fermé à clé. ») ; les témoins replacés et vus en capture (le crieur au pied de la fontaine, le gardien dans l'axe du portail de la chapelle, le pêcheur sur une berge d'où l'on voit l'eau) |
+| 3 | **codée, jouée** : quatre mottes de terre retournée au bord du champ du nord, côté moulin ; un coup d'épée → `state.vers` ; le pêcheur donne la canne (`canne`) |
+| 4 | **codée, jouée** : la pêche partout face à l'eau (Entrée lance, le bouchon plonge, Entrée ferre, Entrée tenue ramène, la jauge de la ligne, elle casse si l'on tire trop) ; au canal de la Tortue, la clé (`cle`) |
+| 5 | **codée, jouée** : le lit de Camille, « jusqu'au soir » / « jusqu'au matin » (`state.nuit`) ; la nuit sur Lille par ce que le moteur exporte (ciel, lune, étoiles, soleil-lune, brume, plus de reflet du jour) ; une fenêtre sur trois et les verres des lanternes qui s'allument (émissifs, aucune lumière de plus) ; les nuages éteints ; la lanterne de Désiré au sommet du beffroi |
+| 6 | **codée, jouée** : de nuit, la porte basse s'ouvre avec la clé ; Désiré au sommet (la lumière du haut du colimaçon monte avec lui) ; l'énigme du guetteur posée par lui (`atlas.js`, `enigme({…})`), mauvaise réponse « Regarde encore », bonne → la lanterne (`lanterne`) et la carte du guetteur ; au matin, il redescend dans les rues et ouvre *La ronde de Désiré* |
+| 7 – 10 | sessions B2 et B3 (PLAN-2026-10-05-ACTE1.md) |
+
+Banc de B1 : `bancs/acte1-b1.mjs` joue les étapes 2 à 6 de bout en bout dans une seule partie
+(23 vérifications, captures `bancs/resultats/acte1-b1*-…`) ; `bancs/acte1-bourg.mjs` filme les
+témoins de l'enquête ; `bancs/acte1-outils.mjs`, les gestes communs (une partie au prologue
+passé, parler, filmer sans mur devant).
 | 7, 8 | **codées, jouées en headless de bout en bout** (5 octobre, B2 : `bancs/acte1-souterrains.mjs` : 26 pas sur 28, les deux autres sont le défaut ci-dessous ; une capture par moment clé) : la crypte, Bastien, l'arc, le levier, le Rat-Roi, la clé, la porte de la poterne ; l'ancienne histoire intacte. **Un défaut hors B2** : avec l'arc en poche, la page de la citadelle se fige au chargement (`loadGame`, engine.js:2687, écrit dans le `bowBack` que la Camille riggée n'a pas) — `cave.js` et `chapelle.js` s'en gardent, `index.html` non |
 
 ## Bilan du 2 octobre au soir — arrêté en cours d'étape 2, à reprendre ici

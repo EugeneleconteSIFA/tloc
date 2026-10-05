@@ -1501,6 +1501,21 @@ export function buildTown() {
     soc(0.6, 3.1 - DW, -2.8, -(DW + (3.1 - DW) / 2)); soc(0.6, 3.1 - DW, -2.8, DW + (3.1 - DW) / 2);
     for (const sz of [-1, 1]) bf.add(mesh(boxG(0.75, DH, 0.3), stoneB, -2.55, DH / 2, sz * (DW + 0.15)));
     bf.add(mesh(boxG(0.75, 0.35, 2 * DW + 0.6), stoneB, -2.55, DH + 0.17, 0));
+    // LA PORTE BASSE (acte I, docs/DECOUPAGE-ACTE1.md § 2 et 6) : un vantail de chêne ferré dans
+    // l'embrasure, gond au nord, qui s'ouvre vers l'intérieur. Ouverte par défaut — une ancienne
+    // partie monte au coffret comme avant ; c'est l'acte I (quetes.js) qui la ferme à clé tant
+    // que Désiré ne s'y cache pas la nuit. Son verrou de collision suit le vantail.
+    { const piv = new THREE.Group(); piv.position.set(-2.32, 0, -DW + 0.02); bf.add(piv);
+      const L = 2 * DW - 0.04, Hh = DH - 0.04;
+      piv.add(mesh(rboxG(0.09, Hh, L, 0.02, 1), CHENE(L, Hh, { color: 0x6e4c32 }), 0, Hh / 2, L / 2));
+      for (const y of [0.35, Hh - 0.4]) piv.add(mesh(boxG(0.11, 0.07, L - 0.1), IRON(), 0, y, L / 2));   // pentures
+      piv.add(mesh(boxG(0.12, 0.2, 0.14), IRON(), -0.02, Hh * 0.48, L - 0.22));                    // la serrure
+      piv.add(mesh(new THREE.TorusGeometry(0.07, 0.016, 6, 10), IRON(), -0.07, Hh * 0.42, L - 0.22).rotateY(Math.PI / 2));
+      piv.rotation.y = Math.PI / 2 * 0.92;
+      const verrou = addCap(bx - 2.32, bz - DW, bx - 2.32, bz + DW, 0.2, DH); verrou.r = 0;
+      const [px, pz] = W2(bx - 3.1, bz);
+      PARTAGE.porteBeffroi = { piv, verrou, r: 0.2 * S, x: px, z: pz, ferme: (f) => { piv.rotation.y = f ? 0 : Math.PI / 2 * 0.92; verrou.r = f ? 0.2 * S : 0; } };
+    }
     for (let k = 1; k < 4; k++) corniceAround(bf, 0, k * 6.5, 0, 2.5, 2.5, stoneB, 0.22, 0.22, k === 3 ? 'cyma' : 'torus');
     corniceAround(bf, 0, BH - 0.6, 0, 2.5, 2.5, stoneB, 0.6, 0.5, 'cyma');
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const pl = pilaster(BH - 0.6 - 13, 0.26, stoneB); pl.position.set(sx * 2.45, 13, sz * 2.45); bf.add(pl); }
@@ -1598,7 +1613,9 @@ export function buildTown() {
       marches.castShadow = marches.receiveShadow = true; E.scene.add(marches);
       // Le jour ne descend pas dans un puits de quarante mètres : une lanterne à mi-hauteur
       // et une au sommet, sinon on monte dans le noir complet.
-      for (const f of [0.35, 0.8]) { const l = new THREE.PointLight(0xffc98a, 9, 22, 1.4); l.position.set(hx, y0 + (yTop - y0) * f, hz); E.scene.add(l); }
+      // (celle du haut monte dans la chambre des cloches les nuits où Désiré y veille : quetes.js,
+      // desireOu — la même lumière déplacée, aucune de plus)
+      for (const f of [0.35, 0.8]) { const l = new THREE.PointLight(0xffc98a, 9, 22, 1.4); l.position.set(hx, y0 + (yTop - y0) * f, hz); E.scene.add(l); if (f > 0.5) PARTAGE.lumiereBeffroi = l; }
       // ---- le plancher, pour les pieds : coursive + palier (plateformes orientées) ----
       const hP = yTop, seg = (ax, az, cx, cz, w) => { const [pa, pb] = W2(ax, az), [pc, pd] = W2(cx, cz);
         world.platforms.push({ seg: true, ax: pa, az: pb, bx: pc, bz: pd, w: w * S, h: hP }); };
@@ -1629,6 +1646,10 @@ export function buildTown() {
     { const [px, pz] = W2(bx + 2.45, bz + 1.2), [cx, cz] = W2(bx, bz);
       BOURSE.petitCoffre('beffroi', px, TOWN.y + (BH + 0.5) * S, pz, 20, Math.atan2(cx - px, cz - pz), 0.5); }
     { const [lx, lz] = W2(bx, bz); E.addLieu({ id: 'beffroi', nom: 'le beffroi', x: lx, z: lz, r: 18 }); }
+    // l'acte I (quetes.js) : où Désiré se cache la nuit — sur la coursive sud, face au palier où
+    // débouche le colimaçon — et où brille sa lanterne, dans la chambre des cloches
+    { const [dx, dz] = W2(bx, bz + 2.4), [vx, vz] = W2(bx, bz - 1), [lx, lz] = W2(bx + 1.6, bz + 1.6);
+      PARTAGE.beffroi = { desire: [dx, TOWN.y + (BH + 0.5) * S, dz, Math.atan2(vx - dx, vz - dz)], lueur: [lx, TOWN.y + (BH + 2.2) * S, lz] }; }
   }
   // ---------- fontaine de la place ----------
   // Refaite : les « lions » étaient quatre sphères posées sur des cylindres, l'eau un disque

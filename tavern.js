@@ -7,6 +7,7 @@ import { makeDoor, makeVolet, LAITON, FERN, VITRE } from './menuiserie.js';
 import * as A from './assets.js';
 import * as PNJ_E from './engine.js?v=41';
 import * as PNJ from './pnj.js';
+import { etapeActe1, atteintActe1 } from './etat.js';
 
 // Mobilier du Fantasy Props MegaKit. Si la banque manque, l'estaminet garde son mobilier
 // procédural : PROPS_OK reste faux et chaque appel à prop() ne fait rien.
@@ -434,7 +435,7 @@ function build() {
   const gustave = PNJ.buildRole('aubergiste');
   barman = gustave || makePatron(0, 0xf0e6d0); barman.position.set(bx - 0.3, 0, bz - 0.82); barman.rotation.y = gustave ? 0 : Math.PI; put(barman);
   if (barman.userData.arms) { barman.userData.arms[0].rotation.x = -0.6; barman.userData.arms[0].userData.elbow.rotation.x = -1.2; }
-  addInteract({ pos: V(bx - 0.3, 0, bz + 1.25), r: 2.0 * SC, prompt: () => 'commander une gaufre au patron', fn: commanderGaufre });
+  addInteract({ pos: V(bx - 0.3, 0, bz + 1.25), r: 2.0 * SC, prompt: () => (etapeActe1(state) ? 'parler à Gustave' : 'commander une gaufre au patron'), fn: commanderGaufre });
   // lustre à bougies
   const lustre = new THREE.Group(); lustre.position.set(-0.4, H - 1.05, 1.2); put(lustre);
   lustre.add(mesh(new THREE.TorusGeometry(0.62, 0.035, 6, 20), FERN(), 0, 0, 0).rotateX(Math.PI / 2));
@@ -495,10 +496,21 @@ function seraphin() {
 function commanderGaufre() {
   barman.userData.talk = 4;
   const lines = [];
-  if (state.princeFreed) lines.push({ who: 'Gustave', text: "« Le prince est libre ! Ce soir, la tournée est pour la maison. »" });
+  // L'ACTE I (docs/DIALOGUES-ACTE1.md) : Gustave sait par où Désiré monte se cacher. Le carnet
+  // (state.ind) est écrit ici, dans le cadre ; la ville le relit à la sortie (rentrerEnVille).
+  const e = etapeActe1(state);
+  if (e) {
+    if (atteintActe1(state, 'temple')) lines.push({ who: 'Gustave', text: '« Tu reviens d’où, avec ce sable rouge sur les bottes ? »' });
+    else if (atteintActe1(state, 'lanterne')) lines.push({ who: 'Gustave', text: '« Il a pris sa bouteille ? Alors il va mieux. »' });
+    else lines.push({ who: 'Gustave', text: '« Quand Désiré veut la paix, il monte là où il faisait sa ronde : **par le petit escalier derrière le beffroi**. La porte est fermée, mais **Émile en a la clé** : il monte le grain au grenier. »',
+      fn: () => { state.ind = state.ind || {}; if (!state.ind.escalier) { state.ind.escalier = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300); } } },
+    { who: 'Gustave', text: '« Une bière ? Non, t’as pas l’âge. Un sirop, alors. »' });
+  }
+  else if (state.princeFreed) lines.push({ who: 'Gustave', text: "« Le prince est libre ! Ce soir, la tournée est pour la maison. »" });
   else if (!state.metLyderic) lines.push({ who: 'Gustave', text: "« Une gaufre ? Pour la gardienne de la citadelle, c'est offert. Mais file voir Lydéric au pont, il te cherche partout. »" });
   else lines.push({ who: 'Gustave', text: "« Alors, la citadelle ? On dit que Phinaert a enfermé Eugène sous les remparts… Tiens, mange, tu es toute pâle. »" });
-  if (player.hp >= player.maxHp) lines.push({ who: 'Gustave', text: "« Tu es en pleine forme, Camille ! Reviens quand les fantômes t'auront donné du fil à retordre. »" });
+  // (pendant l'acte I, en pleine forme, il n'ajoute rien : sa réplique de l'acte suffit)
+  if (player.hp >= player.maxHp) { if (!e) lines.push({ who: 'Gustave', text: "« Tu es en pleine forme, Camille ! Reviens quand les fantômes t'auront donné du fil à retordre. »" }); }
   else lines.push({ who: 'Gustave', text: "« Une gaufre bien chaude, c'est pour la maison. Et bonne chance ! » (+2 cœurs)", fn: () => { player.hp = Math.min(player.maxHp, player.hp + 4); SFX.pickup(); } });
   dialogue(lines, () => { barman.userData.talk = 0; });
 }

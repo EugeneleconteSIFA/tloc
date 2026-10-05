@@ -5,10 +5,10 @@
 import {
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, camera, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, goToLevel, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
-  showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer,
+  showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer, keys, sun, hemi, renderer, bloom, sky, SUN_DIR,
 } from './engine.js?v=41';
 import {
-  APO, BAST_H, COURTINES, DONJON, ECH, FERME, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, sdEau, townWorld,
+  APO, BAST_H, COURTINES, DONJON, ECH, FERME, HOUSE, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, nappeProche, sdEau, townWorld,
   onBridge, sdPent,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -18,6 +18,7 @@ import { geant } from './banque.js';
 import * as PNJ from './pnj.js';
 import * as BOURSE from './bourse.js';
 import { FAUCHE_DEBUG, bleFauche } from './nature.js';
+import * as ATLAS from './atlas.js';
 
 // la place de Lydéric sur le pont : 78 m devant la Porte Royale, au tiers du tablier, là où
 // les plans du découpage (docs/DECOUPAGE-PROLOGUE.md, plans 8 à 10) prennent la porte en fond
@@ -823,33 +824,49 @@ function indicesJournal() {
 // Les habitants nouveaux de l'acte I (pnj.js, ROLES) : nés APRÈS le chargement, un par image,
 // comme la foule du prologue — le banc n'en paie rien (règle 8). Houtland et le mage restent
 // devant la salle de la garde : la crise les y a trouvés.
-const A1 = { gens: {}, aFaire: [], pret: false, lieux: null };
+const A1 = { gens: {}, aFaire: [], pret: false, lieux: null, enigme: false, desire: null };
+PARTAGE.gensActe1 = A1.gens;        // pour les bancs (bancs/acte1-*.mjs) : où se tiennent les témoins
 function lieuxActe1() {
   if (A1.lieux) return A1.lieux;
   const E_ = PARTAGE.ecole, L = {};
-  // sur le parvis de la chapelle, à cinq mètres du portail (sa portée, 2,3 m, et celle du
-  // gardien ne se recouvrent pas : Entrée parlerait au portail au lieu du gardien)
-  { const [px, pz] = townWorld(-1.5, -13), [qx, qz] = townWorld(3.5, -12);
-    L.gardien = [...placeLibre(qx, qz, qx - px, qz - pz), Math.atan2(px - qx, pz - qz)]; }
-  // le crieur, au bord de la place, tourné vers elle
-  { const [cx, cz] = townWorld(0, 0), [qx, qz] = townWorld(6, 6.5); L.crieur = [...placeLibre(qx, qz, qx - cx, qz - cz), Math.atan2(cx - qx, cz - qz)]; }
-  // l'allumeur, à l'angle de l'estaminet, sa lanterne éteinte à la main
+  // sur le parvis de la chapelle, dans l'axe du portail (−1 ; −13), quatre pas devant lui,
+  // tourné vers la place : le parvis est étroit, entre le beffroi et une maison relevée (5
+  // octobre : posé de biais, il se tenait devant la porte du beffroi, ou dans la maison). Six
+  // mètres du portail : sa portée (2,3 m) et celle du gardien ne se recouvrent pas.
+  { const [qx, qz] = townWorld(-0.9, -9.2), [cx, cz] = townWorld(-6, 2);
+    const [x, z] = placeLibre(qx, qz, cx - qx, cz - qz); L.gardien = [x, z, Math.atan2(cx - x, cz - z)]; }
+  // le crieur, au pied de la fontaine, tourné vers la grand-rue d'où l'on arrive (la salle de
+  // la garde est à −23 en x local) : en vue de partout (5 octobre : au bord de la place, il
+  // était caché derrière un étal du marché)
+  { const [qx, qz] = townWorld(-4.9, 0.6), [cx, cz] = townWorld(-14, 1.5);
+    const [x, z] = placeLibre(qx, qz, qx - cx, qz - cz); L.crieur = [x, z, Math.atan2(cx - x, cz - z)]; }
+  // l'allumeur, dans la rue qui mène à la salle de la garde, sa lanterne éteinte à la main
   { const x0 = 223, z0 = 668; L.allumeur = [...placeLibre(x0, z0, 1, 0), Math.atan2(200 - x0, 660 - z0)]; }
-  // le vieux pêcheur, au bord de l'eau devant la maison de Camille : le premier point de berge
-  // sèche (1 à 2 m de l'eau), tourné vers l'eau
-  { let best = null;
-    for (let r = 4; r < 40 && !best; r += 1) for (let k = 0; k < 32; k++) {
-      const a = k / 32 * TAU, x = 166 + Math.cos(a) * r, z = 607 + Math.sin(a) * r, d = sdEau(x, z);
-      if (d > 1 && d < 2.2 && !blocked(x, z, 0.8, false, getH(x, z) + 0.5)) { best = [x, z]; break; } }
-    best = best || [170, 615];
-    // vers l'eau : la pente de la distance à la nappe
-    const g = [sdEau(best[0] + 1, best[1]) - sdEau(best[0] - 1, best[1]), sdEau(best[0], best[1] + 1) - sdEau(best[0], best[1] - 1)];
-    L.pecheur = [best[0], best[1], Math.atan2(-g[0], -g[1])]; }
+  // le vieux pêcheur, au bord de l'eau à côté de la maison de Camille (HOUSE, 173 ; 611) : le
+  // premier point de berge d'où l'on VOIT l'eau (eauVisible) à trois et cinq mètres devant soi,
+  // sur un sol libre de tout mur à deux pas et demi. (2 octobre : la distance à la nappe seule le
+  // posait dans une cour de brique, devant une eau cachée sous l'herbe.)
+  L.pecheur = rive(164, 610) || [163.6, 610.2, -2.1];
   // Houtland et le mage : à la place que leur donnait le prologue, devant la salle de la garde
   L.houtland = [E_.eugene[0], E_.eugene[1], Math.atan2(E_.x - E_.eugene[0], E_.z - E_.eugene[1])];
   { const [mx, mz] = placeLibre(E_.x - Math.sin(E_.yaw) * 3 + Math.cos(E_.yaw) * 1.6, E_.z - Math.cos(E_.yaw) * 3 - Math.sin(E_.yaw) * 1.6, -Math.sin(E_.yaw), -Math.cos(E_.yaw));
     L.mage = [mx, mz, Math.atan2(E_.x - mx, E_.z - mz)]; }
   return (A1.lieux = L);
+}
+// une berge d'où l'on voit l'eau, au plus près de (x0 ; z0) : [x, z, yaw tourné vers l'eau]
+function rive(x0, z0, rMax = 40) {
+  for (let r = 0; r < rMax; r += 1) for (let k = 0; k < 48; k++) {
+    const a = k / 48 * TAU, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
+    if (eauVisible(x, z) || sdEau(x, z) < 0.6) continue;
+    const h = getH(x, z); if (blocked(x, z, 0.8, false, h + 0.5)) continue;
+    let libre = true;
+    for (let j = 0; j < 8 && libre; j++) { const b = j / 8 * TAU, bx = x + Math.cos(b) * 2.5, bz = z + Math.sin(b) * 2.5;
+      if (!eauVisible(bx, bz) && blocked(bx, bz, 0.3, false, h + 0.5)) libre = false; }
+    if (!libre) continue;
+    for (let j = 0; j < 24; j++) { const b = j / 24 * TAU;
+      if (eauVisible(x + Math.cos(b) * 3, z + Math.sin(b) * 3) && eauVisible(x + Math.cos(b) * 5, z + Math.sin(b) * 5)) return [x, z, Math.atan2(Math.cos(b), Math.sin(b))]; }
+  }
+  return null;
 }
 const NOMS = { crieur: 'le crieur public', allumeur: 'l’allumeur de lanternes', gardien: 'le gardien de la chapelle', pecheur: 'le vieux pêcheur', houtland: 'Houtland', mage: 'le vieux mage' };
 // « parler à le… » : l'article se contracte
@@ -883,8 +900,9 @@ function canneAPeche() {
   const perche = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, L, 6), phMat('wood_planks', 0.3, 2, { color: 0xb89a70 }));
   perche.position.set(0.25, 1.1 + L / 2 * Math.sin(0.5), L / 2 * Math.cos(0.5)); perche.rotation.x = Math.PI / 2 - 0.5; g.add(perche);
   const bout = [0.25, 1.1 + L * Math.sin(0.5), L * Math.cos(0.5)];
-  const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, bout[1] + 0.6, 3), new THREE.MeshStandardMaterial({ color: 0xd8d4c8, roughness: 0.6 }));
-  fil.position.set(bout[0], (bout[1] - 0.6) / 2, bout[2]); g.add(fil);
+  // la ligne s'arrête à la surface, une trentaine de centimètres sous la berge (elle plongeait d'un mètre)
+  const fil = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, bout[1] + 0.3, 3), new THREE.MeshStandardMaterial({ color: 0xd8d4c8, roughness: 0.6 }));
+  fil.position.set(bout[0], (bout[1] - 0.3) / 2, bout[2]); g.add(fil);
   g.traverse((o) => { o.castShadow = true; });
   return g;
 }
@@ -936,7 +954,14 @@ function repliques(qui) {
       if (state.canne) return [dit('Émile', '« Tu as la canne du vieux ? **Lance dans le canal de la Tortue, derrière le moulin**, c’est là qu’elle est tombée. Et dis à Désiré que sa bouteille l’attend. »')];
       if (ind('escalier')) return [dit('Émile', '« La clé de l’escalier du beffroi ? Ah… Ce matin, en courant à la fête, elle m’a glissé de la poche. **Elle est au fond du canal de la Tortue, derrière le moulin.** **Le vieux pêcheur du quai** a une canne, lui. »', () => { noter('canal'); noter('pecheur'); })];
       return [dit('Émile', '« Le canyon, derrière le bois ? Personne n’en est jamais revenu. Au fond, l’eau est si froide qu’elle coupe le souffle. »')];
-    // Désiré n'est plus dans les rues : il se cache au beffroi (village.js le retire)
+    // Désiré n'est plus dans les rues : il se cache au beffroi, la nuit (desireOu)
+    case 'Désiré':
+      if (state.lanterne) return [dit('Désiré', '« Il y a des fantômes dans le quartier depuis cette nuit. Je les sens, je ne les vois pas. **Toi, avec la lanterne, tu les verrais.** »', () => setQuest('ghosts', 1))];
+      // au sommet, la nuit : la clé, le remords, puis l'énigme (posée à la fin du dialogue : tickActe1)
+      if (state.desireVu) return [dit('Désiré', '« Ma lanterne ? Elle n’éclaire que celui qui sait regarder la ville. Réponds-moi d’abord. »', () => { A1.enigme = true; })];
+      return [dit('Désiré', '« Qui t’a donné la clé ? Émile. Évidemment. Il l’a repêchée ? Ah, c’est toi. »', () => { state.desireVu = true; }),
+        dit('Désiré', '« C’est moi qui ai laissé la corde au petit. Je ne me le pardonnerai pas. »'),
+        dit('Désiré', '« Ma lanterne ? Elle n’éclaire que celui qui sait regarder la ville. Réponds-moi d’abord. »', () => { A1.enigme = true; })];
     // Ceux qui n'ont rien à dire de l'enquête disent la ville qui s'est fermée (ambiance)
     case 'Aldegonde': return [dit('Aldegonde', '« Les volets sont fermés partout. Ma mère disait que la Grande Cloche ne se fendrait jamais. »')];
     case 'Baptiste': return [dit('Baptiste', '« Personne n’a mangé une gaufre depuis midi. Un jour de fête, ça ne s’était jamais vu. »')];
@@ -976,13 +1001,21 @@ function suiteActe1() {
     if (ind('vers')) { const ch = champDuNord(); return ['Trouve des vers dans le champ du nord d’Émile : frappe la terre retournée à l’épée', ch ? { x: ch.cx, z: ch.cz } : null]; }
     return ['Demande sa canne au vieux pêcheur, sur le quai devant ta maison', A1.gens.pecheur ? { x: A1.gens.pecheur.position.x, z: A1.gens.pecheur.position.z } : null];
   }
-  if (!state.cleBeffroi) return ['Pêche la clé dans le canal de la Tortue, derrière le moulin', { x: CANAL.x, z: CANAL.z }];
-  return ['Désiré ne se montre que la nuit : dors chez toi jusqu’au soir, puis monte au beffroi (la suite de l’acte I est en chantier)', { x: bx, z: bz }];
+  if (!state.cleBeffroi) return ['Pêche la clé dans le canal de la Tortue, derrière le moulin : face à l’eau, Entrée pour lancer', { x: CANAL.x, z: CANAL.z }];
+  const pb = PARTAGE.porteBeffroi;
+  if (!state.lanterne) {
+    if (!state.nuit) return ['Désiré ne se montre que la nuit : dors chez toi jusqu’au soir (ton lit, Entrée)', { x: HOUSE.x, z: HOUSE.z }];
+    if (!state.porteBeffroi) return ['Ouvre la petite porte du beffroi avec la clé d’Émile', pb ? { x: pb.x, z: pb.z } : { x: bx, z: bz }];
+    return ['Monte au sommet du beffroi : Désiré y veille, sa lanterne allumée', { x: bx, z: bz }];
+  }
+  return [state.nuit ? 'Descends dans la crypte de la chapelle avec la lanterne (ou redors jusqu’au matin)' : 'Descends dans la crypte de la chapelle avec la lanterne', { x: cx, z: cz }];
 }
 const CANAL = { x: 436, z: 12 };
 
 // appelé par update() : naissances, point d'or
 function tickActe1(dt) {
+  nuitLille(!!state.nuit);
+  tickPeche(dt);
   if (!acte1()) return;
   if (!A1.pret) preparerActe1();
   if (A1.aFaire.length) naitreActe1();
@@ -990,8 +1023,334 @@ function tickActe1(dt) {
   const c = camera.position;
   for (const [qui, v] of Object.entries(A1.gens)) if (v.visible && qui !== 'houtland' && qui !== 'mage' && Math.abs(v.position.x - c.x) + Math.abs(v.position.z - c.z) < 60) PNJ.animeVillageois(v, dt, false);
   if (!PRO.etape && !cut.active) { const s = suiteActe1(); PARTAGE.repere = s[1]; }
-  // Désiré a quitté les rues : il se cache au beffroi, et n'en redescend qu'avec la lanterne donnée
-  if (PARTAGE.desire) PARTAGE.desire.visible = !!state.lanterne;
+  desireOu();
+  porteBasse();
+  tickVers();
+  if (A1.enigme && !cut.active) { A1.enigme = false; enigmeDesire(); }
+}
+
+// ---------- la porte basse du beffroi (étapes 2 et 6) ----------
+// Le vantail est bâti par village.js (PARTAGE.porteBeffroi), ouvert : une ancienne partie monte
+// au coffret comme avant. L'acte I le ferme à clé jusqu'à la nuit où Camille l'ouvre avec la
+// clé d'Émile (state.porteBeffroi) ; il reste ouvert ensuite.
+let porteIt = null;
+function porteBasse() {
+  const pb = PARTAGE.porteBeffroi; if (!pb) return;
+  const ferme = !state.porteBeffroi;
+  if (pb.etat !== ferme) { pb.etat = ferme; pb.ferme(ferme); }
+  if (porteIt) return;
+  porteIt = addInteract({ pos: new THREE.Vector3(pb.x, getH(pb.x, pb.z), pb.z), r: 2.2, enabled: () => !!acte1() && !state.porteBeffroi,
+    prompt: () => (state.cleBeffroi ? 'ouvrir la petite porte (la clé d’Émile)' : 'la petite porte du beffroi'),
+    fn: () => {
+      if (!state.cleBeffroi) { dialogue([dit('Camille', '« Fermé à clé. »')]); return; }
+      // de jour, la porte reste close : Désiré n'est pas là-haut (DIALOGUES-ACTE1.md, Désiré, `cle`)
+      if (!state.nuit) { dialogue([dit('Camille', '« Il n’est pas là. L’allumeur a dit : seulement la nuit. »')]); return; }
+      state.porteBeffroi = true; saveGame(true); SFX.pickup();
+      showMessage('La clé d’Émile tourne dans la serrure. Là-haut, une lumière veille.', 4);
+    } });
+}
+
+// ---------- Désiré (étape 6) ----------
+// Le jour, il n'est nulle part ; la nuit, il veille au sommet du beffroi, sa lanterne posée à
+// ses pieds ; la lanterne donnée, il redescend faire sa ronde dans les rues (sa tournée d'avant).
+function desireOu() {
+  const v = PARTAGE.desire, B = PARTAGE.beffroi; if (!v) return;
+  const ou = state.lanterne ? 'rues' : state.nuit && B ? 'haut' : 'cache';
+  if (ou === A1.desire) return;
+  const ud = v.userData;
+  if (A1.desire === null) { ud.routeRues = ud.route; ud.rues = v.position.clone(); }
+  A1.desire = ou;
+  v.visible = ou !== 'cache';
+  if (ou === 'haut') { ud.route = null; v.position.set(B.desire[0], B.desire[1], B.desire[2]); v.rotation.y = B.desire[3]; }
+  else if (ou === 'rues') { ud.route = ud.routeRues; v.position.copy(ud.rues); }
+  // sa lanterne éclaire la chambre des cloches : la lumière du haut du colimaçon y monte
+  const l = PARTAGE.lumiereBeffroi;
+  if (l && B) { if (!l.userData.bas) l.userData.bas = l.position.clone();
+    if (ou === 'haut') l.position.set(B.desire[0] + Math.sin(B.desire[3] + 1.2) * 0.6, B.desire[1] + 1.4, B.desire[2] + Math.cos(B.desire[3] + 1.2) * 0.6);
+    else l.position.copy(l.userData.bas); }
+}
+function enigmeDesire() {
+  ATLAS.enigme({
+    titre: 'L’ÉNIGME DU GUETTEUR', sous: 'Désiré, au sommet du beffroi',
+    intro: 'Désiré pose la main sur sa lanterne et regarde la ville endormie.',
+    gagne: () => dialogue([dit('Désiré', '« Tu regardes, toi. Prends-la. **La crypte de la chapelle** t’attend. »', () => {
+      state.lanterne = true; passerA('lanterne'); SFX.win();
+      burst(player.pos.x, player.pos.y + 1.5, player.pos.z, 0xffd27a, 30, 3, 1.4, 2, 1.4);
+      showMessage('LA LANTERNE DE DÉSIRÉ : sous terre, elle ne s’éteint pas. Et la carte du guetteur est à toi (M).', 7);
+    })]),
+    perd: () => dialogue([dit('Désiré', '« Regarde encore. La ville ne bouge pas, elle. »')]),
+  });
+}
+
+// ---------- les vers (étape 3) ----------
+// « Il y en a plein dans le champ d'Émile, là où tu as coupé le blé » : quatre mottes de terre
+// retournée par la fauche, dans le champ du nord ; un coup d'épée dans l'une d'elles, et Camille
+// en remplit une poignée. Bâties à la première image de l'acte (pas au chargement : règle 8).
+const VERS = { mottes: null };
+PARTAGE.vers = VERS;                 // pour les bancs (bancs/acte1-b1.mjs)
+function tickVers() {
+  if (state.vers || state.canne) { if (VERS.mottes) { for (const m of VERS.mottes) scene.remove(m); VERS.mottes = []; } return; }
+  if (!VERS.mottes) VERS.mottes = poserMottes();
+  if (!(player.attackT > 0.08 && player.attackT < 0.3)) return;
+  const fx = player.pos.x + Math.sin(player.yaw) * 1.1, fz = player.pos.z + Math.cos(player.yaw) * 1.1;
+  for (const m of VERS.mottes) {
+    if (Math.hypot(fx - m.position.x, fz - m.position.z) > 1.5) continue;
+    state.vers = true; saveGame(true); SFX.pickup();
+    burst(m.position.x, m.position.y + 0.3, m.position.z, 0x5a3e26, 26, 3, 1.0, 2, 0.9);
+    showMessage('Des vers, bien gras, bien vivants. Camille en remplit une poignée.', 5);
+    return;
+  }
+}
+function poserMottes() {
+  const ch = champDuNord(); if (!ch) return [];
+  const terre = phMat('brown_mud_03', 1.6, 1.6, { color: 0xb8987a, roughness: 1 });
+  // une motte : un dôme bosselé, écrasé, et quelques mottes plus petites autour
+  // (assez haute pour sortir des touffes d'herbe du bord du champ : à 25 cm, l'herbe la cachait)
+  const geo = new THREE.SphereGeometry(1.0, 16, 8, 0, TAU, 0, Math.PI / 2), po = geo.attributes.position;
+  for (let i = 0; i < po.count; i++) { const x = po.getX(i), z = po.getZ(i), y = po.getY(i), n = 1 + 0.18 * Math.sin(x * 7.3 + z * 3.1) * Math.cos(z * 5.7);
+    po.setXYZ(i, x * n, y * 0.5 * n, z * n); }
+  geo.computeVertexNormals();
+  const out = [];
+  for (let k = 0, essai = 0; k < 4 && essai < 60; essai++) {
+    // au bord du champ, juste hors des épis (au milieu, le blé debout les cachait), du côté du
+    // moulin, d'où l'on arrive : de l'autre côté, c'est le bois, et elles étaient sous les arbres
+    const a0 = Math.atan2(FERME.z - ch.cz, FERME.x - ch.cx), a = a0 + ((essai * 0.618) % 1 - 0.5) * 1.6;
+    const r = ch.rayon + 1.2 + 1.5 * ((essai * 0.382) % 1), x = ch.cx + Math.cos(a) * r, z = ch.cz + Math.sin(a) * r;
+    if (blocked(x, z, 1, false, getH(x, z) + 0.5) || out.some((m) => Math.hypot(m.position.x - x, m.position.z - z) < 4)) continue;
+    const g = new THREE.Group(); g.position.set(x, getH(x, z) - 0.04, z); g.rotation.y = a;
+    const d = new THREE.Mesh(geo, terre); d.receiveShadow = d.castShadow = true; g.add(d);
+    for (let j = 0; j < 5; j++) { const b = j * 1.3 + a, c = new THREE.Mesh(geo, terre); c.scale.setScalar(0.18 + 0.08 * (j % 3)); c.position.set(Math.cos(b) * 0.95, 0, Math.sin(b) * 0.95); g.add(c); }
+    scene.add(g); out.push(g); k++;
+  }
+  return out;
+}
+
+// ---------- la pêche (étape 4 ; SCENARIO.md, « La canne à pêche ») ----------
+// Le même geste partout : face à l'eau, Entrée lance ; on attend que le bouchon plonge ; Entrée
+// ferre ; Entrée TENUE ramène, et la ligne se tend — relâcher avant qu'elle casse. Au bon endroit
+// (le canal de la Tortue), au lieu d'un poisson : la clé de l'escalier du beffroi.
+const PECHE = { it: null, ok: false, phase: null, t: 0, attente: 0, dist: 0, tension: 0, avant: false, x0: 0, z0: 0,
+  bouchon: null, ligne: null, perche: null, cible: new THREE.Vector3(), barre: null };
+PARTAGE.peche = PECHE;               // pour les bancs
+const POISSONS = ['un gardon', 'une perche', 'une brème', 'une petite anguille', 'un rotengle'];
+// le point d'eau devant Camille, entre 2,5 et 6 m, ou null
+function eauDevant() {
+  const fx = Math.sin(player.yaw), fz = Math.cos(player.yaw);
+  for (let d = 2.5; d <= 6; d += 0.5) { const x = player.pos.x + fx * d, z = player.pos.z + fz * d;
+    if (eauVisible(x, z) && sdEau(x, z) < -0.4) return [x, z]; }
+  return null;
+}
+function tickPeche(dt) {
+  if (!state.canne) return;
+  if (!PECHE.it) PECHE.it = addInteract({ pos: new THREE.Vector3(1e6, 0, 1e6), r: 1.2, enabled: () => PECHE.ok && !PECHE.phase && !cut.active,
+    prompt: () => 'pêcher (lancer la ligne)', fn: lancerLigne });
+  // l'invite suit Camille quand elle est face à l'eau, la canne en main
+  PECHE.ok = !PECHE.phase && !G.monte && !!eauDevant();
+  if (PECHE.ok) PECHE.it.pos.copy(player.pos); else PECHE.it.pos.set(1e6, 0, 1e6);
+  if (!PECHE.phase) return;
+  const enter = !!keys.Enter, appui = enter && !PECHE.avant; PECHE.avant = enter;
+  // Camille s'éloigne : elle ramène sa ligne sans rien dire
+  if (Math.hypot(player.pos.x - PECHE.x0, player.pos.z - PECHE.z0) > 1.2 || cut.active) { finPeche(); return; }
+  PECHE.t += dt;
+  const b = PECHE.bouchon, h = getEau(PECHE.cible);
+  if (PECHE.phase === 'vol') {
+    const k = Math.min(1, PECHE.t / 0.6), tip = boutPerche();
+    b.position.lerpVectors(tip, PECHE.cible, k); b.position.y = THREE.MathUtils.lerp(tip.y, h, k) + Math.sin(k * Math.PI) * 1.4;
+    if (k >= 1) { burst(PECHE.cible.x, h + 0.05, PECHE.cible.z, 0xcfe4ff, 10, 1.5, 0.5, 1.2, 0.5); PECHE.phase = 'attente'; PECHE.t = 0; PECHE.attente = rand(2.2, 5); }
+  } else if (PECHE.phase === 'attente') {
+    b.position.set(PECHE.cible.x, h + 0.02 + Math.sin(PECHE.t * 2.4) * 0.025, PECHE.cible.z);
+    if (appui) { showMessage('Patience : attends que le bouchon plonge.', 2); }
+    if (PECHE.t > PECHE.attente) { PECHE.phase = 'touche'; PECHE.t = 0; SFX.chirp(); burst(b.position.x, h + 0.05, b.position.z, 0xcfe4ff, 14, 2, 0.6, 1.4, 0.6); showMessage('Ça mord ! Entrée !', 1.4); }
+  } else if (PECHE.phase === 'touche') {
+    b.position.set(PECHE.cible.x, h - 0.1 + Math.sin(PECHE.t * 30) * 0.03, PECHE.cible.z);
+    if (appui) { PECHE.phase = 'ramene'; PECHE.t = 0; PECHE.tension = 0.25; PECHE.dist = Math.hypot(PECHE.cible.x - player.pos.x, PECHE.cible.z - player.pos.z); }
+    else if (PECHE.t > 1.3) { PECHE.phase = 'attente'; PECHE.t = 0; PECHE.attente = rand(2, 4.5); showMessage('Trop tard : ça a filé.', 2); }
+  } else if (PECHE.phase === 'ramene') {
+    // la prise tire par saccades ; la clé, elle, ne fait que peser (elle ne se débat pas)
+    const cle = estLaCle(), tire = cle ? 0.25 : 0.55 + 0.45 * Math.max(0, Math.sin(PECHE.t * 2.7) * Math.sin(PECHE.t * 1.3 + 1));
+    if (enter) { PECHE.dist -= 1.5 * dt; PECHE.tension += (0.25 + 0.6 * tire) * dt; }
+    else { PECHE.dist += (cle ? 0 : 0.4 * tire) * dt; PECHE.tension -= 0.7 * dt; }
+    PECHE.tension = Math.max(0, PECHE.tension);
+    const fx = Math.sin(player.yaw), fz = Math.cos(player.yaw), d = Math.max(0.6, PECHE.dist);
+    b.position.set(player.pos.x + fx * d, h - 0.05, player.pos.z + fz * d);
+    if (PECHE.tension >= 1) { SFX.hurt(); showMessage('La ligne casse : tu as tiré trop fort. Relâche quand elle se tend.', 4); finPeche(); return; }
+    if (PECHE.dist <= 0.6) { prise(cle); finPeche(); return; }
+  }
+  majLigne();
+  majBarre();
+}
+// la clé est-elle au bout de la ligne ? au canal de la Tortue, tant qu'on ne l'a pas repêchée
+const estLaCle = () => !state.cleBeffroi && !!acte1() && Math.hypot(PECHE.cible.x - CANAL.x, PECHE.cible.z - CANAL.z) < 16;
+// la surface de l'eau (la nappe que dessine carte.js), pas le fond : le bouchon flotte
+function getEau(v) { const e = nappeProche(v.x, v.z); return (e ? e.o.y : getH(v.x, v.z)) + 0.02; }
+function lancerLigne() {
+  const e = eauDevant(); if (!e) return;
+  if (!PECHE.bouchon) {
+    PECHE.bouchon = new THREE.Group();
+    PECHE.bouchon.add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.4 })));
+    PECHE.bouchon.add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6, 0, TAU, Math.PI / 2, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf2efe6, roughness: 0.4 })));
+    PECHE.ligne = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xe8e4d8 }));
+    PECHE.ligne.frustumCulled = false;
+    const L = 3.0; PECHE.perche = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.04, L, 6), phMat('wood_planks', 0.3, 2, { color: 0xb89a70 }));
+    PECHE.perche.geometry.translate(0, L / 2, 0); PECHE.perche.castShadow = true;
+  }
+  scene.add(PECHE.bouchon, PECHE.ligne, PECHE.perche);
+  PECHE.cible.set(e[0], 0, e[1]); PECHE.x0 = player.pos.x; PECHE.z0 = player.pos.z;
+  PECHE.phase = 'vol'; PECHE.t = 0; PECHE.avant = true; SFX.swing();
+  majPerche();
+}
+// la perche part de la main droite de Camille et se lève devant elle
+function majPerche() {
+  const p = PECHE.perche, fx = Math.sin(player.yaw), fz = Math.cos(player.yaw), rx = fz, rz = -fx;
+  p.position.set(player.pos.x + fx * 0.35 - rx * 0.25, player.pos.y + 1.0, player.pos.z + fz * 0.35 - rz * 0.25);
+  p.rotation.set(0, 0, 0); p.rotation.order = 'YXZ'; p.rotation.y = player.yaw; p.rotation.x = PECHE.phase === 'ramene' ? 0.95 : 1.05;
+}
+function boutPerche() { majPerche(); PECHE.perche.updateMatrixWorld(); return new THREE.Vector3(0, 3.0, 0).applyMatrix4(PECHE.perche.matrixWorld); }
+function majLigne() {
+  const a = boutPerche(), b = PECHE.bouchon.position, po = PECHE.ligne.geometry.attributes.position;
+  po.setXYZ(0, a.x, a.y, a.z); po.setXYZ(1, b.x, b.y + 0.07, b.z); po.needsUpdate = true;
+}
+// la jauge de la ligne : visible quand on ramène, verte puis rouge
+function majBarre() {
+  if (!PECHE.barre) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;left:50%;bottom:18%;transform:translateX(-50%);width:220px;padding:6px 10px;border-radius:8px;background:rgba(10,14,20,.6);color:#f2ead8;font:13px system-ui;text-align:center;pointer-events:none;display:none;z-index:20';
+    el.innerHTML = '<div>La ligne — Entrée tenue pour ramener</div><div style="margin-top:5px;height:8px;border-radius:4px;background:rgba(255,255,255,.18)"><div style="height:100%;width:0;border-radius:4px"></div></div>';
+    document.body.appendChild(el); PECHE.barre = el;
+  }
+  const on = PECHE.phase === 'ramene'; PECHE.barre.style.display = on ? 'block' : 'none';
+  if (!on) return;
+  const t = Math.min(1, PECHE.tension), f = PECHE.barre.lastChild.firstChild;
+  f.style.width = `${Math.round(t * 100)}%`; f.style.background = t < 0.6 ? '#7ccf6a' : t < 0.85 ? '#e8c050' : '#e05040';
+}
+function finPeche() {
+  PECHE.phase = null; scene.remove(PECHE.bouchon, PECHE.ligne, PECHE.perche);
+  if (PECHE.barre) PECHE.barre.style.display = 'none';
+}
+function prise(cle) {
+  if (cle) {
+    state.cleBeffroi = true; passerA('cle'); SFX.win();
+    burst(player.pos.x, player.pos.y + 1.4, player.pos.z, 0xc8d070, 26, 3, 1.2, 2, 1.2);
+    dialogue([dit('', 'Au bout de la ligne, verte de vase, pend une grosse clé de fer : LA CLÉ DE L’ESCALIER DU BEFFROI.')]);
+    return;
+  }
+  SFX.pickup();
+  showMessage(`Camille attrape ${POISSONS[Math.floor(rand(0, POISSONS.length))]}… et le rend à l’eau.`, 4);
+}
+
+// ---------- la nuit (étape 5) ----------
+// state.nuit vient du lit de Camille (house.js : « jusqu'au soir », « jusqu'au matin »). Sans
+// toucher au moteur, par ce qu'il exporte : le ciel (ses couleurs, et le soleil caché sous
+// l'horizon), le soleil devenu lune, le ciel d'en bas, la brume ; plus de reflet du ciel de jour
+// (scene.environment). Les lumières de la ville sont PEINTES : une fenêtre sur trois s'allume
+// (émissive, dans le matériau des fenêtres du quartier), les verres des lanternes brillent plus
+// fort, et la lanterne de Désiré luit au sommet du beffroi — pas une seule lumière de plus (règle 8).
+const NUIT = { actif: false, jour: null, ciel: null, lueurs: null, desire: null };
+const SOUS_HORIZON = new THREE.Vector3(0, -1, 0), NUIT_NUAGE = new THREE.Color(0.11, 0.13, 0.19);
+function nuitLille(n) {
+  if (NUIT.desire) NUIT.desire.visible = n && !state.lanterne && !!acte1();
+  if (n === NUIT.actif || !sky || !sky.material.uniforms) return;
+  NUIT.actif = n;
+  const u = sky.material.uniforms;
+  if (!NUIT.jour) NUIT.jour = { top: u.top.value.getHex(), mid: u.mid.value.getHex(), bot: u.bot.value.getHex(), cirrus: u.cirrus.value, soleil: u.sunDir.value,
+    sc: sun.color.getHex(), si: sun.intensity, hc: hemi.color.getHex(), hg: hemi.groundColor.getHex(), hi: hemi.intensity,
+    brume: scene.fog ? scene.fog.color.getHex() : null, env: scene.environment, expo: renderer.toneMappingExposure, bloom: bloom.strength };
+  const J = NUIT.jour;
+  u.top.value.setHex(n ? 0x03070f : J.top); u.mid.value.setHex(n ? 0x0a1428 : J.mid); u.bot.value.setHex(n ? 0x18233a : J.bot);
+  u.cirrus.value = n ? 0.08 : J.cirrus; u.sunDir.value = n ? SOUS_HORIZON : J.soleil;
+  sun.color.setHex(n ? 0x9cb4e8 : J.sc); sun.intensity = n ? 0.5 : J.si;
+  hemi.color.setHex(n ? 0x30426e : J.hc); hemi.groundColor.setHex(n ? 0x0b0d14 : J.hg); hemi.intensity = n ? 0.45 : J.hi;
+  if (scene.fog && J.brume !== null) scene.fog.color.setHex(n ? 0x0a0f1c : J.brume);
+  scene.environment = n ? null : J.env;
+  renderer.toneMappingExposure = n ? 1.15 : J.expo; bloom.strength = n ? 0.45 : J.bloom;
+  if (n && !NUIT.ciel) cielDeNuit();
+  if (NUIT.ciel) NUIT.ciel.visible = n;
+  lueursVille(n);
+}
+// les étoiles et la lune : enfants du ciel, qui suit la caméra
+function cielDeNuit() {
+  const g = new THREE.Group(), N = 900, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const a = rand(0, TAU), y = Math.pow(rand(0.02, 1), 0.7), r = Math.sqrt(1 - y * y);
+    pos.set([Math.cos(a) * r * 600, y * 600, Math.sin(a) * r * 600], i * 3);
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85, depthWrite: false })));
+  // la lune, là où le soleil était : c'est elle qui donne les ombres
+  const lune = new THREE.Mesh(new THREE.SphereGeometry(13, 24, 12), new THREE.MeshBasicMaterial({ color: 0xeef1fa, fog: false }));
+  lune.position.copy(SUN_DIR).multiplyScalar(560); g.add(lune);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texLueur(), color: 0x8fa6d8, transparent: true, opacity: 0.55, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+  halo.position.copy(lune.position); halo.scale.setScalar(120); g.add(halo);
+  sky.add(g); NUIT.ciel = g;
+  // la lanterne de Désiré, dans la chambre des cloches : un halo peint qu'on voit de loin
+  const B = PARTAGE.beffroi;
+  if (B) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texLueur(), color: 0xffb860, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+    s.position.set(...B.lueur); s.scale.setScalar(5); scene.add(s);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.22), new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffa040, emissiveIntensity: 2.5 }));
+    l.position.set(B.desire[0] + Math.sin(B.desire[3] + 1.2) * 0.6, B.desire[1] + 0.16, B.desire[2] + Math.cos(B.desire[3] + 1.2) * 0.6);
+    const d = new THREE.Group(); d.add(s, l); scene.add(d); NUIT.desire = d; d.visible = !state.lanterne && !!acte1();
+  }
+}
+let LUEUR = null;
+function texLueur() {
+  if (LUEUR) return LUEUR;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,0.55)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); LUEUR = new THREE.CanvasTexture(c); return LUEUR;
+}
+// Les fenêtres : le matériau des baies du quartier (quartier.js, texFenetre : un canevas de
+// 128 × 160) reçoit, la nuit, une carte émissive (le verre seul, chaud) ; un tirage par baie,
+// sur le CENTRE de son quadrilatère (retrouvé par les dérivées de l'écran), en allume une sur
+// trois. Les verres chauds (lanternes, devantures) brillent plus fort.
+function lueursVille(n) {
+  if (!NUIT.lueurs) {
+    if (!n) return;
+    const fen = new Set(), chauds = new Set(), nuages = new Set();
+    // les nuages (nature.js : des amas de bouffées) restaient blancs comme en plein jour
+    scene.traverse((o) => { if (o.userData.cloud) o.traverse((b) => { if (b.material && b.material.color) nuages.add(b.material); }); });
+    scene.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) {
+      if (!m || !m.isMeshStandardMaterial) continue;
+      const im = m.map && m.map.image;
+      if (im && im.width === 128 && im.height === 160) fen.add(m);
+      else if (m.emissive && m.emissiveIntensity > 0 && m.emissive.r > 0.5 && m.emissive.g > 0.25 && m.emissive.b < 0.5) chauds.add(m);
+    } });
+    NUIT.lueurs = { fen: [...fen], chauds: [...chauds].map((m) => [m, m.emissiveIntensity]), nuages: [...nuages].map((m) => [m, m.color.getHex()]) };
+    const em = texFenetreNuit();
+    for (const m of NUIT.lueurs.fen) {
+      m.emissiveMap = em; m.emissive.setHex(0x000000); m.emissiveIntensity = 1.6;
+      const avant = m.onBeforeCompile;
+      m.onBeforeCompile = (sh, r) => {
+        if (avant) avant.call(m, sh, r);
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vNuitP;')
+          .replace('#include <project_vertex>', '#include <project_vertex>\n{ vec4 q = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\nq = instanceMatrix * q;\n#endif\nvNuitP = (modelMatrix * q).xyz; }');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vNuitP;')
+          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+          { vec3 px = dFdx(vNuitP), py = dFdy(vNuitP); vec2 ux = dFdx(vEmissiveMapUv), uy = dFdy(vEmissiveMapUv);
+            float det = ux.x * uy.y - ux.y * uy.x; vec3 c = vNuitP;
+            if (abs(det) > 1e-9) { vec3 du = (px * uy.y - py * ux.y) / det, dv = (py * ux.x - px * uy.x) / det;
+              c = vNuitP - du * (vEmissiveMapUv.x - 0.5) - dv * (vEmissiveMapUv.y - 0.5); }
+            float h = fract(sin(dot(floor(c * 0.8 + 0.5), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+            totalEmissiveRadiance *= step(0.66, h) * (0.65 + 0.7 * fract(h * 13.0)); }`);
+      };
+      m.customProgramCacheKey = () => 'fenetre-nuit';
+      m.needsUpdate = true;
+    }
+  }
+  for (const m of NUIT.lueurs.fen) m.emissive.setHex(n ? 0xffb35c : 0x000000);
+  for (const [m, i0] of NUIT.lueurs.chauds) m.emissiveIntensity = n ? i0 * 3 : i0;
+  for (const [m, c0] of NUIT.lueurs.nuages) { m.color.setHex(c0); if (n) m.color.multiply(NUIT_NUAGE); }
+}
+// le verre d'une baie la nuit : la même découpe que texFenetre (quartier.js), le reste noir
+function texFenetreNuit() {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 160; const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, 128, 160);
+  const X0 = 27, Y0 = 16, W = 74, H = 128, grd = g.createLinearGradient(0, Y0, 0, Y0 + H);
+  grd.addColorStop(0, '#ffcf8a'); grd.addColorStop(1, '#e88a3a'); g.fillStyle = grd; g.fillRect(X0, Y0, W, H);
+  g.strokeStyle = '#3a2410'; g.lineWidth = 2; g.save(); g.beginPath(); g.rect(X0, Y0, W, H); g.clip();
+  for (let k = -H; k < W + H; k += 13) { g.beginPath(); g.moveTo(X0 + k, Y0); g.lineTo(X0 + k + H, Y0 + H); g.stroke(); g.beginPath(); g.moveTo(X0 + k, Y0 + H); g.lineTo(X0 + k + H, Y0); g.stroke(); }
+  g.restore(); g.fillStyle = '#000'; g.fillRect(X0 + W / 2 - 4, Y0, 8, H); g.fillRect(X0, Y0 + H * 0.42, W, 7);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
 // ---------- situation finale ----------

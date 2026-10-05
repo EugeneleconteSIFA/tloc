@@ -51,8 +51,12 @@ function devinette() {
   return DEVINETTES[state.enigmeBeffroi];
 }
 
-/** L'énigme du sommet du beffroi. À appeler depuis l'interaction, là-haut. */
-export function enigme() {
+/** L'énigme du sommet du beffroi. À appeler depuis l'interaction, là-haut.
+ *  `qui` (acte I) : c'est Désiré qui la pose, de vive voix, pour sa lanterne —
+ *  { titre, sous, intro, gagne(d), perd() } ; la carte du coffret vient avec la bonne
+ *  réponse (la même devinette ne se pose pas deux fois au même sommet). */
+export function enigme(qui = null) {
+  if (qui && qui.titre) return enigmePosee(qui);
   if (aLaCarte()) {
     showMessage('Tu as déjà la carte du guetteur. Appuie sur M pour l’ouvrir.', 4);
     return;
@@ -73,6 +77,22 @@ export function enigme() {
   items.push({ label: 'Redescendre sans répondre', fn: () => { hideMenu(); resumeGame(); } });
   showMenu('LA DEVINETTE DU GUETTEUR', 'Au sommet du beffroi',
     `Un coffret de bois est posé sur le rebord, fermé par une planchette gravée.\n\n« ${d.q} »`, items);
+}
+
+function enigmePosee(qui) {
+  const d = devinette();
+  state.paused = true;
+  const items = d.r.map((texte, i) => ({
+    label: texte,
+    fn: () => {
+      hideMenu(); resumeGame();
+      if (i !== d.bonne) { SFX.hurt(); qui.perd(); return; }
+      state.carteBeffroi = true; saveGame(true);
+      qui.gagne(d);
+    },
+  }));
+  items.push({ label: 'Ne rien répondre', fn: () => { hideMenu(); resumeGame(); } });
+  showMenu(qui.titre, qui.sous, `${qui.intro}\n\n« ${d.q} »`, items);
 }
 
 // =====================================================================

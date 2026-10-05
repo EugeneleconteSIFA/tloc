@@ -7,6 +7,7 @@ import { THREE, rand, TAU, scene, G, T, mat, pbr, pbrRepeat, stoneMat, IRON, GOL
   burst, lerp } from './engine.js?v=41';
 import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
+import { etapeActe1 } from './etat.js';
 
 const W = 12, D = 9, H = 5.2;              // pièce (unités de construction) ; tout est agrandi par SC pour être à l'échelle de Camille
 const SC = 1.3;
@@ -26,7 +27,7 @@ const V = (x, y, z) => new THREE.Vector3(x * SC, y * SC, z * SC);
 // sortie = HOUSE + 6,6 m a l'est de son centre (la porte est a l'est). HOUSE suit ECH,
 // donc cette constante est a REPORTER a chaque changement d'echelle du plan.
 const EXIT = { level: 'citadel', pos: [-74.4, 0, 398.4], yaw: Math.PI / 2 };
-let fire, lamps = [], cat, coffre, armoire;
+let fire, lamps = [], cat, coffre, armoire, winMat;
 
 function build() {
   makeSky(0x4a78b8, 0x9fc4e8, 0xe8e2d8, true);
@@ -60,7 +61,7 @@ function build() {
   // passer la scène d'arrivée… et ressortait aussitôt
   addInteract({ pos: V(0, 0, D / 2 - 0.4), r: 1.0 * SC, prompt: () => 'sortir de la maison', fn: () => goToLevel(EXIT.level, EXIT.pos, EXIT.yaw, 'Camille sort dans le bois…') });
   // fenêtres lumineuses (nord et ouest) avec croisillons et rideaux
-  const winMat = mat(0xfff4d8, { roughness: 0.15, emissive: 0xffe0a0, emissiveIntensity: 0.7 });
+  winMat = mat(0xfff4d8, { roughness: 0.15, emissive: 0xffe0a0, emissiveIntensity: 0.7 });
   for (const [x, z, rot] of [[-3, -D / 2, 0], [3, -D / 2, 0], [-W / 2, -1.2, Math.PI / 2]]) {
     const g = new THREE.Group(); g.position.set(x, 2.2, z); g.rotation.y = rot;
     g.add(mesh(boxG(1.6, 1.6, 0.2), winMat, 0, 0, 0)); g.add(mesh(boxG(1.7, 0.08, 0.3), wood, 0, 0, 0)); g.add(mesh(boxG(0.08, 1.7, 0.3), wood, 0, 0, 0)); g.add(mesh(boxG(1.9, 0.12, 0.5), wood, 0, -0.9, 0));
@@ -199,27 +200,42 @@ function ouvrirCoffre() {
 }
 function bedMenu() {
   state.paused = true;
-  showMenu('LE LIT DE CAMILLE', 'La maison est calme', 'Le feu crépite, le chat ronronne, et la citadelle attend dehors.', [
-    { label: 'Dormir (récupérer tous les cœurs et sauvegarder)', fn: () => { hideMenu(); state.paused = false; sleepScene(); } },
+  // L'ACTE I (docs/DECOUPAGE-ACTE1.md § 5) : Désiré ne se montre que la nuit. On dort « jusqu'au
+  // soir » (state.nuit, que Lille lit à la sortie : quetes.js, nuitLille), puis « jusqu'au matin ».
+  // Une ancienne partie (sans le prologue joué) ne connaît que le sommeil d'avant.
+  const acte = !!etapeActe1(state);
+  showMenu('LE LIT DE CAMILLE', state.nuit ? 'La nuit est tombée' : 'La maison est calme', 'Le feu crépite, le chat ronronne, et la citadelle attend dehors.', [
+    { label: state.nuit ? 'Dormir jusqu’au matin (récupérer tous les cœurs et sauvegarder)' : 'Dormir (récupérer tous les cœurs et sauvegarder)', fn: () => { hideMenu(); state.paused = false; sleepScene(false); } },
+    ...(acte && !state.nuit ? [{ label: 'Dormir jusqu’au soir', fn: () => { hideMenu(); state.paused = false; sleepScene(true); } }] : []),
     { label: 'Sauvegarder', fn: () => { saveGame(); resumeGame(); } },
     { label: 'Sauvegarder et quitter', fn: () => { saveGame(true); sessionStorage.removeItem('tloc_auto'); naviguer('index.html'); } },
     { label: 'Se relever', fn: resumeGame },
   ]);
 }
 // cinématique du coucher : Camille s'allonge vraiment dans le lit, la nuit tombe, elle se réveille
-function sleepScene() {
+// (au matin ; ou, `soir`, à la nuit tombée : state.nuit)
+function sleepScene(soir) {
   const bx = -4.2 * SC, bz = -2.6 * SC, top = 0.83 * SC; // lit en coordonnées monde
   cutscene([
     { cam: [bx + 4.5, 2.8 * SC, bz + 3.5], at: [bx, 1.0, bz], dur: 2.2, walk: [bx + 1.6, bz + 0.3], speed: 3, text: 'Camille souffle la lampe…' },
     { cam: [bx + 4.5, 2.8 * SC, bz + 3.5], at: [bx, 1.0, bz], cam2: [bx + 3.2, 2.6 * SC, bz + 2.8], at2: [bx, 0.9, bz - 0.4], dur: 4, pose: 'lie', pos: [bx, top, bz + 1.3], yaw: 0, text: '…et s\'allonge dans le lit. Le feu crépite, le chat ronronne.', fn: () => { lamps.forEach(l => { l.userData.base = l.intensity; }); } },
     { cam: [bx + 3.2, 2.6 * SC, bz + 2.8], at: [bx, 0.9, bz - 0.4], dur: 2.5, fade: 1, fn: () => { let k = 0; const iv = setInterval(() => { lamps.forEach(l => l.intensity *= 0.7); if (++k > 8) clearInterval(iv); }, 200); } },
-    { cam: [bx + 3.2, 2.6 * SC, bz + 2.8], at: [bx, 0.9, bz - 0.4], dur: 2.2, text: 'Camille dort profondément. La nuit passe sur la citadelle…', fn: () => { SFX.chirp(); } },
-    { cam: [bx + 3.5, 2.6 * SC, bz + 3], at: [bx, 0.9, bz], cam2: [bx + 4.5, 2.8 * SC, bz + 3.5], at2: [bx, 1.0, bz], dur: 3, fade: 0, text: 'Le matin. Camille se réveille en pleine forme.', fn: () => { player.hp = player.maxHp; lamps.forEach(l => { l.intensity = l.userData.base || l.intensity; }); saveGame(true); SFX.win(); } },
+    { cam: [bx + 3.2, 2.6 * SC, bz + 2.8], at: [bx, 0.9, bz - 0.4], dur: 2.2, text: soir ? 'Camille dort tout l’après-midi. Le jour baisse sur la citadelle…' : 'Camille dort profondément. La nuit passe sur la citadelle…', fn: () => { SFX.chirp(); } },
+    { cam: [bx + 3.5, 2.6 * SC, bz + 3], at: [bx, 0.9, bz], cam2: [bx + 4.5, 2.8 * SC, bz + 3.5], at2: [bx, 1.0, bz], dur: 3, fade: 0,
+      text: soir ? 'Le soir. Dehors, il fait nuit noire ; les fenêtres du bourg s’allument.' : 'Le matin. Camille se réveille en pleine forme.',
+      fn: () => { player.hp = player.maxHp; state.nuit = !!soir; nuitMaison(); lamps.forEach(l => { l.intensity = l.userData.base || l.intensity; }); saveGame(true); SFX.win(); } },
     { pose: null, dur: 0.6, cam: [bx + 4.5, 2.8 * SC, bz + 3.5], at: [bx, 1.0, bz], fn: () => { player.pos.set(bx + 1.6, 0, bz + 0.3); player.yaw = Math.PI / 2; } },
   ], () => { showMessage('Tous les cœurs sont récupérés. Partie sauvegardée.', 3.5); });
 }
+// les fenêtres de la maison : le jour qui entre, ou la nuit (bleu sombre, plus de lueur)
+function nuitMaison() {
+  if (!winMat) return;
+  winMat.color.setHex(state.nuit ? 0x1a2238 : 0xfff4d8); winMat.emissive.setHex(state.nuit ? 0x0a1022 : 0xffe0a0);
+  winMat.userData.nuit = !!state.nuit;
+}
 function populate() { player.pos.set(0, 0, 2.9 * SC); player.yaw = Math.PI; G.camYaw = Math.PI; }
 function animate(now, dt) {
+  if (winMat && winMat.userData.nuit !== !!state.nuit) nuitMaison();   // la sauvegarde relue après le décor
   if (coffre) coffre.userData.lid.rotation.x = lerp(coffre.userData.lid.rotation.x, state.bourseChest ? -1.9 : 0, 1 - Math.exp(-6 * dt));
   if (fire) { fire.userData.flame.scale.y = 2.2 + Math.sin(now / 55) * 0.5; fire.userData.light.intensity = 8 * (0.85 + Math.sin(now / 40) * 0.15); }
   if (cat) cat.userData.tail.rotation.z = -0.8 + Math.sin(now / 600) * 0.4;

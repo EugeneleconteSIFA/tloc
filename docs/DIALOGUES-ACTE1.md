@@ -64,8 +64,8 @@ Camille parle peu, comme Link : elle agit plus qu'elle ne parle.
 | `fete` | I | « La première botte de l'année ! Coupe **les épis du champ du nord**, une dizaine suffit. Tiens la lame à plat. » | épée |
 | `ble` | I | « La plus belle depuis des années. **Au pont de Fin**, et que Lydéric la voie de loin. » | — |
 | `grille` | S | « Le canyon, derrière le bois ? Personne n'en est jamais revenu. Au fond, l'eau est si froide qu'elle coupe le souffle. » | — |
-| `grille` | I | *(si l'enquête a mené à Gustave)* « La clé de l'escalier du beffroi ? Ah… Ce matin, en courant à la fête, elle m'a glissé de la poche. **Elle est au fond du canal, sous le moulin.** **Le vieux pêcheur du quai** a une canne, lui. » | — |
-| `canne` | I | « Tu as la canne du vieux ? **Lance juste sous la roue du moulin**, c'est là qu'elle est tombée. Et dis à Désiré que sa bouteille l'attend. » | canne |
+| `grille` | I | *(si l'enquête a mené à Gustave)* « La clé de l'escalier du beffroi ? Ah… Ce matin, en courant à la fête, elle m'a glissé de la poche. **Elle est au fond du canal de la Tortue, derrière le moulin.** **Le vieux pêcheur du quai** a une canne, lui. » | — |
+| `canne` | I | « Tu as la canne du vieux ? **Lance dans le canal de la Tortue, derrière le moulin**, c'est là qu'elle est tombée. Et dis à Désiré que sa bouteille l'attend. » | canne |
 | `cle` | I | « Désiré ne se montre qu'à la nuit, tu sais. **Dors un peu chez toi, et monte après minuit.** » | — |
 | `lanterne` | A | « Tu l'as trouvé, ce vieux hibou ? Il t'a posé une devinette, je parie. » | — |
 
@@ -101,6 +101,14 @@ Camille parle peu, comme Link : elle agit plus qu'elle ne parle.
    chaud.* → **le morceau de cloche** (personne n'en parle en gras avant l'acte VI).
 
 ---
+
+### Les habitants du bourg qui n'ont rien à dire de l'enquête (ambiance, étape `grille`)
+
+| qui | type | réplique |
+|---|---|---|
+| Aldegonde | A | « Les volets sont fermés partout. Ma mère disait que la Grande Cloche ne se fendrait jamais. » |
+| Baptiste | A | « Personne n'a mangé une gaufre depuis midi. Un jour de fête, ça ne s'était jamais vu. » |
+| Fernande | A | « Mon homme est des dix qui poussent la grille. Il rentrera trempé de sueur, et bredouille. » |
 
 ## Les aides du bourg et de la ville
 
@@ -168,6 +176,7 @@ crie la dernière nouvelle, puis ce qu'on attend de la garde — c'est-à-dire l
 | étape | type | réplique | besoin |
 |---|---|---|---|
 | `fete` | A | « Tout le monde court à la fête. Moi, je reste avec les poissons. Eux, au moins, ils ne crient pas. » | — |
+| `grille` | A | *(avant qu'on lui parle de canne)* « La cloche s'est tue, et les poissons aussi. Ils sentent ces choses-là, les poissons. » | — |
 | `grille` | I | « Ma canne ? Je veux bien te la prêter. Mais on ne pêche pas sans vers : **il y en a plein dans le champ d'Émile, là où tu as coupé le blé.** » | — |
 | `grille` | I | *(avec les vers)* « Bien gras. **Tiens, la canne.** Lance, attends que le bouchon plonge, et ramène doucement. Doucement, j'ai dit. » → **la canne à pêche** | — |
 | `canne` | A | « Alors, ça mord ? » | — |
@@ -204,6 +213,7 @@ crie la dernière nouvelle, puis ce qu'on attend de la garde — c'est-à-dire l
 
 | étape | type | réplique | besoin |
 |---|---|---|---|
+| `grille` | A | *(la porte basse, sans la clé)* — *Camille* : « Fermé à clé. » | — |
 | `cle` | A | *(de jour, porte close, aucune lumière là-haut)* — *Camille* : « Il n'est pas là. L'allumeur a dit : seulement la nuit. » | — |
 | `cle` | A | *(la nuit)* « Qui t'a donné la clé ? Émile. Évidemment. Il l'a repêchée ? Ah, c'est toi. » | — |
 | `cle` | S | « C'est moi qui ai laissé la corde au petit. Je ne me le pardonnerai pas. » | — |
