@@ -116,7 +116,8 @@ if (actif) {
     bourse: true, bourseChest: true,     // même équipement pour tout le monde : les duels restent justes
     // la carte du beffroi (M) : en solo, on la gagne au sommet du beffroi ; en instance, on
     // l'a d'office — c'est là qu'on voit les drapeaux et les siens (Eugène)
-    carteBeffroi: true,
+    // (seulement à Lille : la carte est celle de la châtellenie, M l'ouvrait au Batut)
+    carteBeffroi: aLille(),
   });
 
   // l'aide des touches (engine.js) : pas de journal en instance, mais le chat
@@ -1444,11 +1445,16 @@ const PLAN_OBJETS = [
   { id: 'cheval-beige', type: 'cheval', lieu: (L) => L.find((l) => l.id === 'moulin'), nom: 'à l’écurie du moulin' },
   { id: 'cheval-blanc', type: 'cheval', lieu: (L) => L.find((l) => l.id === 'mage'), nom: 'à l’écurie du vieux mage' },
 ];
-const LIEU_OBJET = Object.fromEntries(PLAN_OBJETS.map((p) => [p.id, p.nom]));
+// le lieu d'un objet, pour les messages (« prend l'arc à la poterne ») : celui de l'arène
+const LIEU_OBJET = new Proxy({}, { get: (_, id) => (planObjets().find((p) => p.id === id) || PLAN_OBJETS.find((p) => p.id === id) || {}).nom });
 // seulement ceux qui tombent dans l'aire de départ de l'arène : depuis que la partie se joue
 // dans la citadelle (Eugène, 5 octobre), les chevaux du moulin et du mage et l'arc de la
 // chapelle sont dehors — on brûlerait en allant les chercher
-const planObjets = () => PLAN_OBJETS.filter((p) => { const l = p.lieu(lieux); return l && !horsAire(l.x, l.z, premiereAire()); });
+// Une arène peut déclarer les siens (`objets` : { id, type, x, z, nom }) : au Batut, l'arc dans
+// la bibliothèque, l'armure dans la chambre ; sans quoi, ceux de Lille.
+const planObjets = () => (arene && arene.objets
+  ? arene.objets.map((o) => ({ id: o.id, type: o.type, nom: o.nom, lieu: () => ({ x: o.x, z: o.z }) }))
+  : PLAN_OBJETS.filter((p) => { const l = p.lieu(lieux); return l && !horsAire(l.x, l.z, premiereAire()); }));
 const NOM_TYPE = { armure: 'l’armure', bouclier: 'l’écu', arc: 'l’arc', cheval: 'le cheval' };
 const COULEUR_TYPE = { armure: '#c9ccd2', bouclier: '#d0463a', arc: '#7fbf5a', cheval: '#b07a3e' };
 const ARMURE_PTS = [0, 8, 10, 12];          // demi-cœurs encaissés : cuir clouté (4 cœurs), mailles, plates
@@ -1464,7 +1470,10 @@ const mien = (type) => objets.find((o) => o.type === type && moi && o.porteur ==
 // client qui connaît la carte les propose ; le serveur garde ce premier choix pour tous
 // (et complète ceux qui manquent, d'un client plus récent).
 function proposerObjets() {
-  if (objetsProposes || !lieux.length || !state.running) return;
+  // pas avant d'être entré au salon : au Batut (2,5 s de chargement), la partie tournait avant la
+  // réponse du serveur, l'envoi se perdait, et `objetsProposes` interdisait de recommencer
+  if (objetsProposes || !moi || !ws || ws.readyState !== 1) return;
+  if ((!lieux.length && !(arene && arene.objets)) || !state.running) return;   // le Batut n'a pas de lieux nommés
   const liste = [];
   for (const pl of planObjets()) {
     const l = pl.lieu(lieux);

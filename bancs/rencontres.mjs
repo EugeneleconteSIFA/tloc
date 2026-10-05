@@ -158,6 +158,8 @@ while (Date.now() - debut < FENETRE * 1000) {
 }
 marche = false;
 await Promise.all(promeneurs);
+const nObjets = await pages[0].page.evaluate(() => (window.TLOC_MULTI.equipement().objets || []).length).catch(() => '?');
+console.log('objets posés dans l’arène : ' + nObjets);
 // à regarder : ce que voient deux des joueurs, et la carte M (la limite de l'aire y est tracée)
 const JOUR = new Date().toISOString().slice(0, 10);
 for (const [k, { page }] of pages.slice(0, 2).entries()) await page.screenshot({ path: DIR + `rencontres-${JOUR}-${ETIQ}-joueur${k + 1}.jpg`, quality: 80 });

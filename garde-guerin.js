@@ -28,6 +28,13 @@ const ARENE_GARDE = {
   campsTexte: 'La garde de la tour contre les muletiers de la Régordane, qui ne veulent plus payer le péage.',
   // chacun part de chez lui : la garde au pied de sa tour, les muletiers à l'auberge
   departsCamps: { garnison: [1822, -5366], bourg: [1766, -5336] },
+  objets: [
+    { id: 'armure-tour', type: 'armure', x: 1818, z: -5360, nom: 'au pied de la tour' },
+    { id: 'armure-auberge', type: 'armure', x: 1770, z: -5330, nom: 'devant l’auberge' },
+    { id: 'arc-eglise', type: 'arc', x: 1846, z: -5328, nom: 'sur le parvis de Saint-Michel' },
+    { id: 'arc-four', type: 'arc', x: 1794, z: -5322, nom: 'au four banal' },
+    { id: 'bouclier', type: 'bouclier', x: 1815, z: -5340, nom: 'sur la place du village' },
+  ],
   pointsForts: () => [
     { id: 'place', nom: 'la place du village', x: 1815, z: -5340 },
     { id: 'tour', nom: 'le pied de la tour', x: 1822, z: -5366 },

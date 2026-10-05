@@ -19,6 +19,7 @@
 import * as PNJ_E from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
+import { PARTAGE } from './etat.js';
 import { THREE, TAU, scene, G, PH, phMat, boxG, hemi, sun, renderer, bloom, addCap, addBox,
   showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
 
@@ -176,7 +177,15 @@ function maison(cle) {
     poser(boite(2.4, 1.6, 0.7, 'granite_tile_03', { color: 0xbab4a8 }), fx, 0.8, fz); addBox(fx - 1.2, fx + 1.2, fz - 0.35, fz + 0.35, 1.6);
     poser(new THREE.Mesh(boxG(1.4, 0.8, 0.1), new THREE.MeshBasicMaterial({ color: 0xff8a3a })), fx, 0.5, fz - 0.36);
     poser(boite(2.8, 1.6, 0.5, 'stone_wall', { color: 0xa09888 }), fx, 2.4, fz + 0.05); }
-  meuble(mx(1.6), 8.6, 0.9, 2.4, 0.85, 'fabric_pattern_07', 0x8a4a3a); meuble(mx(4.6), 8.6, 0.9, 2.4, 0.85, 'fabric_pattern_07', 0x8a4a3a);
+  // deux canapés face à face, la table basse entre eux : l'assise, le dossier côté mur, les accoudoirs
+  const canape = (u, dos) => {
+    const x = mx(u), dx = s * dos;                       // dos : +1 le dossier côté fond, −1 côté façade
+    poser(boite(0.9, 0.45, 2.4, 'fabric_pattern_07', { color: 0x7a3e32 }), x, 0.225, 8.6);
+    poser(boite(0.22, 0.95, 2.4, 'fabric_pattern_07', { color: 0x6e362c }), x + dx * 0.36, 0.475, 8.6);
+    for (const sz of [-1, 1]) poser(boite(0.9, 0.65, 0.2, 'fabric_pattern_07', { color: 0x6e362c }), x, 0.325, 8.6 + sz * 1.1);
+    addBox(x - 0.45, x + 0.45, 8.6 - 1.2, 8.6 + 1.2, 0.95);
+  };
+  canape(1.6, -1); canape(4.6, 1);
   meuble(mx(3.1), 8.6, 1.0, 1.4, 0.45, BOIS, SOMBRE); meuble(mx(1.2), 4.4, 0.9, 0.9, 0.95, 'fabric_pattern_07', 0x6a5a3a);
   // la salle à manger : la longue table, le buffet contre le pignon, une desserte
   meuble(mx(3), -7.5, 1.1, 4.2, 0.78, BOIS, SOMBRE); meuble(mx(3), -DEMI + 0.45, 2.6, 0.6, 1.1, BOIS, SOMBRE);
@@ -295,6 +304,12 @@ function minimap(g, W2) {
   for (const [ax, az, bx, bz] of HAIES) { const [a, b] = P(ax, az), [c, d] = P(bx, bz); g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
   g.strokeStyle = '#3a2e24'; g.lineWidth = Math.max(1.5, 0.35 * sc);
   for (const [ax, az, bx, bz] of MURS) { const [a, b] = P(ax, az), [c, d] = P(bx, bz); g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
+  // la limite de l'aire du multi (PARTAGE.aires, posée par tloc-multi.js) : pleine, celle en
+  // vigueur ; en tirets, celle qui s'annonce
+  for (const a of PARTAGE.aires || []) {
+    g.save(); g.strokeStyle = a.couleur; g.lineWidth = 2; g.setLineDash(a.tirets ? [5, 4] : []);
+    g.beginPath(); a.pts.forEach(([x, z], k) => { const [u, v] = P(x, z); k ? g.lineTo(u, v) : g.moveTo(u, v); }); g.stroke(); g.restore();
+  }
   minimapDots(g, P);
 }
 
@@ -318,6 +333,15 @@ const ARENE_BATUT = {
   // chacun arrive dans son vestibule
   departsCamps: { garnison: [-(FACADE + 3), 0], bourg: [FACADE + 3, 0] },
   dispersion: 2.5,                       // on reste dans son vestibule (6 × 6 m)
+  // de quoi fouiller les maisons : l'armure dans la chambre, l'arc dans la bibliothèque, de
+  // chaque côté ; l'écu, un seul, au bord du bassin — on se le dispute au milieu du jardin
+  objets: [
+    { id: 'armure-batut', type: 'armure', x: -(FACADE + 14), z: -8, nom: 'dans la chambre du Batut' },
+    { id: 'armure-beauregard', type: 'armure', x: FACADE + 14, z: -8, nom: 'dans la chambre de Beauregard' },
+    { id: 'arc-batut', type: 'arc', x: -(FACADE + 14), z: 7.3, nom: 'dans la bibliothèque du Batut' },
+    { id: 'arc-beauregard', type: 'arc', x: FACADE + 14, z: 7.3, nom: 'dans la bibliothèque de Beauregard' },
+    { id: 'bouclier', type: 'bouclier', x: 0, z: 6, nom: 'au bord du bassin' },
+  ],
   pointsForts: () => [
     { id: 'bassin', nom: 'le bassin', x: 0, z: 0 },
     { id: 'parterre-no', nom: 'le parterre nord-ouest', x: -18, z: -14 },

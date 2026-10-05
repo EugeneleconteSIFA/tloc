@@ -16,6 +16,7 @@ import { especeGeo } from './foret.js';
 import { construireHameau, potagers, murets, panneau, graine } from './pouget-bati.js';
 import { planterArbresDePres } from './pouget-arbres.js';
 import { enclos } from './pouget-enclos.js';
+import { PARTAGE } from './etat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const DIR = 'carte/mondes/';
@@ -246,6 +247,12 @@ function minimap(g, W2) {
   g.fillStyle = '#7a8a5a'; g.fillRect(0, 0, W2, W2);
   if (R && R.arbres) { g.fillStyle = '#4a6a3a'; for (const [x, z] of R.arbres) { const [a, b] = P(x, z); g.fillRect(a - 1, b - 1, 2, 2); } }
   g.fillStyle = '#6a6460'; for (const m of MAISONS) { g.beginPath(); m.pts.forEach(([x, z], k) => { const [a, b] = P(x, z); k ? g.lineTo(a, b) : g.moveTo(a, b); }); g.fill(); }
+  // la limite de l'aire du multi (PARTAGE.aires, posée par tloc-multi.js) : pleine, celle en
+  // vigueur ; en tirets, celle qui s'annonce
+  for (const a of PARTAGE.aires || []) {
+    g.save(); g.strokeStyle = a.couleur; g.lineWidth = 2; g.setLineDash(a.tirets ? [5, 4] : []);
+    g.beginPath(); a.pts.forEach(([x, z], k) => { const [u, v] = P(x, z); k ? g.lineTo(u, v) : g.moveTo(u, v); }); g.stroke(); g.restore();
+  }
   minimapDots(g, P);
 }
 // devant une maison du plan des gîtes, son nom ; ailleurs, le hameau
@@ -283,6 +290,13 @@ const ARENE_POUGET = {
   },
   campsTexte: 'Ceux d’en haut contre ceux d’en bas, d’un bout à l’autre du hameau.',
   departsCamps: { garnison: [-28, -6], bourg: [26, 26] },
+  objets: [
+    { id: 'armure-haut', type: 'armure', x: -30, z: -12, nom: 'en haut du hameau' },
+    { id: 'armure-bas', type: 'armure', x: 30, z: 30, nom: 'en bas du hameau' },
+    { id: 'arc-ouest', type: 'arc', x: -36, z: 22, nom: 'au bout ouest' },
+    { id: 'arc-est', type: 'arc', x: 38, z: -24, nom: 'au bout est' },
+    { id: 'bouclier', type: 'bouclier', x: 0, z: 5, nom: 'au milieu du hameau' },
+  ],
   pointsForts: () => [
     { id: 'milieu', nom: 'le milieu du hameau', x: 0, z: 5 },
     { id: 'haut', nom: 'le haut du hameau', x: -28, z: -6 },
