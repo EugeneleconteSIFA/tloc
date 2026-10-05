@@ -2070,7 +2070,11 @@ depuis la mer.
 `bloque(…, 3)` ne les écartait que de 3 m. `jungle()` ne plante plus rien au-dessus de 100 m sur le grand piton
 (le plateau et la bosse du chedi : une esplanade, comme au vrai temple), ni à moins de 12 m d'un bâtiment du
 grand piton. Banc : 20/20, 36/36, 3,2 s, jungle 61 → 49 ms. Planche : `…-realisme-temples-degages-vues.png`.
-Reste : l'esplanade est en herbe ; au vrai Wat Tham Suea, elle est dallée.
+**L'esplanade dallée** (Eugène, même soir : « oui dalle la ») : `esplanade()`, des dalles claires sur tout le
+sommet au-dessus de 100 m où la pente reste sous 0,6 (les bords de falaise gardent leur roche), posées sur
+le maillage du sol. worn_tile_floor a le bon dessin mais il est sombre (le plateau faisait une tache noire
+d'en haut) : éclairci dans le shader, comme parois() ; le marbre, essayé, n'avait pas de joints. 18 ms au
+chargement, A/B sans surcoût ; parcours 20/20 et 36/36. Planche : `…-realisme-esplanade-vues.png`.
 
 #### Aveyron : les intérieurs des trois maisons (5 octobre, `c6735bc`)
 
@@ -2110,6 +2114,46 @@ y toucher, mais DANS les maisons d'aveyron.js, à leurs vraies dimensions : on p
 - **Reste** : les étages (escaliers praticables, `addRamp` et `addHelix` comme au Batut du multi :
   sans plancher tourné, il faudra des capsules à plancher) ; les portes qu'on ferme ; la pénombre ;
   l'aïeule dans sa salle à manger.
+
+#### Aveyron : les étages, les portes, les cours (5 octobre, `b8b4644`)
+
+Eugène : « fais les trois points qui restent (étages, portes qu'on ferme, pénombre ; l'aïeule) et ajoute
+de la végétation, des éléments (animaux, arbres, bancs, tonneaux) ».
+- **Les étages** : le moteur a un plancher qui suit une maison tournée, le « segment à bouts carrés »
+  (`world.platforms.push({ seg: true, carre: true, … })`, comme citadelle.js et village.js), et des
+  rampes dans n'importe quelle direction (`addRamp`). `interieur().etage()` pose les planchers,
+  `.escalier()` la rampe, ses marches, les deux limons (des capsules dès 60 cm de haut, qui font
+  garde-corps en haut) et une barre sous la marche haute, à 2 m (rez-de-chaussée seulement). Les
+  capsules de l'étage ont un plancher (`interieur(g, monde, y, -0.4)`) : elles n'arrêtent pas qui
+  passe dessous.
+  - le Batut : l'escalier longe le mur de la bibliothèque (5,4 m, 31°), la chambre du maître ;
+  - le Pouget : l'escalier au milieu du hall (3,6 m, 42°), le palier, la chambre de l'aïeule (ses
+    deux portraits, un Batut et un Beauregard) et la chambre bleue ; un mur ferme le haut de la tour ;
+  - Beauregard : l'escalier au milieu du hall, la chambre et le bureau. La vis de la tour reste un
+    décor : tous les tracés essayés barraient le passage du bas, de la porte au hall.
+- **Appris (Camille a 0,5 m de rayon)** : au pied d'un escalier, il faut, entre le mur et le bout du
+  limon, la place d'y monter de côté ; en haut, un palier d'au moins 1,2 m avant tout mur ; une barre
+  sous la marche haute arrête aussi celui qui arrive en haut si elle monte au-delà de 2 m.
+- **La sonde** (`bancs/lieu-aveyron.mjs`, `sonde`) marche avec `tryMove` (rayon 0,5) et `getH` à la
+  hauteur où l'on est, de la porte de chaque maison à sa chambre de l'étage : les trois arrivent
+  (3,22, 3,32 et 3,32 m). Le banc de grille ne juge plus ce qui est dans une maison, puisqu'il ne
+  connaît pas les étages.
+- **Les portes qu'on ferme** (`.porte()`) : le battant pivote ; fermée, une capsule barre le passage ;
+  ouverte, son rayon passe à 0 (« grille ouverte », engine.js). Une interaction « ouvrir / fermer » à
+  chaque porte intérieure. La cuisine du Batut est fermée au départ.
+- **La pénombre** : des plafonds et des murs plus sombres dans la bibliothèque, les cuisines et le bureau,
+  des chandelles qui luisent. Aucune lumière nouvelle.
+- **L'aïeule** est au bout de sa table, dans la salle à manger du Pouget.
+- **Le tissu** : la laine bouclée est à carreaux ; on garde son relief et sa rugosité, sans son image de
+  couleur (`drap()`).
+- **Les cours et les prés** (`garnir()`) : 3 charrettes, 3 tas de bois, 9 tonneaux, 6 bancs de pierre
+  (devant chaque maison, à la fontaine, au ponton, au barrage, au pêcheur), 3 abreuvoirs à sec,
+  6 meules de foin, 3 chevaux blancs qui broutent ; chacun a sa capsule. Dans `arbres()`, 2 345 touffes
+  d'herbe sèche (au bord des chemins, au pied de la lisière, par plaques dans les prés).
+- Mesures : chargement 4,4 s ; étapes « maisons Roquette » 266 ms, « cours et prés » 32 ms ; rues
+  praticables 100 %, 26 cibles sur 26 hors des maisons. Planche : `…-regard-garnir-5-vues.png`.
+- **Reste** : la vis de Beauregard praticable ; les étages des corps bas du Batut ; des animaux de
+  basse-cour (le jeu n'a pas de modèle de poule ni de chien) ; le châtaignier et le genêt (`foret.js`).
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
