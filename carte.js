@@ -2323,7 +2323,7 @@ export function solVille(pas = 6) {
       // et pavait tout le cœur des îlots.)
       // (le seul bassin du Wault, rejeté par son cercle englobant : sdEau sur toutes les nappes,
       // à chaque sommet, coûtait 300 ms)
-      const murs = WAULT && Math.hypot(x - WAULT.c[0], z - WAULT.c[1]) < WAULT.rr + 25 ? 1 - lisse((sdPoly(x, z, WAULT.poly) - 15) / 10) : 0;
+      const murs = WAULT && Math.hypot(x - WAULT.c[0], z - WAULT.c[1]) < WAULT.rr + 37 ? 1 - lisse((sdPoly(x, z, WAULT.poly) - 25) / 12) : 0;
       const bat = 0.5 + 0.5 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.09 + x * 0.03);
       pave.push(1, 1, 1, w * Math.max(1 - lisse((d - 3) / 4), murs) * (1 - jr));
       jardin.push(1, 1, 1, w * Math.max(jr, lisse((d - 3) / 4) * (1 - murs) * (1 - 0.45 * lisse((bat - 0.6) / 0.3))));
@@ -2384,7 +2384,7 @@ export function voiriesLille() {
   // jusqu'où va le trottoir : jusqu'à la façade quand elle est à moins de 5 m de la bordure
   // (distBati, grille de 8 m : ±1 m), 1,6 m sinon, et il redescend alors au sol du quartier
   const facade = (x, z, nx, nz, d0) => { for (let d = d0 + 1.2; d <= d0 + 5; d += 0.4) if (distBati(x + nx * d, z + nz * d) < 0.5) return d + 0.3; return null; };
-  const H_BORD = 0.14, Y_CAN = 0.135, memo = new Map();
+  const H_BORD = 0.14, Y_CAN = 0.135, memo = new Map(), memoCoupe = new Map();
   // la chaussée bombée : de l'axe au caniveau, en quatre colonnes
   ajoute(profilGeo(trottoirs, (o) => { const d = bord(o) - 0.45;
     return [[0, 0.205], [d * 0.45, 0.19], [d * 0.8, 0.16], [d, Y_CAN + 0.005]]; }, { couper: null, chaussee: true, memo }), pave);
@@ -2396,7 +2396,7 @@ export function voiriesLille() {
   // son dessus de 26 cm
   ajoute(profilGeo(trottoirs, (o) => { const d = bord(o);
     return [[d, Y_CAN], [d, Y_CAN + H_BORD], [d, Y_CAN + H_BORD], [d + 0.26, Y_CAN + H_BORD + 0.005]]; },
-  { couper: (x, z, o) => surAutreChaussee(x, z, o, 0.3), bas: Y_CAN, memo }),
+  { couper: (x, z, o) => surAutreChaussee(x, z, o, 0.3), bas: Y_CAN, memo, memoCoupe }),
   phMat('marble_rock_02', 0.6, 0.6, { color: 0xa8a49c, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1.8 }));
   // le trottoir : de la bordure à la façade, 2 % de dévers vers la rue
   ajoute(profilGeo(trottoirs, (o, x, z, nx, nz) => { const d = bord(o) + 0.26, y0 = Y_CAN + H_BORD + 0.005;
@@ -2405,7 +2405,7 @@ export function voiriesLille() {
     if (f) return [[d, y0], [f, y0 + 0.02 * (f - d)], [f + 0.3, 0.09]];
     const d1 = d + 1.6, y1 = y0 + 0.032;
     return [[d, y0], [d1, y1], [d1 + 0.25, 0.09]]; },
-  { couper: (x, z, o) => surAutreChaussee(x, z, o, 0.3), bas: Y_CAN, memo }), MAT_DALLE({ side: THREE.DoubleSide }));
+  { couper: (x, z, o) => surAutreChaussee(x, z, o, 0.3), bas: Y_CAN, memo, memoCoupe }), MAT_DALLE({ side: THREE.DoubleSide }));
   quaiDuWault(g, pave);
   return g;
 }
@@ -2488,7 +2488,7 @@ function quaiDuWault(g, pave) {
 // sa façade. `chaussee` : le profil part de l'axe, on ne teste que lui (pas de coupe).
 // `memo` : les quatre passes de la rue (chaussée, caniveau, bordure, trottoir) passent par les
 // mêmes stations ; les exclusions, chères (enceinte, eau, ponts), ne s'y calculent qu'une fois.
-function profilGeo(lignes, profil, { couper = null, bas = null, chaussee = false, pasMax = 4, memo = null } = {}) {
+function profilGeo(lignes, profil, { couper = null, bas = null, chaussee = false, pasMax = 4, memo = null, memoCoupe = null } = {}) {
   const pos = [], uv = [], idx = [];
   const fermer = (cols, sx, sz, nx, nz) => {
     if (bas === null) return;
@@ -2512,14 +2512,20 @@ function profilGeo(lignes, profil, { couper = null, bas = null, chaussee = false
         const t = k / pas, cx = a[0] + dx * t, cz = a[1] + dz * t; s += L / pas * (k === 0 ? 0 : 1);
         const cols = profil(o, cx, cz, nx, nz), dm = (cols[0][0] + cols[cols.length - 1][0]) / 2;
         const mx = cx + nx * dm, mz = cz + nz * dm;
-        const cle = memo && `${no}|${i}|${k}|${cote}`;
+        const cle = (memo || memoCoupe) && `${no}|${i}|${k}|${cote}`;
         let exclu = memo ? memo.get(cle) : undefined;
         if (exclu === undefined) {
           exclu = sdEnceinte(mx, mz) > 6 || sdPent(mx, mz) < MOAT_OUT || sdEau(mx, mz) < 1 || surPont(mx, mz) !== null || onBridge(mx, mz) || distBati(mx, mz) > 16;
           if (memo) memo.set(cle, exclu);
         }
-        const hors = exclu || (!chaussee && couper && couper(cx + nx * cols[0][0], cz + nz * cols[0][0], o))
-          || (!chaussee && couper && couper(mx, mz, o));
+        // la coupe aussi se partage (`memoCoupe`) : la bordure et le trottoir la testaient chacun
+        // à leurs propres colonnes, et au bout d'une rue coupée il restait une bordure sans trottoir
+        let coupe = memoCoupe ? memoCoupe.get(cle) : undefined;
+        if (coupe === undefined) {
+          coupe = !chaussee && !!couper && (couper(cx + nx * cols[0][0], cz + nz * cols[0][0], o) || couper(mx, mz, o));
+          if (memoCoupe) memoCoupe.set(cle, coupe);
+        }
+        const hors = exclu || coupe;
         if (hors) { if (prec) fermer(prec.cols, prec.x, prec.z, prec.nx, prec.nz); prec = null; continue; }
         const n0 = pos.length / 3;
         let u = 0;

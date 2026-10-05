@@ -55,7 +55,10 @@ export function makeFlemishHouse(w, d, floors, tint, opts = {}) {
   const shutterM = mat(opts.shutter || 0x3a6a4a, { roughness: 0.9 });
   // corps aux arêtes arrondies, soubassement mouluré, bandeaux entre étages, corniche en doucine
   const body = new THREE.Mesh(rboxG(w, h, d, 0.16, 3), bodyMat); body.position.y = h / 2; body.castShadow = body.receiveShadow = true; g.add(body);
-  g.add(mesh(rboxG(w + 0.24, 0.7, d + 0.24, 0.08, 2), stone, 0, 0.35, 0));
+  // (5 octobre) le soubassement à la taille de SA face : la pierre de taille est calée sur
+  // 1,2 m, et posée sur toute la façade elle s'y étirait six fois — vu de la grand-rue, un
+  // dallage blanc et flou (PROMPT-REPRISE.md, « Lille — la ville resserrée », écart n° 1)
+  g.add(mesh(rboxG(w + 0.24, 0.7, d + 0.24, 0.08, 2), phLocal('chaux_craquelee', w + 0.24, 0.7, { color: 0xfff6e6, roughness: 0.85 }), 0, 0.35, 0));
   corniceAround(g, 0, 0.7, 0, w / 2 + 0.12, d / 2 + 0.12, stone, 0.18, 0.14, 'ovolo');
   for (let f = 1; f < floors; f++) corniceAround(g, 0, f * 3.3 - 0.1, 0, w / 2, d / 2, stone, 0.16, 0.14, 'fillet');
   corniceAround(g, 0, h - 0.4, 0, w / 2, d / 2, stone, 0.42, 0.34, 'cyma');

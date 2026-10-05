@@ -19,9 +19,12 @@ import {
 } from './engine.js?v=41';
 import {
   ENCEINTE, ENCEINTE_H, GLACIS, IGN, LARGEUR_CHEMIN, LARGEUR_ROUTE, LILLE, MOAT_OUT, PLAINE_R, PONTS, TOWN_BOITE, dansEnceinte, sdEau, sdPent,
-  solPlaine, surVoie, townLocal, voieCombattants, dansVille, horsVille, sdVille, epaisseurVoie,
+  solPlaine, surVoie, townLocal, voieCombattants, dansVille, horsVille, sdVille, epaisseurVoie, levelH,
 } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as E from './engine.js?v=41';
+import { makeVillager } from './banque.js';
+import { PARTAGE } from './etat.js';
 
 // ---------------------------------------------------------------------
 //  Géométrie de contour
@@ -1135,7 +1138,88 @@ export function batirQuartier() {
   console.log('quartier relevé : %d bâtiments élevés (%d écartés, dont %d sur l’îlot du bourg), %d toits à deux pans, %d à croupe, %d terrasses, %d baies, %d pignons à redents, %d cheminées, %d lucarnes, %d capsules de façade',
     bati, ecarte, bourg, compteToit.pans, compteToit.croupe, compteToit.terrasse, baies, pignons, cheminees, lucarnes, caps);
   grp.userData.vitrines = vitrines;
+  passantsDeVille();
   return grp;
+}
+
+// ---------------------------------------------------------------------
+//  Les passants de la ville
+// ---------------------------------------------------------------------
+// (5 octobre) La ville resserrée était vide : on traversait cinq cents maisons sans croiser
+// personne, et rien ne disait où aller. Quatre passants, sur le chemin du bourg au quai du
+// Wault — la rue Léonard Danel, la rue du Gros Gérard, la rue Saint-Martin —, chacun à sa
+// place, qui disent le lieu et orientent. Des gens de passage : aucun n'est de l'histoire
+// (STORY.md fait foi), aucun ne donne de quête. Les silhouettes sont celles des villageois
+// du bourg (pnj.js n'a pas d'autres métiers) ; ils sont animés avec eux (PARTAGE.villagers).
+const PORTES = [];             // les portes des rues coupées, relevées par portesDeVille
+function passantsDeVille() {
+  const route = (nom) => LILLE.routes.find((o) => o.nom === nom);
+  // sur le trottoir d'une rue relevée, à la fraction t de son tracé, du côté `cote`
+  const trottoir = (o, t, cote) => {
+    if (!o) return null;
+    const P = o.pts, Ls = []; let L = 0;
+    for (let i = 0; i < P.length - 1; i++) { Ls.push(L); L += Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]); }
+    let i = 0; while (i < P.length - 2 && Ls[i + 1] < t * L) i++;
+    const a = P[i], b = P[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, u = Math.min(1, Math.max(0, (t * L - Ls[i]) / l));
+    const nx = -(b[1] - a[1]) / l * cote, nz = (b[0] - a[0]) / l * cote, d = LARGEUR_ROUTE[Math.min(3, o.r)] / 2 + 1.1;
+    return { x: a[0] + (b[0] - a[0]) * u + nx * d, z: a[1] + (b[1] - a[1]) * u + nz * d, regard: Math.atan2(-nx, -nz) };
+  };
+  // la place libre la plus proche (une façade ou un tonneau peuvent occuper le point visé)
+  const libre = (p) => {
+    for (let r = 0; r <= 3; r += 0.5) for (let k = 0; k < (r ? 12 : 1); k++) {
+      const x = p.x + Math.cos(k / 12 * 6.283) * r, z = p.z + Math.sin(k / 12 * 6.283) * r, y = levelH(x, z);
+      if (!E.blocked(x, z, 0.6, false, y + 0.2)) return { ...p, x, z, y };
+    }
+    return null;
+  };
+  // le quai du Wault : un point de la margelle, celui du bassin le plus proche de (vx, vz),
+  // reculé de `d` vers la terre ; on y regarde l'eau
+  const W = LILLE.eau.find((o) => o.nom === 'Quai du Wault');
+  const auQuai = (vx, vz, d) => {
+    if (!W) return null;
+    let best = null;
+    for (let i = 0; i < W.poly.length - 1; i++) {
+      const a = W.poly[i], b = W.poly[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((vx - a[0]) * dx + (vz - a[1]) * dz) / l2)), x = a[0] + dx * t, z = a[1] + dz * t, e = Math.hypot(vx - x, vz - z);
+      if (!best || e < best.e) { const l = Math.sqrt(l2); best = { e, x, z, nx: -dz / l, nz: dx / l }; }
+    }
+    if (sdEau(best.x + best.nx * 2, best.z + best.nz * 2) < sdEau(best.x - best.nx * 2, best.z - best.nz * 2)) { best.nx = -best.nx; best.nz = -best.nz; }
+    return { x: best.x + best.nx * d, z: best.z + best.nz * d, regard: Math.atan2(-best.nx, -best.nz) };
+  };
+  // le garde : devant la porte coupée la plus proche de la rue du Gros Gérard, côté ville
+  const porte = PORTES.slice().sort((p, q) => Math.hypot(p.x + 20, p.z - 775) - Math.hypot(q.x + 20, q.z - 775))[0];
+  const devantPorte = porte && { x: porte.x - porte.ux * porte.sens * 2.2 - porte.uz * 1.6, z: porte.z - porte.uz * porte.sens * 2.2 + porte.ux * 1.6,
+    regard: Math.atan2(-porte.ux * porte.sens, -porte.uz * porte.sens) };
+  const ici = [
+    { qui: 'La lavandière', kind: 2, p: auQuai(-152, 735, 1.4),
+      dit: ['« Les bateaux déchargent le grain au bout du bassin. Moi, je rince mon linge ici, où l’eau est calme. »',
+        '« Le bourg ? Prends la rue qui monte du quai, puis tout droit vers le soleil levant. Tu verras le beffroi. »'] },
+    { qui: 'La marchande', kind: 0, p: trottoir(route('Rue du Gros Gérard'), 0.04, 1),
+      dit: ['« Du beurre, des œufs, du maroilles ! Tout vient des fermes d’à côté, ce matin même. »',
+        '« Le quai du Wault ? Suis cette rue vers le couchant, jusqu’à l’eau. Le bourg, c’est de l’autre côté, vers le beffroi. »'] },
+    { qui: 'Le brasseur', kind: 1, p: trottoir(route('Rue du Gros Gérard'), 0.5, -1),
+      dit: ['« Ici, on brasse la bière de garde. Elle dort tout l’hiver dans le tonneau avant qu’on la boive. »',
+        '« Au bout des rues, les portes sont fermées. Le guet y veille : ne perds pas ton temps à pousser. »'] },
+    { qui: 'Le garde du guet', kind: 3, p: devantPorte,
+      dit: ['« Halte ! Cette porte reste fermée. Ordre du guet. »',
+        '« Tu te perds ? Le bourg est derrière toi. Et le quai du Wault, vers l’eau. »'] },
+  ];
+  let poses = 0;
+  for (const { qui, kind, p: p0, dit } of ici) {
+    const p = p0 && libre(p0);
+    if (!p) { console.warn('passants : pas de place pour', qui); continue; }
+    const v = makeVillager(kind);
+    v.position.set(p.x, p.y, p.z); v.rotation.y = p.regard; v.scale.setScalar(E.G.echelle); E.scene.add(v);
+    v.userData.anim = Math.random() * 10; v.userData.name = qui; PARTAGE.villagers.push(v);
+    addCap(p.x, p.z, p.x, p.z, 0.5, p.y + 1.9);
+    E.addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible, prompt: () => 'parler ' + (qui.startsWith('La ') ? 'à la ' + qui.slice(3).toLowerCase() : 'au ' + qui.slice(3).toLowerCase()),
+      fn: () => { v.userData.talk = 4; v.rotation.y = Math.atan2(E.player.pos.x - v.position.x, E.player.pos.z - v.position.z);
+        E.dialogue(dit.map((text) => ({ who: qui, text })), () => { v.userData.talk = 0; }); } });
+    poses++;
+  }
+  // le quai du Wault, lieu découvert : il compte au journal et se nomme sur la carte
+  if (W) E.addLieu({ id: 'wault', nom: 'le quai du Wault', x: W.c[0], z: W.c[1], r: 70 });
+  console.log('la ville : %d passants posés', poses);
 }
 
 
@@ -1189,7 +1273,9 @@ function portesDeVille(M) {
         if (avant && avant.e !== ici && (avant.e === 'coupe' || ici === 'coupe') && (avant.e === 'dedans' || ici === 'dedans' || avant.e === 'libre' || ici === 'libre')) {
           // le mur se dresse côté ouvert, à un mètre et demi du tissu coupé
           const [px, pz] = ici === 'coupe' ? [avant.x, avant.z] : [x, z];
-          if (!posees.some(([qx, qz]) => Math.hypot(qx - px, qz - pz) < larg + 4)) { posees.push([px, pz]); murPorte(sMur, sPierre, sBois, px, pz, ux, uz, larg); }
+          if (!posees.some(([qx, qz]) => Math.hypot(qx - px, qz - pz) < larg + 4)) { posees.push([px, pz]); murPorte(sMur, sPierre, sBois, px, pz, ux, uz, larg);
+            // sens : +1 quand le tissu coupé est devant, dans le sens du tracé (le garde du guet se poste de l'autre côté)
+            PORTES.push({ x: px, z: pz, ux, uz, sens: ici === 'coupe' ? 1 : -1, ville: avant.e === 'dedans' || ici === 'dedans' }); }
         }
         avant = { e: ici, x, z };
       }

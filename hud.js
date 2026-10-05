@@ -7,7 +7,7 @@ import {
   startGame, state,
 } from './engine.js?v=41';
 import {
-  APO, DEHORS, ENCEINTE, HOUSE, LILLE, PLAINE_R, PONTS, PONT_Z1, TRACE, bastions,
+  APO, DEHORS, ENCEINTE, HOUSE, LILLE, PLAINE_R, PONTS, PONT_Z1, TRACE, bastions, horsVille,
 } from './carte.js';
 import { PARTAGE } from './etat.js';
 import { KILLS_TO_OPEN, killsDone, objective } from './quetes.js';
@@ -59,6 +59,9 @@ export const COUL = {
   prairie: '#5c7a41', bois: '#2c4626', eau: '#2f6f9e', route: '#b59a6c', pont: '#d8c59a',
   bati: '#a9552f', citadelle: '#8d6a55', ouvrage: '#6e7a4a', dehors: '#39402f', jardin: '#6d8b47',
   maison: '#9b4dd8',           // la maison de Camille : le seul point violet de la carte
+  // la ville coupée (carte.js, horsVille) : on n'y entre plus, elle ne doit plus se lire
+  // comme des rues ouvertes — un bâti éteint, des rues à peine plus claires que lui
+  coupe: '#5e4e44', routeCoupee: '#6f6354',
 };
 
 let carteHors = null;
@@ -93,11 +96,23 @@ export function construireCarte() {
     g.fill('evenodd');
   }
 
-  for (const o of LILLE.chemins) ligne(o.pts, COUL.route, 2.4);
-  for (const o of LILLE.routes) ligne(o.pts, COUL.route, o.r >= 2 ? 7 : 4.5);
+  // LA VILLE RESSERRÉE (5 octobre). La carte traçait toutes les rues relevées : au-delà de
+  // l'emprise, les rues coupées par un mur et une porte (quartier.js) y paraissaient ouvertes.
+  // Chaque tronçon qui tombe dans le tissu coupé est tracé éteint, et son bâti aussi.
+  const voie = (pts, m) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      ligne([a, b], horsVille((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) ? COUL.routeCoupee : COUL.route, m);
+    }
+  };
+  for (const o of LILLE.chemins) voie(o.pts, 2.4);
+  for (const o of LILLE.routes) voie(o.pts, o.r >= 2 ? 7 : 4.5);
   for (const P2 of PONTS) ligne(P2.pts, COUL.pont, P2.demi * 2 + 1.5);
 
-  for (const p of LILLE.bati) remplir(p, COUL.bati);      // le bâti relevé = la ville
+  for (const p of LILLE.bati) {                            // le bâti relevé = la ville
+    let cx = 0, cz = 0; for (const q of p) { cx += q[0]; cz += q[1]; }
+    remplir(p, horsVille(cx / p.length, cz / p.length) ? COUL.coupe : COUL.bati);
+  }
 
   // la citadelle : corps de place, bastions, ouvrages avancés
   if (TRACE) {
