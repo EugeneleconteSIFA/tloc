@@ -260,12 +260,20 @@ function jungle({ hauteur, bloque, CADRE, PLAN }) {
     for (let k = 0; k < c.pts.length - 1; k++) { const [a, b] = [c.pts[k], c.pts[k + 1]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2));
       for (let t = 0; t <= n; t++) chemin.add(Math.floor((a[0] + (b[0] - a[0]) * t / n) / 4) + ',' + Math.floor((a[1] + (b[1] - a[1]) * t / n) / 4)); } }
   const surChemin = (x, z) => { const i = Math.floor(x / 4), j = Math.floor(z / 4); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (chemin.has((i + a) + ',' + (j + b))) return true; return false; };
+  // les temples du grand piton dégagés (Eugène, 5 octobre) : les houppiers font 4 à 6 m de rayon, et
+  // `bloque(…, 3)` laissait les arbres mordre les toits et pousser dans les cours. Le sommet (au-dessus
+  // de 100 m : le plateau et la bosse du chedi) est une esplanade, sans un arbre, comme au vrai temple ;
+  // ailleurs, 12 m de libre autour de chaque bâtiment du grand piton.
+  const S = PLAN.morceaux && PLAN.morceaux.suea, temples = PLAN.batiments.filter((b) => b.m === 'suea').map((b) => {
+    const xs = b.pts.map((q) => q[0]), zs = b.pts.map((q) => q[1]); return [Math.min(...xs) - 12, Math.max(...xs) + 12, Math.min(...zs) - 12, Math.max(...zs) + 12]; });
+  const auTemple = (x, z, h) => (S && x > S.x0 && x < S.x1 && z > S.z0 && z < S.z1 && h > 100) || temples.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
   for (let z = CADRE.z0; z < CADRE.z1; z += pas) for (let x = CADRE.x0; x < CADRE.x1; x += pas) {
     const px = x + rand(-3, 3), pz = z + rand(-3, 3), h = hauteur(px, pz); if (h < 3.5) continue;
     const pente = Math.max(Math.abs(hauteur(px + 2, pz) - hauteur(px - 2, pz)), Math.abs(hauteur(px, pz + 2) - hauteur(px, pz - 2))) / 4;
     if (pente > 0.75 || (pente > 0.5 && Math.random() < 0.5) || bloque(px, pz, 3) || surChemin(px, pz)) continue;
     // ni dans l'escalier du grand piton, ni à moins de 4 m (seuls ses parapets sont inscrits dans les collisions)
     if ([[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]].some(([a, b]) => solEscalier(px + a, pz + b) != null)) continue;
+    if (auTemple(px, pz, h)) continue;
     pts.push([px, pz, h]);
   }
   const n = pts.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n);
