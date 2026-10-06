@@ -214,7 +214,9 @@ function port({ hauteur, inscrire, PLAN, H0 }) {
     // le bronze patiné : une pierre veinée brun-vert, un peu métallique — sans reflet du ciel
     // à renvoyer, un vrai métal sortait noir (comme la mer de la version 1)
     // (posé aussi à chaque image tant que le modèle s'assemble : il remet ses matières en arrivant)
-    BRONZE = phMat('marble_rock_03', 0.6, 0.6, { color: 0x8a7444, metalness: 0.35, roughness: 0.42 });
+    // (marble_rock_02 : la _03 n'existe pas dans PH, et phMat rendait un gris uni de repli — le
+    // Colosse est resté gris-blanc du 2 au 6 octobre)
+    BRONZE = phMat('marble_rock_02', 0.6, 0.6, { color: 0x8a7444, metalness: 0.35, roughness: 0.42 });
     couler();
     const bronze = BRONZE;
     // la croix levée de la main droite (celle du colosse de Barletta)
@@ -353,7 +355,7 @@ function morceauDeCloche() {
 }
 function cloche() {
   // la cloche d'horloge plate et large, avec son marteau (DECISIONS-RECIT.md § 2)
-  const g = new THREE.Group(), vert = phMat('marble_rock_03', 1, 1, { color: 0x5a8a74, metalness: 0.45, roughness: 0.5 });
+  const g = new THREE.Group(), vert = phMat('marble_rock_02', 1, 1, { color: 0x5a8a74, metalness: 0.45, roughness: 0.5 });
   const prof = [[0.05, 1.0], [0.55, 0.98], [0.95, 0.8], [1.15, 0.45], [1.25, 0.08], [1.3, 0]].map(([a, b]) => new THREE.Vector2(a, b));
   const c = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), vert); c.material.side = THREE.DoubleSide; c.position.y = 1.1; c.castShadow = true; g.add(c);
   const fer = phMat('rocher_01', 0.5, 0.5, { color: 0x3a3430 });
