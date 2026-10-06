@@ -1441,8 +1441,6 @@ function cle() { const g = new THREE.Group(), or = new THREE.MeshStandardMateria
 function figer(role, x, z, yaw, texte, extra = {}) {
   const g = PNJ.buildRole(role, extra.haut ?? null); if (!g) return null;
   g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(g);
-  // un enfant : pnj.js n'en a pas (Demandes pour pnj.js) ; le rôle de Nok ramené à 1,1 m
-  if (extra.enfant) g.scale.setScalar(0.72);
   const F = { g, x, z, texte, t0: rand(0.3, 2.5), pose: false, ...extra };
   if (role === 'balayeur') PNJ.socket(g, g.userData.perso, 'hand_r', balai(), [0, 0.05, 0.02], [0.3, 0, 0]);
   if (extra.cle) { F.objetCle = cle(); PNJ.socket(g, g.userData.perso, 'hand_l', F.objetCle, [0, 0.12, 0.03], [0, 0, 0]); }
@@ -1491,8 +1489,8 @@ const HABITANTS = [
   ['moine', 0x7a3a3a, 2205, 1905, 'Un homme figé près du ponton, une corde à la main.', '« …de là-haut, on voit toutes les îles de la baie… »'],
   // le 5 octobre : les enfants de Ko Panyi, un moine à chaque bout de câble, une vendeuse devant
   // Ko Tapu. Des gens de passage : ils disent le lieu, ou mènent quelque part ; aucun secret.
-  ['nok', 0xd8b040, 66, 44, 'Un enfant figé au bord de la passerelle, les bras en l’air, prêt à sauter dans l’eau.', '« …le dernier dans l’eau a perdu !… »', true],
-  ['nok', 0x5a7aa0, -186, -52, 'Un enfant figé devant l’école, les mains sur les yeux.', '« …quatre-vingt-dix-huit, quatre-vingt-dix-neuf, cent ! J’arrive !… »', true],
+  ['enfant', 0xd8b040, 66, 44, 'Un enfant figé au bord de la passerelle, les bras en l’air, prêt à sauter dans l’eau.', '« …le dernier dans l’eau a perdu !… »', true],
+  ['enfante', 0x5a7aa0, -186, -52, 'Un enfant figé devant l’école, les mains sur les yeux.', '« …quatre-vingt-dix-huit, quatre-vingt-dix-neuf, cent ! J’arrive !… »', true],
   ['nok', 0xc06a3a, -676, 562, 'Une vendeuse figée sur la grève, un collier de coquillages tendu vers le large.', '« …Ko Tapu, le clou ! Un jour, la mer le fera tomber, mais pas aujourd’hui… »'],
   ['moine', null, 944, 327, 'Un moine figé près du câble, une corbeille de riz à ses pieds.', '« …le câble descend jusqu’au marché flottant. On n’y monte jamais : on ne fait que descendre… »'],
   ['moine', null, 2596, 1796, 'Un moine figé au bout de l’escalier, la main sur la poulie.', '« …accroche-toi bien : le câble porte jusqu’au grand piton… »'],
