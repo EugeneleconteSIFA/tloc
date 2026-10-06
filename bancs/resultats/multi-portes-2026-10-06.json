@@ -1,0 +1,45 @@
+{
+ "pas": [
+  {
+   "nom": "des vantaux sur les portes des cloisons, dans les deux maisons",
+   "ok": true,
+   "detail": "30 portes"
+  },
+  {
+   "nom": "ouverte, on passe la porte",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’invite ferme la porte",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "fermée, le vantail bouche l’ouverture (son milieu au milieu de la porte)",
+   "ok": true,
+   "detail": "{\"ecart\":0,\"ouverte\":false}"
+  },
+  {
+   "nom": "fermée, elle arrête Camille",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "ouverte, le vantail est rabattu (son milieu à plus d’un mètre)",
+   "ok": true,
+   "detail": "{\"ecart\":1.84,\"ouverte\":true}"
+  },
+  {
+   "nom": "rouverte, on repasse",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": []
+}

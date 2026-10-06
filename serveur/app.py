@@ -1193,6 +1193,9 @@ class Salon:
         self.fete: dict | None = None             # { fin, scores: {id: n}, compte: {id: (t, n)} }
         self.bourses: dict[str, dict] = {}        # id -> { p: [x, z], n, fin }
         self.objets: dict[str, dict] = {}         # id -> { type, p: [x, z], y, porteur, retour }
+        # les portes du lieu qu'on ouvre et qu'on ferme (le Batut, C8) : id -> ouverte ; une porte
+        # absente est ouverte. Le serveur ne fait que retenir et relayer : c'est le lieu qui sait où elles sont
+        self.portes: dict[str, bool] = {}
         # les bannières des camps : au ralliement (base), portées par un adversaire, ou
         # tombées là où leur porteur a été mis à terre
         self.bannieres = {c: {"etat": "base", "porteur": None, "p": None, "t": 0.0} for c in CAMPS}
@@ -1805,7 +1808,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         "mode": inst["mode"], "enjeu": bool(inst["enjeu"]), "arene": inst["arene"], "camps": salon.camps(), "points": salon.points,
         "fete": salon.vue_fete(), "bannieres": salon.vue_bannieres(),
         "bourses": [{"id": k, **{c: v for c, v in b.items() if c != "fin"}} for k, b in salon.bourses.items()],
-        "objets": salon.vue_objets(),
+        "objets": salon.vue_objets(), "portes": salon.portes,
         "joueurs": [c.vue() for c in salon.joueurs.values() if c.id != moi.id],
         "pilote": [b.vue() for b in salon.bots() if b.pilote == moi.id],
         "regle": salon.regle,
@@ -2022,6 +2025,14 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                 return
             salon.bourses.pop(str(m.get("b")), None)
             await salon.diffuser({"t": "bourse-prise", "b": m.get("b"), "par": moi.id, "perso": moi.perso, "n": b["n"]})
+
+        elif t == "porte":
+            # une porte ouverte ou fermée (par un joueur, ou par un bot par la bouche de son pilote)
+            pid = m.get("id")
+            if not isinstance(pid, str) or not re.fullmatch(r"[a-z0-9\-]{1,24}", pid) or len(salon.portes) > 400:
+                return
+            salon.portes[pid] = bool(m.get("ouverte"))
+            await salon.diffuser({"t": "porte", "id": pid, "ouverte": salon.portes[pid], "par": moi.id})
 
         elif t == "objets-lieux":
             # le premier client qui connaît la carte pose les objets ; les suivants les trouvent

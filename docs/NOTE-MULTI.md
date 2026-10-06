@@ -666,3 +666,22 @@ règle, un drapeau posé dans la salle, aucune pageerror. Trois choses trouvées
   tout reste dans sa première aire, la marge tombe à 0,5 m et le cercle libre à 1,2 m (tloc-multi.js) ;
 - **un pan de mur de la salle** (la façade à gauche de la porte) partait du coin nord-ouest : une capsule
   en diagonale à travers la salle. Remis le long de la façade (le solo aussi ; `acte1-b1.mjs` sans erreur).
+
+### Le Batut : les portes qu'on ferme (6 octobre, C8)
+
+Les 30 portes des cloisons (15 par maison, rez-de-chaussée et étage) ont un vantail de chêne sur
+charnière : ouvert, rabattu contre le mur ; fermé, il bouche l'ouverture, et une capsule arrête qui
+passe. Le moteur ne compte pas une capsule de rayon nul (`blocked`) : on bascule son rayon, sans
+rien toucher au moteur. Invite « ouvrir / fermer la porte ». Toutes ouvertes au départ.
+- **Le salon les partage** : message `porte` { id, ouverte } (app.py retient `salon.portes`, les
+  relaie, et les redonne au `bienvenue`) ; tloc-multi.js passe au niveau (`G.level.porte`) et prête
+  `PARTAGE.envoyerPorte` au lieu. Banc `bancs/multi-portes-salon.mjs` (trois joueurs) : fermée par A,
+  vue fermée par B, trouvée fermée par C arrivé après, rouverte par B pour tous — tout passé.
+- **Les bots** ouvrent la porte fermée qu'ils trouvent devant eux (à 1,8 m ; `G.level.portesFermees`,
+  `tickBots`). Pas encore mesuré : un bot qui poursuit derrière une porte fermée.
+- Banc solo `bancs/multi-portes.mjs` : fermée, elle arrête Camille qui marche vers elle ; rouverte, on
+  repasse ; le vantail au milieu de l'ouverture fermé, à 1,84 m ouvert.
+- **Appris** : ce qui bouge dans un niveau doit porter `userData.dynamic` (la fusion des décors l'avait
+  fondu, figé ouvert) ; et le moteur fige les matrices du décor (`matrixAutoUpdate = false`) : après une
+  rotation, `updateMatrix()` et `updateMatrixWorld(true)` à la main.
+- Passe du Batut, quatre règles : aucune pageerror, 5 objets, 3 à 12 rencontres en 40 s.

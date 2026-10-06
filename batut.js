@@ -34,7 +34,7 @@ import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { PARTAGE } from './etat.js';
 import { THREE, TAU, scene, G, PH, phMat, boxG, hemi, sun, renderer, bloom, addCap, addBox, addPlatform, addRamp, addHelix,
-  showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
+  addInteract, SFX, showMessage, bootLevel, minimapDots, makeSky, player } from './engine.js?v=41';
 
 // Les pierres de l'Aveyron ne sont pas au registre du moteur : chaque lieu inscrit les siennes
 // (cf. aveyron.js, mêmes tailles réelles). Sans elles, phMat retombait sur un gris uni — la
@@ -79,7 +79,38 @@ function meuble(x, z, w, d, h, slug, couleur, y0 = 0) {
 // Un mur droit de (ax, az) à (bx, bz), de y0 à y0 + h, percé de portes : { t (le milieu, en
 // mètres depuis a), w, y (le seuil, y0 par défaut), h (le haut de l'ouverture) }. Le linteau
 // n'arrête personne en dessous ; un mur d'étage (y0 > 0) a un plancher : on passe sous lui.
-function mur(ax, az, bx, bz, { ep = 0.25, h = H, y0 = 0, slug = 'chaux_craquelee', couleur = 0xeee6d6, portes = [] } = {}) {
+// LES PORTES QU'ON FERME (6 octobre, C8 ; Eugène : « pas mal pour se cacher »). Chaque porte des
+// cloisons a son vantail de chêne, sur une charnière : ouvert, il est rabattu contre le mur ;
+// fermé, il bouche l'ouverture, et une capsule arrête qui passe — le moteur ne compte pas une
+// capsule de rayon nul (engine.js, blocked), on bascule donc son rayon. En instance, l'état passe
+// par le salon (PARTAGE.envoyerPorte, tloc-multi.js ; le serveur le redit à qui arrive) ; les bots
+// ouvrent la porte fermée qu'ils trouvent devant eux. Toutes ouvertes au départ.
+const PORTES = [];
+function vantail(ax, az, ux, uz, a, b, seuil, haut, ry) {
+  const id = 'p' + PORTES.length, w = b - a, R = 0.28;
+  const pivot = new THREE.Group(); pivot.position.set(ax + ux * a, seuil, az + uz * a); pivot.rotation.y = ry; scene.add(pivot);
+  const v = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, haut - seuil - 0.06, 0.07), phMat('wood_cabinet_worn_long', w, 2.4, { color: 0x7a5a3c }));
+  v.position.set(w / 2, (haut - seuil) / 2, 0); v.castShadow = true; pivot.add(v);
+  const poignee = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), new THREE.MeshStandardMaterial({ color: 0xb08a40, metalness: 0.8, roughness: 0.3 }));
+  poignee.position.set(w - 0.25, 1.0, 0.07); pivot.add(poignee);
+  // ce qui bouge échappe à la fusion des décors (userData.dynamic) : fondu au chargement, le vantail
+  // restait figé dans sa première position, et la porte fermée gardait l'air ouverte
+  pivot.userData.dynamic = v.userData.dynamic = poignee.userData.dynamic = true;
+  const c = addCap(ax + ux * (a + 0.05), az + uz * (a + 0.05), ax + ux * (b - 0.05), az + uz * (b - 0.05), R, haut); c.bottom = seuil - 0.3;
+  const d = { id, x: ax + ux * (a + b) / 2, z: az + uz * (a + b) / 2, y: seuil, pivot, c, R, ry, ouverte: true };
+  PORTES.push(d); poserPorte(d, true);
+  addInteract({ pos: new THREE.Vector3(d.x, seuil, d.z), r: 2.2, prompt: () => (d.ouverte ? 'fermer la porte' : 'ouvrir la porte'),
+    fn: () => { poserPorte(d, !d.ouverte); SFX.unlock(); if (PARTAGE.envoyerPorte) PARTAGE.envoyerPorte(d.id, d.ouverte); } });
+}
+function poserPorte(d, ouverte) {
+  d.ouverte = ouverte; d.c.r = ouverte ? 0 : d.R;
+  // ouverte : rabattue à angle droit (du côté où elle ne gêne pas le seuil)
+  d.pivot.rotation.y = d.ry + (ouverte ? -Math.PI / 2 : 0);
+  // le décor est figé (matrixAutoUpdate) : la matrice se recalcule à la main, à chaque bascule
+  d.pivot.updateMatrix(); d.pivot.updateMatrixWorld(true);
+}
+
+function mur(ax, az, bx, bz, { ep = 0.25, h = H, y0 = 0, slug = 'chaux_craquelee', couleur = 0xeee6d6, portes = [], vantaux = false } = {}) {
   const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ry = -Math.atan2(bz - az, bx - ax), r = ep / 2 + 0.03;
   const piece = (a, b, ya, yb, dur, bas) => {
     if (b - a < 0.02 || yb - ya < 0.02) return;
@@ -96,6 +127,7 @@ function mur(ax, az, bx, bz, { ep = 0.25, h = H, y0 = 0, slug = 'chaux_craquelee
     piece(t0, a, y0, y0 + h, true, plancher);
     piece(a, b, y0, seuil, true, plancher);                    // l'allège sous une porte d'étage
     piece(a, b, haut, y0 + h, true, haut - 0.3);               // le linteau : il n'arrête que plus haut
+    if (vantaux) vantail(ax, az, ux, uz, a, b, seuil, haut, ry);
     t0 = b;
   }
   piece(t0, L, y0, y0 + h, true, plancher);
@@ -142,17 +174,17 @@ function maison(cle) {
   murM(0, DEMI, PROF, DEMI, exterieur, [[14, 2.6, 0, 2.7]]);
   murM(0, -DEMI, PROF, -DEMI, exterieur, [[14, 2.6, 0, 2.7]]);
   // ---- les cloisons du rez-de-chaussée ----
-  murM(12, -DEMI, 12, DEMI, {}, [[11.5, 2.6], [-11.5, 2.6]]);                         // devant / galerie (l'escalier du vestibule s'y adosse)
-  murM(16, -DEMI, 16, DEMI, {}, [[12, 2.6], [0, 2.8], [-12, 2.6]]);                    // galerie / fond
-  murM(0, 5, 12, 5, {}, [[1.6, 2.6]]);                                                 // vestibule / salon
-  murM(0, -5, 12, -5, {}, [[6, 2.6]]);                                                 // vestibule / salle à manger
-  murM(16, 6, PROF, 6, {}, [[23, 2.6]]);                                               // bibliothèque / cuisine
-  murM(16, -6, PROF, -6, {}, [[19, 2.6]]);                                            // cuisine / cellier (la cheminée est à u = 23)
+  murM(12, -DEMI, 12, DEMI, { vantaux: true }, [[11.5, 2.6], [-11.5, 2.6]]);                         // devant / galerie (l'escalier du vestibule s'y adosse)
+  murM(16, -DEMI, 16, DEMI, { vantaux: true }, [[12, 2.6], [0, 2.8], [-12, 2.6]]);                    // galerie / fond
+  murM(0, 5, 12, 5, { vantaux: true }, [[1.6, 2.6]]);                                                 // vestibule / salon
+  murM(0, -5, 12, -5, { vantaux: true }, [[6, 2.6]]);                                                 // vestibule / salle à manger
+  murM(16, 6, PROF, 6, { vantaux: true }, [[23, 2.6]]);                                               // bibliothèque / cuisine
+  murM(16, -6, PROF, -6, { vantaux: true }, [[19, 2.6]]);                                            // cuisine / cellier (la cheminée est à u = 23)
   // ---- les cloisons de l'étage ----
-  murM(0, 5, PROF, 5, etage, [[13, 2.6], [22.5, 2.6]]);                                // galerie haute / billard (à l'est de la cage : à u = 7,5, la porte donnait sur 70 cm entre la cage et le mur), salle d'armes
-  murM(0, -5, PROF, -5, etage, [[7.5, 2.6], [22.5, 2.6]]);                             // galerie haute / chambres
-  murM(15, 5, 15, DEMI, etage, [[11.5, 2.6]]);                                         // billard / salle d'armes
-  murM(15, -5, 15, -DEMI, etage, [[-11.5, 2.6]]);                                      // les deux chambres
+  murM(0, 5, PROF, 5, { ...etage, vantaux: true }, [[13, 2.6], [22.5, 2.6]]);                                // galerie haute / billard (à l'est de la cage : à u = 7,5, la porte donnait sur 70 cm entre la cage et le mur), salle d'armes
+  murM(0, -5, PROF, -5, { ...etage, vantaux: true }, [[7.5, 2.6], [22.5, 2.6]]);                             // galerie haute / chambres
+  murM(15, 5, 15, DEMI, { ...etage, vantaux: true }, [[11.5, 2.6]]);                                         // billard / salle d'armes
+  murM(15, -5, 15, -DEMI, { ...etage, vantaux: true }, [[-11.5, 2.6]]);                                      // les deux chambres
 
   // ---- l'escalier droit du vestibule : contre le mur du salon, de u = 3 à 11 ----
   const ESC = { u0: 3, u1: 11, v0: 2.6, v1: 4.3 };
@@ -515,7 +547,10 @@ const ARENE_BATUT = {
 
 const level = {
   name: 'batut', echelle: 0.6, musique: 'campagne', getH: () => 0, zoneName,
-  build, populate, animate, minimap, arenes: [ARENE_BATUT],   // son graphe (GRAPHE) est rempli au build
+  build, populate, animate, minimap, arenes: [ARENE_BATUT],
+  // les portes (tloc-multi.js) : ce que le salon dit, et celles qu'un bot doit ouvrir
+  porte: (id, o) => { const d = PORTES.find((p) => p.id === id); if (d && d.ouverte !== !!o) poserPorte(d, !!o); },
+  portesFermees: () => PORTES.filter((p) => !p.ouverte),   // son graphe (GRAPHE) est rempli au build
   counts: () => '<small>Le Batut et Beauregard — deux maisons, un jardin entre les deux.</small>',
   start: () => showMessage('Le Batut à l’ouest, Beauregard à l’est. Le jardin entre les deux.', 5),
   arriveMessage: () => 'Le Batut et Beauregard.',
@@ -524,3 +559,5 @@ const level = {
 };
 await PNJ.installerCamille(PNJ_E);
 bootLevel(level, null);
+
+window.__batut = { PORTES };      // pour les bancs (bancs/multi-*.mjs)

@@ -622,6 +622,9 @@ function retirerAutre(id) {
 //  Connexion
 // ---------------------------------------------------------------------
 function envoyer(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+// Les portes d'un lieu (le Batut) : le lieu les ouvre et les ferme chez soi, et le dit au salon par
+// ce crochet ; le salon le redit aux autres (m.t === 'porte'). Sans instance, il n'y a pas de crochet.
+PARTAGE.envoyerPorte = (id, ouverte) => envoyer({ t: 'porte', id, ouverte });
 
 // L'apparence ne part qu'à l'arrivée et quand elle change : quinze fois par seconde dans
 // le message « etat », elle aurait coûté plus que la position pour ne rien dire de neuf.
@@ -661,6 +664,8 @@ function connecter() {
       if (m.pilote && m.pilote.length) prendreBots(m.pilote);
       for (const b of m.bourses || []) poserBourse(b);
       majObjets({ objets: m.objets || [] });
+      // les portes que le salon connaît fermées (ou rouvertes) avant notre arrivée
+      if (m.portes && G.level && G.level.porte) for (const [id, o] of Object.entries(m.portes)) G.level.porte(id, o);
       if (m.bannieres) bannieres = m.bannieres;
       lieuxDrapeauxServeur = m.lieux_drapeaux || 0;
       if (m.drapeaux) evenementDrapeaux({ drapeaux: m.drapeaux });
@@ -720,6 +725,7 @@ function connecter() {
     } else if (m.t === 'bourse') { poserBourse(m);
     } else if (m.t === 'bourse-prise') { prendreBourse(m);
     } else if (m.t === 'objets') { majObjets(m);
+    } else if (m.t === 'porte') { if (G.level && G.level.porte) G.level.porte(m.id, m.ouverte);
     } else if (m.t === 'don') {
       BOURSE.gagner(m.n);
       showMessage(`${m.perso} te donne ${m.n} écus.`, 3.5);
@@ -2773,6 +2779,9 @@ function tickBots(dt, now) {
     if (actifs && !b.pos && !placerBot(b)) continue;
     if (!b.pos) continue;
     if (actifs && b.niveau === G.level.name) {
+      // une porte fermée devant lui : le bot l'ouvre (son graphe passe par elle)
+      if (G.level.portesFermees) for (const d of G.level.portesFermees()) if (Math.hypot(b.pos.x - d.x, b.pos.z - d.z) < 1.8 && Math.abs((b.pos.y || 0) - d.y) < 2) {
+        G.level.porte(d.id, true); envoyer({ t: 'porte', id: d.id, ouverte: true }); }
       if (b.mortT > 0) { if ((b.mortT -= dt) <= 0) placerBot(b); }
       else if (!estElimine(b.id)) penserBot(b, dt, now);
     }
