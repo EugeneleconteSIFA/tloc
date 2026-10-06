@@ -1296,7 +1296,7 @@ function proposerDrapeaux() {
   const noms = new Set();
   const liste = choisis.map(([x, z], k) => ({ id: 'd' + k, nom: nomEmplacement(x, z, noms, place), p: [+x.toFixed(2), +z.toFixed(2)],
     y: +(world.levelH ? world.levelH(x, z) : getH(x, z)).toFixed(2), n: G.level.name }));
-  drapeauxProposes = true;
+  drapeauxProposes = liste.length || true;
   console.log('drapeaux (%s) : %d emplacements —', zone, liste.length, liste.map((d) => `${d.nom} (${Math.round(d.p[0])}, ${Math.round(d.p[1])})`).join(' · '));
   if (liste.length) envoyer({ t: 'drapeaux-lieux', drapeaux: liste });
 }
@@ -2147,18 +2147,93 @@ function noeudVu(Gr, x, z, y) {
 }
 function cheminGraphe(Gr, s, t) {
   if (!Gr.voisins) { Gr.voisins = Gr.n.map(() => []); for (const [i, j] of Gr.a) { const d = Math.hypot(Gr.n[i][0] - Gr.n[j][0], Gr.n[i][1] - Gr.n[j][1], Gr.n[i][2] - Gr.n[j][2]); Gr.voisins[i].push([j, d]); Gr.voisins[j].push([i, d]); } }
+  // un tas binaire : le graphe tiré tout seul (grapheAuto) a des milliers de points, et la
+  // recherche du plus proche non traité, en n², coûtait des dizaines de ms par bot
   const dist = Gr.n.map(() => Infinity), prec = Gr.n.map(() => -1), fait = Gr.n.map(() => false); dist[s] = 0;
-  for (;;) {
-    let u = -1; for (let i = 0; i < dist.length; i++) if (!fait[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
-    if (u < 0 || u === t) break; fait[u] = true;
-    for (const [v, d] of Gr.voisins[u]) if (dist[u] + d < dist[v]) { dist[v] = dist[u] + d; prec[v] = u; }
+  const tas = [[0, s]];
+  const pousser = (e) => { tas.push(e); for (let i = tas.length - 1; i > 0;) { const p = (i - 1) >> 1; if (tas[p][0] <= tas[i][0]) break; [tas[p], tas[i]] = [tas[i], tas[p]]; i = p; } };
+  const tirer = () => { const h = tas[0], f = tas.pop(); if (tas.length) { tas[0] = f; for (let i = 0; ;) { const l = 2 * i + 1, r = l + 1; let m = i;
+    if (l < tas.length && tas[l][0] < tas[m][0]) m = l; if (r < tas.length && tas[r][0] < tas[m][0]) m = r; if (m === i) break; [tas[m], tas[i]] = [tas[i], tas[m]]; i = m; } } return h; };
+  while (tas.length) {
+    const [, u] = tirer();
+    if (fait[u]) continue; if (u === t) break; fait[u] = true;
+    for (const [v, d] of Gr.voisins[u]) if (dist[u] + d < dist[v]) { dist[v] = dist[u] + d; prec[v] = u; pousser([dist[v], v]); }
   }
   if (dist[t] === Infinity) return null;
   const ch = []; for (let u = t; u >= 0; u = prec[u]) ch.unshift(u);
   return ch;
 }
+// LE GRAPHE TIRÉ TOUT SEUL, pour une arène de plain-pied qui n'en déclare pas (la Garde-Guérin,
+// le Pouget, Ko Panyi, Gallipoli) : sans lui, un bot qui ne voyait pas sa cible fonçait droit
+// sur elle et restait collé au mur d'une ruelle. On part des départs de l'arène et l'on avance
+// de case en case (3 m, huit voisines) comme Camille marche : pas de 0,5 m, une marche de
+// 0,6 m au plus, rien dans un rayon de 0,5 m (blocked, getH du moteur). Ce qu'on atteint
+// devient un point, chaque pas réussi une arête : les toits et les cours closes n'y entrent
+// pas. Dans une case, on essaie le centre puis quatre points autour — une ruelle de 2 m entre
+// deux centres de case passerait entre les mailles. Quelques ms par image, jamais d'écran figé.
+const GA_PAS = 3, GA_ESSAIS = [[0, 0], [0.9, 0], [-0.9, 0], [0, 0.9], [0, -0.9]];
+// on marche de a vers (x, z) : la hauteur d'arrivée, ou null si l'on bute ou si l'on saute
+function marcheVers(ax, az, ay, x, z) {
+  const L = Math.hypot(x - ax, z - az), n = Math.max(1, Math.ceil(L / 0.5));
+  let y = ay;
+  for (let k = 1; k <= n; k++) {
+    const t = k / n, px = ax + (x - ax) * t, pz = az + (z - az) * t, yy = getH(px, pz, y + 0.6);
+    if (!Number.isFinite(yy) || Math.abs(yy - y) > 0.6 || blocked(px, pz, 0.5, false, yy + 0.1)) return null;
+    y = yy;
+  }
+  return y;
+}
+function grapheAuto() {
+  const A = arene;
+  // G.sansGrapheAuto : pour le banc (bancs/multi-graphe.mjs), qui compare avec et sans
+  if (!A || A.graphe || aLille() || !G.level || !A.aires.length || G.sansGrapheAuto) return null;
+  const G_ = A.grapheAuto || (A.grapheAuto = { fait: false });
+  if (G_.fait) return G_;
+  if (!document.getElementById('loading')?.classList.contains('hidden')) return null;
+  if (!G_.n) {
+    const a0 = A.aires[0], R = a0.r + 6, sd = a0.sd || A.sd, [cx, cz] = A.centre;
+    // l'aire de départ est un cercle autour du centre (toutes celles de plain-pied) : la boîte
+    // en est tirée, puis on borne par sa propre mesure
+    G_.x0 = cx - R - 10; G_.z0 = cz - R - 10; G_.nx = Math.ceil((2 * R + 20) / GA_PAS); G_.dans = (x, z) => sd(x, z) <= R;
+    G_.n = []; G_.a = []; G_.cell = new Int32Array(G_.nx * G_.nx).fill(-1); G_.file = []; G_.cles = new Set(); G_.t0 = performance.now();
+    const graines = [A.centre, ...(A.departsCamps ? Object.values(A.departsCamps) : []), ...(A.objets || []).map((o) => [o.x, o.z])];
+    for (const [x, z] of graines) {
+      const i = Math.floor((x - G_.x0) / GA_PAS), j = Math.floor((z - G_.z0) / GA_PAS), k = j * G_.nx + i;
+      if (i < 0 || j < 0 || i >= G_.nx || j >= G_.nx || G_.cell[k] >= 0) continue;
+      const y = getH(x, z);
+      if (!Number.isFinite(y) || blocked(x, z, 0.5, false, y + 0.1)) continue;
+      G_.cell[k] = G_.n.length; G_.n.push([x, z, y]); G_.file.push(k);
+    }
+  }
+  const t0 = performance.now(), budget = state.running && !state.paused ? NAV_BUDGET_MS : NAV_BUDGET_FIGE_MS, nx = G_.nx;
+  while (G_.file.length && performance.now() - t0 < budget) {
+    const k = G_.file.shift(), i = k % nx, j = (k - i) / nx, u = G_.cell[k], [ax, az, ay] = G_.n[u];
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nx) continue;
+      const q = b * nx + a, v = G_.cell[q];
+      if (v >= 0) {                          // déjà un point : une arête si l'on y va à pied (une fois par paire)
+        if (v > u && !G_.cles.has(u * 65536 + v) && marcheVers(ax, az, ay, G_.n[v][0], G_.n[v][1]) !== null) { G_.a.push([u, v]); G_.cles.add(u * 65536 + v); }
+        continue;
+      }
+      for (const [ox, oz] of GA_ESSAIS) {
+        const x = G_.x0 + (a + 0.5) * GA_PAS + ox, z = G_.z0 + (b + 0.5) * GA_PAS + oz;
+        if (!G_.dans(x, z) || (world.bounds && world.bounds(x, z))) continue;
+        const y = marcheVers(ax, az, ay, x, z);
+        if (y === null) continue;
+        G_.cell[q] = G_.n.length; G_.n.push([x, z, y]); G_.a.push([u, G_.n.length - 1]); G_.cles.add(u * 65536 + G_.n.length - 1); G_.file.push(q);
+        break;
+      }
+    }
+  }
+  G_.cpu = (G_.cpu || 0) + performance.now() - t0;
+  if (G_.file.length) return null;
+  G_.fait = true; G_.cpu = Math.round(G_.cpu); G_.ms = Math.round(performance.now() - G_.t0);
+  delete G_.cell; delete G_.file; delete G_.cles;
+  return G_;
+}
 function suivreGraphe(b, c, dt, now) {
-  const Gr = arene && arene.graphe;
+  const Gr = arene && (arene.graphe || grapheAuto());
   if (!Gr) return false;
   const cy = c.y ?? b.pos.y, memeEtage = Math.abs(cy - b.pos.y) < 2;
   // même étage, rien entre eux : la poursuite ordinaire (la vue se relit toutes les 0,6 s)
@@ -2572,7 +2647,7 @@ function penserBot(b, dt, now) {
   if (traque) b.but = { x: traque.x, z: traque.z };
   if (!b.but || Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 2.5) {
     b.but = butAuHasard(b);
-    const Gr = arene && arene.graphe;
+    const Gr = arene && (arene.graphe || grapheAuto());
     if (Gr && Math.random() < 0.25) { const ailleurs = Gr.n.filter((q) => Math.abs(q[2] - b.pos.y) > 2), l = ailleurs.length ? ailleurs : Gr.n, q = l[Math.floor(Math.random() * l.length)]; b.flane = { x: q[0], z: q[1], y: q[2] }; }
   }
   const avant = b.pos.clone();
@@ -3076,7 +3151,7 @@ function boucle(now) {
   requestAnimationFrame(boucle);
   const dt = Math.min(0.05, (now - precedent) / 1000); precedent = now;
 
-  if (actif) { assurerArene(); premiereEntree(); ouvrirDonjon(); tickAire(dt, now); }
+  if (actif) { assurerArene(); premiereEntree(); ouvrirDonjon(); tickAire(dt, now); grapheAuto(); }
   // point de réapparition : celui choisi sur la carte ; à défaut, là où la partie a
   // démarré, relevé une fois lancée
   if (state.running && !apparition) {
@@ -3150,4 +3225,8 @@ requestAnimationFrame(boucle);
 // le moteur expose déjà window.TLOC : on s'y range, ça aide au débogage depuis la console
 window.TLOC_MULTI = { autres, bots, envoyer, encaisser, orienterArrivee, etat: () => ({ instance: inst, moi, connectes: autres.size, bots: bots.size, regle, manche, elimine, drapeaux, tenue, arene: arene && arene.id, aire: aireEnVigueur }),
   nav: () => nav && { nx: nav.nx, nz: nav.nz, fait: nav.fait, champs: nav.champs.size }, pasVers, champ, grille: () => nav, candidatsDrapeaux, terrainDrapeau,
-  equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }) };
+  equipement: () => ({ armure, armurePts, ecu, objets, monte, chevalPv }),
+  // pour la passe des arènes (bancs/rencontres.mjs) : les camps nommés, l'aire tracée, ce qui est allumé
+  verif: () => ({ camps: { garnison: CAMPS.garnison.nom, bourg: CAMPS.bourg.nom }, aires: PARTAGE.aires.length, bannieres: areneA('bannieres'), fete: areneA('fete'), forge: areneA('forge'),
+    diag: { proposes: drapeauxProposes, serveur: lieuxDrapeauxServeur, nav: nav && nav.fait + '/' + nav.nz, p0: (() => { const l = lieuDepart(); return l && (terrainDrapeau(l) || praticable(l.x, l.z)); })() },
+    graphe: arene && (arene.graphe ? 'déclaré' : arene.grapheAuto && arene.grapheAuto.fait ? arene.grapheAuto.n.length + ' points' : null) }) };

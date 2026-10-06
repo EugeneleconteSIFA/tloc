@@ -53,6 +53,9 @@ DON_MAX = 999
 BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
 # ce que chaque arène déclare (`fete`, `bannieres` dans son fichier : game.js, batut.js…) ;
 # le serveur ne lit pas le JS, la liste se tient ici à la main
+# la borne des points qu'un client propose (ralliement, drapeaux) : la Garde-Guérin est à
+# z = -5 340 dans le repère des mondes ; 5 000 m refusait ses ralliements et ses drapeaux
+COORD_MAX = 50000
 ARENES_FETE = {"lille"}         # la fête fauche l'herbe de Lille : ailleurs, rien à faucher
 ARENES_BANNIERES = {"lille", "gardeguerin", "pouget", "batut"}
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
@@ -1861,7 +1864,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                        "nom": str(m.get("nom") or "")[:60]}
             except (KeyError, TypeError, ValueError):
                 return
-            if not (abs(rdv["x"]) < 5000 and abs(rdv["z"]) < 5000):
+            if not (abs(rdv["x"]) < COORD_MAX and abs(rdv["z"]) < COORD_MAX):
                 return
             with db() as cx:
                 actuel = cx.execute("SELECT rdv FROM instances WHERE code = ?", (code,)).fetchone()["rdv"]
@@ -2039,7 +2042,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
                     did, x, z, y = str(d["id"]), float(d["p"][0]), float(d["p"][1]), float(d.get("y", 0))
                 except (KeyError, TypeError, ValueError, IndexError):
                     continue
-                if re.fullmatch(r"[a-z0-9]{1,16}", did) and abs(x) < 5000 and abs(z) < 5000:
+                if re.fullmatch(r"[a-z0-9]{1,16}", did) and abs(x) < COORD_MAX and abs(z) < COORD_MAX:
                     salon.lieux_drapeaux[did] = {"nom": str(d.get("nom") or did)[:40], "p": [x, z], "y": y,
                                                  "n": str(d.get("n") or "")[:40]}
             if salon.manche and salon.manche["etat"] == "cours" and not salon.drapeaux:

@@ -58,10 +58,10 @@ for (const c of comptes.slice(1)) await api(`/api/instances/${inst.code}/rejoind
 console.log(`instance ${inst.code} (${REGLE}, ${DUREE} s, arène ${inst.arene || '—'}) : ${JOUEURS} joueurs, ${BOTS} bots`);
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${ANGLE}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
-const pages = [];
+const pages = [], ERREURS = [];
 for (const c of comptes) {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
-  page.on('pageerror', (e) => console.log(`[${c.perso}] erreur : ${String(e).split('\n')[0]}`));
+  page.on('pageerror', (e) => { ERREURS.push(String(e).split('\n')[0]); console.log(`[${c.perso}] erreur : ${String(e).split('\n')[0]}`); });
   await page.addInitScript(([c, code, nom]) => {
     if (sessionStorage.getItem('banc_pret')) return;     // une seule fois : le jeu réécrit ensuite
     sessionStorage.setItem('banc_pret', '1');
@@ -160,6 +160,9 @@ marche = false;
 await Promise.all(promeneurs);
 const nObjets = await pages[0].page.evaluate(() => (window.TLOC_MULTI.equipement().objets || []).length).catch(() => '?');
 console.log('objets posés dans l’arène : ' + nObjets);
+// la passe des arènes (C7, 6 octobre) : drapeaux posés, camps nommés, aire tracée, ce qui est allumé
+const verif = await pages[0].page.evaluate(() => ({ ...window.TLOC_MULTI.verif(), drapeaux: (window.TLOC_MULTI.etat().drapeaux || []).length })).catch((e) => ({ erreur: String(e) }));
+console.log('vérif : ' + JSON.stringify(verif));
 // à regarder : ce que voient deux des joueurs, et la carte M (la limite de l'aire y est tracée)
 const JOUR = new Date().toISOString().slice(0, 10);
 for (const [k, { page }] of pages.slice(0, 2).entries()) await page.screenshot({ path: DIR + `rencontres-${JOUR}-${ETIQ}-joueur${k + 1}.jpg`, quality: 80 });
@@ -167,7 +170,7 @@ await pages[0].page.keyboard.press('KeyM'); await pages[0].page.waitForTimeout(1
 await pages[0].page.screenshot({ path: DIR + `rencontres-${JOUR}-${ETIQ}-carte.jpg`, quality: 80 });
 const med = (t) => { const s = [...t].sort((a, b) => a - b); return s.length ? Math.round(s[Math.floor(s.length / 2)]) : null; };
 const res = { date: new Date().toISOString(), etiquette: ETIQ, regle: REGLE, duree: DUREE, fenetre: FENETRE, joueurs: JOUEURS, bots: BOTS,
-  arene: inst.arene || null, arrivees, rencontres, voisinMedianM: med(dmin) };
+  arene: inst.arene || null, mode: MODE, arrivees, rencontres, objets: nObjets, verif, erreurs: ERREURS, voisinMedianM: med(dmin) };
 console.log(`rencontres (< ${PRES} m) en ${FENETRE} s : ${rencontres.total} — entre joueurs ${rencontres.humains}, joueur-bot ${rencontres.mixtes}, entre bots ${rencontres.bots} ; voisin le plus proche d'un joueur (médiane) : ${res.voisinMedianM} m`);
 fs.writeFileSync(DIR + `rencontres-${res.date.slice(0, 10)}-${ETIQ}.json`, JSON.stringify(res, null, 1));
 await browser.close();

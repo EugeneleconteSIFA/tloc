@@ -2583,3 +2583,61 @@ L'acte commence dès qu'on arrive au lac (les portes de l'île restent ouvertes)
 - **engine.js** : le favicon (un 404 à chaque page) ; un lancer de bombe hors de la citadelle.
 - **Reste** : les grandes quêtes secondaires (course des maisons, arbre des Roquette, sources,
   train) ne sont ni découpées ni codées ; le point d'or de la carte ne suit pas l'acte II.
+
+### Multi, C7 — ce que chaque arène déclare, les chemins des bots (6 octobre, PC, `PLAN-2026-10-06-VAGUE1.md`) — **fait, vérifié au banc, publié**
+
+Le détail et les tableaux : `docs/NOTE-MULTI.md`, « Ce que chaque arène déclare, et les chemins des bots ».
+- Les arènes déclarent `forge`, `bannieres`, `fete` ; ce qui n'est pas déclaré est éteint (client et
+  serveur). Lille garde tout ; bannières au Batut, au Pouget, à la Garde-Guérin. Publié 1bd6d84.
+- `grapheAuto` (tloc-multi.js) : le graphe des bots tiré tout seul pour la Garde-Guérin, le Pouget, Ko Panyi
+  et Gallipoli. Banc `bancs/multi-graphe.mjs` : un bot rejoint un joueur caché 9 fois sur 9 avec, 2 sur 9 sans.
+- Passe des six arènes × quatre règles (`bancs/multi-arenes.sh`) : aucune pageerror. Corrigés en route : la
+  Garde-Guérin sans drapeau ni ralliement (borne de 5 km au serveur), l'exception de la remise des bannières.
+
+- **Appris** : **`uvicorn --reload` ne recharge pas sous Windows** (le serveur du 5 octobre tournait le 6 avec
+  l'ancien app.py) : après toute modification d'`app.py`, relancer `./lancer.sh`, sous `bancs/tour.sh`.
+- **Appris** : en chacun pour soi, les bots se chassent entre eux : un banc qui mesure une poursuite n'en met qu'un.
+- **Appris** : les mondes de monde.js sont loin de l'origine (la Garde-Guérin à z = −5 340) : toute borne de
+  coordonnées au serveur doit le savoir.
+
+**Demandes pour d'autres fichiers** :
+- **`gallipoli.js` (C3)** : rien d'obligatoire — Gallipoli prend le graphe automatique. Si l'on veut des
+  bannières à Gallipoli : `bannieres: true` dans `ARENE_GALLIPOLI`, et `"gallipoli"` dans `ARENES_BANNIERES` (app.py).
+- **`monde.js`** : la minicarte de la Garde-Guérin ne trace toujours pas la limite de l'aire (`PARTAGE.aires`).
+- **`thailande.js` (vague 2)** : y replier `thailande-arene.js` ; ajouter `bannieres: true` si on en veut à Ko Panyi.
+
+### Acte IV, les Pouilles (6 octobre, PC, consigne C3 de `PLAN-2026-10-06-VAGUE1.md`) — **lots 1 à 3 faits, joués en headless, publiés (74ab02f, a8ab9d1, 3282a84)**
+
+Découpage et répliques validés par Eugène (`docs/DECOUPAGE-ACTE4.md`, `docs/DIALOGUES-ACTE4.md` ; les six
+propositions acceptées : sans souffle, lasso ni poulie ; Nunzia vieillit au retour par le train ; Donato et
+Assunta ; rien sur le père de la fille de Nunzia ; l'élan demandé à `engine.js` ; le Colosse figé en instance).
+- **Fait** : le temps qui court dans les trois villes (la journée en deux minutes, la marée de Gallipoli,
+  `TEMPS` dans `pouilles.js`) ; l'avancement `state.acte4` (de `arrivee` à `chateau`), le carnet
+  (`G.level.indices`), l'objectif ; Nunzia à 15, 30, 60 ans (rôles ajoutés à `PNJ.ROLES` depuis pouilles.js) ;
+  Cosimo, l'apprenti, le voisin de Donato, le chef de dépôt, le vieux des Sassi, Assunta ; la grotte à marée
+  basse sous le château angevin (banc de rochers par `solLieu`, six tarentules, la corde) ; le tambourin
+  (touche K, huit secondes de ralenti) ; le château Tramontano (tours creuses, portes à rythme, deux salles
+  qui vieillissent en boucle, leviers, sommet du donjon, dalle et vers). Rien de l'acte ne naît au chargement.
+- **Vérifié** : `bancs/acte4-enquete.mjs` (22/22), `acte4-tambourin.mjs` (tout passé), `acte4-chateau.mjs`
+  (17/17), aucune pageerror ; chargement des trois villes en A/B (`bancs/acte4-charge.mjs`) : Σ 5,8–6,2 s
+  avant, 5,7–5,9 s après.
+- **Reste** : lot 4 (le Colosse qui marche, le combat, l'élan, la Cloche des Heures, Nunzia à 75 ans) ; lot 5
+  (la lettre : Cosimo vieux, la boîte de lettres) ; les petites quêtes. La nuit, la mer reste pâle à
+  l'horizon. Les portes du château ne sont pas encore filmées ouvertes (cadrage à reprendre).
+
+**Demandes pour d'autres fichiers** (C3) :
+1. **`engine.js`** : l'élan du Colosse (`state.elan`, posé au lot 4) — un saut plus long quand il est acquis.
+2. **`temple.js`** : le retour de l'acte IV quand `state.acte4 === 'heures'` (puis `temple`) — la Cloche des
+   Heures au troisième étage, le grand cadran dont l'aiguille tourne trop vite, un tic-tac
+   (`DECISIONS-RECIT.md` § 3) ; la porte suivante (la Lozère) entrouverte.
+3. **`monde.js`** : rien d'obligatoire. La marée retrouve le plan d'eau dans la scène (un disque de 6 000 m) :
+   un `G.level.mer` exposé serait plus sûr. Et un crochet pour bloquer ou rouvrir un passage (`bloqueLieu`)
+   remplacerait la règle des salles du château, tenue à chaque image dans `matera.js`.
+
+**Appris** :
+- Changer `scene.environment` recompile tous les shaders : la nuit des Pouilles baisse l'exposition
+  (`renderer.toneMappingExposure`) au lieu de couper la carte d'environnement.
+- `SUN_DIR` est lu à chaque image par le ciel et l'ombre : le muter suffit à faire tourner le soleil.
+- La caméra sonde `blocked` : un anneau de collision la garde dans une tour creuse.
+- `publier-dev.sh` attend son tour dans la file des bancs ; une attente de 30 minutes ne suffit pas quand
+  trois conversations tournent (`TOUR_ATTENTE=5400`). Préparer le lot suivant sur des copies pendant ce temps.

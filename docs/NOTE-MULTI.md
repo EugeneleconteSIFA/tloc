@@ -560,3 +560,60 @@ tracent la limite de l'aire (PARTAGE.aires) ; celle de Garde-Guérin (monde.js) 
 Banc : `bancs/rencontres.mjs` — comptes de test sur le serveur LOCAL, quatre joueurs sans tête
 qui marchent au hasard, quatre bots, chrono de 10 min observé sur ses 3 premières minutes ; il
 compte les rencontres (deux personnages à moins de 30 m).
+
+### Ce que chaque arène déclare, et les chemins des bots (6 octobre, C7)
+
+**Ce qu'une arène a se déclare** dans son fichier : `forge` (`true` : celle du bourg de Lille ;
+ailleurs `{ x, z, y? }`), `bannieres`, `fete`. Ce qu'elle ne déclare pas est éteint
+(`areneA`, tloc-multi.js) : la forge n'est pas posée et les messages n'en parlent plus,
+les bannières ne sont ni dessinées ni comptées, `/fete` répond qu'il n'y a rien à faucher. Le
+serveur tient la même liste à la main (`ARENES_FETE`, `ARENES_BANNIERES`, app.py : il ne lit
+pas le JS). Lille déclare les trois. Les bannières ont été gardées au Batut, au Pouget et à la
+Garde-Guérin (Eugène) ; Ko Panyi et Gallipoli n'en ont pas.
+
+**Le graphe tiré tout seul** (`grapheAuto`) : pour une arène de plain-pied sans `graphe`, on
+avance de case en case (3 m, huit voisines) depuis le centre, les départs et les objets, comme
+Camille marche (pas de 0,5 m, marche de 0,6 m au plus, rayon 0,5 m : `blocked`, `getH`). Ce
+qu'on atteint devient un point, chaque pas réussi une arête : les toits et les cours closes n'y
+entrent pas. Dans une case on essaie le centre puis quatre points autour, pour les ruelles de
+2 m. Le plus court chemin passe par un tas (Dijkstra en n² coûtait des dizaines de ms par bot).
+Calcul : 0,7 s à Gallipoli, réparti à 6 ms par image (7 s d'horloge en headless, ~2 s à 60 i/s) ;
+avant, les bots poursuivent comme avant.
+
+Banc `bancs/multi-graphe.mjs` : un bot vétéran seul (à plusieurs, en chacun pour soi, ils se
+chassent entre eux), un joueur posté invulnérable sur le point au plus long détour à pied depuis
+le centre, 90 s par essai :
+
+| arène | graphe | cachette (vol → à pied) | sans graphe | avec |
+|---|---|---|---|---|
+| la Garde-Guérin | 3 139 points | 58 m → 271 m | 1/3 | **3/3** (47–52 s) |
+| le Pouget | 2 454 | 23 m → 55 m | 1/2 (66 s) | **2/2** (11–12 s) |
+| Ko Panyi | ~1 570 | 22 m → 86 m | 0/2 | **2/2** (15–16 s) |
+| Gallipoli | 1 008 | 20 m → 101 m | 0/2 | **2/2** (10–20 s) |
+
+**La passe des arènes** (`bancs/multi-arenes.sh`, qui lance `rencontres.mjs` : deux joueurs
+sans tête, deux bots, 40 s de manche ; balade et drapeaux en équipes, le reste chacun pour
+soi). Aucune pageerror sur les 24 parties. Partout : les objets posés (4 à Lille, 5 ailleurs),
+les camps nommés par l'arène, l'aire tracée (une), un drapeau en prise des drapeaux (le
+serveur en met `ceil(joueurs/2) − 1`, au moins un : quatre personnages, un drapeau). La balade
+n'a pas de manche (« la manche ne commence pas » y est normal).
+
+| arène | forge · bannières · fête | graphe | rencontres en 40 s (balade / survie / chrono / drapeaux) |
+|---|---|---|---|
+| Lille | oui · oui · oui | (grille de Lille) | 0 / 1 / 1 / 0 |
+| la Garde-Guérin | — · oui · — | auto, 3 139 | 3 / 4 / 6 / 9 |
+| le Pouget | — · oui · — | auto, 2 454 | 6 / 11 / 8 / 9 |
+| le Batut | — · oui · — | déclaré | 4 / 5 / 6 / 6 |
+| Ko Panyi | — · — · — | auto, ~1 570 | 6 / 7 / 3 / 6 |
+| Gallipoli | — · — · — | auto, 1 008 | 1 / 6 / 6 / 6 |
+
+Trouvé par la passe :
+- **La Garde-Guérin n'avait jamais de drapeau, ni de ralliement** : le serveur refusait tout
+  point au-delà de 5 km de l'origine, et elle est à z = −5 340 (repère des mondes). Borne
+  portée à 50 km (`COORD_MAX`, app.py).
+- **La remise des bannières d'une manche neuve** (`raz`, sans camp) levait une exception à
+  chaque manche en équipes : `evenementBanniere` s'arrête maintenant au panneau.
+- **Le serveur local ne se recharge pas sous Windows** : `uvicorn --reload` du 5 octobre
+  tournait encore le 6 avec le app.py de la veille. Après une modification d'app.py, relancer
+  `./lancer.sh` (sous `bancs/tour.sh`, pour ne couper le banc de personne).
+- Lille : 0 ou 1 rencontre en 40 s à quatre (la citadelle fait 530 m ; c'était connu).
