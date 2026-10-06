@@ -2287,6 +2287,46 @@ de l'acte (une partie au prologue passé, parler, entrer dans un intérieur, fil
   la ligne, il faudrait que la touche reste enfoncée tant qu'on appuie.
 - Pour B3 : la nuit existe (`state.nuit`, `nuitLille`) ; le Capitaine sans tête peut la lire.
 
+### Acte I, B2 — sous la ville (5–6 octobre, PC, `PLAN-2026-10-05-ACTE1.md`) — **fait, joué en headless, publié (05f72fd)**
+
+Étapes 7 et 8 de `docs/DECOUPAGE-ACTE1.md` (le détail y est, § 7 et § 8). La dalle de la crypte
+(`chapelle.js`) descend aux galeries avec la lanterne (`souterrains`) ; dans `cave.js`, pour une partie
+de l'acte I seulement : Bastien près d'une citerne neuve, l'arc au puits aux chauves-souris (`arc`), le
+levier de la grille scellé haut et touché d'une flèche, le Rat-Roi terré que trois tonneaux pendus font
+sortir, la clé de la poterne, la porte de la poterne puis la citadelle (`citadelle`, `galleryOpen`). Les
+billets d'Eugène 2 et 3, le trône du Rat-Roi. L'ancienne histoire (vanne, cage, Eugène) intacte.
+Banc : `bancs/acte1-souterrains.mjs` (26 pas sur 28 ; il importe `bancs/acte1-outils.mjs` de B1) ;
+captures `acte1-souterrains-2026-10-05-*.jpg`. Charge : rien de changé (index.html ne charge pas la cave).
+
+- **Appris** : la cave lit `prologueFait` dans la SAUVEGARDE (`readSave`) avant de bâtir : `build` et
+  `populate` passent avant que `startGame` ne charge l'état, et la sauvegarde retrouve les monstres par
+  leur rang — les deux histoires ne pondent pas les mêmes, l'ordre doit rester stable.
+- **Appris** : `G.level.arrowBlocked(p)` est appelé pour chaque flèche ET pour le point rouge de la
+  visée ; une cible qui y répond vrai accroche le point rouge. Pour ne déclencher qu'à une vraie flèche :
+  `arrows.some((a) => a.mesh.position === p)`. Et `viseeArc` vise tout monstre non mort, même `caged` :
+  un monstre caché doit avoir sa position hors du plan (le Rat-Roi terré est en 500 ; 500, seul son
+  maillage montre le museau).
+- **Appris** : une futaille posée à ± 70 cm au hasard barre une marche en ligne droite un essai sur
+  deux ; les bancs marchent par un chemin cherché sur la grille de `blocked`, Camille invulnérable
+  (morte, la boucle s'arrête et les flèches restent en l'air).
+
+**Demandes pour d'autres fichiers** :
+- **`engine.js` (urgent, bloque la suite de l'acte)** : `loadGame` (l. 2687) fait
+  `player.mesh.userData.bowBack.visible = true` ; la Camille riggée (`pnj.js`, `installerCamille`)
+  n'a pas de `bowBack` : avec l'arc en poche, toute page qui recharge la partie lève une exception,
+  `startGame` s'interrompt et **la boucle ne démarre pas** (page figée). Cela touche l'acte I en sortant
+  des galeries (index.html), et l'ancienne histoire à chaque rechargement avec l'arc. Remède d'une
+  ligne : `if (state.bow && player.mesh.userData.bowBack) …`. `cave.js` et `chapelle.js` s'en gardent
+  en posant un `bowBack` invisible avant `bootLevel` ; `game.js` (B1) pourrait faire de même en attendant.
+- **`quetes.js` (B1)** : `INDICES` peut reprendre `state.ind.bastien` (« L'arc de l'intendant est au
+  puits aux chauves-souris, à droite après la citerne » — Bastien, fait : `state.bow`) et
+  `state.ind.ratRoi` (« Le Rat-Roi a avalé une clé ; une flèche dans les tonneaux pendus » — Bastien,
+  fait : `state.clePoterne`).
+- **B3 (`citadelle.js`)** : on arrive de la poterne avec `acte1 = 'citadelle'`, `galleryOpen`, `bow`,
+  `bowChest` (le coffre de l'arc du bastion de Turenne est donc déjà ouvert), `clePoterne`, et
+  `state.billets = { 2: true, 3: true }` si on les a lus — les billets 4 à 6 peuvent suivre la même
+  convention. Le placement devant la poterne est déjà fait par `quetes.js` (`onLoad`, arrivée de `cave`).
+
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
 - **Un plan de cinématique qui suit un acteur (`actor`, `to`) s'achève QUAND L'ACTEUR ARRIVE**
