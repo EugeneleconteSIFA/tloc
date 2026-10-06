@@ -2459,6 +2459,13 @@ function pourTactile(t) {
   for (const [re, par] of TRADUCTIONS) t = t.replace(re, par);
   return t.replace(/\s{2,}/g, ' ').trim();
 }
+// LE FAVICON (C1, 6 octobre) : vingt pages n'en déclaraient pas, et le navigateur demandait
+// /favicon.ico — un 404 dans la console de chaque banc. Toute page de jeu charge ce module : il
+// pose l'icône qui manque (celle du dev sur le dev, comme index.html).
+if (!document.querySelector('link[rel="icon"]')) {
+  const l = document.createElement('link'); l.rel = 'icon'; l.type = 'image/svg+xml';
+  l.href = location.hostname.startsWith('tloc-dev') ? 'favicon-dev.svg' : 'favicon.svg'; document.head.appendChild(l);
+}
 function envoyerTouche(code) {
   window.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
   setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true })), 80);
@@ -2523,7 +2530,10 @@ if (TACTILE) {
   appui(bFrapper, () => envoyerTouche('KeyF'));
   appui(bRouler, () => envoyerTouche('ShiftLeft'));
   appui(bSauter, () => envoyerTouche('Space'));
-  appui(bAgir, () => envoyerTouche('Enter'));
+  // Agir se TIENT, comme la touche Entrée : la pêche ramène la ligne tant qu'on appuie (B1, 5 octobre ;
+  // l'appui de 80 ms d'envoyerTouche ne laissait que ferrer)
+  appui(bAgir, () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', bubbles: true, cancelable: true })));
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bAgir.addEventListener(t, () => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Enter', bubbles: true })));
   appui(bArc, () => envoyerTouche('KeyC'));
   // le bouclier se TIENT levé, comme le clic droit
   appui(bGarde, () => { mouse.garde = true; bGarde.classList.add('on'); });
