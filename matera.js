@@ -119,7 +119,9 @@ function portesChateau({ hauteur }) {
   const bois = phMat('wood_cabinet_worn_long', 1.2, 2.2, { color: 0x8a6a4a }), pierre = phMat('old_stone_wall_02', 1, 1, { color: 0xe4d8be });
   return TOURS.map((T, i) => {
     const dx = -40 - T.x, dz = 20 - T.z, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
-    const px = T.x + ux * (T.r - 0.05), pz = T.z + uz * (T.r - 0.05), y = hauteur(T.x + ux * (T.r * 1.25), T.z + uz * (T.r * 1.25));
+    // sur la surface du GLACIS : au pied, la tour s'évase jusqu'à 1,18 fois son rayon (le talus) ; posée
+    // au rayon du fût, la porte était enterrée dedans et seul le linteau flottait devant (6 octobre)
+    const rp = T.r * 1.15 + 0.06, px = T.x + ux * rp, pz = T.z + uz * rp, y = hauteur(T.x + ux * (T.r * 1.25), T.z + uz * (T.r * 1.25));
     const g = new THREE.Group(); g.position.set(px, y, pz); g.rotation.y = Math.atan2(ux, uz);
     const v = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.4, 0.3), bois); v.position.y = 1.7; v.castShadow = true;
     const arc = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.5, 0.5), pierre); arc.position.y = 3.65;
@@ -127,9 +129,14 @@ function portesChateau({ hauteur }) {
     anneau.position.set(0, 1.5, 0.2); v.add(anneau);
     const noir = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.4), new THREE.MeshBasicMaterial({ color: 0x0a0806 })); noir.position.set(0, 1.7, 0.05); noir.visible = false;
     g.add(v, arc, noir); scene.add(g);
+    // du dedans, l'embrasure : le jour dans le parement intérieur (un cylindre fermé, sans elle on ne
+    // voyait plus par où l'on était entré), seulement quand la porte est ouverte
+    const jour = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.4), new THREE.MeshBasicMaterial({ color: 0xe8eef4, fog: false, side: THREE.DoubleSide }));
+    // (à 15 cm du rayon : le parement est un polygone, au milieu de ses faces il passe 3 cm en dedans)
+    jour.position.set(T.x + ux * (T.rin - 0.15), T.yf + 1.7, T.z + uz * (T.rin - 0.15)); jour.rotation.y = Math.atan2(-ux, -uz); jour.visible = false; scene.add(jour);
     const ix = T.x + ux * (T.r * 1.15 + 1.4), iz = T.z + uz * (T.r * 1.15 + 1.4);
     const it = addInteract({ pos: new THREE.Vector3(ix, hauteur(ix, iz), iz), r: 3.2, prompt: () => 'pousser la porte', fn: () => toucherPorte(i), enabled: () => !ouverte(i) });
-    return { g, it, x: ix, z: iz, y: hauteur(ix, iz), yaw: Math.atan2(ux, uz), vantail: v, noir, anneau };
+    return { g, it, x: ix, z: iz, y: hauteur(ix, iz), yaw: Math.atan2(ux, uz), vantail: v, noir, anneau, jour };
   });
 }
 function toucherPorte(i) {
@@ -162,7 +169,7 @@ function ouvrir(i) {
   state.portes4 = { ...(state.portes4 || {}), [i]: true }; MESURE.porte = -1; saveGame(true); SFX.unlock();
   majPortes(); showMessage(i === 1 ? 'La porte du donjon s’ouvre.' : 'La porte s’ouvre sur une salle ronde.', 3);
 }
-function majPortes() { for (const [i, d] of (GENS.portes || []).entries()) { d.vantail.visible = !ouverte(i); d.noir.visible = ouverte(i); } }
+function majPortes() { for (const [i, d] of (GENS.portes || []).entries()) { d.vantail.visible = !ouverte(i); d.noir.visible = d.jour.visible = ouverte(i); } }
 function anneaux() {
   const t = state.time - MESURE.t0;
   (GENS.portes || []).forEach((d, i) => { const on = MESURE.porte === i && BATTUES.some((b) => t > b && t < b + 0.18);

@@ -1,0 +1,33 @@
+{
+ "pas": [
+  {
+   "nom": "les trois portes sont ouvertes (vantail ôté, l’entrée noire)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la porte sud filmée sans obstacle",
+   "ok": true,
+   "detail": "-460.4, 18.0, 278.9"
+  },
+  {
+   "nom": "la porte donjon filmée sans obstacle",
+   "ok": true,
+   "detail": "-440.5, 18.7, 308.7"
+  },
+  {
+   "nom": "la porte nord filmée sans obstacle",
+   "ok": true,
+   "detail": "-429.4, 18.0, 340.1"
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}
