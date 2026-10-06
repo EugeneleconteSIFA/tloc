@@ -11,7 +11,7 @@
 // carte/mondes/complet/.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame } from './engine.js?v=41';
+import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame, keys as PNJ_KEYS } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { especeGeo } from './foret.js';
 import * as PNJ from './pnj.js';
@@ -57,7 +57,10 @@ const INDICES3 = {
   balayeur: { txt: 'La clé du cloître, c’est le balayeur qui l’avait.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
   somchai: { txt: 'Somchai balaie toujours la cour du puits, devant le cloître.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
   manche: { txt: 'Il cache la clé dans sa manche gauche.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
-  mali: { txt: 'Mali, la petite-fille de Somsak, s’est arrêtée à Khao Phing Kan.', qui: 'Somsak', fait: () => atteint3('masques') },
+  mali: { txt: 'Mali, la petite-fille de Somsak, s’est arrêtée à Khao Phing Kan.', qui: 'Somsak', fait: () => !!state.barqueMali },
+  cascade: { txt: 'La barque de Mali est restée prise dans la cascade ; le gardien de pierre est tombé en travers du bassin.', qui: 'Mali', fait: () => !!state.barqueMali },
+  course: { txt: 'Battre Mali à la course, autour de Ko Tapu.', qui: 'Mali', fait: () => atteint3('masques') },
+  muetGreve: { txt: 'Le passeur muet est à la grève du grand piton. Il n’emmène que ceux qui lui montrent un masque.', qui: 'Mali', fait: () => sait3('muet') },
 };
 function indices3() {
   if (!state.ind3) return '';
@@ -448,6 +451,193 @@ function ouvrirCloitre(deja = false) {
 }
 // la poulie et le masque en poche : Somsak ouvre le trajet vers sa petite-fille
 function finCloitre() { if (state.poulie && state.masqueBois) passer3('mali'); else saveGame(true); }
+
+// ---------- Khao Phing Kan : Mali, la statue, la cascade, la course (acte III, étape 3) ----------
+// Mali ne navigue plus : sa barque est restée prise dans la cascade du massif ouest, figée à
+// mi-hauteur avec l'eau (Eugène, 6 octobre : « la cascade, je suis ok »). La statue du gardien est
+// tombée en travers du bassin, sur le bord de la corniche : la force l'écarte (usage de l'acte II).
+// Puis le gong : la cascade repart, la barque tombe (« faire tomber une chose suspendue »), glisse
+// par-dessus la corniche et file à la mer. Mali, sa barque retrouvée, ne reprend la mer que si on la
+// bat : une course autour de Ko Tapu, en longue barque qu'on mène (Eugène : « course de barque, ça
+// me plaît »). Pourquoi la barque est DANS la cascade et pas au-dessus : le moteur laisse grimper
+// presque toutes les pentes (tryMove), une barque en haut de la falaise ne demanderait rien.
+// Les places : relevées le 6 octobre (sonde du relief) — la corniche à 13–16 m au pied de la face
+// sud du massif ouest (x −760…−712, z 536–548), la face presque verticale de 20 à 52 m en x −736.
+const KPK = { pied: [-736, 549], levre: [-736, 539], mer: [-736, 522], prise: 34, mali: [-697, 561],
+  statue: null, statuePts: null, cascade: null, barque: null, chute: null, maliG: null, eau: [] };
+function khaoPhingKan({ hauteur, inscrire, addInteract }) {
+  const yP = hauteur(...KPK.pied);
+  // la cascade : un voile d'eau sur la face, du haut (52 m) au bassin. Figée, elle ne bouge pas ;
+  // au gong, son eau descend (le décalage de sa texture) et l'écume du bassin bat.
+  const n = new THREE.CanvasTexture((() => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+    for (let k = 0; k < 900; k++) { g.fillStyle = `rgba(255,255,255,${(Math.random() * 0.5).toFixed(2)})`; g.fillRect(Math.random() * 64, Math.random() * 256, 1 + Math.random() * 2, 6 + Math.random() * 30); } return c; })());
+  n.wrapS = n.wrapT = THREE.RepeatWrapping; n.repeat.set(2, 3);
+  const eau = new THREE.MeshStandardMaterial({ color: 0xcfeef2, map: n, transparent: true, opacity: 0.72, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+  KPK.eau.push(n);
+  const h = 52 - yP, voile = new THREE.Mesh(new THREE.PlaneGeometry(5, h, 1, 12), eau);
+  // le voile suit la paroi : chaque rangée de sommets posée juste devant la face, à sa hauteur
+  { const p = voile.geometry.attributes.position;
+    for (let k = 0; k < p.count; k++) { const yy = yP + (p.getY(k) + h / 2); let z = KPK.pied[1]; for (let zz = KPK.pied[1]; zz < KPK.pied[1] + 30; zz += 0.5) { if (hauteur(KPK.pied[0], zz) >= yy) { z = zz - 0.6; break; } } p.setXYZ(k, KPK.pied[0] + p.getX(k), yy, z); }
+    voile.geometry.computeVertexNormals(); }
+  voile.userData.dynamic = true; scene.add(voile); KPK.cascade = voile;
+  const bassin = mesh(new THREE.CircleGeometry(3.4, 20).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5a9aa0, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 }), KPK.pied[0], yP + 0.12, KPK.pied[1] - 1);
+  scene.add(bassin);
+  // la barque de Mali, prise dans l'eau figée, la proue en l'air
+  { const g = new THREE.Group(), bois = phMat('wood_planks', 1.5, 1.5, { color: 0x6a4a30 });
+    const coque = new THREE.LatheGeometry([[0, 0], [0.7, 0.05], [0.9, 0.45], [0.95, 0.85]].map(([r, hh]) => new THREE.Vector2(r, hh)), 12); coque.scale(1, 1, 6);
+    g.add(mesh(coque, bois, 0, -0.3, 0));
+    const proue = mesh(new THREE.CylinderGeometry(0.07, 0.18, 2.2, 6), bois, 0, 1, -6); proue.rotation.x = -0.6; g.add(proue);
+    g.add(mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x3a6aa0, roughness: 0.8 }), 0, 1.9, -6.6));
+    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    g.userData.dynamic = true; scene.add(g); KPK.barque = g;
+    if (state.barqueMali) g.visible = false;
+    else { g.position.set(KPK.pied[0], KPK.prise, KPK.pied[1] + 2.5); g.rotation.set(1.1, 0.3, 0.2); } }
+  // la statue du gardien, tombée en travers sur le bord de la corniche : un yak de pierre couché
+  { const g = new THREE.Group(), [sx, sz] = KPK.levre, y = hauteur(sx, sz), pierre = phMat('old_stone_wall_02', 2, 2, { color: 0x8a8678 }), mousse = phMat('mousse', 1, 1, { color: 0x5a6a40 });
+    g.position.set(sx, y, sz); g.rotation.y = Math.PI / 2; scene.add(g);
+    g.add(mesh(boxG(1.5, 1.3, 4.6), pierre, 0, 0.6, 0));                 // le corps couché
+    g.add(mesh(new THREE.SphereGeometry(0.85, 12, 10), pierre, 0, 0.75, -2.9));   // la tête, ses yeux ronds
+    g.add(mesh(boxG(1.7, 0.25, 1.4), mousse, 0, 1.3, 0.6));
+    for (const c of [-1, 1]) g.add(mesh(new THREE.ConeGeometry(0.18, 0.7, 6), pierre, c * 0.45, 1.25, -3.3));
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    g.userData.dynamic = true; KPK.statue = g;
+    KPK.statuePts = [[sx - 3.3, sz - 1], [sx + 3.3, sz - 1], [sx + 3.3, sz + 1], [sx - 3.3, sz + 1]];
+    inscrire(KPK.statuePts, sx, sz);
+    if (state.statueKpk) poserStatue(true);
+    addInteract({ pos: new THREE.Vector3(sx, y, sz + 2), r: 3.5, prompt: () => 'pousser la statue', enabled: () => !state.statueKpk, fn: () => {
+      if (!state.force) return showMessage('Une statue de gardien, tombée en travers du bassin. Elle ne bouge pas d’un pouce.', 3.5);
+      poserStatue(); SFX.stomp && SFX.stomp(); showMessage('Camille pousse. Le gardien de pierre bascule par-dessus la corniche et tombe dans la mer.', 4.5); } }); }
+  addInteract({ pos: new THREE.Vector3(KPK.pied[0], yP, KPK.pied[1] - 2), r: 4, prompt: () => 'regarder la cascade', enabled: () => !state.barqueMali,
+    fn: () => showMessage('La cascade est arrêtée en plein saut. Une barque est prise dedans, à mi-hauteur, la proue en l’air.' + (state.gongThai ? ' (K : le gong)' : ''), 4.5) });
+  // Mali, à terre, qui regarde les pitons
+  { const [x, z] = KPK.mali; const v = gensDeLeau('nok', 0x3a6aa0);
+    if (v) { v.position.set(x, hauteur(x, z), z); v.rotation.y = Math.atan2(KPK.pied[0] - x, KPK.pied[1] - z); scene.add(v); KPK.maliG = v; VENDEURS.push(v); if (atteint3('masques')) v.visible = false; }
+    addInteract({ pos: new THREE.Vector3(x, hauteur(x, z), z), r: 3.5, prompt: () => 'parler à Mali', enabled: () => !atteint3('masques'), fn: parlerMali }); }
+  // les bouées de la course, autour de Ko Tapu
+  const orange = new THREE.MeshStandardMaterial({ color: 0xe0702a, roughness: 0.6 }), blanc = new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.8, side: THREE.DoubleSide });
+  for (const [x, z] of COURSE.pts) { const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+    g.add(mesh(new THREE.CylinderGeometry(0.7, 0.9, 1.2, 12), orange, 0, 0.2, 0)); g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 5), blanc, 0, 2, 0));
+    const f = mesh(new THREE.PlaneGeometry(1.1, 0.7), blanc, 0.55, 3.1, 0); g.add(f);
+    g.userData.dynamic = true; g.visible = false; COURSE.bouees.push(g); }
+}
+function poserStatue(deja = false) {
+  state.statueKpk = true; if (!deja) saveGame(true);
+  if (KPK.statuePts) KPK.statuePts.length = 0;
+  if (KPK.statue) { const [x, z] = KPK.mer; KPK.statue.position.set(x, -1.6, z); KPK.statue.rotation.z = 1.3; }
+}
+// au gong, près du bassin : la cascade repart ; la barque tombe si la statue est écartée
+function gongCascade() {
+  if (state.barqueMali || KPK.chute || Math.hypot(player.pos.x - KPK.pied[0], player.pos.z - KPK.pied[1]) > GONG.r) return;
+  KPK.chute = { t: 0, libre: !!state.statueKpk };
+  setTimeout(() => showMessage(KPK.chute && KPK.chute.libre ? 'La cascade repart ! La barque bascule, tombe dans le bassin…' : 'La cascade repart, la barque tombe… et bute contre la statue. Le temps la reprend.', 4), 400);
+}
+function animeKpk(dt) {
+  const coule = gongActif() && Math.hypot(GONG.x - KPK.pied[0], GONG.z - KPK.pied[1]) < GONG.r;
+  for (const t of KPK.eau) if (coule) t.offset.y += dt * 1.6;
+  const C = KPK.chute; if (!C || !KPK.barque) return;
+  C.t += dt; const g = KPK.barque, yB = HAUT(...KPK.pied) + 0.3;
+  if (C.t < 1.6) { const u = C.t / 1.6; g.position.y = KPK.prise + (yB - KPK.prise) * u * u; g.rotation.x = 1.1 * (1 - u); }
+  else if (!C.libre) { g.position.y = yB + 0.4; g.rotation.x = 0.5; if (C.t > 6) { KPK.chute = null; g.position.y = KPK.prise; g.rotation.x = 1.1; } }   // le temps la remonte où elle était
+  else if (C.t < 4.5) { const u = (C.t - 1.6) / 2.9; g.position.z = KPK.pied[1] + (KPK.mer[1] - KPK.pied[1]) * u; g.position.y = yB + (0 - yB) * Math.min(1, u * 1.3); g.rotation.x = -0.4 * Math.sin(u * Math.PI); }
+  else { KPK.chute = null; g.visible = false; state.barqueMali = true; saveGame(true);
+    showMessage('La barque de Mali file vers la mer, et s’échoue doucement sur la plage, près d’elle.', 4.5); SFX.dizaine && SFX.dizaine(); }
+}
+function parlerMali() {
+  if (!state.barqueMali) return dialogue([
+    { who: 'Mali', text: 'Tu viens avec grand-père ? Il t’a dit que je ne naviguais plus.' },
+    { who: 'Mali', text: 'Ma barque est là-haut. La crue l’a soulevée juste avant que tout s’arrête. **Elle est restée dans la cascade.**' },
+    { who: 'Mali', text: 'Et le gardien de pierre est tombé en travers du bassin. Même si elle tombait, elle se briserait contre lui.', fn: () => noter3('cascade') }]);
+  dialogue([
+    { who: 'Mali', text: 'Ma barque ! Tu l’as fait tomber… et elle n’a rien.' },
+    { who: 'Mali', text: 'Tu veux que je reprenne la mer ? Alors **bats-moi. Une course autour de Ko Tapu.** Six bouées, et on revient ici.' },
+    { who: 'Mali', text: 'Prends la barque de grand-père. Z pour accélérer, S pour freiner, Q et D pour tourner.', fn: () => { noter3('course'); departCourse(); } }]);
+}
+
+// LA COURSE : Camille mène une longue barque (un mode à elle : la position de Camille suit la
+// barque à chaque image, comme la tyrolienne) ; Mali, dans la sienne, suit les bouées à vitesse
+// réglée. La barque ne passe que sur l'eau libre (le fond sous −0,6 m).
+const COURSE = { pts: [[-690, 500], [-720, 460], [-690, 438], [-668, 472], [-675, 505], [-688, 540]], bouees: [], actif: false, auto: false };
+const BARQUE_V = 15, MALI_V = 11.5;
+function departCourse() {
+  if (COURSE.actif) return;
+  fadeTo(1, () => {
+    const moi = COURSE.moi || (COURSE.moi = (() => { const g = new THREE.Group(); scene.add(g); barque(0, 0, 0, null); const b = BARQUES.pop(); g.add(b.g); b.g.position.set(0, 0, 0);
+      // vue d'en haut, depuis la poupe, on voit l'INTÉRIEUR de la coque : ses faces aussi
+      b.g.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.side = THREE.DoubleSide; } });
+      return { g }; })());
+    const mali = COURSE.mali || (COURSE.mali = (() => { barque(0, 0, 0, ['nok', 0x3a6aa0]); return BARQUES.pop(); })());
+    Object.assign(moi, { x: -694, z: 545, rot: 0, v: 0, k: 0 }); Object.assign(mali, { x: -682, z: 545, rot: 0, k: 0 });
+    moi.g.visible = true; mali.g.visible = true;
+    COURSE.actif = true; COURSE.t0 = performance.now() + 3000; COURSE.fini = false;
+    COURSE.camBack = G.camBack; G.camBack = 18;          // plus de recul : on voit la barque et la bouée suivante
+    COURSE.bouees.forEach((b, i) => { b.visible = true; });
+    placerBarques(); fadeTo(0, null);
+    showMessage('Trois… deux… un…', 2.5); setTimeout(() => COURSE.actif && showMessage('Partez ! Vers la première bouée, au sud.', 3), 3000);
+  });
+}
+const avantDe = (rot) => [-Math.sin(rot), -Math.cos(rot)];       // la proue regarde vers −z local
+// le pont de la barque de Camille, pendant la course : un sol pour le moteur (solLieu), sinon il la
+// croit en chute au-dessus de l'eau et lui donne la pose de la chute
+function solCourse(x, z) {
+  if (!COURSE.actif || !COURSE.moi) return null;
+  const m = COURSE.moi, [fx, fz] = avantDe(m.rot), dx = x - m.x, dz = z - m.z, long = dx * fx + dz * fz, trav = dx * fz - dz * fx;
+  return Math.abs(long) < 7 && Math.abs(trav) < 1.1 ? 0.55 : null;
+}
+const surEau = (x, z) => HAUT(x, z) < -0.6;
+function placerBarques() {
+  const { moi, mali } = COURSE;
+  for (const b of [moi, mali]) { b.g.position.set(b.x, Math.sin(performance.now() / 700 + (b === moi ? 0 : 2)) * 0.08, b.z); b.g.rotation.y = b.rot; }
+  // Camille debout à l'arrière, près du moteur ; la caméra suit le cap
+  const [fx, fz] = avantDe(moi.rot), px = moi.x - fx * 4.6, pz = moi.z - fz * 4.6;
+  player.pos.set(px, 0.55, pz); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;      // debout dans la barque, pas en chute
+  player.yaw = Math.atan2(fx, fz); G.camYaw = player.yaw;
+}
+function animeCourse(dt) {
+  if (!COURSE.actif) return;
+  const { moi, mali, pts } = COURSE, go = performance.now() > COURSE.t0, K = (c) => !!(PNJ_KEYS[c]);
+  // Camille : les touches, ou le pilote du banc (COURSE.auto) qui vise la bouée suivante
+  let gaz = 0, barre = 0;
+  if (COURSE.auto) { const [tx, tz] = pts[Math.min(moi.k, pts.length - 1)], [fx, fz] = avantDe(moi.rot), a = Math.atan2(fx * (tz - moi.z) - fz * (tx - moi.x), fx * (tx - moi.x) + fz * (tz - moi.z)); barre = Math.max(-1, Math.min(1, -a * 2)); gaz = Math.abs(a) > 1.2 ? 0.4 : 1; }
+  else { gaz = (K('KeyW') || K('ArrowUp') ? 1 : 0) - (K('KeyS') || K('ArrowDown') ? 1 : 0); barre = (K('KeyA') || K('ArrowLeft') ? 1 : 0) - (K('KeyD') || K('ArrowRight') ? 1 : 0); }
+  if (!go) gaz = 0;
+  moi.v += (gaz > 0 ? gaz * 6 : gaz * 9) * dt; moi.v -= moi.v * 0.35 * dt;
+  moi.v = Math.max(-4, Math.min(BARQUE_V, moi.v));
+  moi.rot += barre * dt * 1.15 * (0.35 + Math.min(1, Math.abs(moi.v) / 8));
+  const [fx, fz] = avantDe(moi.rot), nx = moi.x + fx * moi.v * dt, nz = moi.z + fz * moi.v * dt;
+  // la coque et la proue sur l'eau, sinon on bute et l'on recule un peu
+  if (surEau(nx, nz) && surEau(nx + fx * 6 * Math.sign(moi.v || 1), nz + fz * 6 * Math.sign(moi.v || 1))) { moi.x = nx; moi.z = nz; }
+  else { moi.v = -moi.v * 0.3; }
+  if (go && moi.k < pts.length && Math.hypot(pts[moi.k][0] - moi.x, pts[moi.k][1] - moi.z) < 10) {
+    moi.k++; SFX.dizaine && SFX.dizaine();
+    if (moi.k < pts.length) showMessage(`Bouée ${moi.k} / ${pts.length - 1}${moi.k > mali.k ? ' — tu mènes !' : ' — Mali est devant.'}`, 2);
+  }
+  // Mali : droit vers sa bouée suivante, cap lissé ; un peu moins vite que la barque de Camille lancée
+  if (go && mali.k < pts.length) {
+    const [tx, tz] = pts[mali.k], cap = Math.atan2(-(tx - mali.x), -(tz - mali.z));
+    let d = cap - mali.rot; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
+    mali.rot += Math.max(-1, Math.min(1, d * 2)) * dt * 1.3;
+    const [mx, mz] = avantDe(mali.rot), v = MALI_V * (Math.abs(d) > 0.8 ? 0.6 : 1);
+    mali.x += mx * v * dt; mali.z += mz * v * dt;
+    if (Math.hypot(tx - mali.x, tz - mali.z) < 8) mali.k++;
+  }
+  placerBarques();
+  COURSE.bouees.forEach((b, i) => { b.children[0].material.emissive && b.children[0].material.emissive.setHex(0x000000); b.position.y = Math.sin(performance.now() / 500 + i) * 0.1; b.scale.setScalar(i === moi.k ? 1.6 : 1); });
+  if (!COURSE.fini && (moi.k >= pts.length || mali.k >= pts.length)) finCourse(moi.k >= pts.length);
+}
+function finCourse(gagne) {
+  COURSE.fini = true;
+  setTimeout(() => fadeTo(1, () => {
+    COURSE.actif = false; G.camBack = COURSE.camBack ?? G.camBack; COURSE.moi.g.visible = false; COURSE.mali.g.visible = false; COURSE.bouees.forEach((b) => { b.visible = false; });
+    const [x, z] = KPK.mali; player.pos.set(x + 2, HAUT(x + 2, z), z); player.fallFrom = player.pos.y;
+    fadeTo(0, null);
+    if (!gagne) return dialogue([{ who: 'Mali', text: 'Trop lente ! Grand-père t’a mal appris. Reviens me voir quand tu veux ta revanche.' }]);
+    dialogue([
+      { who: 'Mali', text: 'Tu rames comme une passeuse. Une vraie.' },
+      { who: 'Mali', text: 'D’accord. **Je reprends la mer.** Les pitons, Ko Panyi, Ton Sai, le grand piton : où tu veux.' },
+      { who: 'Mali', text: 'Le passeur muet ? **Il est à la grève du grand piton.** Il n’en bouge plus. Il n’emmène que ceux qui lui montrent un masque.', fn: () => {
+        noter3('muetGreve'); passer3('masques'); if (KPK.maliG) KPK.maliG.visible = false; for (const b of BARQUES) if (b.quai === 'tapu') b.g.visible = true; } }]);
+  }), 1500);
+}
 
 // ---------- Ko Tapu, le clou : trop fin pour le relief (8 m à la base), on le tourne ----------
 function koTapu({ scene }) {
@@ -915,6 +1105,7 @@ function frapperGong() {
   if (!state.gongThai || gongActif()) return;
   SFX.gong(); GONG.fin = performance.now() + 6000; GONG.x = player.pos.x; GONG.z = player.pos.z;
   showMessage('Le gong résonne. Autour de toi, le temps repart.', 3);
+  gongCascade();
 }
 function poserLibre(bloque, hauteur, x0, z0) {
   for (let r = 0; r < 30; r += 1) for (let k = 0; k < 12; k++) { const a = k / 12 * TAU, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
@@ -1088,15 +1279,18 @@ function barque(x, z, rot, pilote) {
   g.add(mesh(boxG(0.7, 0.6, 0.9), new THREE.MeshStandardMaterial({ color: 0x4a4a48, metalness: 0.5, roughness: 0.5 }), 0, 0.9, 6.4));
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   BARQUES.push({ g, x, z, rot, ph: Math.random() * TAU });
+  return BARQUES[BARQUES.length - 1];
 }
 function passeurs({ hauteur, addInteract }) {
   for (const [m, Q] of Object.entries(QUAIS)) {
-    barque(Q.barque[0], Q.barque[1], Math.atan2(Q.barque[0] - Q.ici[0], Q.barque[1] - Q.ici[1]), BATELIERS[m]);   // la proue vers le large
+    const B = barque(Q.barque[0], Q.barque[1], Math.atan2(Q.barque[0] - Q.ici[0], Q.barque[1] - Q.ici[1]), BATELIERS[m]);   // la proue vers le large
+    B.quai = m; if (m === 'tapu' && !atteint3('masques')) B.g.visible = false;      // Mali ne navigue plus : sa barque est dans la cascade
     addInteract({ pos: new THREE.Vector3(Q.ici[0], hauteur(...Q.ici), Q.ici[1]), r: 9, prompt: () => 'parler au passeur',
       fn: () => {
         const vers = Object.entries(QUAIS).filter(([n]) => n !== m && trajetOuvert(m, n));
         let dit = vers.length ? PASSEUR[m] : (FERME[m] || 'Le passeur secoue la tête. Il ne va plus nulle part.');
         if (m === 'panyi' && atteint3('mali') && !atteint3('masques')) { dit = SOMSAK_MALI; noter3('mali'); }
+        if (m === 'tapu' && !atteint3('masques') && vers.length) dit = 'Somsak attend dans sa barque, le moteur au ralenti. « Je te ramène quand tu veux. »';
         showMenu('LE PASSEUR', Q.nom, dit, [
           ...vers.map(([n, D]) => ({ label: 'Vers ' + D.nom + (prixTrajet(m, n) ? ` (${prixTrajet(m, n)} écus)` : ''), fn: () => { payerTrajet(m, n); traverser(D, hauteur, n); } })),
           { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]);
@@ -1217,7 +1411,7 @@ monde({
   counts: 'La baie des pitons : Ko Panyi et son village sur pilotis, Khao Phing Kan, Railay, Phi Phi, et le grand piton du temple. Les passeurs attendent aux pontons.',
   start: 'La pluie ne tombe pas. Elle est là, en l’air, goutte par goutte. Seule la mer bouge encore.',
   entry: { title: 'La baie des pitons', sub: 'La Cloche des Îles — Thaïlande', cam: [700, 260, 900], at: [0, 20, 0], cam2: [180, 30, 80], at2: [40, 10, -40], dur: 6 },
-  toitSur: toitThai, solLieu: (x, z) => solMarche(x, z) ?? solEscalier(x, z),
+  toitSur: toitThai, solLieu: (x, z) => solMarche(x, z) ?? solEscalier(x, z) ?? solCourse(x, z),
   // les endroits qui comptent, pour la minicarte et les lieux découverts (la forme commune à tous
   // les mondes, lue par monde.js) — type : 'lieu' | 'pnj' | 'quete' | 'passage'
   reperes: [
@@ -1250,7 +1444,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['khao phing kan', khaoPhingKan], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
@@ -1260,7 +1454,7 @@ monde({
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
     animeHabitants(dt);
     for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
-    animeGlisse(dt);
+    animeGlisse(dt); animeKpk(dt); animeCourse(dt);
     if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
     if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
@@ -1276,5 +1470,5 @@ monde({
   G.level.indices = indices3;
   A3.pret = true;
   // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
-  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES };
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE };
 });

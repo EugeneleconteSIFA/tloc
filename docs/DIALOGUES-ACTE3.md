@@ -46,3 +46,28 @@ pour ce qui fait avancer (il s'écrit aussi au journal). Les étapes sont celles
 **Le câble, sans poulie** : *Un câble, et rien pour s'y accrocher. Les moines avaient une poulie.*
 
 **Somsak** (au retour) : « Les moines… ils sont toujours là-haut ? Alors tout n'est pas perdu. Ma petite-fille, Mali, s'est arrêtée à Khao Phing Kan. Elle ne veut plus naviguer. Je t'y emmène. »
+
+## 3. Mali (`mali`)
+
+**Mali** (à terre, à Khao Phing Kan, avant)
+- Tu viens avec grand-père ? Il t'a dit que je ne naviguais plus.
+- Ma barque est là-haut. La crue l'a soulevée juste avant que tout s'arrête. **Elle est restée dans la cascade.**
+- Et le gardien de pierre est tombé en travers du bassin. Même si elle tombait, elle se briserait contre lui.
+
+**La statue** : *Une statue de gardien, tombée en travers du bassin. Elle ne bouge pas d'un pouce.* — avec la force : *Camille pousse. Le gardien de pierre bascule par-dessus la corniche et tombe dans la mer.*
+
+**La cascade** : *La cascade est arrêtée en plein saut. Une barque est prise dedans, à mi-hauteur, la proue en l'air.* — au gong : *La cascade repart ! La barque bascule, tombe dans le bassin…* puis *La barque de Mali file vers la mer, et s'échoue doucement sur la plage, près d'elle.* (sans la statue écartée : *…et bute contre la statue. Le temps la reprend.*)
+
+**Mali** (la barque retrouvée)
+- Ma barque ! Tu l'as fait tomber… et elle n'a rien.
+- Tu veux que je reprenne la mer ? Alors **bats-moi. Une course autour de Ko Tapu.** Six bouées, et on revient ici.
+- Prends la barque de grand-père. Z pour accélérer, S pour freiner, Q et D pour tourner.
+
+**La course** : *Trois… deux… un…* / *Partez ! Vers la première bouée, au sud.* / *Bouée 2 / 5 — tu mènes !* / *— Mali est devant.*
+
+**Mali** (perdue) : Trop lente ! Grand-père t'a mal appris. Reviens me voir quand tu veux ta revanche.
+
+**Mali** (gagnée)
+- Tu rames comme une passeuse. Une vraie.
+- D'accord. **Je reprends la mer.** Les pitons, Ko Panyi, Ton Sai, le grand piton : où tu veux.
+- Le passeur muet ? **Il est à la grève du grand piton.** Il n'en bouge plus. Il n'emmène que ceux qui lui montrent un masque.
