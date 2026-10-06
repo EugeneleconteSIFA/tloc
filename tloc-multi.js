@@ -274,6 +274,9 @@ function etatAire(t) {
 const sdAire = (id) => AIRES[id].sd || arene.sd;
 const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && sdAire(aire)(x, z) > AIRES[aire].r;
 const premiereAire = () => idsAires()[0];
+// Ce qu'une arène a se déclare dans son fichier (`forge`, `bannieres`, `fete`) ; ce qu'elle ne
+// déclare pas est éteint : la fête fauche l'herbe de Lille, la forge est celle de son bourg.
+const areneA = (k) => !!(arene && arene[k]);
 // `depart` : l'identifiant d'un lieu (E.addLieu), ou directement un point { x, z }
 const lieuDepart = () => { const d = arene ? arene.depart : 'place'; return d && typeof d === 'object' ? d : lieux.find((l) => l.id === d); };
 
@@ -515,7 +518,7 @@ function peindrePanneau() {
     if (regle === 'drapeaux' && drapeaux.length) {
       const n = (c) => drapeaux.filter((d) => d.camp === c).length;
       lignes.push(`<span style="opacity:.85;font-size:12px">drapeaux : <span style="color:${CAMPS.garnison.couleur}">${n('garnison')}</span> · <span style="color:${CAMPS.bourg.couleur}">${n('bourg')}</span> sur ${drapeaux.length}</span>`);
-    } else if (bannieres) {
+    } else if (bannieres && areneA('bannieres')) {
       const etat = (c) => { const b = bannieres[c]; if (!b) return '—';
         if (b.etat === 'base') return 'chez elle'; if (b.etat === 'tombee') return 'à terre';
         return 'portée par ' + ech(moi && b.porteur === moi.id ? 'toi' : ((autres.get(b.porteur) || {}).perso || '…')); };
@@ -662,7 +665,7 @@ function connecter() {
       peindrePanneau();
     } else if (m.t === 'arrivee') {
       creerAutre(m.id, m.pseudo, {}, m.perso);
-      showMessage(`${m.perso || m.pseudo} vient d’entrer dans la citadelle.`, 3);
+      showMessage(`${m.perso || m.pseudo} ${aLille() ? 'vient d’entrer dans la citadelle' : 'arrive'}.`, 3);
     } else if (m.t === 'depart') {
       retirerAutre(m.id);
       showMessage(`${m.perso || m.pseudo} a quitté la partie.`, 2.5);
@@ -961,7 +964,9 @@ function fermerChat(envoi) {
 function commande(texte) {
   const [c, ...args] = texte.slice(1).trim().split(/\s+/);
   const cle = (c || '').toLowerCase();
-  if (cle === 'fete' || cle === 'fête') {
+  if ((cle === 'fete' || cle === 'fête') && !areneA('fete')) {
+    noterChat('✦', 'Pas de fête de la moisson ici : il n’y a rien à faucher.', true);
+  } else if (cle === 'fete' || cle === 'fête') {
     if (!estHote) return noterChat('✦', 'Seul l’hôte de l’instance lance la fête de la moisson.', true);
     if (fete) return noterChat('✦', 'La fête bat déjà son plein.', true);
     envoyer({ t: 'fete' });
@@ -974,7 +979,7 @@ function commande(texte) {
     BOURSE.payer(n); saveGame(true);
     envoyer({ t: 'don', a: a.id, n });
   } else {
-    noterChat('✦', 'Commandes : /donner Nom 20 · /fete (l’hôte : trois minutes de moisson, le plus gros fauchage gagne)', true);
+    noterChat('✦', 'Commandes : /donner Nom 20' + (areneA('fete') ? ' · /fete (l’hôte : trois minutes de moisson, le plus gros fauchage gagne)' : ''), true);
   }
 }
 
@@ -988,6 +993,7 @@ function commande(texte) {
 let fete = null, banniere = null, feteBase = 0, feteEnvoi = 0;
 const PRIX_FETE = 30, PRIX_FETE_CAMP = 15;
 function ouvrirFete(m) {
+  if (!areneA('fete')) return;          // le serveur la refuse déjà ; une vieille instance pourrait l'avoir ouverte
   fete = { fin: performance.now() + (m.reste || 0) * 1000, scores: m.scores || {}, noms: m.noms || {}, camps: m.camps || {} };
   feteBase = FAUCHE_DEBUG.coupees(); feteEnvoi = performance.now();
   if (!banniere) {
@@ -1079,7 +1085,7 @@ function hampe(c) {
 }
 let demandeBanniere = 0;
 function tickBannieres(now) {
-  if (regle === 'drapeaux') { for (const h of Object.values(hampes)) h.visible = false; return; }   // les drapeaux remplacent les bannières
+  if (regle === 'drapeaux' || !areneA('bannieres')) { for (const h of Object.values(hampes)) h.visible = false; return; }   // les drapeaux remplacent les bannières
   if (!enEquipes() || !bannieres || !rdv || rdv.x !== undefined) return;
   const ech_ = G.echelle || 1;
   for (const c of ['garnison', 'bourg']) {
@@ -1117,6 +1123,8 @@ function tickBannieres(now) {
 function evenementBanniere(m) {
   bannieres = m.bannieres || bannieres;
   if (m.points) points = m.points;
+  // la remise en place d'une manche neuve (« raz ») ne nomme aucun camp : rien à annoncer
+  if (!CAMPS[m.camp]) return peindrePanneau();
   // les noms de l'arène : « la bannière de la garnison », « des muletiers », « de ceux d'en bas »
   const leCamp = (c) => CAMPS[c].nom.charAt(0).toLowerCase() + CAMPS[c].nom.slice(1), deMoi = moi && m.id === moi.id;
   const drap = `la bannière ${('de ' + leCamp(m.camp)).replace(/^de les /, 'des ').replace(/^de le /, 'du ')}`;
@@ -1547,9 +1555,9 @@ function majObjets(m) {
   if (m.o === 'cheval') { annonceCheval(m, qui); peindreArmure(); return; }
   if (m.evt === 'pris') {
     if (m.par === moiId) {
-      if (m.o === 'armure') { armure = 1; armurePts = ARMURE_PTS[1]; showMessage(`Tu endosses l’armure de cuir clouté : elle encaisse ${ARMURE_PTS[1] / 2} cœurs avant les tiens. La forge du bourg la renforce.`, 6); }
+      if (m.o === 'armure') { armure = 1; armurePts = ARMURE_PTS[1]; showMessage(`Tu endosses l’armure de cuir clouté : elle encaisse ${ARMURE_PTS[1] / 2} cœurs avant les tiens. ${areneA('forge') ? ' La forge du bourg la renforce.' : ''}`, 6); }
       else if (m.o === 'arc') { if (!state.bow) { state.bow = true; arcPris = true; } state.fleches = Math.max(state.fleches ?? 0, 20); showMessage('Tu prends un arc et vingt flèches : C pour le sortir, clic gauche pour tirer.', 6); }
-      else { ecu = 1; showMessage('Tu prends l’écu ! Clic droit maintenu pour le lever : il pare les coups de face. La forge du bourg le cercle de fer.', 6); }
+      else { ecu = 1; showMessage('Tu prends l’écu ! Clic droit maintenu pour le lever : il pare les coups de face.' + (areneA('forge') ? ' La forge du bourg le cercle de fer.' : ''), 6); }
       try { SFX.pickup(); } catch (e) {}
     } else showMessage(`${qui} prend ${NOM_TYPE[m.o]} ${LIEU_OBJET[m.id] || ''}.`, 3);
   } else if (m.evt === 'casse' && m.par !== moiId) showMessage(`L’armure de ${qui} vole en éclats.`, 4);
@@ -1884,11 +1892,15 @@ function peindreJaugeCheval() {
 // La forge du bourg : on y renforce ce qu'on porte, contre des écus. Y aller est un risque
 // — c'est loin des casernes et de la place, et on s'y arrête.
 function poserForge() {
-  if (!actif || poserForge.fait || !TOWN || TOWN.y === undefined) return;
+  // `forge: true` : celle du bourg de Lille (carte.js) ; une autre arène donnerait { x, z }
+  if (!actif || poserForge.fait || !arene) return;
+  const f = arene.forge;
+  if (!f) { poserForge.fait = true; return; }
+  if (f === true && (!TOWN || TOWN.y === undefined)) return;
   poserForge.fait = true;
-  const [x, z] = townWorld(4.4, 14);
+  const [x, z] = f === true ? townWorld(4.4, 14) : [f.x, f.z], y = f === true ? TOWN.y : (f.y ?? getH(x, z));
   if (horsAire(x, z, premiereAire())) return;        // le bourg est hors de l'arène (5 octobre)
-  addInteract({ pos: new THREE.Vector3(x, TOWN.y, z), r: 3.2, prompt: () => 'la forge : renforcer ton équipement', fn: () => {
+  addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.2, prompt: () => 'la forge : renforcer ton équipement', fn: () => {
     const peu = (n) => `il faut d’abord ${n}`;
     BOURSE.boutique('La forge', 'À l’enclume', 'Le forgeron renforce ce que tu portes. Ce qui est brisé ne se répare pas : il faut en reprendre.', [
       { label: 'Armure de mailles (5 cœurs à encaisser)', prix: 40, dispo: () => armure === 1, indispo: armure ? 'déjà renforcée' : peu('l’armure des casernes'),

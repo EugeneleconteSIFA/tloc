@@ -487,6 +487,7 @@ const ARENE_BATUT = {
     garnison: { nom: 'Le Batut', court: 'Batut', pluriel: false },
     bourg: { nom: 'Beauregard', court: 'Beauregard', pluriel: false },
   },
+  bannieres: true,               // une bannière à chaque ralliement (tloc-multi.js) ; ni forge ni fête ici
   campsTexte: 'Le Batut contre Beauregard : chacun tient sa maison, et le jardin est entre les deux.',
   // chacun arrive dans son vestibule
   departsCamps: { garnison: [-(FACADE + 7), -1.5], bourg: [FACADE + 7, -1.5] },

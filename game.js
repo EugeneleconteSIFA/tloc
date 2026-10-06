@@ -89,6 +89,9 @@ const ARENE_LILLE = {
   id: 'lille', nom: 'La citadelle de Lille',
   sd: sdPent, centre: [0, 40],
   carte: true,                   // l'arrivée se choisit sur la carte de la châtellenie (atlas.js)
+  // ce que le multi allume ici (tloc-multi.js, areneA) : la forge du bourg, les bannières des
+  // ralliements, la fête de la moisson (on fauche l'herbe de nature.js)
+  forge: true, bannieres: true, fete: true,
   depart: 'place',              // le lieu où l'on revient quand rien d'autre n'est sûr
   aires: [
     // la herse de la Porte Royale reste baissée tant qu'on y joue ; un bot resté dehors rentre

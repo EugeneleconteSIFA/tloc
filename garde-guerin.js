@@ -25,6 +25,7 @@ const ARENE_GARDE = {
     garnison: { nom: 'La garde de la tour', court: 'Garde', pluriel: false },
     bourg: { nom: 'Les muletiers de la Régordane', court: 'Muletiers', pluriel: true },
   },
+  bannieres: true,               // une bannière à chaque ralliement (tloc-multi.js) ; ni forge ni fête ici
   campsTexte: 'La garde de la tour contre les muletiers de la Régordane, qui ne veulent plus payer le péage.',
   // chacun part de chez lui : la garde au pied de sa tour, les muletiers à l'auberge
   departsCamps: { garnison: [1822, -5366], bourg: [1766, -5336] },

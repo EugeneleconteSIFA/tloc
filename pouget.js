@@ -319,6 +319,7 @@ const ARENE_POUGET = {
     garnison: { nom: 'Ceux d’en haut', court: 'En haut', pluriel: true },
     bourg: { nom: 'Ceux d’en bas', court: 'En bas', pluriel: true },
   },
+  bannieres: true,               // une bannière à chaque ralliement (tloc-multi.js) ; ni forge ni fête ici
   campsTexte: 'Ceux d’en haut contre ceux d’en bas, d’un bout à l’autre du hameau.',
   departsCamps: { garnison: [-28, -6], bourg: [26, 26] },
   objets: [

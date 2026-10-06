@@ -51,6 +51,10 @@ BOURSE_VIE = 90                 # une bourse tombée reste 90 s au sol
 BOURSE_PORTEE = 4.0             # mètres : on ne ramasse pas une bourse depuis l'autre bout du pré
 DON_MAX = 999
 BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
+# ce que chaque arène déclare (`fete`, `bannieres` dans son fichier : game.js, batut.js…) ;
+# le serveur ne lit pas le JS, la liste se tient ici à la main
+ARENES_FETE = {"lille"}         # la fête fauche l'herbe de Lille : ailleurs, rien à faucher
+ARENES_BANNIERES = {"lille", "gardeguerin", "pouget", "batut"}
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
 # En balade par équipes, il n'y a pas de manche : le premier camp à VICTOIRE_BALADE points
@@ -1897,7 +1901,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         elif t == "fete":
             # la fête de la moisson : l'hôte la lance, trois minutes, et chacun annonce
             # ce qu'il fauche. Le serveur tient les comptes et proclame le vainqueur.
-            if moi.id != inst["hote"] or salon.fete:
+            if moi.id != inst["hote"] or salon.fete or inst["arene"] not in ARENES_FETE:
                 return
             salon.fete = {"fin": time.time() + FETE_DUREE, "scores": {str(i): 0 for i in salon.joueurs}, "compte": {}}
             await salon.diffuser({"t": "fete", **salon.vue_fete()})
@@ -1945,7 +1949,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             await salon.diffuser({"t": "chat", "id": 0, "pseudo": "", "perso": "✦",
                                   "m": f"{moi.perso} donne {n} écus à {cible.perso}."})
 
-        elif t in ("saisir", "rapporter") and equipes and moi.camp in CAMPS and salon.regle != "drapeaux":
+        elif t in ("saisir", "rapporter") and equipes and moi.camp in CAMPS and salon.regle != "drapeaux" and inst["arene"] in ARENES_BANNIERES:
             # la bannière : le serveur vérifie les distances à partir de la position que
             # le client lui a annoncée, et c'est lui qui change l'état
             p = moi.etat.get("p")
