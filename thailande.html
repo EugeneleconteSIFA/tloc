@@ -90,7 +90,7 @@
 <!-- le multi (5 octobre) : seulement en instance — sans instance, on s'y promène en solo -->
 <script type="module">
   let inst = null; try { inst = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); } catch (e) {}
-  if (inst && inst.code) { import('./thailande-arene.js?v=41'); import('./tloc-multi.js?v=41'); }
+  if (inst && inst.code) import('./tloc-multi.js?v=41');
 </script>
 </body>
 </html>
