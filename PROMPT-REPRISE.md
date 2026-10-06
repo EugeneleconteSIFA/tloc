@@ -2538,3 +2538,48 @@ captures `acte1-souterrains-2026-10-05-*.jpg`. Charge : rien de changé (index.h
   tester les intérieurs (`house.html`, `mage.html`), qui se chargent en quinze secondes.
 - Les tests écrits pendant ce chantier sont dans la session précédente, pas dans le dépôt.
   Les réécrire au besoin ; ils n'ont pas leur place dans un jeu qui se sert tel quel.
+
+### Acte II, l'Aveyron (6 octobre, PC, vague 1, consigne C1) — **fait, joué en headless, publié**
+
+Découpage et répliques validés par Eugène (« d'accord sur les cinq, garde les fonctions ») :
+`docs/DECOUPAGE-ACTE2.md`, `docs/DIALOGUES-ACTE2.md`. Tout le code est dans `aveyron.js`, section
+« L'ACTE II » : `state.acte2` (guerre → temoins → traces → preuve → duel → familles → dormeur →
+pluie), `state.ind2` (le carnet, branché par `G.level.indices`), `state.colliers`, `state.force`.
+L'acte commence dès qu'on arrive au lac (les portes de l'île restent ouvertes).
+- **Étapes 1–2** : les gardes du lac (un coup en l'air, Camille repoussée tant que la preuve n'est
+  pas montrée), le maître de Beauregard dans le salon, la cave de Beauregard et le prisonnier derrière
+  sa grille, la forge de Fariboules et le forgeron.
+- **Étapes 3–5** : l'abreuvoir de Beauregard, la piste de l'étoile (41 groupes de fers, cherchée sur
+  une grille de 3 m, visibles à 12 m seulement), l'enclos caché (≈ 440 ; 395, réservé aux arbres par
+  `RESERVES`), 16 brebis aux deux raies, trois brigands (`KINDS.brigand`, corps riggés de pnj.js par
+  `setMaker`/`setAnimHook`), les colliers, la preuve montrée aux deux maisons, le duel sur la crête du
+  barrage (`KINDS.brasdroit`), Jacques qui file vers l'ouest à cheval.
+- **Étapes 6–8** : les maîtres à la table de l'aïeule, la faille (−240 ; −135) murée qu'une bombe
+  ouvre (bombe POSÉE, `state.bombes`/`nbBombes` ; le lancer reste dans citadelle.js), la cave du
+  Dormeur (Jacques `KINDS.jacques` et deux hommes, trois veines à la bombe, trois coups au cœur, les
+  mains de pierre), Phinaert qui fige Camille deux secondes, Jacques à terre, la force, la Cloche du
+  Midi, le deuxième vers gravé, le bloc poussé, la pluie (SUN_DIR, ciel, brume, 2 000 gouttes autour
+  de Camille), le repas au Pouget.
+- **Appris** : les caves sont bâties à y = 600 au-dessus du lac et n'ont de sol et de murs
+  (`addBox`, capsules à `bottom`) que pendant qu'on y est (`entrerSous`/`sortirSous`) : la grille de
+  relief ne se creuse pas. Les interactions y sont sûres (le moteur compare la hauteur à 3 m près).
+  Une créature laissée dans une cave tomberait de 600 m : on la retire en sortant.
+- **Bancs** : `bancs/acte2-temoins.mjs`, `acte2-preuve.mjs`, `acte2-dormeur.mjs`, tous réussis
+  (captures `bancs/resultats/acte2-*-2026-10-06-*.jpg`). Le seul 404 de la page est `favicon.ico`,
+  absent du site entier (les bancs le comptent à part).
+- **Mesure** (`bancs/lieu-aveyron.mjs`, machine chargée par les autres bancs) : chargé en 4,7 s
+  (3,1–3,8 s le 5 octobre) ; l'étape « le reste (bourg, gens, sécheresse) », qui porte l'acte, 147 ms ;
+  les gens de l'acte naissent un par image après le chargement ; 41 cibles sur 41 atteintes en marchant.
+- **Sans l'acte I**, il faut l'épée (`state.sword`) pour les combats et les bombes pour la faille :
+  une partie neuve ouverte droit sur le lac ne peut pas finir l'acte.
+
+#### Demandes pour d'autres fichiers (acte II)
+- **temple.js** : au retour de l'Aveyron (`state.acte2 === 'pluie'`), la Cloche du Midi au premier
+  étage (cloche de ferme trapue, fer rouillé, DECISIONS-RECIT.md § 2), un escalier de pierre jusqu'à
+  elle, un rai de soleil fixe sur la cour, une cigale ; on la sonne ; la deuxième révélation (le vers :
+  « Une gardienne sonnera les cloches, et chaque cloche le servira. »).
+- **monde.js** : un crochet pour hausser l'eau d'un lac après coup (« le lac remonte » n'est pas
+  fait) et pour reverdir un sol (la pelouse du Pouget) ; toujours : l'eau profonde qui bloque.
+- **engine.js** : le favicon (un 404 à chaque page) ; un lancer de bombe hors de la citadelle.
+- **Reste** : les grandes quêtes secondaires (course des maisons, arbre des Roquette, sources,
+  train) ne sont ni découpées ni codées ; le point d'or de la carte ne suit pas l'acte II.

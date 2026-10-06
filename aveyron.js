@@ -4,7 +4,7 @@
 // maisons des Roquette — le Batut, Beauregard, la grande maison du Pouget — posées là où la
 // session des mondes les a proposées et Eugène validées (carte/mondes/README.md).
 import { monde } from './monde.js';
-import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, addRamp, addHelix, player, world } from './engine.js?v=41';
+import { THREE, phMat, mesh, boxG, showMessage, dialogue, G, PH, addCap, addRamp, addHelix, addBox, player, world, state, saveGame, indexCapsules, KINDS, setMaker, setAnimHook, spawnEnemy, damagePlayer, burst, SFX, SUN_DIR, sun, hemi, scene, makeSky } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as PNJ from './pnj.js';
@@ -883,6 +883,8 @@ function beauregard(ctx, X, Z, rot) {
   g.traverse((o) => { if (o.isMesh && !(o.material && o.material.alphaTest)) { o.castShadow = true; o.receiveShadow = true; } });
   const [fx, fz] = monde(0, tz + R + 2);
   addInteract({ pos: new THREE.Vector3(fx, y0, fz), r: 3.5, prompt: () => 'Beauregard', fn: () => showMessage('Beauregard, sur sa hauteur : de la terrasse, on voit tout le lac, et ce qu’il en reste.', 6) });
+  // l'acte II y loge le maître (le salon) et la porte de la cave (le fond du hall)
+  LIEU.beauregard = { monde, y0, rot, W };
 }
 // un rond de collision (une tour, un puits)
 function inscrire12({ inscrire }, monde, lx, lz, r) { const [x, z] = monde(lx, lz); inscrire(Array.from({ length: 12 }, (_, k) => monde(lx + Math.cos(k / 12 * 6.283) * r, lz + Math.sin(k / 12 * 6.283) * r)), x, z); }
@@ -1389,7 +1391,7 @@ function arbres({ hauteur, scene, PLAN, bloque, CADRE, H0 }) {
     for (let t = 0; t <= n; t++) pres.add(Math.floor((ax + (bx - ax) * t / n) / 4) + ',' + Math.floor((az + (bz - az) * t / n) / 4)); }
   const lac = PLAN.eau && PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : null;
   const bois = (PLAN.verdure.bois || []), pos = [];
-  const libre = (x, z, r = 3) => !bloque(x, z, r) && !dansUneMaison(x, z, 4) && !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !(lac && dansPoly(x, z, lac)) && Math.hypot(x + 120, z - 135) > 8;
+  const libre = (x, z, r = 3) => !bloque(x, z, r) && !dansUneMaison(x, z, 4) && !RESERVES.some(([rx, rz, rr]) => Math.hypot(x - rx, z - rz) < rr) && !pres.has(Math.floor(x / 4) + ',' + Math.floor(z / 4)) && !(lac && dansPoly(x, z, lac)) && Math.hypot(x + 120, z - 135) > 8;
   // l'écart entre deux arbres, tenu par une grille de cases de 4 m (la haie et le bois de la
   // lisière font plus de 2 000 arbres : comparer chacun à tous coûtait trop)
   const cle = (i, j) => i + ',' + j;
@@ -1683,12 +1685,16 @@ function grevesEchouees({ hauteur, scene, PLAN, inscrire, addInteract }) {
 // peu dans les prés : STORY.md, « nos bêtes disparaissent, une à une ». Le modèle est celui du
 // Pouget de Lozère (« Animated Sheep » d'igor-lir, CC BY 4.0, assets_back/_licences/), chargé ici
 // comme le font les chevaux : immobile, en instances.
-async function troupeaux({ hauteur, scene, bloque, PLAN }) {
-  let modele = null;
-  try { const [L] = await Promise.all([import('./lib/addons/loaders/GLTFLoader.js')]); const g = await new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/brebis.glb');
+// (le modèle chargé une fois : l'enclos caché de l'acte II y prend aussi ses bêtes)
+let brebisP = null;
+function chargerBrebis() {
+  return brebisP || (brebisP = (async () => { const [L] = await Promise.all([import('./lib/addons/loaders/GLTFLoader.js')]); const g = await new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/brebis.glb');
     let m = null; g.scene.updateMatrixWorld(true); g.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
     const geo = m.geometry.clone(); geo.applyMatrix4(m.matrixWorld); geo.computeBoundingBox(); const b = geo.boundingBox, k = 1.2 / Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
-    geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2); geo.scale(k, k, k); m.material.roughness = 1; m.material.metalness = 0; modele = { geo, mat: m.material }; } catch (e) { return; }
+    geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2); geo.scale(k, k, k); m.material.roughness = 1; m.material.metalness = 0; return { geo, mat: m.material }; })().catch(() => null));
+}
+async function troupeaux({ hauteur, scene, bloque, PLAN }) {
+  const modele = await chargerBrebis(); if (!modele) return;
   const lac = PLAN.eau.lacPlein ? PLAN.eau.lacPlein.pts : [], ps = [], h01 = (a, b) => { const v = Math.sin(a * 91.7 + b * 47.3) * 43758.5453; return v - Math.floor(v); };
   // un petit groupe derrière chaque domaine (là où était le troupeau), et deux brebis égarées
   for (const [cx, cz, n] of [...DOMAINES.map((d) => [d.pre[0], d.pre[1], 5]), [330, -60, 2], [-60, -300, 2]])
@@ -1743,22 +1749,18 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque, PLAN }) {
     cheval(scene, fichier, x + Math.sin(rot) * SELLE_AV * G.echelle, y, z + Math.cos(rot) * SELLE_AV * G.echelle, rot, 'Idle');
     personne(scene, role, x, y + SELLE * G.echelle, z, rot);
     rond(x, z, 1.4);
-    addInteract({ pos: new THREE.Vector3(x, y, z), r: 4, prompt: () => 'parler au cavalier', fn: () => dialogue(mots) });
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 4, prompt: () => 'parler au cavalier', fn: () => dialogue(typeof mots === 'function' ? mots() : mots) });
   };
   // STORY.md, acte II : « Beauregard accuse le Batut. Le Batut accuse Beauregard. »
-  cavalier('roquette_batut', 'cheval.glb', -135, 170, [
-    { who: 'Le Batut', text: 'Tu viens de l’île ? Alors tu ne sais pas. Il n’y a plus d’eau que dans ce lac.' },
-    { who: 'Le Batut', text: 'Et nos bêtes disparaissent, une à une. Beauregard nous les prend, et il nous accuse de garder l’eau.' }]);
-  cavalier('roquette_beauregard', 'cheval_blanc.glb', 400, 150, [
-    { who: 'Beauregard', text: 'D’ici, on voit tout le lac. Et on voit le Batut, de l’autre côté, qui le garde pour lui.' },
-    { who: 'Beauregard', text: 'Nos troupeaux fondent comme l’eau. Ce sont eux, j’en suis sûr.' }]);
+  // (leurs mots suivent l'acte II : REPLIQUES2, plus bas)
+  cavalier('roquette_batut', 'cheval.glb', -135, 170, () => repliques2('cavBatut'));
+  cavalier('roquette_beauregard', 'cheval_blanc.glb', 400, 150, () => repliques2('cavBeauregard'));
   // l'aïeule, chez elle : au bout de sa grande table, dans la salle à manger (5 octobre — STORY.md :
   // « les familles se retrouvent chez l'aïeule du Pouget ») ; un cheval broute dans sa cour
   { const X = 185, Z = -315, rot = Math.atan2(-X, -Z), [x, z] = devant(X, Z, rot, 0, 8.5), y = hauteur(x, z);
     personne(scene, 'aieule_pouget', x, y, z, rot - Math.PI / 2); rond(x, z, 0.5);
-    addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.5, prompt: () => 'parler à l’aïeule', fn: () => dialogue([
-      { who: 'L’aïeule', text: 'Le Batut, Beauregard… Ce sont mes petits-enfants, les uns comme les autres.' },
-      { who: 'L’aïeule', text: 'Avant, on se retrouvait tous ici, à la Saint-Jean. Maintenant ils se regardent par-dessus le lac.' }]) });
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.5, prompt: () => 'parler à l’aïeule', fn: () => dialogue(repliques2('aieule')) });
+    A2.aieule = [x, y, z, rot - Math.PI / 2];
     const [hx, hz] = devant(X, Z, rot, MAISON.W / 2 + 9, -6); cheval(scene, 'cheval.glb', hx, hauteur(hx, hz), hz, rot + 1.9, 'Eating'); rond(hx, hz, 1.3); }
   // Les gens du lac (le jouable, 5 octobre) : les villageois de la place de Saint-Symphorien, hors
   // de la zone depuis le resserrement, sont reposés au bord du lac, avec un pêcheur et un colporteur
@@ -1785,6 +1787,658 @@ function habitants({ hauteur, scene, inscrire, addInteract, bloque, PLAN }) {
     o.rotation.y = Math.atan2(lx - x, lz - z); parler(o, x, z, qui, mots);
     LIEU.gens = LIEU.gens || []; LIEU.gens.push({ qui, x: +x.toFixed(1), z: +z.toFixed(1), dit: mots[0] });
   }
+}
+
+// =====================================================================
+//  L'ACTE II — « La Cloche du Midi » (STORY.md ; docs/DECOUPAGE-ACTE2.md, DIALOGUES-ACTE2.md)
+// =====================================================================
+// L'acte se joue tout entier dans ce lieu : son avancement (state.acte2) et ce qu'on y apprend
+// (state.ind2) vivent ici et non dans etat.js, que d'autres lieux n'ont pas à lire. Chaque
+// habitant dit la réplique de l'étape la plus récente qui lui en donne une (comme à Lille). Les
+// portes de l'île restent ouvertes (Eugène, 6 octobre) : l'acte commence dès qu'on arrive.
+const ETAPES2 = ['guerre', 'temoins', 'traces', 'preuve', 'duel', 'familles', 'dormeur', 'pluie'];
+const rang2 = (e) => ETAPES2.indexOf(e);
+const atteint2 = (e) => rang2(state.acte2 || 'guerre') >= rang2(e);
+function passer2(e) { if (rang2(e) <= rang2(state.acte2 || 'guerre')) return; state.acte2 = e; saveGame(true); }
+const sait = (k) => !!(state.ind2 && state.ind2[k]);
+function noter2(cle) {
+  state.ind2 = state.ind2 || {}; if (state.ind2[cle]) return;
+  state.ind2[cle] = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300);
+}
+// ce que l'acte a posé, pour les bancs (bancs/acte2-*.mjs) : les gens, la cave, la forge
+// les places que l'acte garde libres d'arbres (l'enclos caché) : arbres() les évite
+const RESERVES = [];
+const A2 = { aFaire: [], salle: null, sur: null, gardeT: 0, pret: false, gens: {}, ctx: null, eaux: [], barrage: null };
+
+// Le carnet du journal (J) : chaque indice en gras s'y écrit, et se barre quand il a servi
+const INDICES2 = {
+  maitre:  { txt: 'Le maître de Beauregard est dans la grande salle de sa maison.', qui: 'les cavaliers', fait: () => atteint2('temoins') },
+  cave:    { txt: 'Beauregard a pris un homme du Batut : il est enfermé dans la cave.', qui: 'le maître de Beauregard', fait: () => sait('etoile') },
+  etoile:  { txt: 'Les voleurs montent des chevaux ferrés d’une étoile ; le forgeron de Fariboules les connaît.', qui: 'le prisonnier', fait: () => atteint2('traces') },
+  jacques: { txt: 'Les fers à étoile, le forgeron les fait pour son cousin Jacques, dit le Noir.', qui: 'le forgeron', fait: () => atteint2('familles') },
+  piste:   { txt: 'Suivre l’étoile dans la poussière, depuis l’abreuvoir de Beauregard.', qui: 'le forgeron', fait: () => atteint2('preuve') },
+};
+function indices2() {
+  if (!state.ind2) return '';
+  const l = Object.keys(INDICES2).filter((k) => state.ind2[k]).map((k) => { const i = INDICES2[k], f = i.fait();
+    return `<div style="margin:4px 0;${f ? 'opacity:.5;text-decoration:line-through' : ''}">${i.txt} <span style="opacity:.6">— ${i.qui}</span></div>`; });
+  return l.length ? `<h3 style="margin:18px 0 6px;color:#9fd0ff;font-size:16px;letter-spacing:1px">INDICES</h3><div style="padding:8px 14px;border-left:4px solid #9fd0ff;background:rgba(255,255,255,.06);border-radius:6px">${l.join('')}</div>` : '';
+}
+
+// Les répliques (DIALOGUES-ACTE2.md), par habitant : [étape, fonction qui rend les lignes]
+const R = (who, ...t) => t.map((text) => ({ who, text }));
+const puis = (lignes, fn) => { lignes[lignes.length - 1].fn = fn; return lignes; };
+// la preuve montrée à une maison ; quand les deux l'ont vue, les gardes du lac s'écartent
+function montrer(maison) { state.ind2 = state.ind2 || {}; state.ind2['vu_' + maison] = true; if (sait('vu_batut') && sait('vu_beauregard')) passer2('duel'); else saveGame(true); }
+const REPLIQUES2 = {
+  cavBatut: [
+    ['guerre', () => puis(R('Le Batut', 'Tu viens de l’île ? Alors tu ne sais pas. Il n’y a plus d’eau que dans ce lac.',
+      'Nos bêtes disparaissent, une à une. Et Beauregard a pris un des nôtres. **Demande donc au maître de Beauregard** ce qu’il en a fait.'), () => noter2('maitre'))],
+    ['temoins', () => R('Le Batut', 'Alors ? Ils l’ont toujours, notre homme ?')],
+    ['preuve', () => sait('vu_batut') ? R('Le Batut', 'Va au barrage. Nos hommes te laisseront passer.') : puis(R('Le Batut', 'Ce collier… c’est celui de notre vieille Brunette. Avec un collier de Beauregard ?',
+      '**Va au barrage. Je fais dire à nos hommes de te laisser passer.**'), () => montrer('batut'))],
+    ['duel', () => R('Le Batut', 'Je n’aurais jamais cru les voir au bord du même lac sans tirer.')],
+    ['pluie', () => R('Le Batut', 'Tu l’entends ? La pluie. J’avais oublié ce bruit.')],
+  ],
+  cavBeauregard: [
+    ['guerre', () => puis(R('Beauregard', 'D’ici, on voit tout le lac. Et on voit le Batut, de l’autre côté, qui le garde pour lui.',
+      'Tu veux savoir qui vole nos bêtes ? **Le maître est dans la grande salle.** Il te dira.'), () => noter2('maitre'))],
+    ['temoins', () => R('Beauregard', 'Nos troupeaux fondent comme l’eau. Le maître te l’a dit : ce sont eux.')],
+    ['preuve', () => sait('vu_beauregard') ? R('Beauregard', 'Le barrage est ouvert pour toi.') : puis(R('Beauregard', 'Le collier de notre bélier ! Et l’autre est du Batut… Eux aussi, alors.',
+      '**Le barrage est ouvert pour toi.**'), () => montrer('beauregard'))],
+    ['pluie', () => R('Beauregard', 'Le lac remonte. Regarde la grève : elle disparaît.')],
+  ],
+  maitre: [
+    ['guerre', () => puis(R('Le maître de Beauregard', 'Ce sont ceux du Batut. On a trouvé des traces de chevaux à notre abreuvoir, la nuit où le troupeau a disparu.',
+      'On en a pris un, qui rôdait par là. **Il est en bas, dans la cave.** Va lui demander, s’il veut bien parler.'), () => { noter2('cave'); passer2('temoins'); })],
+    ['temoins', () => R('Le maître de Beauregard', 'Il t’a dit quoi, le voleur ? Rien, je parie.')],
+    ['preuve', () => sait('vu_beauregard') ? R('Le maître de Beauregard', 'Va. Beauregard sera au barrage.') : puis(R('Le maître de Beauregard', 'Nos bêtes et les leurs, ensemble… Alors on s’est battus pour rien.',
+      '**Dis-leur que Beauregard vient au barrage.**'), () => montrer('beauregard'))],
+    ['duel', () => R('Le maître de Beauregard', 'L’aïeule nous attend. Je n’y suis pas allé depuis deux ans.')],
+  ],
+  prisonnier: [
+    ['guerre', () => R('Le prisonnier', 'Qu’est-ce que tu me veux ? Je dirai rien à ceux de Beauregard.')],
+    ['temoins', () => puis(R('Le prisonnier', 'J’ai rien volé ! Les bêtes, je les ai vues passer, la nuit. Des cavaliers, trois ou quatre.',
+      'J’ai vu les traces, après. **Leurs chevaux ont des fers marqués d’une étoile.** Le forgeron de **Fariboules** les connaît, j’en suis sûr.'), () => noter2('etoile'))],
+    ['traces', () => R('Le prisonnier', 'Tu leur diras, hein, que c’était pas moi ?')],
+  ],
+  forgeron: [
+    ['guerre', () => R('Le forgeron', 'Plus d’eau pour tremper le fer. Je forge à moitié, et ça casse.')],
+    ['temoins', () => !sait('etoile') ? R('Le forgeron', 'Plus d’eau pour tremper le fer. Je forge à moitié, et ça casse.')
+      : puis(R('Le forgeron', 'Des fers à étoile ? C’est moi qui les fais. Pour mon cousin **Jacques**. Jacques le Noir, comme on dit.',
+        'Il paie bien, et je pose pas de questions. **Suis l’étoile dans la poussière.** Elle doit partir de **l’abreuvoir de Beauregard**.'), () => { noter2('jacques'); noter2('piste'); passer2('traces'); })],
+    ['traces', () => R('Le forgeron', 'Si Jacques apprend que j’ai parlé… Tant pis. C’est la famille.')],
+    ['pluie', () => R('Le forgeron', 'De l’eau dans la cuve. Je vais pouvoir tremper.')],
+  ],
+  aieule: [
+    ['guerre', () => R('L’aïeule', 'Le Batut, Beauregard… Ce sont mes petits-enfants, les uns comme les autres.',
+      'Avant, on se retrouvait tous ici, à la Saint-Jean. Maintenant ils se regardent par-dessus le lac.')],
+    ['familles', () => R('L’aïeule', 'Tu vois la falaise, à l’ouest ? On dit que c’est un géant couché. **Le Dormeur.** Autrefois, il respirait : l’air sortait frais des fentes de la roche.',
+      'Il ne respire plus depuis que le soleil s’est arrêté. Les hommes de Jacques passent par **une faille au bout du barrage**. Ils l’ont murée derrière eux.')],
+    ['pluie', () => R('L’aïeule', 'Ce que tu as commencé, finis-le. Le géant a donné sa vie pour ça.')],
+  ],
+  garde: [
+    ['guerre', () => R('Le garde', 'Pas un pas de plus vers l’eau !')],
+    ['duel', () => R('Le garde', 'Passe. Il t’attend sur la crête.')],
+    ['familles', () => R('Le garde', 'C’est fini. On garde l’eau pour tout le monde, maintenant.')],
+  ],
+};
+function repliques2(qui) {
+  let r = null; for (const [e, l] of REPLIQUES2[qui] || []) if (atteint2(e)) r = l;
+  return r ? r() : [];
+}
+
+// Les gens nouveaux de l'acte : des Roquette de plus, habillés comme ceux de pnj.js (le bleu
+// d'ardoise du Batut, la garance de Beauregard), mais debout ; complétés d'ici sans toucher pnj.js
+Object.assign(PNJ.ROLES, {
+  a2_maitre:     { ...PNJ.ROLES.roquette_beauregard, idle: 'Idle_FoldArms_Loop' },
+  a2_garde_beau: { ...PNJ.ROLES.roquette_beauregard, idle: 'Idle_Loop' },
+  a2_garde_bat:  { ...PNJ.ROLES.roquette_batut, idle: 'Idle_Loop' },
+  a2_prisonnier: { ...PNJ.ROLES.roquette_batut, gabarit: 'sec', idle: 'Idle_Loop' },
+  // le forgeron : la chemise brune sous le tablier, sans la couleur d'aucune maison
+  a2_forgeron:   { ...PNJ.ROLES.roquette_beauregard, gabarit: 'charpente', haut: 0x4a3c30, valeur: 0.8, idle: 'Idle_Loop' },
+});
+
+// ---- Les pièces sous la terre (la cave de Beauregard ; plus tard, la cave du Dormeur) ----
+// Le relief du lieu est une grille de hauteurs : on ne creuse pas dessous. Les caves sont donc
+// bâties très haut au-dessus du lac (Y_SOUS), cachées, et n'ont de sol et de murs (world.boxes,
+// capsules) que pendant qu'on y est : dehors, on ne les voit pas et on ne s'y cogne pas.
+const Y_SOUS = 600;
+function souterrain({ scene }, { x, z, w, d, h, sol, mur, nom }) {
+  const g = new THREE.Group(); g.position.set(x, Y_SOUS, z); g.visible = false; scene.add(g);
+  pose(g, boite(w, 0.4, d, sol[0], { color: sol[1] }), 0, -0.2, 0);
+  pose(g, boite(w, 0.3, d, mur[0], { color: mur[1] }), 0, h + 0.15, 0);
+  for (const [lx, lz, ww, dd] of [[0, -d / 2, w, 0.4], [0, d / 2, w, 0.4], [-w / 2, 0, 0.4, d], [w / 2, 0, 0.4, d]]) pose(g, boite(ww, h, dd, mur[0], { color: mur[1] }), lx, h / 2, lz);
+  g.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+  return { g, x, z, y: Y_SOUS, w, d, h, nom, obst: [], phys: [],
+    dd: { pts: [[x - w / 2, z - d / 2], [x + w / 2, z - d / 2], [x + w / 2, z + d / 2], [x - w / 2, z + d / 2]], plafond: Y_SOUS + h, bas: Y_SOUS - 0.6, nom } };
+}
+function physSous(S, on) {
+  if (!on) { for (const p of S.phys) { const a = world.boxes.indexOf(p), b = world.capsules.indexOf(p); if (a >= 0) world.boxes.splice(a, 1); if (b >= 0) world.capsules.splice(b, 1); }
+    S.phys = []; indexCapsules(); return; }
+  S.phys = [addBox(S.x - S.w / 2 - 3, S.x + S.w / 2 + 3, S.z - S.d / 2 - 3, S.z + S.d / 2 + 3, S.y)];
+  const e = 0.2, x0 = S.x - S.w / 2 + e, x1 = S.x + S.w / 2 - e, z0 = S.z - S.d / 2 + e, z1 = S.z + S.d / 2 - e;
+  for (const [ax, az, bx, bz, r] of [[x0, z0, x1, z0, 0.2], [x1, z0, x1, z1, 0.2], [x1, z1, x0, z1, 0.2], [x0, z1, x0, z0, 0.2], ...S.obst.map(([a, b, c, d2, r]) => [S.x + a, S.z + b, S.x + c, S.z + d2, r])]) {
+    const c = addCap(ax, az, bx, bz, r, S.y + S.h); c.bottom = S.y - 1; S.phys.push(c); }
+}
+function entrerSous(S, lx, lz, yaw) {
+  if (A2.salle) physSous(A2.salle, false);
+  physSous(S, true); S.g.visible = true; if (!DEDANS.includes(S.dd)) DEDANS.push(S.dd); A2.salle = S;
+  player.pos.set(S.x + lx, S.y + 0.02, S.z + lz); player.vy = 0; player.yaw = yaw;
+}
+function sortirSous(x, y, z, yaw) {
+  const S = A2.salle; if (!S) return;
+  physSous(S, false); S.g.visible = false; const k = DEDANS.indexOf(S.dd); if (k >= 0) DEDANS.splice(k, 1); A2.salle = null;
+  player.pos.set(x, y + 0.02, z); player.vy = 0; player.yaw = yaw;
+}
+// (rend la clé de la cave où l'on est — « dormeur », « cave » —, ou null dehors)
+const dansSous = () => (A2.salle ? A2.salle.cle || 'cave' : null);
+
+// ---- La cave de Beauregard, sous le hall : le prisonnier du Batut derrière une grille ----
+function caveBeauregard(ctx) {
+  const B = LIEU.beauregard; if (!B) return;
+  const S = souterrain(ctx, { x: 60, z: 40, w: 7, d: 5.4, h: 2.6, sol: ['terre_battue', 0x8a7a64], mur: ['rustic_stone_wall_02', 0x8a8070], nom: 'la cave de Beauregard' });
+  // la grille de fer qui coupe la cave : le prisonnier au fond, Camille au pied de l'escalier
+  const fer = phMat('metal_plate_02', 0.1, 2.6, { color: 0x3a3634, metalness: 0.6, roughness: 0.6 });
+  for (let x = -3.3; x <= 3.31; x += 0.32) pose(S.g, new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.6, 6), fer), x, 1.3, -0.4);
+  for (const y of [0.1, 2.45]) pose(S.g, new THREE.Mesh(boxG(6.8, 0.06, 0.06), fer), 0, y, -0.4);
+  S.obst.push([-3.5, -0.4, 3.5, -0.4, 0.12]);
+  // les marches qui remontent au hall, contre le mur de l'escalier (un décor : on les prend par l'invite)
+  for (let k = 0; k < 6; k++) pose(S.g, boite(1.0, 0.2 + k * 0.4, 0.4, 'granite_tile_03', { color: 0xa09a8e }), 2.9, (0.2 + k * 0.4) / 2, 2.4 - k * 0.4);
+  // une paille, une cruche : il est là depuis des jours
+  pose(S.g, boite(1.6, 0.15, 0.9, 'terre_battue', { color: 0xc8b070 }), -2.2, 0.08, -1.9);
+  pose(S.g, new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.35, 10), phMat('terre_battue', 0.5, 0.4, { color: 0x8a5a3a })), 1.8, 0.18, -2.0);
+  pose(S.g, new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffc070 })), 0, 2.2, 1.6);
+  const [hx, hz] = B.monde(1.6, -B.W / 2 + 1.3);
+  // la porte de la cave, au fond du hall
+  { const [x, z] = B.monde(1.6, -B.W / 2 + 0.52), g = new THREE.Group(); g.position.set(x, B.y0, z); g.rotation.y = B.rot; ctx.scene.add(g);
+    pose(g, boite(1.0, 2.0, 0.06, 'wood_planks', { color: 0x6a5038 }), 0, 1.0, 0); }
+  ctx.addInteract({ pos: new THREE.Vector3(hx, B.y0, hz), r: 1.8, prompt: () => 'descendre à la cave',
+    fn: () => { if (!atteint2('temoins')) { showMessage('La porte de la cave est fermée. Une voix, derrière : « Laissez-moi sortir ! »', 5); return; }
+      entrerSous(S, 2.2, 1.8, Math.PI); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x + 2.6, S.y, S.z + 2.0), r: 1.6, prompt: () => 'remonter au hall', fn: () => sortirSous(hx, B.y0, hz, B.rot + Math.PI) });
+  A2.aFaire.push(() => { A2.gens.prisonnier = personne(ctx.scene, 'a2_prisonnier', S.x - 0.6, S.y, S.z - 1.6, 0); if (A2.gens.prisonnier) S.g.attach(A2.gens.prisonnier); });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x - 0.6, S.y, S.z + 0.3), r: 2.2, prompt: () => 'parler au prisonnier', fn: () => dialogue(repliques2('prisonnier')) });
+  A2.caveBeauregard = S;
+}
+
+// ---- Le maître de Beauregard, dans le salon (« la grande salle ») ----
+function maitreBeauregard(ctx) {
+  const B = LIEU.beauregard; if (!B) return;
+  const [x, z] = B.monde(-3.6, 2.4), [lx, lz] = B.monde(0, 0), yaw = Math.atan2(lx - x, lz - z);
+  A2.aFaire.push(() => { A2.gens.maitre = personne(ctx.scene, 'a2_maitre', x, B.y0, z, yaw); });
+  addCap(x, z, x, z, 0.4, B.y0 + 1.8);
+  ctx.addInteract({ pos: new THREE.Vector3(x, B.y0, z), r: 2.4, prompt: () => 'parler au maître de Beauregard', enabled: () => !atteint2('familles'), fn: () => dialogue(repliques2('maitre')) });
+  A2.maitrePos = [x, B.y0, z];
+}
+
+// ---- La forge de Fariboules : un appentis, le foyer éteint, l'enclume, la cuve à sec ----
+function forge(ctx) {
+  const { hauteur, bloque, scene } = ctx;
+  let p = null;
+  for (let r = 0; r < 40 && !p; r += 1.5) for (let k = 0; k < 16; k++) { const x = 283 + Math.cos(k / 16 * 6.283) * r, z = 12 + Math.sin(k / 16 * 6.283) * r;
+    let ok = true; for (const [a, b] of [[0, 0], [2.6, 2], [-2.6, 2], [2.6, -2], [-2.6, -2], [0, 4]]) if (bloque(x + a, z + b, 0.5) || dansUneMaison(x + a, z + b, 1.5)) ok = false;
+    if (ok) { p = [x, z]; break; } }
+  if (!p) return;
+  const [x, z] = p, y = hauteur(x, z), g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+  const bois = 'wood_cabinet_worn_long';
+  for (const [a, b] of [[-2.2, -1.6], [2.2, -1.6], [-2.2, 1.6], [2.2, 1.6]]) { pose(g, boite(0.22, 2.8, 0.22, bois, { color: 0x5a4636 }), a, 1.3, b); addCap(x + a, z + b, x + a, z + b, 0.2, y + 2.8); }
+  const toit = pose(g, boite(5.2, 0.12, 4.2, 'lauze_lozere', { color: 0x8a8984 }), 0, 2.75, 0); toit.rotation.x = 0.12;
+  // le foyer de pierre, contre le fond, et ses cendres froides ; l'enclume sur son billot ; la cuve
+  pose(g, boite(1.6, 0.9, 1.1, 'rustic_stone_wall_02', { color: 0x8a8070 }), 0, 0.45, -1.3);
+  pose(g, boite(1.1, 0.06, 0.7, 'terre_battue', { color: 0x3a3634 }), 0, 0.92, -1.3);
+  pose(g, new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.6, 10), phMat(bois, 1, 0.6, { color: 0x5a4636 })), 1.2, 0.3, 0.2);
+  pose(g, boite(0.7, 0.25, 0.25, 'metal_plate_02', { color: 0x2e2c2a, metalness: 0.7, roughness: 0.5 }), 1.2, 0.72, 0.2);
+  pose(g, new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.4, 0.6, 14, 1, true), phMat(bois, 2.8, 0.6, { color: 0x6a5240, side: THREE.DoubleSide })), -1.5, 0.3, 0.3);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  addCap(x, z - 1.3, x, z - 1.3, 0.75, y + 0.95); addCap(x + 1.2, z + 0.2, x + 1.2, z + 0.2, 0.4, y + 0.85); addCap(x - 1.5, z + 0.3, x - 1.5, z + 0.3, 0.45, y + 0.6);
+  // le forgeron devant son appentis (le groupe n'est pas tourné : local = monde, décalé)
+  const fx = x - 0.4, fz = z + 1.0, fy = hauteur(fx, fz);
+  A2.aFaire.push(() => { A2.gens.forgeron = personne(scene, 'a2_forgeron', fx, fy, fz, Math.PI); });
+  addCap(fx, fz, fx, fz, 0.4, fy + 1.8);
+  ctx.addInteract({ pos: new THREE.Vector3(fx, fy, fz), r: 2.6, prompt: () => 'parler au forgeron', fn: () => dialogue(repliques2('forgeron')) });
+  ctx.addInteract({ pos: new THREE.Vector3(x + 1.2, y, z + 0.2), r: 1.6, prompt: () => 'l’enclume', fn: () => showMessage('Des fers à cheval, à moitié forgés. Sur l’un d’eux, une étoile à cinq branches, frappée au poinçon.', 6), enabled: () => sait('etoile') });
+  A2.forge = [x, y, z]; A2.forgeronPos = [fx, fy, fz];
+}
+
+// ---- Les gardes du lac : avant le duel, on tire sur quiconque s'approche de l'eau ----
+function gardes(ctx) {
+  const { PLAN, hauteur, scene, bloque } = ctx;
+  A2.eaux = ((PLAN && PLAN.eau.plans) || []).map((p) => p.pts);
+  A2.barrage = PLAN && PLAN.eau.barrages && PLAN.eau.barrages[0] ? PLAN.eau.barrages[0].pts : null;
+  const libre = (x0, z0) => { for (let r = 0; r < 25; r += 1) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * 6.283) * r, z = z0 + Math.sin(k / 16 * 6.283) * r;
+    if (!bloque(x, z, 0.9) && !A2.eaux.some((P) => dansPoly(x, z, P)) && !(A2.barrage && dansPoly(x, z, A2.barrage))) return [x, z]; } return null; };
+  const poser = (role, x0, z0, vers) => { const p = libre(x0, z0); if (!p) return; const [x, z] = p, y = hauteur(x, z), yaw = Math.atan2(vers[0] - x, vers[1] - z);
+    A2.aFaire.push(() => { const o = personne(scene, role, x, y, z, yaw); (A2.gens.gardes = A2.gens.gardes || []).push(o); });
+    addCap(x, z, x, z, 0.4, y + 1.8);
+    ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler au garde', fn: () => dialogue(repliques2('garde')) }); };
+  // celui de Beauregard au bout du barrage d'où l'on vient de la rive ouest ; celui du Batut à la
+  // racine du ponton de la baignade
+  if (A2.barrage) { let s = null; for (const [x, z] of A2.barrage) if (!s || z > s[1]) s = [x, z]; poser('a2_garde_beau', s[0], s[1] + 3, [-222, -75]); }
+  const pier = (PLAN.ponts || []).find((p) => p.k === 'pier'); if (pier) { const [ax, az] = pier.pts[0]; poser('a2_garde_bat', ax, az, pier.pts[1]); }
+}
+// le pas de trop : un coup de fusil en l'air, et Camille recule. Pas de dégâts : un avertissement
+function garderLeLac(dt) {
+  A2.gardeT = Math.max(0, A2.gardeT - dt);
+  if (atteint2('duel') || dansSous()) { A2.sur = null; return; }
+  const p = player.pos, interdit = A2.eaux.some((P) => dansPoly(p.x, p.z, P)) || (A2.barrage && dansPoly(p.x, p.z, A2.barrage));
+  if (!interdit) { A2.sur = [p.x, p.z]; return; }
+  if (!A2.sur) return;
+  const [sx, sz] = A2.sur, dx = sx - p.x, dz = sz - p.z, d = Math.hypot(dx, dz) || 1;
+  p.x = sx + dx / d * 2.5; p.z = sz + dz / d * 2.5; if (G.level && G.level.getH) p.y = Math.max(p.y, G.level.getH(p.x, p.z));
+  if (A2.gardeT <= 0) { A2.gardeT = 4; showMessage('Un coup de fusil claque au-dessus de l’eau. « Pas un pas de plus vers l’eau ! »', 4); }
+}
+
+// ---- La bande à Phinaert : des Roquette en noir, au gourdin (les créatures du moteur) ----
+// KINDS et les constructeurs se complètent d'ici (PLAN-2026-10-06-VAGUE1.md), sans toucher engine.js.
+// Leur corps est un personnage riggé de pnj.js : le crochet d'animation (setAnimHook) le fait
+// marcher ou attendre, comme un villageois.
+Object.assign(PNJ.ROLES, {
+  a2_brigand: { ...PNJ.ROLES.roquette_batut, gabarit: 'sec', haut: 0x2a2826, valeur: 0.7, bas: 0x1e1c1a, valeurBas: 0.7, idle: 'Idle_Loop' },
+  a2_brasdroit: { ...PNJ.ROLES.roquette_beauregard, haut: 0x262422, valeur: 0.7, bas: 0x1e1c1a, valeurBas: 0.7, idle: 'Idle_Loop' },
+  a2_jacques: { ...PNJ.ROLES.roquette_batut, haut: 0x141414, valeur: 0.6, bas: 0x141414, valeurBas: 0.6 },
+  a2_jacques_pied: { ...PNJ.ROLES.roquette_batut, haut: 0x141414, valeur: 0.6, bas: 0x141414, valeurBas: 0.6, idle: 'Idle_Loop' },
+});
+Object.assign(KINDS, {
+  brigand:   { hp: 5,  speed: 4.6, dmg: 1, range: 1.9, aggro: 16, windup: 0.55, cd: 1.4, fly: 0, r: 0.55, label: 'Brigand de la bande', barY: 2.1 },
+  jacques:   { hp: 10, speed: 4.4, dmg: 2, range: 2.0, aggro: 20, windup: 0.6,  cd: 1.3, fly: 0, r: 0.6,  label: 'Jacques Roquette, dit le Noir', barY: 2.2 },
+  brasdroit: { hp: 14, speed: 4.4, dmg: 2, range: 2.1, aggro: 40, windup: 0.6,  cd: 1.2, fly: 0, r: 0.6,  label: 'Le bras droit de Jacques', barY: 2.2 },
+});
+for (const [k, role] of [['brigand', 'a2_brigand'], ['brasdroit', 'a2_brasdroit'], ['jacques', 'a2_jacques_pied']]) {
+  setMaker(k, () => { const g = PNJ.buildRole(role) || new THREE.Group(); g.scale.setScalar(G.echelle); g.userData.anim = true; return g; });
+  setAnimHook(k, (e, dt, v) => { if (e.mesh.userData.ctrl) PNJ.animeVillageois(e.mesh, dt, v > 0.4); return true; });
+}
+
+// ---- L'abreuvoir de Beauregard, dans la cour : c'est là que la piste commence ----
+function abreuvoir(ctx) {
+  const B = LIEU.beauregard; if (!B) return null;
+  const lx = 6, lz = B.W / 2 + 10, [x, z] = B.monde(lx, lz), y = ctx.hauteur(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = B.rot; ctx.scene.add(g);
+  pose(g, boite(2.6, 0.7, 0.9, 'granit_lozere', { color: 0xb4ac9e }), 0, 0.3, 0);
+  const fond = new THREE.Mesh(boxG(2.3, 0.02, 0.6), phMat('mud_cracked_dry_03', 2.3, 0.6, { color: 0x9a8064 })); pose(g, fond, 0, 0.62, 0);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const [ax, az] = B.monde(lx - 1.3, lz), [bx, bz] = B.monde(lx + 1.3, lz); addCap(ax, az, bx, bz, 0.45, y + 0.7);
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.4, prompt: () => 'l’abreuvoir', fn: () => showMessage(atteint2('traces') ? 'L’auge est sèche. Dans la poussière, tout autour, des fers de cheval… et une étoile.' : 'L’auge de pierre est sèche, craquelée au fond.', 5) });
+  return [x, z];
+}
+
+// ---- La piste de l'étoile : de l'abreuvoir à l'enclos caché ----
+// Un chemin cherché sur une grille de 3 m (le blocked du lieu, hors de l'eau et des maisons) ;
+// un groupe d'empreintes tous les 7 m environ, qu'on ne voit qu'à 12 m : on marche le nez au sol.
+function piste(ctx, depart, arrivee) {
+  const { bloque } = ctx, P = 3, eau = (x, z) => A2.eaux.some((Q) => dansPoly(x, z, Q));
+  const x0 = Math.min(depart[0], arrivee[0]) - 60, z0 = Math.min(depart[1], arrivee[1]) - 60, nx = Math.ceil((Math.abs(depart[0] - arrivee[0]) + 120) / P), nz = Math.ceil((Math.abs(depart[1] - arrivee[1]) + 120) / P);
+  const id = (x, z) => { const i = Math.round((x - x0) / P), j = Math.round((z - z0) / P); return i < 0 || j < 0 || i >= nx || j >= nz ? -1 : j * nx + i; }, centre = (k) => [x0 + (k % nx) * P, z0 + Math.floor(k / nx) * P];
+  const libre = (k) => { const [x, z] = centre(k); return !bloque(x, z, 0.8) && !eau(x, z) && !dansUneMaison(x, z, 1.5); };
+  const de = new Int32Array(nx * nz).fill(-2), a = id(...depart), b = id(...arrivee); if (a < 0 || b < 0) return [];
+  de[a] = -1; let file = [a];
+  while (file.length && de[b] === -2) { const nf = []; for (const k of file) { const i = k % nx, j = Math.floor(k / nx);
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const u = i + di, v = j + dj; if (u < 0 || v < 0 || u >= nx || v >= nz) continue; const q = v * nx + u;
+      if (de[q] !== -2 || (q !== b && !libre(q))) continue; de[q] = k; nf.push(q); } } file = nf; }
+  if (de[b] === -2) return [];
+  const pts = []; for (let k = b; k !== -1; k = de[k]) pts.push(centre(k)); pts.reverse();
+  // un groupe tous les 7 m, le long du chemin, décalé d'un rien (les chevaux ne marchent pas en file parfaite)
+  const sorties = []; let acc = 7;
+  for (let k = 1; k < pts.length; k++) { const [ax, az] = pts[k - 1], [bx, bz] = pts[k], l = Math.hypot(bx - ax, bz - az);
+    for (let t = 0; t < l; t += 1) { if (++acc < 7) continue; acc = 0; const u = t / l; sorties.push([ax + (bx - ax) * u, az + (bz - az) * u, Math.atan2(bx - ax, bz - az)]); } }
+  return sorties;
+}
+// l'empreinte : un fer de cheval, et l'étoile frappée au milieu ; peinte une fois sur un canevas
+let texFer = null;
+function fer() {
+  if (texFer) return texFer;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.strokeStyle = 'rgba(52,40,28,0.85)'; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.arc(32, 30, 20, Math.PI * 0.15, Math.PI * 0.85, true); g.stroke();
+  g.fillStyle = 'rgba(52,40,28,0.9)'; g.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 4 : 10, a = -Math.PI / 2 + k * Math.PI / 5; g.lineTo(32 + Math.cos(a) * r, 30 + Math.sin(a) * r); } g.closePath(); g.fill();
+  texFer = new THREE.CanvasTexture(c); texFer.colorSpace = THREE.SRGBColorSpace; return texFer;
+}
+function empreintes(ctx, sorties) {
+  const { hauteur, scene } = ctx, mat = new THREE.MeshStandardMaterial({ map: fer(), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -4 }), geo = new THREE.PlaneGeometry(0.3, 0.3).rotateX(-Math.PI / 2);
+  A2.traces = sorties.map(([x, z, a]) => { const g = new THREE.Group(); g.position.set(x, hauteur(x, z) + 0.02, z); g.rotation.y = a; g.visible = false; scene.add(g);
+    // deux paires de fers, l'avant et l'arrière d'un cheval au pas
+    for (const [lx, lz] of [[-0.18, 0.5], [0.18, 0.15], [-0.18, -0.5], [0.18, -0.85]]) { const m = new THREE.Mesh(geo, mat); m.position.set(lx, hauteur(x + lx, z + lz) - hauteur(x, z), lz); m.renderOrder = 2; g.add(m); }
+    return g; });
+}
+
+// ---- L'enclos caché de la bande, dans le bois au-dessus de la source des Vergnes ----
+function enclos(ctx) {
+  const { hauteur, scene, bloque } = ctx, eau = (x, z) => A2.eaux.some((Q) => dansPoly(x, z, Q)), R0 = 8;
+  let c = null;
+  for (let r = 0; r < 70 && !c; r += 2) for (let k = 0; k < 24; k++) { const x = 440 + Math.cos(k / 24 * 6.283) * r, z = 395 + Math.sin(k / 24 * 6.283) * r;
+    let ok = !bloque(x, z, 1) && !eau(x, z); for (let j = 0; j < 16 && ok; j++) for (const rr of [4, R0, R0 + 2]) { const px = x + Math.cos(j / 16 * 6.283) * rr, pz = z + Math.sin(j / 16 * 6.283) * rr; if (bloque(px, pz, 0.6) || eau(px, pz) || dansUneMaison(px, pz, 2)) { ok = false; break; } }
+    if (ok) { c = [x, z]; break; } }
+  if (!c) return null;
+  const [cx, cz] = c, cy = hauteur(cx, cz), bois = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x6a5642 }), pieces = [];
+  // les claies de châtaignier, en rond, ouvertes du côté d'où vient la piste (posé plus bas)
+  A2.enclos = { x: cx, z: cz, y: cy, r: R0 };
+  const ouvert = Math.atan2(A2.depart[0] - cx, A2.depart[1] - cz);
+  for (let k = 0; k < 20; k++) { const a0 = k / 20 * 6.283, a1 = (k + 1) / 20 * 6.283, am = (a0 + a1) / 2; if (Math.abs(Math.atan2(Math.sin(am - ouvert), Math.cos(am - ouvert))) < 0.22) continue;
+    const ax = cx + Math.sin(a0) * R0, az = cz + Math.cos(a0) * R0, bx = cx + Math.sin(a1) * R0, bz = cz + Math.cos(a1) * R0, l = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2, y = hauteur(mx, mz);
+    for (const [hh, yy] of [[0.08, 0.35], [0.08, 0.75], [0.08, 1.1]]) { const g = boxG(l, hh, 0.06); g.rotateY(Math.atan2(-(bz - az), bx - ax)); g.translate(mx, y + yy, mz); pieces.push(g.toNonIndexed()); }
+    const p = boxG(0.12, 1.3, 0.12); p.translate(ax, hauteur(ax, az) + 0.6, az); pieces.push(p.toNonIndexed());
+    addCap(ax, az, bx, bz, 0.12, y + 1.2); }
+  // le piquet des colliers, juste à l'entrée, dedans
+  const px = cx + Math.sin(ouvert) * (R0 - 1.6), pz = cz + Math.cos(ouvert) * (R0 - 1.6) + 0.8, py = hauteur(px, pz);
+  { const p = boxG(0.14, 1.6, 0.14); p.translate(px, py + 0.8, pz); pieces.push(p.toNonIndexed()); addCap(px, pz, px, pz, 0.15, py + 1.6); }
+  const m = new THREE.Mesh(mergeGeometries(pieces.map((g) => { g.computeVertexNormals(); uvMetres(g); return g; })), bois); m.castShadow = m.receiveShadow = true; scene.add(m);
+  // les deux colliers de sonnaille : le cuir teint aux couleurs des maisons, la cloche de tôle
+  A2.colliers = new THREE.Group(); A2.colliers.position.set(px, py, pz); scene.add(A2.colliers);
+  for (const [sx, coul] of [[-1, 0x5a6e80], [1, 0x8a2e24]]) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.025, 6, 16), new THREE.MeshStandardMaterial({ color: coul, roughness: 0.8 }));
+    t.position.set(sx * 0.1, 1.35, 0.1); A2.colliers.add(t);
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.06, 0.1, 8), phMat('metal_plate_02', 0.2, 0.1, { color: 0x8a7a50, metalness: 0.6, roughness: 0.5 })); s.position.set(sx * 0.1, 1.15, 0.12); A2.colliers.add(s); }
+  ctx.addInteract({ pos: new THREE.Vector3(px, py, pz), r: 2.2, prompt: () => 'les colliers', enabled: () => atteint2('traces') && !atteint2('preuve'), fn: prendreColliers });
+  // les bêtes des deux maisons, ensemble : une raie de couleur sur la laine (le bleu du Batut, la garance de Beauregard)
+  chargerBrebis().then((mod) => { if (!mod) return; const ps = []; const h01 = (a, b) => { const v = Math.sin(a * 91.7 + b * 47.3) * 43758.5453; return v - Math.floor(v); };
+    for (let k = 0; k < 200 && ps.length < 16; k++) { const a = h01(k, 3) * 6.283, r = 1 + h01(7, k) * (R0 - 2.5), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (ps.some((p) => Math.hypot(p[0] - x, p[1] - z) < 1.4) || Math.hypot(x - px, z - pz) < 1.5) continue; ps.push([x, z, h01(x, z) * 6.283]); }
+    const im = new THREE.InstancedMesh(mod.geo, mod.mat, ps.length), raie = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.03, 0.5), new THREE.MeshStandardMaterial({ roughness: 1 }), ps.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0), un = new THREE.Vector3(1, 1, 1), col = new THREE.Color();
+    // (la raie au sommet du dos : la brebis fait 1,2 m de long, son dos est à 0,75 m environ)
+    ps.forEach(([x, z, a], k) => { q.setFromAxisAngle(Y, a); m4.compose(new THREE.Vector3(x, hauteur(x, z) - 0.03, z), q, un); im.setMatrixAt(k, m4);
+      m4.compose(new THREE.Vector3(x, hauteur(x, z) + 0.78, z), q, un); raie.setMatrixAt(k, m4); raie.setColorAt(k, col.setHex(k % 2 ? 0x8a2e24 : 0x3e5a78));
+      addCap(x, z, x, z, 0.45, hauteur(x, z) + 0.9); });
+    im.castShadow = im.receiveShadow = true; scene.add(im, raie); A2.betes = ps.length; });
+  return c;
+}
+function prendreColliers() {
+  if ((A2.brigands || []).some((e) => !e.dead)) { showMessage('Les hommes de la bande gardent l’enclos.', 3); return; }
+  dialogue([{ who: 'Camille', text: 'Un collier du Batut, un collier de Beauregard. **Les bêtes des deux maisons, ensemble.**' }], () => {
+    if (A2.colliers) A2.colliers.visible = false; state.colliers = true; passer2('preuve'); showMessage('Les deux colliers, dans la poche. Il faut les montrer aux deux maisons.', 5); });
+}
+
+// ---- Le duel du lac, sur la crête du barrage ----
+function centreBarrage() { const P = A2.barrage; if (!P) return [-222, -75]; return [P.reduce((s, p) => s + p[0], 0) / P.length, P.reduce((s, p) => s + p[1], 0) / P.length]; }
+function duel() {
+  if (A2.duel || !A2.ctx) return;
+  const [bx, bz] = centreBarrage(), p = player.pos;
+  if (Math.hypot(p.x - bx, p.z - bz) > 22) return;
+  A2.duel = 'parle';
+  const yaw = Math.atan2(p.x - bx, p.z - bz);
+  dialogue([{ who: 'Le bras droit de Jacques', text: 'Alors c’est toi, la petite de l’île. Le patron m’avait prévenu.' }], () => {
+    const e = spawnEnemy('brasdroit', bx, bz, 'acte2'); e.yaw = yaw; A2.brasdroit = e; A2.duel = 'combat'; });
+}
+// Jacques le Noir, au loin, qui file vers l'ouest à cheval : on le voit, on ne le rattrape pas
+async function jacquesFuit() {
+  const [bx, bz] = centreBarrage(), x = bx - 30, z = bz - 10, y = A2.ctx.hauteur(x, z), yaw = -Math.PI / 2;
+  const c = await cheval(A2.ctx.scene, 'cheval.glb', x, y, z, yaw, 'Gallop'), r = personne(A2.ctx.scene, 'a2_jacques', x, y + SELLE * G.echelle, z, yaw);
+  A2.fuite = { c, r, t: 0, x, z };
+}
+function animeFuite(dt) {
+  const F = A2.fuite; if (!F) return;
+  F.t += dt; const x = F.x - F.t * 12, z = F.z, y = A2.ctx.hauteur(x, z);
+  if (F.c) F.c.position.set(x + SELLE_AV * G.echelle * Math.sin(-Math.PI / 2), y, z); if (F.r) F.r.position.set(x, y + SELLE * G.echelle, z);
+  if (F.t > 7) { for (const o of [F.c, F.r]) if (o) o.visible = false; A2.fuite = null; }
+}
+
+// la suite des étapes 3 à 5, à chaque image
+function animeTraces(dt) {
+  // les empreintes : seulement une fois la piste connue, et seulement de près
+  if (A2.traces && atteint2('traces')) { const p = player.pos;
+    for (const g of A2.traces) { const v = Math.abs(g.position.x - p.x) < 12 && Math.abs(g.position.z - p.z) < 12 && Math.hypot(g.position.x - p.x, g.position.z - p.z) < 12; g.visible = v;
+      if (v && !A2.etoileVue && Math.hypot(g.position.x - p.x, g.position.z - p.z) < 3.5) { A2.etoileVue = true; showMessage('Camille : « Une étoile. »', 3); } } }
+  // les brigands de l'enclos, quand on en approche
+  const E = A2.enclos;
+  if (E && atteint2('traces') && !atteint2('preuve') && !A2.brigands && Math.hypot(player.pos.x - E.x, player.pos.z - E.z) < 45) {
+    A2.brigands = [0, 1, 2].map((k) => { const a = k / 3 * 6.283 + 0.5, x = E.x + Math.cos(a) * (E.r + 3), z = E.z + Math.sin(a) * (E.r + 3); return spawnEnemy('brigand', x, z, 'acte2'); });
+    showMessage('Des hommes en noir se lèvent autour de l’enclos.', 3);
+  }
+  if (atteint2('duel') && !atteint2('familles')) duel();
+  if (A2.duel === 'combat' && A2.brasdroit && A2.brasdroit.dead) {
+    A2.duel = 'fini';
+    dialogue([{ who: 'Le bras droit de Jacques', text: 'C’est Jacques qui nous paie. Et Jacques, c’est un autre qui le paie. **Il est parti vers le Dormeur.**' }], () => { passer2('familles'); jacquesFuit(); });
+  }
+  animeFuite(dt);
+}
+
+// ---- Les familles au Pouget : autour de la table de l'aïeule ----
+// (aux étapes « familles », les deux maîtres seulement, qui ne se regardent pas encore ; à « pluie »,
+// le repas : tous les Roquette, sauf Jacques). Les places se comptent depuis l'aïeule, au bout de la
+// table, le long de son regard.
+function tablee() {
+  if (!A2.aieule || A2.tablee === state.acte2) return;
+  const etat = atteint2('pluie') ? 'pluie' : atteint2('familles') ? 'familles' : null; if (!etat || A2.tablee === etat) return;
+  A2.tablee = etat;
+  const [ax, ay, az, ayaw] = A2.aieule, fx = Math.sin(ayaw), fz = Math.cos(ayaw), place = (d, cote) => [ax + fx * d + fz * cote, az + fz * d - fx * cote];
+  const gens = etat === 'pluie' ? [['a2_maitre', 1.2, 0.95], ['a2_garde_bat', 1.2, -0.95], ['a2_forgeron', 2.4, 0.95], ['a2_prisonnier', 2.4, -0.95], ['a2_garde_beau', 3.6, 0.95]]
+    : [['a2_maitre', 1.2, 0.95], ['a2_garde_bat', 1.2, -0.95]];
+  for (const o of A2.convives || []) if (o) o.visible = false;
+  A2.convives = gens.map(([role, d, cote]) => { const [x, z] = place(d, cote); return personne(A2.ctx.scene, role, x, ay, z, Math.atan2(-fz * Math.sign(cote), fx * Math.sign(cote))); });
+  // le maître de Beauregard a quitté son salon ; le prisonnier, sa cave
+  if (A2.gens.maitre) A2.gens.maitre.visible = false;
+  if (etat === 'pluie' && A2.gens.prisonnier) A2.gens.prisonnier.visible = false;
+}
+
+// ---- Une bombe posée à la main (les bombes de l'armurier de Lille, state.bombes) ----
+// Pas de bombe lancée ici : le lancer vit dans citadelle.js. On la pose contre ce qu'on veut faire
+// sauter, elle grésille une seconde et demie, puis la pierre cède.
+function poserBombe(x, y, z, apres) {
+  if (!state.bombes) { showMessage('Il faudrait de quoi faire sauter ça. Une bombe, comme celles de l’armurier de la citadelle.', 5); return false; }
+  if (state.nbBombes !== undefined && state.nbBombes <= 0) { showMessage('Plus une bombe en poche.', 3); return false; }
+  if (state.nbBombes !== undefined) state.nbBombes--;
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.6 })); b.position.set(x, y + 0.22, z); A2.ctx.scene.add(b);
+  A2.meches = A2.meches || []; A2.meches.push({ b, t: 0, apres, x, y, z }); SFX.roll && SFX.roll(); return true;
+}
+function animeMeches(dt) {
+  for (let i = (A2.meches || []).length - 1; i >= 0; i--) { const m = A2.meches[i]; m.t += dt; m.b.scale.setScalar(1 + Math.sin(m.t * 30) * 0.06);
+    if (m.t < 1.5) continue;
+    A2.ctx.scene.remove(m.b); A2.meches.splice(i, 1);
+    SFX.stomp(); G.shake = Math.max(G.shake || 0, 0.6); burst(m.x, m.y + 0.4, m.z, 0xffa040, 36, 7, 0.7, 6, 1.6); burst(m.x, m.y + 0.8, m.z, 0x4a4440, 18, 3, 1.6, -1, 2.4);
+    if (Math.hypot(player.pos.x - m.x, player.pos.z - m.z) < 2.2 && Math.abs(player.pos.y - m.y) < 2) damagePlayer(2, m.x, m.z);
+    m.apres(); }
+}
+
+// ---- La faille de l'ouest, au bout du barrage : l'entrée de la cave du Dormeur ----
+function faille(ctx) {
+  const { hauteur, bloque, scene } = ctx; let p = null;
+  for (let r = 0; r < 40 && !p; r += 1.5) for (let k = 0; k < 20; k++) { const x = -272 + Math.cos(k / 20 * 6.283) * r, z = -112 + Math.sin(k / 20 * 6.283) * r;
+    if (x < -285 || bloque(x, z, 2.5) || A2.eaux.some((Q) => dansPoly(x, z, Q)) || (A2.barrage && dansPoly(x, z, A2.barrage)) || dansUneMaison(x, z, 3)) continue; p = [x, z]; break; }
+  if (!p) return;
+  const [x, z] = p, y = hauteur(x, z), g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+  // la roche : des blocs de granit gris entassés, plus hauts vers l'ouest, et la fente au milieu
+  const roc = { color: 0x8a847a };
+  const h01 = (a) => { const v = Math.sin(a * 91.7) * 43758.5453; return v - Math.floor(v); };
+  for (let k = 0; k < 9; k++) { const lx = -6 + k * 1.5 + (h01(k) - 0.5), w = 2 + h01(k + 9) * 1.6, h = 3.5 + h01(k + 3) * 3 + (k === 4 ? 0 : 0), d = 2.2 + h01(k + 5);
+    if (k === 4) continue; const b = pose(g, boite(w, h, d, 'granit_lozere', roc), lx, h / 2 - 0.3, -1 - h01(k + 1)); b.rotation.set((h01(k + 2) - 0.5) * 0.2, (h01(k + 4) - 0.5) * 0.5, (h01(k + 6) - 0.5) * 0.2); }
+  pose(g, boite(1.6, 6.5, 0.2, 'granit_lozere', { color: 0x141210 }), 0, 3.0, -1.6);           // le noir de la fente
+  pose(g, boite(10, 7.5, 2, 'granit_lozere', roc), 0, 3.4, -3.2);                               // le rocher derrière
+  // les pierres sèches entassées par la bande, qui murent la fente
+  const mur = new THREE.Group(); g.add(mur);
+  for (let k = 0; k < 14; k++) pose(mur, boite(0.5 + h01(k + 20) * 0.3, 0.35, 0.5, 'rustic_stone_wall_02', { color: 0x8a8070 }), (k % 3 - 1) * 0.5 + (h01(k) - 0.5) * 0.1, 0.18 + Math.floor(k / 3) * 0.36, -0.9);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  addCap(x - 7, z - 1.5, x + 7, z - 1.5, 1.2, y + 8);
+  A2.faille = { x, y, z, mur, ouverte: () => sait('faille') };
+  if (sait('faille')) mur.visible = false;
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z + 0.4), r: 2.6,
+    prompt: () => sait('faille') ? 'entrer dans la faille' : 'la faille',
+    fn: () => {
+      if (sait('faille')) { entrerDormeur(); return; }
+      if (!atteint2('familles')) { showMessage('Une fente dans la roche, murée de pierres sèches. Des pierres posées de main d’homme, et pas il y a longtemps.', 5); return; }
+      poserBombe(x, y, z + 0.1, () => { mur.visible = false; state.ind2.faille = true; saveGame(true); showMessage('Les pierres ont cédé. Derrière, la roche descend dans le noir.', 4); });
+    } });
+}
+
+// ---- La cave du Dormeur : la galerie, la grande salle, le cœur ----
+// Bâtie comme la cave de Beauregard, au-dessus du lac. Une seule longue salle : l'entrée au nord
+// (z local +16), Jacques et ses deux hommes au seuil de la grande salle (z ≈ +3), le cœur au fond
+// (z −12). Les parois rougissent en descendant : on est dans le corps du géant.
+function caveDormeur(ctx) {
+  const S = souterrain(ctx, { x: 60, z: -160, w: 16, d: 36, h: 7, sol: ['rustic_stone_wall_02', 0x5a4a40], mur: ['granit_lozere', 0x6a625a], nom: 'la cave du Dormeur' });
+  const chair = { color: 0x7a4a40 };
+  // la chair de pierre, au fond : un second parement sur les murs de la grande salle
+  for (const [lx, lz, w, d] of [[-7.7, -8, 0.3, 19], [7.7, -8, 0.3, 19], [0, -17.7, 15, 0.3]]) pose(S.g, boite(w, 6.8, d, 'rustic_stone_wall_02', chair), lx, 3.4, lz);
+  // les fentes où l'air ne souffle plus (les fleurines), sur les murs de la galerie
+  for (const lz of [12, 8, 4]) for (const sx of [-1, 1]) pose(S.g, boite(0.12, 1.8, 0.3, 'granit_lozere', { color: 0x0e0c0a }), sx * 7.75, 2.2, lz);
+  // le resserrement entre la galerie et la grande salle : deux éperons de roche
+  for (const sx of [-1, 1]) { pose(S.g, boite(4.5, 7, 1.6, 'granit_lozere', { color: 0x6a5a52 }), sx * 5.75, 3.5, 2); S.obst.push([sx * 3.6, 2, sx * 7.8, 2, 0.8]); }
+  // une lumière : celle de la lanterne, si Camille l'a (sinon le noir n'empêche pas d'avancer ici)
+  const lueur = new THREE.PointLight(0xffc888, 0, 14, 1.6); S.g.add(lueur); A2.lueur = lueur;
+  // le cœur : une roche ronde qui bat, et le morceau de la Grande Cloche planté dedans
+  const coeur = new THREE.Group(); coeur.position.set(0, 2.2, -12.5); S.g.add(coeur); A2.coeur = coeur;
+  const masse = new THREE.Mesh(new THREE.SphereGeometry(1.7, 24, 16), phMat('rustic_stone_wall_02', 4, 4, { color: 0x8a3a34, roughness: 0.85 })); coeur.add(masse);
+  masse.material = masse.material.clone(); masse.material.emissive = new THREE.Color(0x3a0806); masse.material.emissiveIntensity = 0.6;
+  const morceau = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 1.1, 18, 1, true, 0, 1.1), phMat('metal_plate_02', 1.4, 1.1, { color: 0x6a5434, metalness: 0.8, roughness: 0.45, side: THREE.DoubleSide }));
+  morceau.position.set(0.3, 1.1, 0.6); morceau.rotation.set(0.5, 0.3, 0.7); coeur.add(morceau); A2.morceau = morceau;
+  S.obst.push([0, -12.5, 0, -12.5, 1.9]);
+  // les trois veines qui nourrissent le morceau : rouges, elles pulsent avec le cœur ; une bombe les fait sauter
+  A2.veines = [[-6.8, -9, 1.0], [6.8, -10, 1.0], [0, -17, 1.4]].map(([vx, vz, vy], k) => {
+    const a = new THREE.Vector3(vx, vy, vz), bpt = new THREE.Vector3(0, 2.2, -12.5), L = a.distanceTo(bpt);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, L, 8), new THREE.MeshStandardMaterial({ color: 0x9a2a20, emissive: 0x6a0a04, emissiveIntensity: 0.8, roughness: 0.6 }));
+    m.position.copy(a).add(bpt).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), bpt.clone().sub(a).normalize()); S.g.add(m);
+    const v = { m, x: S.x + vx, z: S.z + vz, ok: true };
+    ctx.addInteract({ pos: new THREE.Vector3(S.x + vx, S.y, S.z + vz), r: 2.0, prompt: () => 'poser une bombe contre la veine', enabled: () => v.ok && !A2.coeurOuvert && dansSous() === 'dormeur',
+      fn: () => poserBombe(S.x + vx, S.y, S.z + vz, () => { v.ok = false; m.visible = false; A2.coeurOuvert = true; A2.coeurT = 6;
+        showMessage(A2.coups === 2 ? 'La dernière veine a sauté. Le cœur est à nu. Frappe !' : 'La veine a sauté. Le cœur ralentit : frappe-le, vite !', 4); }) });
+    return v; });
+  // la Cloche du Midi, qui sortira de la roche (DECISIONS-RECIT.md § 2 : cloche de ferme trapue, fer rouillé)
+  const prof = [[0, 0], [0.55, 0], [0.56, 0.08], [0.5, 0.3], [0.47, 0.75], [0.42, 0.95], [0.25, 1.05], [0.08, 1.08], [0, 1.08]].map(([r, h]) => new THREE.Vector2(r, h));
+  const cloche = new THREE.Mesh(new THREE.LatheGeometry(prof, 24), phMat('metal_plate_02', 2, 1, { color: 0x7a4a2a, metalness: 0.5, roughness: 0.75, side: THREE.DoubleSide }));
+  cloche.position.set(0, -1.4, -15.5); cloche.visible = false; S.g.add(cloche); A2.cloche = cloche;
+  // le deuxième vers, gravé sur la paroi du cœur (peint une fois sur un canevas)
+  { const c = document.createElement('canvas'); c.width = 1024; c.height = 256; const g2 = c.getContext('2d'); g2.fillStyle = 'rgba(0,0,0,0)'; g2.fillRect(0, 0, 1024, 256);
+    g2.font = 'italic 44px Georgia, serif'; g2.textAlign = 'center'; g2.fillStyle = 'rgba(30,14,10,0.85)';
+    g2.fillText('Une gardienne sonnera les cloches,', 512, 100); g2.fillText('et chaque cloche le servira.', 512, 160);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    const v = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 1 })); v.position.set(0, 4.8, -17.5); v.visible = false; S.g.add(v); A2.vers = v; }
+  // Jacques à terre, après le cœur ; Phinaert, une ombre debout derrière le cœur, qui regarde
+  A2.ombre = new THREE.Group(); A2.ombre.visible = false; A2.ombre.position.set(2.5, 0, -16.2); S.g.add(A2.ombre);
+  { const m = new THREE.MeshStandardMaterial({ color: 0x0c0a0c, roughness: 1, transparent: true, opacity: 0.92 });
+    A2.ombre.add(mesh(new THREE.ConeGeometry(0.9, 3.4, 12), m, 0, 1.7, 0)); A2.ombre.add(mesh(new THREE.SphereGeometry(0.34, 12, 10), m, 0, 3.55, 0)); }
+  // le bloc tombé devant la sortie, quand la montagne se rendort : on l'essaie avec la force
+  A2.bloc = pose(S.g, boite(3.2, 2.4, 2.2, 'granit_lozere', { color: 0x7a746a }), 0, 1.2, 13.5); A2.bloc.visible = false;
+  ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 11.6), r: 2.4, prompt: () => 'pousser le bloc', enabled: () => dansSous() === 'dormeur' && A2.blocLa,
+    fn: () => { if (!state.force) { showMessage('Le bloc ne bouge pas d’un pouce.', 3); return; } A2.blocPousse = 0; SFX.stomp(); showMessage('Camille pousse. La pierre glisse, comme si elle ne pesait rien.', 4); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 16), r: 1.8, prompt: () => 'remonter vers la faille', enabled: () => !A2.blocLa,
+    fn: () => { const F = A2.faille;
+      // la bande restée debout ne suit pas Camille dehors (sans sol sous elle, elle tomberait de 600 m) : on la retrouvera en redescendant
+      for (const e of A2.bande || []) if (!e.dead) { e.dead = true; e.hp = 0; e.mesh.visible = false; if (e.bar) e.bar.visible = false; }
+      if (!sait('coeur')) A2.bande = null;
+      sortirSous(F.x, F.y, F.z + 2.2, 0); if (atteint2('pluie')) pluie(); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x + 0, S.y, S.z - 10.2), r: 2.4, prompt: () => 'lire la paroi', enabled: () => !!(A2.vers && A2.vers.visible),
+    fn: () => dialogue([{ text: 'Gravé dans la pierre : **Une gardienne sonnera les cloches, et chaque cloche le servira.**' }]) });
+  S.cle = 'dormeur';
+  A2.caveDormeur = S;
+}
+function entrerDormeur() {
+  const S = A2.caveDormeur; if (!S) return;
+  entrerSous(S, 0, 15, Math.PI); passer2('dormeur');
+  A2.lueur.intensity = state.lanterne ? 6 : 2.5; A2.lueur.position.set(0, 3, 15);
+  // ce qui y reste à faire : Jacques et deux hommes au seuil de la grande salle, si le cœur bat encore
+  if (!sait('coeur') && !(A2.bande && A2.bande.some((e) => !e.dead))) {
+    A2.jacquesParle = false; A2.coups = 0; A2.coeurOuvert = false;
+    for (const v of A2.veines) { v.ok = true; v.m.visible = true; }
+    A2.bande = [['brigand', -2.5, 4.5], ['brigand', 2.5, 4.5], ['jacques', 0, 3.5]].map(([k, lx, lz]) => { const e = spawnEnemy(k, S.x + lx, S.z + lz, 'acte2', S.y); e.home.y = S.y; return e; });
+  }
+  if (sait('coeur')) { A2.vers.visible = true; A2.cloche.visible = false; }
+}
+// la montagne qui frappe : une main de pierre sort du mur, retombe là où était Camille
+function mainDePierre(S, dt) {
+  A2.mainT = (A2.mainT ?? 3) - dt;
+  if (!A2.main && A2.mainT <= 0) {
+    const p = player.pos, lz = p.z - S.z; if (lz > 1) { A2.mainT = 1; return; }
+    const m = new THREE.Group(); const roc = phMat('rustic_stone_wall_02', 1, 1, { color: 0x7a4a40 });
+    m.add(mesh(boxG(1.2, 0.5, 1.4), roc, 0, 0.25, 0)); for (let k = 0; k < 4; k++) m.add(mesh(boxG(0.22, 0.3, 0.6), roc, -0.45 + k * 0.3, 0.2, 0.9));
+    m.position.set(p.x, S.y + 5.5, p.z); S.g.attach(m); A2.main = { m, x: p.x, z: p.z, t: 0 };
+    // l'ombre de la main au sol, qui grandit : on a une seconde pour rouler
+    const o = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.0 })); o.position.set(p.x, S.y + 0.03, p.z); S.g.attach(o); A2.main.o = o;
+  }
+  const M = A2.main; if (!M) return;
+  M.t += dt; M.o.material.opacity = Math.min(0.55, M.t * 0.5);
+  if (M.t < 1.1) return;
+  M.m.position.y = Math.max(S.y + 0.1, S.y + 5.5 - (M.t - 1.1) * 30);
+  if (!M.frappe && M.m.position.y <= S.y + 0.11) { M.frappe = true; SFX.stomp(); G.shake = Math.max(G.shake || 0, 0.5);
+    if (Math.hypot(player.pos.x - M.x, player.pos.z - M.z) < 1.4) damagePlayer(1, M.x, M.z); }
+  if (M.t > 2.6) { S.g.remove(M.m); S.g.remove(M.o); A2.main = null; A2.mainT = 2.2 + Math.random() * 1.5; }
+}
+function animeDormeur(dt) {
+  const S = A2.caveDormeur; if (!S || dansSous() !== 'dormeur') return;
+  A2.lueur.position.set(player.pos.x - S.x, player.pos.y - S.y + 2.2, player.pos.z - S.z);
+  const coeur = A2.coeur;
+  // Jacques au seuil : sa réplique, une fois
+  if (A2.bande && !A2.jacquesParle && player.pos.z - S.z < 10) { A2.jacquesParle = true;
+    dialogue([{ who: 'Jacques le Noir', text: 'Le Batut, Beauregard… tous des Roquette, et tous des imbéciles. Ils se sont battus pour un lac pendant que je prenais tout.' }]); }
+  if (sait('coeur')) { if (A2.blocPousse !== undefined && A2.bloc.visible) { A2.blocPousse += dt; A2.bloc.position.x = Math.min(5.5, A2.blocPousse * 3); if (A2.bloc.position.x >= 5.5) { A2.blocLa = false; physSous(S, false); S.obst = S.obst.filter((o) => o !== A2.blocObst); physSous(S, true); } } return; }
+  if (coeur) { const k = 1 + Math.sin(performance.now() / (A2.coeurOuvert ? 520 : 260)) * 0.05; coeur.scale.setScalar(k); }
+  // la bande d'abord : la montagne ne frappe qu'une fois Jacques et ses hommes à terre
+  if (A2.bande && A2.bande.some((e) => !e.dead)) return;
+  mainDePierre(S, dt);
+  // le cœur à nu : un coup d'épée le touche (le coup part, Camille est à moins de 3,2 m du cœur)
+  if (A2.coeurOuvert) {
+    A2.coeurT -= dt;
+    const d = Math.hypot(player.pos.x - S.x, player.pos.z - (S.z - 12.5));
+    if (player.attackT > 0 && d < 3.4 && !A2.coupEnCours) { A2.coupEnCours = true; A2.coups = (A2.coups || 0) + 1; A2.coeurOuvert = false; SFX.hit(); burst(S.x, S.y + 2.2, S.z - 11, 0xb03020, 24, 5, 0.6, 4, 1.4);
+      if (A2.coups >= 3) finCoeur(); else showMessage(`Le cœur a tremblé. (${A2.coups} / 3)`, 3); }
+    else if (A2.coeurT <= 0) { A2.coeurOuvert = false; showMessage('Le cœur s’est refermé. Une autre veine…', 3); }
+  }
+  if (player.attackT <= 0) A2.coupEnCours = false;
+}
+function finCoeur() {
+  const S = A2.caveDormeur; if (A2.main) { S.g.remove(A2.main.m); S.g.remove(A2.main.o); A2.main = null; }
+  state.ind2.coeur = true; saveGame(true); SFX.win();
+  // le morceau se brise ; Phinaert, derrière, regarde, fige Camille deux secondes et s'en va
+  A2.morceau.visible = false;
+  A2.ombre.visible = true; const vitesse = player.speed; player.speed = 0;
+  showMessage('Le morceau se brise. Derrière le cœur, une ombre : Phinaert. Il regarde. Camille ne peut plus bouger.', 4);
+  setTimeout(() => { player.speed = vitesse; A2.ombre.visible = false;
+    // Jacques à terre, là où il est tombé
+    const j = personne(A2.ctx.scene, 'a2_jacques', S.x + 1.5, S.y + 0.25, S.z + 3, 0); if (j) { j.rotation.set(-Math.PI / 2, 0, 0.4); S.g.attach(j); }
+    dialogue([
+      { who: 'Jacques le Noir', text: 'Le patron a dit de pas te tuer. Il a dit que t’avais du travail.' },
+      { who: 'Le Dormeur', text: 'Petite… Ça fait longtemps que je n’avais pas respiré.' },
+      { who: 'Le Dormeur', text: 'Je n’ai qu’une chose. **Ma force.** Prends-la. Je n’en aurai plus besoin : je redeviens la montagne.' },
+    ], () => {
+      state.force = true; passer2('pluie'); SFX.fanfare && SFX.fanfare();
+      A2.cloche.visible = true; A2.cloche.position.y = -1.4; A2.clocheMonte = 0; A2.vers.visible = true;
+      // le bloc tombé devant la sortie : on essaie la force tout de suite
+      A2.bloc.visible = true; A2.blocLa = true; A2.blocObst = [-1.8, 13.5, 1.8, 13.5, 1.2]; S.obst.push(A2.blocObst); physSous(S, false); physSous(S, true);
+      showMessage('La force du Dormeur (pousser, soulever les gros blocs). La Cloche du Midi sort de la roche. Un bloc est tombé devant la sortie.', 7);
+    });
+  }, 2000);
+}
+
+// ---- La pluie : le soleil descend enfin, les nuages viennent de l'ouest, il pleut ----
+function pluie() {
+  if (A2.pluie) return; A2.pluie = true;
+  SUN_DIR.set(-0.75, 0.22, -0.3).normalize();
+  sun.intensity = 1.1; sun.color.setHex(0xc8bca8); hemi.intensity = 0.75; hemi.color.setHex(0x9aa4b0);
+  scene.fog = new THREE.Fog(0x8a9098, 60, 900);
+  makeSky(0x4a5260, 0x7a828c, 0x9aa0a6, true);
+  // la pluie autour de Camille : 2 000 traits, recyclés autour d'elle (pas sur toute la carte)
+  const N = 2000, pos = new Float32Array(N * 6), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const L = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xaab4c0, transparent: true, opacity: 0.45 })); L.frustumCulled = false; scene.add(L);
+  A2.gouttes = { L, pos, N, v: new Float32Array(N).map(() => 18 + Math.random() * 6) };
+  for (let i = 0; i < N; i++) { pos[i * 6] = (Math.random() - 0.5) * 50; pos[i * 6 + 1] = Math.random() * 30; pos[i * 6 + 2] = (Math.random() - 0.5) * 50; }
+}
+function animePluie(dt) {
+  const P = A2.gouttes; if (!P || dansSous()) { if (P) P.L.visible = false; return; }
+  P.L.visible = true; const c = player.pos, a = P.pos;
+  for (let i = 0; i < P.N; i++) { let x = a[i * 6], y = a[i * 6 + 1] - P.v[i] * dt, z = a[i * 6 + 2];
+    if (y < c.y - 2 || Math.abs(x - c.x) > 25 || Math.abs(z - c.z) > 25) { x = c.x + (Math.random() - 0.5) * 50; z = c.z + (Math.random() - 0.5) * 50; y = c.y + 18 + Math.random() * 12; }
+    a[i * 6] = x; a[i * 6 + 1] = y; a[i * 6 + 2] = z; a[i * 6 + 3] = x - 0.05; a[i * 6 + 4] = y + 0.5; a[i * 6 + 5] = z; }
+  P.L.geometry.attributes.position.needsUpdate = true;
+}
+function animeFin(dt) {
+  if (A2.cloche && A2.clocheMonte !== undefined && A2.cloche.position.y < 1.2) { A2.clocheMonte += dt; A2.cloche.position.y = Math.min(1.2, -1.4 + A2.clocheMonte * 0.8); }
+  tablee();
+  animeDormeur(dt);
+  animeMeches(dt);
+  animePluie(dt);
+}
+
+// tout l'acte, posé au chargement — sauf les gens, qui naissent un par image après (règle 8)
+function acte2(ctx) {
+  A2.ctx = ctx;
+  gardes(ctx); maitreBeauregard(ctx); caveBeauregard(ctx); forge(ctx);
+  // la piste de l'étoile, de l'abreuvoir à l'entrée de l'enclos ; l'enclos réservé, que les arbres plantés après n'y poussent pas
+  A2.depart = abreuvoir(ctx);
+  if (A2.depart && enclos(ctx)) { const E = A2.enclos, a = Math.atan2(A2.depart[0] - E.x, A2.depart[1] - E.z);
+    RESERVES.push([E.x, E.z, E.r + 3]); empreintes(ctx, piste(ctx, A2.depart, [E.x + Math.sin(a) * (E.r + 2), E.z + Math.cos(a) * (E.r + 2)])); }
+  faille(ctx); caveDormeur(ctx);
+  window.__acte2 = A2;
+}
+function animeActe2(dt) {
+  if (!A2.pret && G.level) { A2.pret = true; if (!state.acte2) { state.acte2 = 'guerre'; saveGame(true); } G.level.indices = indices2; if (atteint2('pluie')) pluie(); }
+  const f = A2.aFaire.shift(); if (f) f();
+  garderLeLac(dt);
+  animeTraces(dt);
+  animeFin(dt);
 }
 
 monde({
@@ -1856,6 +2510,7 @@ monde({
     bourg(ctx);
     source(ctx);
     habitants(ctx);
+    acte2(ctx);
     t = duree('le reste (bourg, gens, sécheresse)', t);
     arbres(ctx); t = duree('arbres', t);
     sol(ctx); duree('sol', t);
@@ -1872,6 +2527,7 @@ monde({
       if (ici) { G.camMaxY = ici.plafond - 0.3; G.camBack = 3.6; G.camUp = 1.9; camDedans = true; }
       else if (camDedans) { G.camMaxY = Infinity; G.camBack = 7; G.camUp = 3.4; camDedans = false; } }
     for (const m of chevaux) m.update(dt);
+    animeActe2(dt);
     for (const g of gens) if (g.userData.ctrl) PNJ.animeVillageois(g, dt, false);
   },
 });
