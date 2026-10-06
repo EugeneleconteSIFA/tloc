@@ -71,3 +71,14 @@ pour ce qui fait avancer (il s'écrit aussi au journal). Les étapes sont celles
 - Tu rames comme une passeuse. Une vraie.
 - D'accord. **Je reprends la mer.** Les pitons, Ko Panyi, Ton Sai, le grand piton : où tu veux.
 - Le passeur muet ? **Il est à la grève du grand piton.** Il n'en bouge plus. Il n'emmène que ceux qui lui montrent un masque.
+
+## 4. Le passeur muet et les masques (`masques`)
+
+**Le passeur muet** (à la grève du grand piton) : *Le passeur muet ne bouge pas. Il ne regarde personne. Il garde la main posée sur son moteur, comme s'il attendait quelque chose.* — *Montrer le masque de bois* : *Le passeur muet regarde le masque longtemps. Il hoche la tête, et te fait signe de monter.*
+
+**La grotte de Railay**
+- *(en entrant, avec la lanterne)* La lanterne éclaire une grotte basse. Au fond, un mur fendu.
+- *(sans)* Il fait noir. Sans la lanterne de Désiré, on n'y voit presque rien.
+- *Le mur fendu* : Le rocher est fendu de haut en bas. Une bombe le ferait céder. — *La mèche grésille…* — *Le rocher cède ! Derrière, une salle noire, et des silhouettes immobiles.*
+- *Le présentoir, gardé* : Les danseurs figés barrent le présentoir.
+- *Le masque* : Le masque de Hanuman, le roi des singes : blanc, couronné d'or. Il sait marcher dans le vent. — **Avec lui, la mousson du belvédère ne te jettera plus dans le vide.** Le câble du grand piton part de là.

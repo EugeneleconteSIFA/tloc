@@ -11,7 +11,7 @@
 // carte/mondes/complet/.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame, keys as PNJ_KEYS } from './engine.js?v=41';
+import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame, keys as PNJ_KEYS, addBox, addCap, indexCapsules, world, spawnEnemy, KINDS, setMaker, setAnimHook, burst, damagePlayer, enemies } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { especeGeo } from './foret.js';
 import * as PNJ from './pnj.js';
@@ -60,6 +60,8 @@ const INDICES3 = {
   mali: { txt: 'Mali, la petite-fille de Somsak, s’est arrêtée à Khao Phing Kan.', qui: 'Somsak', fait: () => !!state.barqueMali },
   cascade: { txt: 'La barque de Mali est restée prise dans la cascade ; le gardien de pierre est tombé en travers du bassin.', qui: 'Mali', fait: () => !!state.barqueMali },
   course: { txt: 'Battre Mali à la course, autour de Ko Tapu.', qui: 'Mali', fait: () => atteint3('masques') },
+  muet: { txt: 'Le passeur muet a vu le masque de bois : il emmène à Railay.', qui: 'le passeur muet', fait: () => !!state.masqueHanuman },
+  hanuman: { txt: 'Avec le masque de Hanuman, la mousson du belvédère de Ton Sai ne jette plus dans le vide.', qui: 'la grotte de Railay', fait: () => atteint3('yak') },
   muetGreve: { txt: 'Le passeur muet est à la grève du grand piton. Il n’emmène que ceux qui lui montrent un masque.', qui: 'Mali', fait: () => sait3('muet') },
 };
 function indices3() {
@@ -637,6 +639,123 @@ function finCourse(gagne) {
       { who: 'Mali', text: 'Le passeur muet ? **Il est à la grève du grand piton.** Il n’en bouge plus. Il n’emmène que ceux qui lui montrent un masque.', fn: () => {
         noter3('muetGreve'); passer3('masques'); if (KPK.maliG) KPK.maliG.visible = false; for (const b of BARQUES) if (b.quai === 'tapu') b.g.visible = true; } }]);
   }), 1500);
+}
+
+// ---------- Railay : la grotte des masques (acte III, étape 4) ----------
+// SCENARIO.md § 12 : l'île des masques, « un mur fendu et une salle noire » (les bombes et la lanterne
+// de Lille), le masque de Hanuman au fond. Dans la baie resserrée, c'est une grotte de la falaise de
+// Railay : sa bouche s'ouvre dans la face sud du piton qui domine le village (relevé du 6 octobre :
+// le pied à 6–7 m en (−600 ; 1664), le rocher à 30–60 m derrière). Le relief ne se creuse pas : les
+// salles sont bâties à part, closes, à 600 m d'altitude (comme les caves d'aveyron.js), et la bouche y
+// mène comme une porte. On ne les rend solides (addBox, addCap) que quand on y est.
+// Les danseurs du khon, figés au milieu de leur danse : figés, rien ne les touche (`caged`, engine.js) ;
+// le gong les remet en mouvement six secondes (« remettre un ennemi en mouvement »).
+// la bouche est juste devant la paroi, qui monte d'un coup à z 1661 (sonde du 6 octobre)
+const GROTTE = { x: -600, z: 1700, y: 600, bouche: [-600, 1659], g: null, phys: [], dedans: false, fendu: null, lueur: null, danseurs: [], hanuman: null };
+Object.assign(KINDS, { khon: { hp: 4, speed: 4.8, dmg: 1, range: 1.9, aggro: 14, windup: 0.5, cd: 1.3, fly: 0, r: 0.55, label: 'Danseur du khon', barY: 2.1 } });
+setMaker('khon', () => { const g = PNJ.buildRole('moine', 0x8a2a5a) || new THREE.Group(); g.scale.setScalar(G.echelle); g.userData.anim = true;
+  const m = new THREE.Group(), or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.8, roughness: 0.3 });
+  m.add(mesh(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshStandardMaterial({ color: 0x2a6a3a, roughness: 0.5 }), 0, 0, 0)); m.add(mesh(new THREE.ConeGeometry(0.07, 0.28, 8), or, 0, 0.2, 0));
+  if (g.userData.perso) PNJ.socket(g, g.userData.perso, 'Head', m, [0, 0.12, 0.04]);
+  return g; });
+setAnimHook('khon', (e, dt, v) => { if (e.caged) return true; if (e.mesh.userData.ctrl) PNJ.animeVillageois(e.mesh, dt, v > 0.4); return true; });
+function grotte({ hauteur, scene, addInteract }) {
+  const g = new THREE.Group(); g.position.set(GROTTE.x, GROTTE.y, GROTTE.z); g.visible = false; g.userData.dynamic = true; scene.add(g); GROTTE.g = g;
+  const roc = phMat('rock_wall_14', 3, 2, { color: 0x8a7a68 }), sol = phMat('rocks_ground_08', 4, 4, { color: 0x7a6a58 }), plafond = phMat('rock_wall_14', 4, 4, { color: 0x5a4e44 });
+  const boite = (w, h, d, m, x, y, z) => { const o = mesh(boxG(w, h, d), m, x, y, z); o.receiveShadow = true; o.castShadow = true; g.add(o); return o; };
+  // l'entrée (8 × 10 m, 4,5 m sous voûte) et la salle noire (14 × 14 m, 6 m)
+  boite(8, 0.4, 10, sol, 0, -0.2, 5); boite(8, 0.4, 10, plafond, 0, 4.7, 5);
+  boite(14, 0.4, 14, sol, 0, -0.2, 17); boite(14, 0.4, 14, plafond, 0, 6.2, 17);
+  for (const [w, h, d, x, z] of [[0.6, 4.5, 10, -4.3, 5], [0.6, 4.5, 10, 4.3, 5], [8, 4.5, 0.6, 0, -0.3], [2.7, 4.5, 0.6, -2.85, 10], [2.7, 4.5, 0.6, 2.85, 10],
+    [0.6, 6, 14, -7.3, 17], [0.6, 6, 14, 7.3, 17], [14, 6, 0.6, 0, 24.3], [4.6, 1.5, 0.6, -5, 10], [4.6, 1.5, 0.6, 5, 10]]) boite(w, h, d, roc, x, h / 2, z);
+  boite(14, 1.6, 0.6, roc, 0, 5.3, 10);
+  // le mur fendu, entre les deux salles : une dalle zébrée de fentes noires
+  const fendu = new THREE.Group(); fendu.position.set(0, 0, 10); g.add(fendu);
+  fendu.add(mesh(boxG(3.0, 4.5, 0.5), phMat('rock_wall_14', 1, 1.5, { color: 0x7a6a5a }), 0, 2.25, 0));
+  const noir = new THREE.MeshBasicMaterial({ color: 0x080606 });
+  for (const [x, y, r, l] of [[-0.3, 2.6, 0.7, 2.2], [0.5, 1.6, -0.5, 1.6], [0.1, 3.4, 1.2, 1.2]]) { const f = mesh(boxG(0.06, l, 0.02), noir, x, y, 0.27); f.rotation.z = r; fendu.add(f); }
+  GROTTE.fendu = fendu; if (state.murFendu) fendu.visible = false;
+  // la lueur de la lanterne : posée dès la construction (une lumière ajoutée en jeu recompilerait tout, cf. PROMPT-REPRISE § 5)
+  GROTTE.lueur = new THREE.PointLight(0xffc888, 0, 16, 1.6); g.add(GROTTE.lueur);
+  // le présentoir du masque de Hanuman, au fond de la salle noire
+  boite(1.2, 1.0, 0.8, phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a2a1a }), 0, 0.5, 22.6);
+  { const m = new THREE.Group(); m.position.set(0, 1.45, 22.6); g.add(m);
+    const blanc = new THREE.MeshStandardMaterial({ color: 0xf0eee6, roughness: 0.5 }), or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.3 });
+    const face = mesh(new THREE.SphereGeometry(0.24, 14, 12), blanc, 0, 0, 0); face.scale.set(1, 1.1, 0.8); m.add(face);
+    m.add(mesh(new THREE.ConeGeometry(0.16, 0.5, 10), or, 0, 0.42, 0));
+    for (const sx of [-1, 1]) { m.add(mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0x2a8a4a, roughness: 0.4 }), sx * 0.09, 0.05, 0.18)); m.add(mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 12), or, sx * 0.25, 0, 0)); }
+    m.add(mesh(boxG(0.16, 0.04, 0.04), new THREE.MeshStandardMaterial({ color: 0xb02a2a }), 0, -0.12, 0.18));
+    GROTTE.hanuman = m; m.visible = !state.masqueHanuman; }
+  // la bouche, dans la falaise de Railay : un arc de rocher et le noir derrière
+  { const [bx, bz] = GROTTE.bouche, by = hauteur(bx, bz), b = new THREE.Group(); b.position.set(bx, by, bz); scene.add(b);
+    const roche = phMat('rock_wall_14', 2, 2, { color: 0x8a7a68 });
+    for (const sx of [-1, 1]) b.add(mesh(boxG(1.6, 5.4, 2.0), roche, sx * 2.3, 2.5, 0.4));
+    b.add(mesh(boxG(6.2, 1.6, 2.2), roche, 0, 5.4, 0.4));
+    { const n = mesh(new THREE.PlaneGeometry(3.0, 4.6), new THREE.MeshBasicMaterial({ color: 0x050403 }), 0, 2.3, 1.0); n.rotation.y = Math.PI; b.add(n); }
+    b.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial) o.castShadow = true; });
+    addInteract({ pos: new THREE.Vector3(bx, by, bz - 1.5), r: 3, prompt: () => 'entrer dans la grotte', fn: entrerGrotte }); }
+  // dedans : sortir, le mur fendu, le masque (les invites ne valent qu'à 600 m : à la portée ET moins de 3 m d'écart)
+  const V = (x, z, y = 0) => new THREE.Vector3(GROTTE.x + x, GROTTE.y + y, GROTTE.z + z);
+  addInteract({ pos: V(0, 1), r: 2.5, prompt: () => 'sortir de la grotte', fn: sortirGrotte });
+  addInteract({ pos: V(0, 8.8), r: 2.6, prompt: () => 'le mur fendu', enabled: () => !state.murFendu, fn: () => {
+    if (!state.bombes) return showMessage('Le rocher est fendu de haut en bas. Une bombe le ferait céder.', 4);
+    if (state.nbBombes !== undefined && state.nbBombes <= 0) return showMessage('Plus une bombe en poche.', 3);
+    if (state.nbBombes !== undefined) state.nbBombes--;
+    GROTTE.meche = { t: 0 }; SFX.roll && SFX.roll(); showMessage('La mèche grésille…', 1.5); } });
+  addInteract({ pos: V(0, 21.6), r: 2.4, prompt: () => 'prendre le masque de Hanuman', enabled: () => !state.masqueHanuman, fn: () => {
+    if (GROTTE.danseurs.some((e) => !e.dead)) return showMessage('Les danseurs figés barrent le présentoir.', 3);
+    state.masqueHanuman = true; GROTTE.hanuman.visible = false; SFX.pickup && SFX.pickup(); passer3('corniche');
+    dialogue([{ text: 'Le masque de Hanuman, le roi des singes : blanc, couronné d’or. Il sait marcher dans le vent.' },
+      { text: '**Avec lui, la mousson du belvédère ne te jettera plus dans le vide.** Le câble du grand piton part de là.', fn: () => noter3('hanuman') }]); } });
+}
+function physGrotte(on) {
+  if (!on) { for (const p of GROTTE.phys) { const a = world.boxes.indexOf(p), b = world.capsules.indexOf(p); if (a >= 0) world.boxes.splice(a, 1); if (b >= 0) world.capsules.splice(b, 1); }
+    GROTTE.phys = []; indexCapsules(); return; }
+  const { x, z, y } = GROTTE, cap = (ax, az, bx, bz, h) => { const c = addCap(x + ax, z + az, x + bx, z + bz, 0.25, y + h); c.bottom = y - 1; GROTTE.phys.push(c); return c; };
+  GROTTE.phys = [addBox(x - 10, x + 10, z - 3, z + 27, y)];
+  cap(-4, 0, 4, 0, 4.5); cap(-4, 0, -4, 10, 4.5); cap(4, 0, 4, 10, 4.5);
+  cap(-4, 10, -1.5, 10, 4.5); cap(1.5, 10, 4, 10, 4.5);
+  cap(-7, 10, -4, 10, 6); cap(4, 10, 7, 10, 6); cap(-7, 10, -7, 24, 6); cap(7, 10, 7, 24, 6); cap(-7, 24, 7, 24, 6);
+  cap(-0.6, 22.6, 0.6, 22.6, 1.0);
+  if (!state.murFendu) GROTTE.capFendu = cap(-1.5, 10, 1.5, 10, 4.5);
+}
+function entrerGrotte() {
+  fadeTo(1, () => {
+    physGrotte(true); GROTTE.g.visible = true; GROTTE.dedans = true;
+    player.pos.set(GROTTE.x, GROTTE.y + 0.02, GROTTE.z + 2); player.vy = 0; player.fallFrom = player.pos.y; player.yaw = 0; G.camYaw = 0;
+    GROTTE.camAvant = [G.camMaxY, G.camBack, G.camUp]; G.camMaxY = GROTTE.y + 4.2; G.camBack = 3.6; G.camUp = 1.9;
+    GROTTE.lueur.intensity = state.lanterne ? 7 : 1.2;
+    // les danseurs, une fois : figés au milieu de la salle noire
+    if (!GROTTE.danseurs.length && !state.masqueHanuman) GROTTE.danseurs = [[-3, 16.5], [3, 16.5], [0, 19.5]].map(([lx, lz]) => {
+      const e = spawnEnemy('khon', GROTTE.x + lx, GROTTE.z + lz, 'acte3', GROTTE.y); e.home.y = GROTTE.y; e.caged = true; e.fige = [e.pos.x, e.pos.z]; return e; });
+    fadeTo(0, null);
+    showMessage(state.lanterne ? 'La lanterne éclaire une grotte basse. Au fond, un mur fendu.' : 'Il fait noir. Sans la lanterne de Désiré, on n’y voit presque rien.', 4);
+  });
+}
+function sortirGrotte() {
+  fadeTo(1, () => {
+    physGrotte(false); GROTTE.g.visible = false; GROTTE.dedans = false; GROTTE.lueur.intensity = 0;
+    const [x, z] = GROTTE.bouche; player.pos.set(x, HAUT(x, z - 3), z - 3); player.vy = 0; player.fallFrom = player.pos.y; player.yaw = Math.PI; G.camYaw = Math.PI;
+    if (GROTTE.camAvant) [G.camMaxY, G.camBack, G.camUp] = GROTTE.camAvant;
+    fadeTo(0, null);
+  });
+}
+function animeGrotte(dt) {
+  if (!GROTTE.dedans) return;
+  GROTTE.lueur.position.set(player.pos.x - GROTTE.x, 3, player.pos.z - GROTTE.z);
+  const M = GROTTE.meche;
+  if (M && (M.t += dt) > 1.5) {
+    GROTTE.meche = null; state.murFendu = true; saveGame(true); GROTTE.fendu.visible = false;
+    if (GROTTE.capFendu) { const b = world.capsules.indexOf(GROTTE.capFendu); if (b >= 0) world.capsules.splice(b, 1); indexCapsules(); }
+    SFX.stomp && SFX.stomp(); G.shake = Math.max(G.shake || 0, 0.6); burst(GROTTE.x, GROTTE.y + 1.5, GROTTE.z + 10, 0xffa040, 30, 6, 0.7, 6, 1.6);
+    showMessage('Le rocher cède ! Derrière, une salle noire, et des silhouettes immobiles.', 4);
+  }
+  // les danseurs : figés hors du gong (rien ne les touche, ils ne bougent pas), vivants dedans
+  const vif = gongActif() && Math.hypot(GONG.x - GROTTE.x, GONG.z - (GROTTE.z + 17)) < GONG.r + 6;
+  for (const e of GROTTE.danseurs) { if (e.dead) continue;
+    e.caged = !vif;
+    if (!vif) { e.pos.x = e.fige[0]; e.pos.z = e.fige[1]; e.kb.set(0, 0, 0); e.state = 'idle'; }
+    else { e.fige = [e.pos.x, e.pos.z]; } }
 }
 
 // ---------- Ko Tapu, le clou : trop fin pour le relief (8 m à la base), on le tourne ----------
@@ -1292,6 +1411,8 @@ function passeurs({ hauteur, addInteract }) {
         if (m === 'panyi' && atteint3('mali') && !atteint3('masques')) { dit = SOMSAK_MALI; noter3('mali'); }
         if (m === 'tapu' && !atteint3('masques') && vers.length) dit = 'Somsak attend dans sa barque, le moteur au ralenti. « Je te ramène quand tu veux. »';
         showMenu('LE PASSEUR', Q.nom, dit, [
+          ...(m === 'suea' && !EN_INSTANCE && atteint3('masques') && !sait3('muet') && state.masqueBois ? [{ label: 'Montrer le masque de bois', fn: () => { hideMenu(); state.paused = false; noter3('muet');
+            showMessage('Le passeur muet regarde le masque longtemps. Il hoche la tête, et te fait signe de monter.', 5); } }] : []),
           ...vers.map(([n, D]) => ({ label: 'Vers ' + D.nom + (prixTrajet(m, n) ? ` (${prixTrajet(m, n)} écus)` : ''), fn: () => { payerTrajet(m, n); traverser(D, hauteur, n); } })),
           { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]);
       } });
@@ -1301,7 +1422,7 @@ const SOMSAK_MALI = 'Somsak te regarde arriver. « Les moines… ils sont toujou
 // ce que dit un passeur qui ne va plus nulle part (STORY.md : ils ont perdu leur organisation)
 const FERME = {
   tapu: 'Mali n’est pas dans sa barque. Elle est restée à terre, et regarde les pitons.',
-  suea: 'Le passeur muet ne bouge pas. Il ne regarde personne.',
+  suea: 'Le passeur muet ne bouge pas. Il ne regarde personne. Il garde la main posée sur son moteur, comme s’il attendait quelque chose.',
   railay: 'Le passeur hausse les épaules. Sans les autres, il ne sait plus les passes.',
   phiphi: 'Le passeur hausse les épaules. Sans les autres, il ne sait plus les passes.',
 };
@@ -1444,7 +1565,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['khao phing kan', khaoPhingKan], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['khao phing kan', khaoPhingKan], ['grotte', grotte], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
@@ -1454,13 +1575,13 @@ monde({
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
     animeHabitants(dt);
     for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
-    animeGlisse(dt); animeKpk(dt); animeCourse(dt);
+    animeGlisse(dt); animeKpk(dt); animeCourse(dt); animeGrotte(dt);
     if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
     if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
     if (PLUIE.tuiles.length && (t * 4 | 0) % 2 === 0) placerPluie();
     // vue de loin (le plan d'arrivée), la pluie ne serait qu'un pavé blanc posé sur la baie
-    const proche = camera.position.distanceTo(player.pos) < 90; for (const l of PLUIE.tuiles) l.visible = proche;
+    const proche = camera.position.distanceTo(player.pos) < 90 && !GROTTE.dedans; for (const l of PLUIE.tuiles) l.visible = proche;     // ni de loin, ni sous la roche
   },
 }).then(() => {
   if (!(G.level && G.level.name === 'thailande')) return;
@@ -1470,5 +1591,5 @@ monde({
   G.level.indices = indices3;
   A3.pret = true;
   // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
-  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE };
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE, GROTTE };
 });
