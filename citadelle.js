@@ -2319,17 +2319,8 @@ export const ACTE1_CITADELLE = {
       enabled: () => !!(state.a1c && state.a1c.parti),
       prompt: () => 'suivre Phinaert dans la lumière',
       fn: () => { avancer('temple'); saveGame(true); goToLevel('temple', [0, 0, 23.5], Math.PI, 'Camille passe la porte de lumière…'); } });
-    // PASSERELLE, en attendant quetes.js et hud.js (tenus par d'autres sessions le 5 octobre) : la
-    // mise à terre de quetes.js compterait nos créatures pour l'ancienne grille, son objectif ne
-    // connaît pas la citadelle, et le bandeau de hud.js compte encore « 0 / 10 monstres ». Demandé
-    // dans PROMPT-REPRISE.md : que quetes.js appelle ACTE1_CITADELLE.onKill et .objectif, et que
-    // hud.js prenne ACTE1_CITADELLE.bandeau ; ces lignes partiront alors.
-    const lv = G.level;
-    if (lv && !lv.a1c) { lv.a1c = true;
-      const k0 = lv.onKill, o0 = lv.objective, c0 = lv.counts;
-      lv.onKill = (e) => { if (!ACTE1_CITADELLE.onKill(e) && k0) k0(e); };
-      lv.objective = () => { const o = ACTE1_CITADELLE.objectif(); return o ? o[0] : (o0 ? o0() : ''); };
-      lv.counts = () => ACTE1_CITADELLE.bandeau() ?? (c0 ? c0() : ''); }
+    // (la passerelle qui enveloppait onKill, objective et counts du niveau est partie le 6 octobre :
+    // quetes.js et hud.js appellent maintenant onKill, objectif et bandeau d'ici)
   },
   update(dt) {
     if (!a1()) return;

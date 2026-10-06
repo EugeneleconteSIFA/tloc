@@ -228,6 +228,26 @@ passé, parler, filmer sans mur devant).
 | 7, 8 | **codées, jouées en headless de bout en bout** (5 octobre, B2 : `bancs/acte1-souterrains.mjs` : 26 pas sur 28, les deux autres sont le défaut ci-dessous ; une capture par moment clé) : la crypte, Bastien, l'arc, le levier, le Rat-Roi, la clé, la porte de la poterne ; l'ancienne histoire intacte. **Un défaut hors B2** : avec l'arc en poche, la page de la citadelle se fige au chargement (`loadGame`, engine.js:2687, écrit dans le `bowBack` que la Camille riggée n'a pas) — `cave.js` et `chapelle.js` s'en gardent, `index.html` non |
 | 9, 10 | **codées, jouées en headless de bout en bout** (5 octobre, B3 : `bancs/acte1-citadelle.mjs`, 35 vérifications sur 35, une capture par moment clé, `bancs/resultats/acte1-citadelle-…`) : les soldats, la flèche dans la poudre, l'armurier et les bombes, la Moule-Reine à la bombe, la Corbelle à l'arc, le Capitaine la nuit (vide de jour), les clés et les billets, les cadenas, Phinaert, la cloche et la corde, la porte de lumière, l'île du temps (`temple`). Tous les lieux joignables à pied depuis la place (sonde sur une grille de 2 m). La seule erreur de page est le `bowBack` d'`engine.js` ci-dessus, au chargement de l'île (le banc donne l'arc après le chargement de la ville pour l'éviter). **Pas encore** : l'arrivée sur l'île (`temple.js`), les répliques de la ville à l'étape `citadelle` (crieur, Hermès, la marchande : B1), les intérieurs des casernes |
 
+**Les raccords du 6 octobre (matin)** — l'acte I tient de bout en bout :
+- `engine.js` (`loadGame`) : la garde du `bowBack` — avec l'arc en poche, toute page qui rechargeait la
+  partie plantait (la Camille riggée n'a pas de `bowBack`, son arc au dos est `arcDos`).
+- `quetes.js` : `onKill` passe d'abord par `ACTE1_CITADELLE.onKill`, `suiteActe1` par
+  `ACTE1_CITADELLE.objectif` (l'objectif et le point d'or jusqu'au Temple) ; la dalle gravée provisoire
+  se cache pendant l'acte I, jusqu'à `temple` (elle reste ensuite le chemin du retour vers l'île) ; le
+  crieur aux étapes `citadelle` et `donjon` (sans la phrase sur Hermès : le voyage rapide n'existe pas).
+- `hud.js` : le bandeau de la citadelle (`ACTE1_CITADELLE.bandeau`) ; avant, pendant l'acte I,
+  l'objectif et les lieux — plus de « Monstres vaincus 0 / 10 ». La passerelle de `citadelle.js` part.
+- `temple.js` : la fin de l'acte (une fois, `state.templeVu`) — le mage au pied de la prophétie, le
+  mythe, le premier vers lu au mur, « La suite est effacée », « **La porte du Midi est ouverte.** » ;
+  du sable rouge sous la porte du Midi. Deux plans de caméra (la cour, la plaque).
+Vérifié : les trois bancs (`acte1-b1`, `acte1-souterrains` « tout est passé », `acte1-citadelle`
+35/35) sans erreur ; une sauvegarde à l'étape `temple`, l'arc en poche, rejoue la scène de l'île et
+recharge Lille sans erreur (captures `bancs/resultats/acte1-fin-2026-10-06-*`).
+**Reste** : Hermès et le voyage rapide, la marchande et les plans de Vauban (`citadelle`) ; les
+intérieurs des casernes ; une partie complète jouée à la main, chronométrée (58 min visées) ; les
+portes de l'île restent toutes ouvertes pour l'exploration (seule celle du Midi devrait l'être après
+l'acte I).
+
 ## Bilan du 2 octobre au soir — arrêté en cours d'étape 2, à reprendre ici
 
 **Rien n'est publié ni commité.** Les changements sont en local, dans ces fichiers :

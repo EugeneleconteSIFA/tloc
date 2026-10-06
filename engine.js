@@ -2684,7 +2684,9 @@ export function loadGame() {
     for (const p of pickups) scene.remove(p.mesh); pickups.length = 0;
     for (const p of snap.pickups) spawnPickup(p[0], p[1], p[2]);
   }
-  if (state.bow) player.mesh.userData.bowBack.visible = true;
+  // la Camille riggée (pnj.js) n'a pas de bowBack — son arc au dos est `arcDos`, qu'elle montre
+  // elle-même : sans cette garde, toute sauvegarde avec l'arc figeait la page au chargement (acte I, 6 octobre)
+  if (state.bow && player.mesh.userData.bowBack) player.mesh.userData.bowBack.visible = true;
   return snap || {};
 }
 export function newGame() {

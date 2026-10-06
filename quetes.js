@@ -120,7 +120,11 @@ export function populate() {
     const lueur = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.95, 8), new THREE.MeshBasicMaterial({ color: 0xb8a0e0, transparent: true, opacity: 0.55 }));
     lueur.rotation.x = -Math.PI / 2; lueur.rotation.z = Math.PI / 8; lueur.position.set(x, y + 0.19, z); lueur.userData.dynamic = true; scene.add(lueur);
     PARTAGE.dalleTemple = lueur;
-    addInteract({ pos: d.position, r: 2.2, prompt: () => 'poser la main sur la dalle gravée',
+    // (6 octobre) pendant l'acte I, c'est Phinaert qui ouvre le Temple (la porte de lumière,
+    // citadelle.js) : la dalle se cache jusque-là, puis reste le chemin du retour vers l'île
+    const ouverte = () => !acte1() || atteint('temple');
+    d.userData.ouverte = lueur.userData.ouverte = ouverte; PARTAGE.dalleTempleSocle = d;
+    addInteract({ pos: d.position, r: 2.2, enabled: ouverte, prompt: () => 'poser la main sur la dalle gravée',
       fn: () => goToLevel('temple', [0, 0, 23.5], Math.PI, 'La pierre s’ouvre sur une lumière violette…') }); }
   // Houtland et le vieux mage, devant la salle de la garde le temps du prologue seulement :
   // leurs répliques d'après (« dix hommes poussent la grande grille ») attendent l'acte I
@@ -146,6 +150,7 @@ export function openGate() {
 }
 
 export function onKill(e) {
+  if (ACTE1_CITADELLE.onKill(e)) return;             // les créatures de l'acte I (citadelle.js) : leurs clés, leurs billets
   BOURSE.prime(e);                                   // la prime tombe avant tout le reste
   if (e.k.boss) { state.bossDead = true; saveGame(true);
     setTimeout(() => cutscene([
@@ -244,7 +249,8 @@ export function update(dt) {
   if (PARTAGE.morceau) { const m = PARTAGE.morceau; m.visible = !!state.introSeen && !state.morceauCloche && !cut.active;
     if (m.visible && (PRO.fumeT = (PRO.fumeT || 0) - dt) <= 0) { PRO.fumeT = 0.45; burst(m.position.x, m.position.y + 0.2, m.position.z, 0x5a4a44, 3, 0.5, 1.8, -1.4, 1.6); } }
   // la dalle de l'île respire, doucement
-  if (PARTAGE.dalleTemple) PARTAGE.dalleTemple.material.opacity = 0.4 + Math.sin(state.time * 1.3) * 0.18;
+  if (PARTAGE.dalleTemple) { PARTAGE.dalleTemple.material.opacity = 0.4 + Math.sin(state.time * 1.3) * 0.18;
+    PARTAGE.dalleTemple.visible = PARTAGE.dalleTempleSocle.visible = PARTAGE.dalleTemple.userData.ouverte(); }
   // la herse de la Porte Royale qui retombe derrière Phinaert, le temps de la cinématique
   if (PRO.herseT >= 0 && PARTAGE.herse) { PRO.herseT += dt; const f = Math.min(1, PRO.herseT / 0.9); PARTAGE.herse.userData.poser(f * f); }
   // ambiance : pépiements d'oiseaux et bruits de pas
@@ -928,6 +934,9 @@ function repliques(qui) {
       return [dit('Le vieux mage', '« Phinaert. Je pensais ne plus jamais entendre ce nom. »'),
         dit('Le vieux mage', '« Désiré a quitté le beffroi cette nuit. **Cornélie** voit tout ce qui passe dans le bourg : demande-lui. »')];
     case 'crieur':
+      // (DIALOGUES-ACTE1.md ; la phrase sur Hermès attend le voyage rapide, qui n'existe pas encore)
+      if (atteint('donjon')) return [dit('Le crieur public', '« Oyez ! Les trois cadenas sont tombés ! La garde est au donjon ! »')];
+      if (atteint('citadelle')) return [dit('Le crieur public', '« Oyez ! La garde est dans la citadelle ! **Trois monstres gardent encore le donjon !** »')];
       if (atteint('lanterne')) return [dit('Le crieur public', '« Oyez ! La garde descend sous la chapelle ! Que saint Roch la garde ! »')];
       return [dit('Le crieur public', '« Oyez ! La Grande Cloche est fendue, le géant d’osier ne bouge plus ! On cherche le guetteur Désiré, qui l’a vu ? »')];
     case 'gardien':
@@ -985,6 +994,8 @@ function lydericActe1() {
 
 // ce qu'il reste à faire, dans l'ordre du fil — l'objectif du journal et le point d'or
 function suiteActe1() {
+  // de la poterne au Temple (étapes 9 et 10) : citadelle.js dit l'objectif et le point d'or
+  const oc = ACTE1_CITADELLE.objectif(); if (oc) return oc;
   const E_ = PARTAGE.ecole, [bx, bz] = [194, 681], [cx, cz] = [210, 691];
   if (!ind('crypte')) return ['Va parler à Lydéric, sur le pont (Entrée)', { x: LYD_X, z: LYD_Z }];
   if (!ind('crypteNoire')) return ['Descends dans la crypte de la chapelle Saint-Roch, au bourg', { x: cx, z: cz }];

@@ -14,7 +14,7 @@ import * as PNJ from './pnj.js';
 // En mètres, comme la carte (1 unité = 1 m) : Camille y a l'échelle de la ville (0,6).
 // =====================================================================
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
-  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state } from './engine.js?v=41';
+  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state, dialogue, cutscene, saveGame } from './engine.js?v=41';
 import { DONJON } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -569,16 +569,57 @@ function populate() {
   // Camille passe la porte de Lille : dans la cour, face à la tour
   player.pos.set(0, 0, R_COUR - 2.5); player.yaw = Math.PI; G.camYaw = Math.PI;
 }
+
+// LA FIN DE L'ACTE I (6 octobre ; STORY.md acte I, DIALOGUES-ACTE1.md « Le mage, au Temple ») :
+// Camille arrive derrière Phinaert par la porte de lumière (citadelle.js). Le vieux mage
+// l'attend au pied de la prophétie : le mythe (SCENARIO.md § 1), le premier vers lu au mur, la
+// suite « effacée » (elle ne l'est pas), et la porte du Midi, par où Phinaert est passé, du sable
+// rouge dessous. Une fois (state.templeVu) ; le mage reste ensuite près du mur.
+let MAGE = null, finFaite = false, finPosee = false;   // posés une fois la partie lancée : populate passe avant la sauvegarde (state.acte1 inconnu)
+function finActeIPoser() {
+  // le sable rouge du Midi, sous la porte entrouverte (porte 1)
+  { const a = angPorte(1), x = Math.sin(a) * (R_COUR - 1.6), z = Math.cos(a) * (R_COUR - 1.6);
+    const sable = new THREE.Mesh(new THREE.CircleGeometry(1.7, 20), phMat('terre_battue', 3.4, 3.4, { color: 0xc0623e }));
+    sable.rotation.x = -Math.PI / 2; sable.position.set(x, hauteur(x, z) + 0.03, z); sable.receiveShadow = true; scene.add(sable); }
+  // le mage, au pied de la prophétie (à droite de la porte de la tour), tourné vers la cour
+  MAGE = PNJ.buildRole('mage');
+  if (MAGE) { const a = 0.55, r = R_TOUR + 3.2, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    MAGE.scale.setScalar(G.echelle); MAGE.position.set(x, hauteur(x, z), z); MAGE.rotation.y = Math.atan2(-x, R_COUR - 2.5 - z); scene.add(MAGE);
+    addInteract({ pos: MAGE.position.clone(), r: 3, prompt: () => 'parler au vieux mage',
+      fn: () => dialogue([{ who: 'Le vieux mage', text: '« **La porte du Midi est ouverte.** C’est par là qu’il est passé. »' }]) }); }
+}
+function finActeIScene() {
+  if (finFaite || state.templeVu || state.acte1 !== 'temple' || !state.running || state.paused) return;
+  finFaite = true;
+  // deux plans : la cour, le mage devant le mur ; puis la plaque, pour le vers (sans plan donné,
+  // la scène gardait la caméra du moment, mal placée, et l'image sortait délavée)
+  const am = 0.55, mx = Math.sin(am) * (R_TOUR + 3.2), mz = Math.cos(am) * (R_TOUR + 3.2), px = Math.sin(am) * (R_TOUR + 0.75), pz = Math.cos(am) * (R_TOUR + 0.75);
+  const cour = { cam: [mx - 4.5, 2.6, mz + 7], at: [mx, 1.5, mz] }, mur = { cam: [px - 1.6, 2.1, pz + 4.2], at: [px, 1.9, pz] };
+  const L = (who, say, plan = cour) => ({ ...plan, who, say });
+  cutscene([
+    L('Le vieux mage', '« Je t’attendais depuis longtemps. »'),
+    L('Le vieux mage', '« Au commencement, chaque terre avait son géant. Ils ne régnaient pas : ils gardaient. Chacun veillait sur une cloche, et les cloches pendaient ensemble ici, au Temple des Géants. »'),
+    L('Le vieux mage', '« Phinaert voulut toutes les heures de tous les mondes. Lydéric l’a vaincu au pont de Fin, et l’ermite l’a enfermé dans la Grande Cloche. Tant qu’elle sonnait, il dormait. »'),
+    L('Le vieux mage', '« Lis le mur. »'),
+    L('Le mur', '« Quand la Grande Cloche se fendra, le géant du Buc sortira. »', mur),
+    L('Camille', '« Et la suite ? »', mur),
+    L('Le vieux mage', '« La suite est effacée. »'),
+    L('Le vieux mage', '« **La porte du Midi est ouverte.** C’est par là qu’il est passé. »'),
+  ], () => { state.templeVu = true; saveGame(true); });
+}
 // rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
 // à l'arrivée par une porte, la sauvegarde rend l'angle de caméra du niveau qu'on quitte : on
 // la remet une fois dans le dos de Camille, face à la tour
 let camPosee = false;
 function animate(now, dt) {
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est dans le dos
+  if (!finPosee && state.running && state.acte1 === 'temple') { finPosee = true; finActeIPoser(); }
+  finActeIScene();                                                                                   // la fin de l'acte I, une fois
   const t = now / 1000, troupeaux = ouverts().has('loup');
   for (const c of BOUGE.cloches) c.g.rotation.z = troupeaux ? Math.sin(t * 0.9 + c.ph) * 0.05 : 0;   // les cloches se balancent seules, très peu
   if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite
   if (BOUGE.passeur) PNJ.animeVillageois(BOUGE.passeur, dt, false);
+  if (MAGE) PNJ.animeVillageois(MAGE, dt, false);
 }
 function minimap(g, W2) {
   const sc = 1.45, P = (x, z) => [W2 / 2 + x * sc, W2 / 2 + z * sc];

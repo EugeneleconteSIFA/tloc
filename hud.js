@@ -10,7 +10,8 @@ import {
   APO, DEHORS, ENCEINTE, HOUSE, LILLE, PLAINE_R, PONTS, PONT_Z1, TRACE, bastions, horsVille,
 } from './carte.js';
 import { PARTAGE } from './etat.js';
-import { KILLS_TO_OPEN, killsDone, objective } from './quetes.js';
+import { KILLS_TO_OPEN, killsDone, objective, acte1 } from './quetes.js';
+import { ACTE1_CITADELLE } from './citadelle.js';
 import * as BOURSE from './bourse.js';
 import './atlas.js';        // la carte du beffroi : installe la touche M
 import * as LOOK from './look.js';
@@ -187,6 +188,10 @@ export function minimap(g, W) {
 }
 
 export function counts() {
+  // l'acte I : à la citadelle, son bandeau (les clés des cadenas, les bombes) ; avant, l'objectif
+  // et les lieux — « Monstres vaincus 0 / 10 » ne voulait plus rien dire pendant l'enquête du bourg
+  const b = ACTE1_CITADELLE.bandeau(); if (b != null) return b;
+  if (acte1()) return `Lieux <b>${E.lieux.filter(l => E.estDecouvert(l.id)).length}</b> / ${E.lieux.length}` + `<br><small>Objectif : ${objective()}</small>` + BOURSE.ligneHUD();
   const c = { fosses: 0, remparts: 0, bastions: 0 };
   for (const e of enemies) if (!e.dead && c[e.zone] !== undefined) c[e.zone]++;
   const boss = enemies.find(e => e.k.boss);
