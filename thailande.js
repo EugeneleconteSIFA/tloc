@@ -11,10 +11,11 @@
 // carte/mondes/complet/.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX } from './engine.js?v=41';
+import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { especeGeo } from './foret.js';
 import * as PNJ from './pnj.js';
+import * as BOURSE from './bourse.js';
 
 // Les embarcadères des passeurs : un par île (les pontons d'OSM ; le grand piton n'en a pas,
 // on accoste sur sa grève sud). `ici` : où Camille pose le pied (le relief y est à 1–3 m) ;
@@ -27,12 +28,50 @@ const QUAIS = {
   phiphi: { nom: 'Phi Phi, l’isthme de Ton Sai', ici: [2187, 1927], barque: [2191, 1941] },
 };
 const PASSEUR = {
-  panyi: 'Somsak, le vieux passeur, ne quitte pas son moteur des yeux. « Les îles ne bougent plus. La mer, si. Alors on va sur la mer. »',
+  panyi: 'Somsak, le vieux passeur, ne quitte pas son moteur des yeux. « Les îles ne bougent plus. La mer, si. Alors on va sur la mer. Je conduisais les moines à Ton Sai, chaque matin. Depuis, plus personne ne descend de la colline. »',
   tapu: 'Mali, sa petite-fille, tient la barre debout. « Je te ramène. Mais vite : je n’aime pas rester près des pitons. »',
   suea: 'Le passeur muet ne dit rien. Il regarde le temple tout en haut, puis toi.',
   railay: 'Un passeur attend, assis dans sa barque. Il te fait signe de monter.',
   phiphi: 'Un passeur attend, assis dans sa barque. Il te fait signe de monter.',
 };
+
+// =====================================================================
+//  L'ACTE III — « La Cloche des Îles » (STORY.md ; docs/DECOUPAGE-ACTE3.md, DIALOGUES-ACTE3.md)
+// =====================================================================
+// L'acte se joue dans cette seule baie : son avancement (state.acte3) et ce qu'on y apprend
+// (state.ind3) vivent ici, comme l'acte II dans aveyron.js. Une instance du multi ne joue pas
+// l'histoire : tloc-multi.js y tient le bandeau et l'arrivée, et les barques y vont partout.
+const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
+const ETAPES3 = ['gong', 'cloitre', 'mali', 'masques', 'corniche', 'yak', 'fete'];
+const rang3 = (e) => ETAPES3.indexOf(e);
+const atteint3 = (e) => EN_INSTANCE || rang3(state.acte3 || 'gong') >= rang3(e);
+function passer3(e) { if (EN_INSTANCE || rang3(e) <= rang3(state.acte3 || 'gong')) return; state.acte3 = e; saveGame(true); }
+const sait3 = (k) => !!(state.ind3 && state.ind3[k]);
+function noter3(cle) {
+  state.ind3 = state.ind3 || {}; if (state.ind3[cle]) return;
+  state.ind3[cle] = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300);
+}
+// Le carnet du journal (J) : chaque indice en gras s'y écrit, et se barre quand il a servi
+const INDICES3 = {
+  somsak: { txt: 'Somsak conduisait les moines à Ton Sai chaque matin. Il y va encore, contre des écus.', qui: 'Nok', fait: () => atteint3('cloitre') },
+};
+function indices3() {
+  if (!state.ind3) return '';
+  const l = Object.keys(INDICES3).filter((k) => state.ind3[k]).map((k) => { const i = INDICES3[k], f = i.fait();
+    return `<div style="margin:4px 0;${f ? 'opacity:.5;text-decoration:line-through' : ''}">${i.txt} <span style="opacity:.6">— ${i.qui}</span></div>`; });
+  return l.length ? `<h3 style="margin:18px 0 6px;color:#9fd0ff;font-size:16px;letter-spacing:1px">INDICES</h3><div style="padding:8px 14px;border-left:4px solid #9fd0ff;background:rgba(255,255,255,.06);border-radius:6px">${l.join('')}</div>` : '';
+}
+// LES TRAJETS : depuis l'arrêt du temps, les passeurs ne se parlent plus et chacun reste à son
+// ponton (STORY.md). Camille les rétablit un à un ; une barque ne va que là où un trajet est
+// ouvert. Un trajet, c'est une paire de quais, dans les deux sens.
+const TRAJETS = [
+  ['panyi', 'phiphi', () => true],                                   // Somsak : il conduisait les moines à Ton Sai
+  ['panyi', 'tapu', () => atteint3('mali')],                          // Somsak, vers sa petite-fille
+  ['tapu', 'phiphi', () => atteint3('masques')], ['tapu', 'suea', () => atteint3('masques')], ['panyi', 'suea', () => atteint3('masques')],   // Mali reprend la mer
+  ['suea', 'railay', () => sait3('muet')], ['railay', 'phiphi', () => sait3('muet')], ['railay', 'panyi', () => sait3('muet')],                // le passeur muet
+];
+const trajetOuvert = (a, b) => EN_INSTANCE || TRAJETS.some(([p, q, ok]) => ((p === a && q === b) || (p === b && q === a)) && ok());
+const A3 = { pret: false };
 
 // ---------- les maisons sur pilotis de Ko Panyi ----------
 // OSM ne dessine que les passerelles du village (52 chemins, 24 pontons) : les maisons, on
@@ -854,10 +893,10 @@ function parlerNok() {
   if (!state.gongThai) dialogue([
     { who: 'Nok', text: 'Tu bouges ! Toi aussi, tu bouges !' },
     { who: 'Nok', text: 'Je frappais le gong du temple quand tout s’est arrêté. La pluie, les moines, les clochettes. Moi, je suis restée.' },
-    { who: 'Nok', text: 'Les passeurs ont peur d’accoster. Ils disent que les îles mangent le temps.' },
+    { who: 'Nok', text: 'Les passeurs ont peur d’accoster. Ils disent que les îles mangent le temps. Ils ne se parlent même plus : chacun reste à son ponton.' },
     { who: 'Nok', text: 'Prends le petit gong. Frappe-le près de ce qui est figé : ça repart, un peu. Pas longtemps.' },
     { text: 'Nok te donne le petit gong du temple. (K : frapper le gong)', fn: () => { state.gongThai = true; AIDE.extra.push(['K', 'frapper le gong']); SFX.gong(); } },
-    { who: 'Nok', text: 'Les moines du grand piton parlaient de la clé du cloître. Ils ne finissent plus leurs phrases.' },
+    { who: 'Nok', text: 'Somsak, le vieux passeur, conduisait les moines chaque matin. **Il va encore à Ton Sai**, si on le paie.', fn: () => noter3('somsak') },
   ]);
   else dialogue([{ who: 'Nok', text: state.cleCloitre ? 'La clé du cloître ! Ce que tu as commencé…' : 'Frappe le gong près des moines. Ils finiront leurs phrases.' }]);
 }
@@ -947,11 +986,34 @@ function passeurs({ hauteur, addInteract }) {
   for (const [m, Q] of Object.entries(QUAIS)) {
     barque(Q.barque[0], Q.barque[1], Math.atan2(Q.barque[0] - Q.ici[0], Q.barque[1] - Q.ici[1]), BATELIERS[m]);   // la proue vers le large
     addInteract({ pos: new THREE.Vector3(Q.ici[0], hauteur(...Q.ici), Q.ici[1]), r: 9, prompt: () => 'parler au passeur',
-      fn: () => showMenu('LE PASSEUR', Q.nom, PASSEUR[m], [
-        ...Object.entries(QUAIS).filter(([n]) => n !== m).map(([n, D]) => ({ label: 'Vers ' + D.nom, fn: () => traverser(D, hauteur) })),
-        { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) });
+      fn: () => {
+        const vers = Object.entries(QUAIS).filter(([n]) => n !== m && trajetOuvert(m, n));
+        showMenu('LE PASSEUR', Q.nom, vers.length ? PASSEUR[m] : (FERME[m] || 'Le passeur secoue la tête. Il ne va plus nulle part.'), [
+          ...vers.map(([n, D]) => ({ label: 'Vers ' + D.nom + (prixTrajet(m, n) ? ` (${prixTrajet(m, n)} écus)` : ''), fn: () => { payerTrajet(m, n); traverser(D, hauteur, n); } })),
+          { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]);
+      } });
   }
 }
+// ce que dit un passeur qui ne va plus nulle part (STORY.md : ils ont perdu leur organisation)
+const FERME = {
+  tapu: 'Mali n’est pas dans sa barque. Elle est restée à terre, et regarde les pitons.',
+  suea: 'Le passeur muet ne bouge pas. Il ne regarde personne.',
+  railay: 'Le passeur hausse les épaules. Sans les autres, il ne sait plus les passes.',
+  phiphi: 'Le passeur hausse les épaules. Sans les autres, il ne sait plus les passes.',
+};
+// le premier voyage de Somsak se paie (SCENARIO.md § 12 : « des écus ») ; ensuite, il te connaît.
+// Sans écus, il emmène quand même : l'histoire ne s'arrête pas faute d'argent.
+const PRIX_SOMSAK = 5;
+const prixTrajet = (a, b) => (!EN_INSTANCE && !state.somsakPaye && [a, b].includes('panyi') && [a, b].includes('phiphi') ? PRIX_SOMSAK : 0);
+function payerTrajet(a, b) {
+  const prix = prixTrajet(a, b);
+  if (!prix) return;
+  state.somsakPaye = true;
+  if (BOURSE.peutPayer(prix)) { BOURSE.payer(prix); showMessage(`Tu donnes ${prix} écus à Somsak.`, 2.5); }
+  else showMessage('« Garde tes sous. Rapporte-moi plutôt des nouvelles des moines. »', 4);
+  saveGame(true);
+}
+
 // Les pêcheurs : une barque près de la grève, à portée de voix. Sur l'eau, ils vivent ; ils
 // disent où l'on est et où aller (les îles, elles, ne répondent plus).
 const PECHEURS = [
@@ -976,13 +1038,14 @@ function pecheurs({ hauteur, bloque, addInteract }) {
 }
 
 // La traversée : un fondu au noir, et Camille est sur l'autre quai. Le passeur ne s'attarde pas.
-function traverser(D, hauteur) {
+function traverser(D, hauteur, vers) {
   hideMenu();
   fadeTo(1, () => {
     const [x, z] = D.ici; player.pos.set(x, hauteur(x, z), z);
     player.yaw = Math.atan2(D.ici[0] - D.barque[0], D.ici[1] - D.barque[1]); G.camYaw = player.yaw;
     placerPluie(); state.paused = false; fadeTo(0, null);
     showMessage('La barque file entre les pitons. ' + D.nom.charAt(0).toUpperCase() + D.nom.slice(1) + '.', 4);
+    if (vers === 'phiphi') passer3('cloitre');      // débarqué à Ton Sai : la colline des moines
   });
 }
 
@@ -1094,4 +1157,13 @@ monde({
     // vue de loin (le plan d'arrivée), la pluie ne serait qu'un pavé blanc posé sur la baie
     const proche = camera.position.distanceTo(player.pos) < 90; for (const l of PLUIE.tuiles) l.visible = proche;
   },
-}).then(() => { if (G.level && G.level.name === 'thailande') G.level.arenes = [ARENE_PANYI]; });
+}).then(() => {
+  if (!(G.level && G.level.name === 'thailande')) return;
+  G.level.arenes = [ARENE_PANYI];
+  if (EN_INSTANCE) return;
+  if (!state.acte3) { state.acte3 = 'gong'; saveGame(true); }
+  G.level.indices = indices3;
+  A3.pret = true;
+  // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3 };
+});
