@@ -2099,6 +2099,13 @@ pour Eugène : le rendre en temple (un toit à étages), ce qui dégagerait l'es
 Une toiture sur les volées (bandes rouges en zigzag) a été écartée : la caméra monte à 4–7 m au-dessus des
 pieds et passerait au-dessus. Planche : `…-realisme-sala-vues.png`.
 
+**Le dôme rendu en temple** (Eugène, 6 octobre : « oui rends le dôme en temple »). La règle des chedis de
+`toitThai` exige maintenant moins de 40 m (Phra Chedi Khiri en fait 30) ; l'enclos du Wat Tham Suea prend un
+toit de temple, à pente 0,55 au lieu de 1,35 au-delà de 30 m de large (à 1,35, 38 m de toit refaisaient le
+mur). De la mer, au nord : l'escalier se lit au-dessus du temple, la rampe blanche en diagonale et la sala en
+haut. Le débord nord du toit vient s'appuyer contre la maçonnerie de la 1re volée (rien ne dépasse dans la
+volée). Banc : 20/20, 36/36. Planche : `…-realisme-temple-vues.png`.
+
 #### Aveyron : les intérieurs des trois maisons (5 octobre, `c6735bc`)
 
 Eugène : « fais les intérieurs des trois maisons, en exploitant ce qui a été fait pour le mode multi ».

@@ -579,17 +579,23 @@ function toitThai(b, geo) {
   const ac = (a0 + a1) / 2, bc = (b0 + b1) / 2;
   const P = (a, c, y) => [cx + (ac + a) * ux - (bc + c) * uz, y, cz + (ac + a) * uz + (bc + c) * ux];
   const tri = (dst, ...v) => dst.push(...v.flat());
-  if (b.pts.length > 12 && Math.max(L, W) / Math.min(L, W) < 1.25) {
+  // un chedi : un bâtiment rond (plus de 12 sommets, presque carré) — mais de moins de 40 m. Le 6 octobre
+  // (Eugène : « rends le dôme en temple »), l'enclos du Wat Tham Suea lui-même (60 × 54 m, 13 sommets)
+  // passait pour un chedi : un dôme blanc de 48 m sur le replat, juste devant l'escalier, qui le cachait à
+  // la mer du nord. Le vrai chedi du sommet (Phra Chedi Khiri) fait 30 m.
+  if (b.pts.length > 12 && Math.max(L, W) / Math.min(L, W) < 1.25 && Math.min(L, W) < 40) {
     // un chedi : la cloche, les anneaux, la flèche (même profil que celui du sommet)
     const r = Math.min(L, W) / 2 * 0.9, g = new THREE.LatheGeometry([[0, 0], [r, 0], [r * 1.02, r * 0.18], [r * 0.95, r * 0.62], [r * 0.76, r * 1.0], [r * 0.48, r * 1.3], [r * 0.22, r * 1.42], [0, r * 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 24);
     g.translate(cx, haut, cz); TEMPLE.blanc.push(g.toNonIndexed());
     const fl = new THREE.ConeGeometry(r * 0.16, r * 1.6, 10); fl.translate(cx, haut + r * 1.45 + r * 0.8, cz); TEMPLE.or.push(fl.toNonIndexed());
     return true;
   }
-  // les étages du toit : chacun plus court, posé un peu plus haut que le précédent
-  const n = L > 18 ? 3 : 2;
+  // les étages du toit : chacun plus court, posé un peu plus haut que le précédent. Un très grand temple
+  // (plus de 30 m de large : l'enclos du Wat Tham Suea) prend une pente de 0,55 et non 1,35 — à 1,35,
+  // son toit montait de 38 m et refaisait le mur que le dôme faisait devant l'escalier
+  const n = L > 18 ? 3 : 2, pente = W > 30 ? 0.55 : 1.35;
   for (let k = 0; k < n; k++) {
-    const la = L / 2 + 1.2 - k * L * 0.14, lb = W / 2 + 1.0 - k * 0.6, y0 = haut + k * 1.6, hf = lb * 1.35;
+    const la = L / 2 + 1.2 - k * L * 0.14, lb = W / 2 + 1.0 - k * 0.6, y0 = haut + k * 1.6, hf = lb * pente;
     const v = [P(-la, -lb, y0), P(la, -lb, y0), P(la, 0, y0 + hf), P(-la, 0, y0 + hf), P(-la, lb, y0), P(la, lb, y0)];
     const dst = k === 0 ? TEMPLE.vert : TEMPLE.rouge;
     tri(dst, v[0], v[1], v[2]); tri(dst, v[0], v[2], v[3]); tri(dst, v[4], v[3], v[2]); tri(dst, v[4], v[2], v[5]);
