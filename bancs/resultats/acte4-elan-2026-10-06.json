@@ -1,0 +1,43 @@
+{
+ "pas": [
+  {
+   "nom": "une ligne libre de 16 m pour sauter",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "sans l’élan : un saut ordinaire",
+   "ok": true,
+   "detail": "10.30 m, 1.46 m de haut"
+  },
+  {
+   "nom": "avec l’élan : le grand saut, nettement plus loin et plus haut",
+   "ok": true,
+   "detail": "19.80 m, 2.49 m de haut"
+  },
+  {
+   "nom": "l’aide le dit",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’oliveraie : trois oliviers (six grappes)",
+   "ok": true,
+   "detail": "6 grappes"
+  },
+  {
+   "nom": "l’oliveraie : aucun olivier dans un mur",
+   "ok": true,
+   "detail": "[[-89.2,30.7,false],[-90.2,34.6,false],[-84.4,30.1,false]]"
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

@@ -266,4 +266,7 @@ de Nunzia ; l'élan posé dans `state.elan`, le saut demandé à `engine.js` ; l
 - **Le chargement** avec le clip à genoux : Σ des trois villes 7,1 / 6,7 s avant, 7,2 / 7,1 s après (la
   machine plus chargée qu'au matin) : rien de mesurable.
 
-À reprendre : un des trois oliviers tombe dans la maison voisine (la place se cherche au pied d'un mur).
+Corrigés ensuite (6 octobre, nuit) : les oliviers se posent sur des places libres (l'un tombait dans la maison
+voisine) ; **l'élan** dans `engine.js` (à la demande d'Eugène) — sauter EN COURANT avec `state.elan` donne le
+grand saut (vitesse montante × 1,3, vitesse en l'air × 1,5) : 10,3 m et 1,5 m de haut sans, 19,8 m et 2,5 m
+avec (`bancs/acte4-elan.mjs`) ; l'aide le dit.

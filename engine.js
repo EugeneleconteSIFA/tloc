@@ -2348,7 +2348,7 @@ function majAide() {
   const gaufres = P.some((o) => o && o.id === 'gaufre' && o.n > 0);
   // à cheval (G.monte, tloc-multi.js) : on saute (le cheval aussi), on ne roule pas — l'aide ne promet que ce qui marche
   const l = [['Z Q S D', G.monte ? 'mener le cheval' : 'se déplacer'], ['Souris', 'regarder'], ['Z + S', G.monte ? 'galoper' : 'courir']];
-  l.push(['Espace', G.monte ? 'sauter l’obstacle' : 'sauter']);
+  l.push(['Espace', G.monte ? 'sauter l’obstacle' : state.elan ? 'sauter (en courant : le grand saut)' : 'sauter']);
   if (state.sword || (state.bow && G.bowOut)) l.push(['Clic G · F', state.bow && G.bowOut ? 'tirer' : 'frapper, faucher']);
   if (G.bouclier) l.push(['Clic D', 'lever le bouclier']);
   if (G.monte) l.push(['Entrée', 'descendre de cheval']);
@@ -2946,7 +2946,12 @@ export function updatePlayer(dt) {
   }
   // saut (X)
   // à cheval aussi (Eugène, 30 septembre) : le cheval suit la hauteur de la cavalière (tickChevaux)
-  if (!locked && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) { p.vy = JUMP_V; p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
+  // L'ÉLAN du Colosse (acte IV, gallipoli.js : state.elan) : sauter EN COURANT donne le grand saut,
+  // plus haut et plus loin (SCENARIO.md § 13 : « fait franchir des vides qu'on ne sautait pas »).
+  // Maj est déjà la roulade : l'élan, c'est la course qui le donne.
+  if (!locked && pressedOnce('KeyX', 'Space') && p.onGround && p.rollT < 0 && p.sleeping <= 0) {
+    p.elanSaut = !!(state.elan && p.court && !G.monte);
+    p.vy = JUMP_V * (p.elanSaut ? 1.3 : 1); p.onGround = false; p.jumpT = 0; p.fallFrom = p.pos.y; SFX.roll(); }
   // arc (C)
   p.bowCd = Math.max(0, p.bowCd - dt);
   // LE CARQUOIS. Les flèches étaient infinies ; elles se comptent (state.fleches, jusqu'à
@@ -2998,6 +3003,7 @@ export function updatePlayer(dt) {
 
   let speed = p.walkTo ? (p.walkSpeed || 4.5) : p.speed;
   if (court) speed *= ENDURANCE.gain;
+  if (p.elanSaut && !p.onGround) speed *= 1.5;        // le grand saut porte loin
   if (p.garde) speed *= 0.4;
   if (p.rollT >= 0) {
     p.rollT += dt;
@@ -3036,7 +3042,7 @@ export function updatePlayer(dt) {
   if (p.pos.y > g2 + 0.02 || p.vy > 0) {
     if (p.onGround && p.vy <= 0) p.fallFrom = p.pos.y;
     p.vy -= GRAV * dt; p.pos.y += p.vy * dt; p.jumpT += dt;
-    if (p.pos.y <= g2) { p.pos.y = g2; const fall = p.fallFrom - g2; p.vy = 0; p.onGround = true; if (fall > 1.2) burst(p.pos.x, p.pos.y + 0.1, p.pos.z, 0xc8b898, 8, 2.5, 0.5, 4, 1.2); if (fall > 7) { damagePlayer(2, p.pos.x + 0.01, p.pos.z); showMessage('Aïe ! La chute était haute.', 2); } }
+    if (p.pos.y <= g2) { p.pos.y = g2; const fall = p.fallFrom - g2; p.vy = 0; p.onGround = true; p.elanSaut = false; if (fall > 1.2) burst(p.pos.x, p.pos.y + 0.1, p.pos.z, 0xc8b898, 8, 2.5, 0.5, 4, 1.2); if (fall > 7) { damagePlayer(2, p.pos.x + 0.01, p.pos.z); showMessage('Aïe ! La chute était haute.', 2); } }
   } else { p.pos.y = g2; p.vy = 0; p.onGround = true; }
   if (G.level.onFall && p.pos.y < -4) G.level.onFall();
 

@@ -108,8 +108,16 @@ const etatGrappe = (g) => { const c = (OLIVES.t + g.decal) % 12; return c < 8 ? 
 const COUL = { verte: new THREE.Color(0x6a7a3a), mure: new THREE.Color(0x3a1e3a), pourrie: new THREE.Color(0x4a3a24) };
 function oliveraie() {
   const [x0, y0, z0, yaw] = OLIVES.place, esp = especeGeo('chene');
-  for (let k = 0; k < 3; k++) {
-    const a = yaw + (k - 1) * 0.9, x = x0 + Math.sin(a) * 5, z = z0 + Math.cos(a) * 5, y = ctxA.hauteur(x, z);
+  // trois places LIBRES (couronne comprise : 2 m autour du tronc), à 4 m au moins l'une de l'autre,
+  // du côté où regarde le fermier d'abord : posées à angle fixe, l'une tombait dans la maison voisine
+  const places = [];
+  for (let r = 4; r <= 12 && places.length < 3; r += 1) for (let j = 0; j < 24 && places.length < 3; j++) {
+    const a = yaw + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * (TAU / 24), x = x0 + Math.sin(a) * r, z = z0 + Math.cos(a) * r;
+    if (!ctxA.bloque(x, z, 2.2) && places.every(([px, pz]) => Math.hypot(px - x, pz - z) > 4)) places.push([x, z, a]);
+  }
+  OLIVES.arbres = places;
+  for (let k = 0; k < places.length; k++) {
+    const [x, z, a] = places[k], y = ctxA.hauteur(x, z);
     // l'olivier : l'arbre de la ville (son tronc, sa couronne, leurs matières), bas et large — un
     // tronc et une couronne refaits à part sortaient noirs, la couronne en dalle (6 octobre)
     if (esp) for (const [geo, m] of [[esp.tronc, esp.matT], [esp.houppier, esp.matH]]) { const o = new THREE.Mesh(geo, m); o.scale.set(3.4, 2.4, 3.4); o.position.set(x, y - 0.2, z); o.castShadow = true; scene.add(o); }

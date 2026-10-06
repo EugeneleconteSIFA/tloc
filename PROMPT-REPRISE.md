@@ -2679,3 +2679,6 @@ secondaires », ouvertes à l'étape `pluie`, avancement dans `state.q2` :
   pour `monde.js` le plan d'eau exposé et un crochet `bloqueLieu` (n° 3).
 - **Appris** : `phMat` d'un nom inconnu ne plante pas, il rend un gris uni (`mat(0x888888)`) et un
   avertissement en console — chercher `matériau Poly Haven inconnu` dans la console d'un banc.
+- **L'élan est fait** (demande n° 1, `engine.js`, à la demande d'Eugène) : sauter en courant avec `state.elan` —
+  `p.elanSaut`, vitesse montante × 1,3, vitesse en l'air × 1,5 jusqu'à l'atterrissage. Ne reste pour `monde.js`
+  que le plan d'eau exposé et `bloqueLieu`.
