@@ -488,6 +488,9 @@ export function objectif4() {
     chef_depot: C && { ...C, metier: 'chef_depot', gabarit: 'droite', cheveuxC: 0x7a7470, barbe: 'coiffures_r:Hair_Beard', idle: 'Idle_Loop' },
     // l'apprenti qui a remplacé Cosimo sur le quai d'Alberobello
     apprenti: C && { ...C, metier: 'apprenti', cheveuxC: 0x5a3a20, idle: 'Idle_Loop' },
+    // (pas un personnage : les PNJ ne chargent que les clips de leur liste, où entre l'attente de
+    // chaque rôle ; ce rôle y fait entrer le clip à genoux, que le Colosse joue au combat)
+    colosse_genou: PNJ.ROLES.colosse && { ...PNJ.ROLES.colosse, metier: 'colosse_genou', idle: 'Fixing_Kneeling' },
     // Cosimo vieux, devant son trullo : les cheveux blancs, le bleu de travail passé
     cosimo_vieux: C && { ...C, metier: 'cosimo_vieux', gabarit: 'sec', h: C.h * 0.97, cheveuxC: 0xdedad2, haut: 0x5a6a7a, valeur: 0.85, idle: 'Idle_Loop' },
     // le vieux des Sassi, contre la courtine du château

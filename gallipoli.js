@@ -341,7 +341,8 @@ function parlerNunzia() {
 // =====================================================================
 // Tant que le morceau de cloche est dans sa poitrine, le Colosse arpente la jetée en U, du socle au
 // bout et retour ; à chacun de ses pas, un BOND du temps : la lumière saute, la mer monte d'un coup.
-// Le tambourin le ralentit. À l'étape `chateau`, ralenti, il s'arrête et met un genou à terre :
+// Le tambourin le ralentit. À l'étape `chateau`, ralenti, il s'arrête et met un genou à terre (le clip
+// à genoux, `Fixing_Kneeling` ; la première version l'enfonçait de 3 m dans la jetée, penché) :
 // Camille monte par sa main et frappe le morceau, trois fois (un battement chaque fois — il se
 // relève entre deux). Puis il revient sur son socle, redevient statue, et donne son élan ; la
 // Cloche des Heures sort de sa poitrine, et vieillit à vue d'œil tant qu'on ne la sonne pas.
@@ -349,9 +350,12 @@ const RONDE = [[284, 37], [304, 38], [266, 52], [259, 26], [306, 8], [284, 27]];
 const CO = { k: 0, t: 0, pas: 0, coups: 0, vu: 0, morceau: null, cloche: null, yq: 0, genou: 0 };
 const marche = () => !EN_INSTANCE && !passe4('colosse');
 function morceauDeCloche() {
-  // un éclat vert-de-gris qui luit dans la poitrine (dans le repère du modèle : il grandit avec lui)
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.12, 12, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0x5a8a70, metalness: 0.6, roughness: 0.4, emissive: 0x60ffb0, emissiveIntensity: 0.6 }));
-  m.rotation.x = Math.PI / 2; m.position.set(0, 2.05, 0.3); colosse.add(m); return m;
+  // un éclat vert-de-gris qui luit dans la poitrine, accroché à l'os du buste (spine_03) : posé
+  // dans le repère du groupe, il restait en l'air quand le géant se penchait pour s'agenouiller
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.04, 12, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0x5a8a70, metalness: 0.6, roughness: 0.4, emissive: 0x60ffb0, emissiveIntensity: 0.6 }));
+  if (colosse.userData.perso) PNJ.socket(colosse, colosse.userData.perso, 'spine_03', m, [0.025, 0.06, 0.13], [Math.PI / 2, 0, 0]);
+  else { m.rotation.x = Math.PI / 2; m.position.set(0, 2.05, 0.3); colosse.add(m); }
+  return m;
 }
 function cloche() {
   // la cloche d'horloge plate et large, avec son marteau (DECISIONS-RECIT.md § 2)
@@ -373,8 +377,8 @@ function colosseTick(dt) {
     // ralenti à l'étape du combat, assez près : il s'arrête et met un genou à terre
     const aGenou = e === 'chateau' && lent < 1 && d < 18;
     CO.genou += ((aGenou ? 1 : 0) - CO.genou) * Math.min(1, dt * 3);
-    colosse.position.y = CO.yq - CO.genou * 3.2; colosse.rotation.x = CO.genou * 0.35;
-    if (CO.genou > 0.05) { if (colosse.userData.ctrl) PNJ.animeVillageois(colosse, 0, false); }
+    colosse.position.y = CO.yq;
+    if (CO.genou > 0.05) { const c = colosse.userData.ctrl; if (c) { c.jouer('Fixing_Kneeling', 0.4); c.update(dt); } }
     else {
       const [tx, tz] = RONDE[CO.k], dx = tx - colosse.position.x, dz = tz - colosse.position.z, l = Math.hypot(dx, dz), v = 1.6 * lent;
       if (l < 0.6) CO.k = (CO.k + 1) % RONDE.length;
