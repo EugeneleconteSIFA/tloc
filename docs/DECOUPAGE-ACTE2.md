@@ -159,3 +159,87 @@ Dormeur, la pluie). Les grandes quêtes secondaires après, découpées seulemen
 4. **Les rênes, le lasso, la mine** (`SCENARIO.md`, pas `STORY.md`) : on les laisse de côté
    comme je le propose ?
 5. **La force** essayée tout de suite sur un bloc à la sortie de la cave ?
+
+---
+
+# Les grandes quêtes secondaires de l'acte II (version 1, 6 octobre, à valider par Eugène)
+
+`STORY.md` en nomme quatre : **la course des maisons**, **l'arbre des Roquette**, **les sources**,
+**le train** — « elles doivent donner une vie à l'Aveyron après la quête principale ». Elles
+s'ouvrent donc à l'étape `pluie` (l'histoire finie, la pluie revenue), et chacune se joue seule,
+dans l'ordre qu'on veut. `SCENARIO.md` en ajoute deux (les avis de recherche, la belote de
+l'auberge) : l'auberge et le bailli ne sont pas dans la carte resserrée, je les laisse de côté.
+
+L'avancement : `state.q2` (`{ sources: 0..3, arbre: [...], train: 0..3, course: 0..3 }`), le
+carnet du journal comme pour l'histoire. Durée visée : 5 à 8 minutes chacune.
+
+## Le fil
+
+| quête | qui la donne | ce qu'on fait | où (position du jeu) | ce qu'on gagne | ce qui manque |
+|---|---|---|---|---|---|
+| **Les sources** | la femme à la fontaine (« Moi, je n'y crois pas ») | rouvrir trois sources bouchées par la bande : à la bombe, à la force | la source des Vergnes (470 ; 440), la fontaine du lac (−269 ; −339), le puits de Perpignou (≈ 460 ; −230) | trois points d'eau où l'on boit (B) ; un ruisseau qui coule de nouveau | rien |
+| **L'arbre des Roquette** | l'aïeule, au repas | retrouver huit Roquette dispersés par la guerre, leur demander leur maison, les renvoyer chez eux | toute la carte | un morceau de cœur ; l'arbre de famille peint au mur du Pouget | les **noms** (question 1) |
+| **Le train** | le colporteur (« la paie du train de Saint-Gervais a été volée ») | retrouver la paie, cachée en trois endroits par la bande | l'enclos caché, une barque échouée, la maisonnette de la vanne | des écus | **pas de voie ferrée** dans la carte (question 2) |
+| **La course des maisons** | un vieux Roquette, assis à l'ombre à Fariboules (pas d'auberge) | la course à cheval de Beauregard au Batut par la rive sud, contre le cavalier de Beauregard ; la gagner fait parler le vieux | Beauregard (400 ; 150) → le Batut (−135 ; 170), des portes de passage sur la route du lac | une selle plus rapide ; la vérité sur la course d'autrefois | **monter à cheval en solo** (question 3) et **ce que dit le vieux** (question 4) |
+
+## Les quêtes, une à une
+
+### Les sources (la plus simple : tout ce qu'il faut est là)
+
+- **La source des Vergnes** : sa bouche est murée de pierres entassées (déjà montrée en jeu) → une
+  bombe posée, comme la faille. L'eau sort : une nappe qui coule vers le lac (le ruisseau des Vergnes).
+- **La fontaine du lac** : un gros bloc roulé dans le bassin par la bande → la **force** du Dormeur
+  (pousser le bloc), comme à la sortie de la cave.
+- **Le puits de Perpignou** (« ne donne plus que de la vase ») : le seau coincé au fond sous des
+  pierres → une bombe dans le puits, puis on remonte le seau.
+- Chaque source rouverte : un point où boire (B), la réplique de ses voisins qui change, une ligne
+  au carnet. Les trois : la femme à la fontaine remercie, `state.q2.sources = 3`.
+- **Se vérifie** : `bancs/acte2-sources.mjs` (les trois rouvertes, l'eau visible, boire possible).
+
+### L'arbre des Roquette
+
+- L'aïeule, au repas : « Ils sont tous partis à cause de cette guerre. Ramène-les-moi. » Elle donne
+  une liste de huit, par maison (trois du Batut, trois de Beauregard, deux du Pouget).
+- Les huit sont posés hors de chez eux : à Perpignou, à Fariboules, au barrage, sur la grève, au bout
+  du ponton… On leur parle : ils disent qui ils sont et pourquoi ils sont partis (une réplique
+  chacun). « Rentre chez toi » : ils repartent vers leur maison (marche, puis on les retrouve dans la
+  cour).
+- Les huit rentrés : l'arbre de famille, peint au mur de la salle à manger du Pouget, un **morceau de
+  cœur**.
+- **Se vérifie** : `bancs/acte2-arbre.mjs`.
+
+### Le train
+
+- Le colporteur, qui descend de Saint-Gervais : la paie des ouvriers de la voie a été volée dans le
+  train, la bande l'a partagée en trois.
+- Trois caches dans le lieu tel qu'il est : sous la paille de l'enclos caché, sous une barque échouée
+  (qu'on soulève avec la force), derrière la maisonnette de la vanne. Chaque cache : une bourse.
+- Rapportées au colporteur : des écus (l'économie existante).
+- **Se vérifie** : `bancs/acte2-train.mjs`.
+
+### La course des maisons
+
+- Le vieux Roquette de Fariboules : la réplique de `SCENARIO.md` (« Moi, j'y étais. Et je te dirai
+  rien »), puis « le jour où quelqu'un refera la course, je parlerai ».
+- Le cavalier de Beauregard prête un cheval ; départ devant Beauregard, des portes de passage le long
+  de la rive sud jusqu'au Batut ; le cavalier court contre Camille (un chemin suivi à vitesse fixe,
+  un peu moins vite qu'un cheval au galop).
+- Gagnée : une selle plus rapide ; le vieux parle enfin.
+- **Se vérifie** : `bancs/acte2-course.mjs`.
+
+## L'ordre du code
+
+Les sources d'abord (rien ne manque), puis le train (si la question 2 est tranchée), l'arbre (avec
+les noms), la course (avec le cheval et la réplique du vieux).
+
+## Questions pour Eugène
+
+1. **L'arbre des Roquette** : un arbre de famille sans prénoms se lit mal. Tu me donnes huit prénoms
+   (ou les vrais Roquette que tu veux y voir), ou je garde des fonctions (« le fils cadet du Batut ») ?
+2. **Le train** : il n'y a pas de voie ferrée dans la zone du lac. Le colporteur qui en parle, et
+   des caches dans le lieu, ça te va ? Ou faut-il une gare au bord de la zone ?
+3. **La course** : on ne monte à cheval qu'en multi (`tloc-multi.js`, à C7 pendant cette vague). Il
+   faut un « monter à cheval » du solo — à demander pour engine.js ou tloc-multi.js. Je la garde pour
+   après la vague ?
+4. **La course d'autrefois** : qui avait gagné, et ce que dit le vieux, c'est à écrire avec toi
+   (`SCENARIO.md`).

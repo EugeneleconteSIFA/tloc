@@ -2644,3 +2644,28 @@ Assunta ; rien sur le père de la fille de Nunzia ; l'élan demandé à `engine.
 - Complément (C7) : `bancs/multi-serveur.mjs` vérifie le serveur relancé — ralliements partout, fête à Lille
   seulement, bannières là où l'arène en déclare : conforme dans les six arènes. Le serveur relancé depuis une
   commande de Claude meurt avec elle : le relancer détaché (`Start-Process` de PowerShell sur Git Bash).
+
+#### Acte II, suite (6 octobre) : les grandes quêtes secondaires — **faites, jouées en headless, publiées**
+
+Découpées dans `docs/DECOUPAGE-ACTE2.md` (seconde partie) ; Eugène : « garde les fonctions, ok pour
+le colporteur, course après la vague ». Codées dans `aveyron.js`, section « Les grandes quêtes
+secondaires », ouvertes à l'étape `pluie`, avancement dans `state.q2` :
+- **les sources** (la femme de la fontaine) : la source des Vergnes à la bombe (un ruisseau en ruban
+  qui suit le relief), la fontaine du lac à la force (un bloc dans le bassin), le puits de Perpignou
+  (une bombe, puis le seau) ; on y boit (vie pleine) ;
+- **l'arbre des Roquette** (l'aïeule) : huit Roquette désignés par leur fonction, chacun hors de chez
+  lui ; on leur parle, ils rentrent dans leur cour ; les huit rentrés : un cœur de plus et l'arbre de
+  famille peint au mur le plus proche de l'aïeule (trouvé au rayon) ;
+- **le train** (le colporteur) : la paie volée en trois caches (la paille de l'enclos, la barque
+  soulevée à la force, derrière la maisonnette de la vanne), 60 écus (`bourse.js`, `gagner`).
+- **La course des maisons** attend un « monter à cheval » du solo (aujourd'hui dans tloc-multi.js)
+  et ce que dit le vieux Roquette (à écrire avec Eugène).
+- **Appris, à ne pas redécouvrir** : tout ce qu'un lieu cache, montre ou déplace après coup doit
+  porter `userData.dynamic` (sur lui ou un parent). Sinon la fusion du moteur le copie au chargement
+  dans les grands maillages de la scène, et la copie reste là quoi qu'on fasse du groupe : les
+  pierres du puits restaient visibles une fois le puits rouvert. La publication `7a151c0` avait le
+  même défaut pour les caves (bâties à 600 m au-dessus du lac) et les empreintes : corrigé ici.
+  Et `garnir()` fusionne ses tas de bois sans collision : une place libre se cherche aussi contre
+  les boîtes de ce qui est déjà posé.
+- Banc : `bancs/acte2-quetes.mjs`, réussi ; `acte2-preuve` et `acte2-dormeur` repassés après le
+  correctif, réussis.
