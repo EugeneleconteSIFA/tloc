@@ -85,15 +85,12 @@ await agir('prendre le masque de bois', 2597.8, 1718);
 verifier('le masque de bois', await dans(() => TLOC.state.masqueBois === true));
 verifier('l’acte passe à « mali »', (await dans(() => TLOC.state.acte3)) === 'mali');
 
-// 8. le câble se prend
-{ const p0 = await dans(() => [TLOC.player.pos.x, TLOC.player.pos.z]);
-  await agir('accrocher au câble — vers le grand piton', 2605, 1792);
-  await pause(4000);
-  const p1 = await dans(() => [TLOC.player.pos.x, TLOC.player.pos.z]);
-  verifier('avec la poulie, on glisse', Math.hypot(p1[0] - 2605, p1[1] - 1792) > 20, JSON.stringify(p1.map(Math.round))); }
+// 8. avec la poulie, ce n'est plus elle qui manque : c'est la mousson (étape 5, le masque de Hanuman)
+{ const m = await agir('accrocher au câble — vers le grand piton', 2605, 1792);
+  verifier('avec la poulie, le câble ne parle plus de poulie', !/poulie/.test(m || '') && /mousson/.test(m || ''), (m || '').slice(0, 80)); }
 
 // 9. Somsak : Mali, et le trajet de Khao Phing Kan
-{ await pause(30000);      // la glisse jusqu'au grand piton
+{
   const l = await dans(() => { const T = TLOC, a = [112, 4];
     T.player.pos.set(a[0], T.getH(a[0], a[1]), a[1]);
     const it = T.interactables.filter((i) => /parler au passeur/.test(typeof i.prompt === 'function' ? i.prompt() : i.prompt)).sort((p, q) => Math.hypot(p.pos.x - a[0], p.pos.z - a[1]) - Math.hypot(q.pos.x - a[0], q.pos.z - a[1]))[0];

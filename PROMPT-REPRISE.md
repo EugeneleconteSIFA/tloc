@@ -2686,3 +2686,46 @@ secondaires », ouvertes à l'étape `pluie`, avancement dans `state.q2` :
   des Pouilles le prend là, plus en fouillant la scène) ; `bloqueLieu(x, z, r)` dans la fiche d'un lieu, un
   obstacle à soi qui peut aller et venir (les salles du château de Matera s'en servent). Les neuf mondes de
   monde.js chargent sans erreur (`bancs/acte4-mondes.mjs`). **Il ne reste aucune demande de C3.**
+
+### Acte III, la Thaïlande (6 octobre, PC, consigne C2 de `PLAN-2026-10-06-VAGUE2.md`) — **fait, joué en headless, publié**
+
+Découpage validé par Eugène (`docs/DECOUPAGE-ACTE3.md`, ses réponses en bas : une vraie course en barque, la
+cascade, le cloître à Ton Sai, le souffle sans usage dans l'acte, le Yak en volumes Poly Haven). Répliques :
+`docs/DIALOGUES-ACTE3.md`. Tout dans `thailande.js` (`state.acte3` : gong → cloitre → mali → masques →
+corniche → yak → fete ; le carnet `state.ind3` par `G.level.indices`). Lots publiés : cfbfd17 (découpage, arène
+repliée), e2362ba (1, les trajets des passeurs), ea7963c (2, le cloître de Ton Sai, la poulie, le masque de bois),
+9db8daf (3, Mali : statue, cascade, course autour de Ko Tapu), 15e1b3a (4, le muet, la grotte de Railay, le masque
+de Hanuman), 9ba7873 (5–6, la mousson du belvédère, le Yak), 103840e (7, la fin).
+- **L'arène de Ko Panyi** est repliée dans thailande.js (`ARENE_PANYI`) ; `thailande-arene.js` est vidé (un
+  commentaire) et n'est plus chargé — **à supprimer par Eugène s'il le veut** (je ne supprime pas).
+- Bancs : `bancs/acte3-{baie,cloitre,mali,masques,yak,fin}.mjs`, et `bancs/acte3-tout.mjs` qui les rejoue l'un
+  après l'autre (ce n'est pas une seule partie continue) et donne le coût des morceaux au chargement : les
+  nouveaux font 2 à 8 ms. Ko Panyi en instance : `TLOC_ARENE=panyi bancs/rencontres.mjs`, sans erreur.
+- **Une adaptation** : la barque de Mali est prise DANS la cascade figée (à mi-hauteur), pas au-dessus — le moteur
+  laisse grimper presque toutes les pentes, une barque en haut de la falaise ne demandait rien ; le gong la fait
+  tomber (« une chose suspendue »), la statue écartée par la force lui ouvre la mer.
+
+- **Appris** : **ne jamais poser l'état d'un acte (ni sauvegarder) dans le `.then` de `monde()`** : le monde est
+  bâti AVANT que la partie ne se charge, et `saveGame` y écrasait la sauvegarde qu'on rechargeait (vu au banc de
+  la fin : rechargée, l'acte repartait à « gong »). On le pose à la première image où `state.running` (comme
+  aveyron.js, `A2.pret`).
+- **Appris** : `inscrire()` (monde.js) garde le tableau de points tel quel : le vider (`pts.length = 0`) ôte un
+  obstacle sans toucher à la grille (la porte du cloître, la statue de Khao Phing Kan).
+- **Appris** : `e.caged = true` (engine.js) rend une créature intouchable, aveugle et immobile : c'est l'état
+  « figé » (les danseurs du khon ; le gong le lève).
+- **Appris** : pour tenir Camille sur ce qui bouge (la barque de la course), un `solLieu` qui rend le pont de la
+  barque : sans sol sous elle, le moteur la croit en chute et lui donne la pose de la chute.
+- **Appris** : `G.camBack` est multiplié par `G.echelle` (0,6 dehors) : pour reculer de 11 m, donner 18.
+
+**Demandes pour d'autres fichiers** :
+- **`temple.js` — le retour de l'acte III** (sur le modèle de `finActeIPoser` / `finActeIScene`) : quand
+  `state.clocheIles` (ou `state.acte3 === 'fete'`) et pas encore vu : la Cloche des Îles pendue au **deuxième
+  étage** (haute et fine, bronze clair, feuilles d'or, sans battant : `faireClocheIles()` de thailande.js peut
+  être recopiée ou exportée), des **rigoles d'eau autour de la cour dont l'eau coule vers le haut**, **la pluie,
+  très loin** (DECISIONS-RECIT.md § 3) ; on la sonne ; la porte suivante (les Pouilles) s'entrouvre, « une odeur
+  de mer et d'olivier » ; le mage ne dit rien ; Camille, pour la première fois, hésite devant une porte
+  (SCENARIO.md § 12). Le troisième vers est gravé sous la cloche (« Chaque géant donnera ce qu'il est, et ne le
+  reprendra pas. »). Les portes restent ouvertes.
+- **`pnj.js`** : un rôle d'enfant (Ko Panyi ramène celui de Nok à 0,72) — déjà demandé, toujours utile.
+- **Le souffle** (`state.souffle`) n'a encore d'usage nulle part : nager en eau profonde et froide (SCENARIO.md
+  § 17) — à brancher dans le moteur (engine.js) ou dans les mondes qui ont de l'eau profonde.
