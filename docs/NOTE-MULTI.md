@@ -685,3 +685,19 @@ rien toucher au moteur. Invite « ouvrir / fermer la porte ». Toutes ouvertes a
   fondu, figé ouvert) ; et le moteur fige les matrices du décor (`matrixAutoUpdate = false`) : après une
   rotation, `updateMatrix()` et `updateMatrixWorld(true)` à la main.
 - Passe du Batut, quatre règles : aucune pageerror, 5 objets, 3 à 12 rencontres en 40 s.
+
+### Le Batut : des meubles moins carrés, la pénombre du fond (6 octobre, C8)
+
+- **Les meubles composés** (batut.js : `table`, `chaise`, `armoire`, `buffet`, `lit`) : un plateau sur ses
+  pieds et sa ceinture, des chaises tout autour (assise, dossier, pieds, leur propre obstacle), l'armoire
+  à plinthe, corniche et deux vantaux à boutons de laiton, le buffet à tiroirs, le lit à tête et à pied,
+  matelas et traversin de laine — Poly Haven partout. La même emprise et le même obstacle que les boîtes
+  d'avant (`obstacle` : une boîte au rez-de-chaussée, une capsule à plancher à l'étage). La salle à
+  manger a ses dix chaises, la cuisine ses huit.
+- **La pénombre des pièces du fond** (bibliothèque, cuisine, cellier) : leurs sols et leurs cloisons
+  assombris (`PENOMBRE`), aucune lumière de plus ; le jour des fenêtres reste clair. `THREE.Color`
+  multiplie en linéaire : 0,3 y fait environ 0,58 à l'écran (0,55 ne se voyait pas).
+- **Les bots** : `bancs/multi-batut.mjs` vérifie que les 152 points du graphe restent libres et que ses 166
+  arêtes se parcourent sans heurter un meuble (rayon 0,45 m, à la hauteur de l'étage) — tout passé.
+- **L'arrivée en équipes « devant la façade de Beauregard »** (relevée une fois le 5 octobre) : deux parties
+  à quatre en équipes, les huit arrivées dans le vestibule (x 41–44, z −3–0). Non reproduite.

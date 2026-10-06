@@ -1,0 +1,20 @@
+{
+ "pas": [
+  {
+   "nom": "les points du graphe des bots sont libres",
+   "ok": true,
+   "detail": "152 points ; bloqués : []"
+  },
+  {
+   "nom": "les arêtes se parcourent sans heurter un meuble",
+   "ok": true,
+   "detail": "166 arêtes ; coupées : []"
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": []
+}

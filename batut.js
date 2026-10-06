@@ -71,14 +71,88 @@ function poser(o, x, y, z, ry = 0) { o.position.set(x, y, z); o.rotation.y = ry;
 // de dessous, une table de l'étage aurait arrêté qui passe en dessous.
 function meuble(x, z, w, d, h, slug, couleur, y0 = 0) {
   poser(boite(w, h, d, slug, { color: couleur }), x, y0 + h / 2, z);
+  obstacle(x, z, w, d, h, y0);
+}
+// LES MEUBLES COMPOSÉS (6 octobre, C8 : « des meubles moins carrés ») : la même emprise et le même
+// obstacle qu'une boîte (les chemins des bots n'en changent pas), mais un plateau sur ses pieds, une
+// armoire à corniche et à vantaux, un lit à tête et à pied, des chaises autour des tables — toujours
+// en Poly Haven. Chaque pièce se pose dans un groupe (w le long de x, d le long de z).
+// (boite() rend un maillage à une matière par face : on teinte par la couleur, pas par un clone)
+// (THREE.Color multiplie en linéaire : 0,3 y fait environ 0,58 à l’écran ; 0,55 ne se voyait pas)
+const PENOMBRE = (c) => new THREE.Color(c).multiplyScalar(0.3).getHex();     // les pièces du fond
+const fonce = (c) => new THREE.Color(c).multiplyScalar(0.85).getHex();
+function groupe(x, y0, z) { const g = new THREE.Group(); g.position.set(x, y0, z); scene.add(g); return g; }
+function bloc(g, w, h, d, slug, couleur, x, y, z) { const m = boite(w, h, d, slug, { color: couleur }); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; g.add(m); return m; }
+function pieds(g, w, d, h, ep, slug, couleur, retrait = 0.06) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) bloc(g, ep, h, ep, slug, couleur, sx * (w / 2 - ep / 2 - retrait), h / 2, sz * (d / 2 - ep / 2 - retrait));
+}
+function chaise(x, z, ry, couleur, y0 = 0) {
+  const g = groupe(x, y0, z); g.rotation.y = ry;
+  pieds(g, 0.44, 0.44, 0.45, 0.05, 'wood_cabinet_worn_long', couleur, 0.02);
+  bloc(g, 0.46, 0.05, 0.46, 'wood_cabinet_worn_long', couleur, 0, 0.47, 0);
+  bloc(g, 0.46, 0.5, 0.05, 'wood_cabinet_worn_long', couleur, 0, 0.75, -0.21);            // le dossier, côté opposé à la table
+  obstacle(x, z, 0.46, 0.46, 0.95, y0);
+}
+// une table : le plateau sur ses pieds ; des chaises tout autour (n par long côté, une à chaque bout)
+function table(x, z, w, d, h, couleur, n = 0, y0 = 0) {
+  const g = groupe(x, y0, z);
+  bloc(g, w, 0.07, d, 'wood_cabinet_worn_long', couleur, 0, h - 0.035, 0);
+  bloc(g, w - 0.2, 0.1, d - 0.2, 'wood_cabinet_worn_long', couleur, 0, h - 0.12, 0);       // la ceinture sous le plateau
+  pieds(g, w, d, h - 0.07, 0.09, 'wood_cabinet_worn_long', couleur, 0.1);
+  obstacle(x, z, w, d, h, y0);
+  if (!n) return;
+  const long = d > w, L = Math.max(w, d), l = Math.min(w, d);
+  for (let k = 0; k < n; k++) { const t = (k + 0.5) / n * L - L / 2;
+    for (const c of [-1, 1]) { const ex = l / 2 + 0.32;
+      if (long) chaise(x + c * ex, z + t, c > 0 ? -Math.PI / 2 : Math.PI / 2, couleur, y0); else chaise(x + t, z + c * ex, c > 0 ? Math.PI : 0, couleur, y0); } }
+  for (const c of [-1, 1]) { const e = L / 2 + 0.32; if (long) chaise(x, z + c * e, c > 0 ? Math.PI : 0, couleur, y0); else chaise(x + c * e, z, c > 0 ? -Math.PI / 2 : Math.PI / 2, couleur, y0); }
+}
+// une armoire (ou un vaisselier) : la plinthe, le corps, la corniche qui déborde, deux vantaux en
+// léger relief et leurs boutons de laiton, sur la face qui regarde la pièce (`face` : ±1 en x ou en z)
+function armoire(x, z, w, d, h, couleur, y0 = 0, face = [0, 1]) {
+  const g = groupe(x, y0, z), [fx, fz] = face;
+  bloc(g, w, 0.12, d, 'wood_cabinet_worn_long', couleur, 0, 0.06, 0);
+  bloc(g, w - 0.06, h - 0.3, d - 0.06, 'wood_cabinet_worn_long', couleur, 0, (h - 0.3) / 2 + 0.12, 0);
+  bloc(g, w + 0.12, 0.16, d + 0.12, 'wood_cabinet_worn_long', couleur, 0, h - 0.1, 0);
+  const lc = fx ? d : w, laiton = new THREE.MeshStandardMaterial({ color: 0xb08a40, metalness: 0.8, roughness: 0.3 });
+  for (const c of [-1, 1]) {
+    const px = fx ? fx * (w / 2) : c * lc / 4, pz = fz ? fz * (d / 2) : c * lc / 4;
+    bloc(g, fx ? 0.04 : lc / 2 - 0.08, h - 0.6, fz ? 0.04 : lc / 2 - 0.08, 'wood_cabinet_worn_long', fonce(couleur), px, h / 2, pz);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), laiton); b.position.set(px + (fx ? fx * 0.04 : -c * 0.06), h / 2, pz + (fz ? fz * 0.04 : -c * 0.06)); g.add(b);
+  }
+  obstacle(x, z, w, d, h, y0);
+}
+// un buffet bas : sur ses pieds, le plateau qui déborde, une rangée de tiroirs
+function buffet(x, z, w, d, h, couleur, y0 = 0, face = [0, 1]) {
+  const g = groupe(x, y0, z), [fx, fz] = face;
+  pieds(g, w, d, 0.18, 0.08, 'wood_cabinet_worn_long', couleur, 0.04);
+  bloc(g, w, h - 0.26, d, 'wood_cabinet_worn_long', couleur, 0, 0.18 + (h - 0.26) / 2, 0);
+  bloc(g, w + 0.08, 0.06, d + 0.08, 'wood_cabinet_worn_long', couleur, 0, h - 0.04, 0);
+  const lc = fx ? d : w, n = Math.max(2, Math.round(lc / 0.8));
+  for (let k = 0; k < n; k++) { const t = (k + 0.5) / n * lc - lc / 2;
+    bloc(g, fx ? 0.03 : lc / n - 0.06, 0.22, fz ? 0.03 : lc / n - 0.06, 'wood_cabinet_worn_long', fonce(couleur), fx ? fx * (w / 2) : t, h - 0.24, fz ? fz * (d / 2) : t); }
+  obstacle(x, z, w, d, h, y0);
+}
+// un lit : les pieds, le cadre, le matelas de laine, le traversin, la tête de lit haute contre le
+// mur (`tete` : le côté du mur, ±1 en z), le pied de lit bas
+function lit(x, z, w, d, couleur, drap, y0 = 0, tete = -1) {
+  const g = groupe(x, y0, z);
+  pieds(g, w, d, 0.32, 0.1, 'wood_cabinet_worn_long', couleur, 0.02);
+  bloc(g, w, 0.16, d, 'wood_cabinet_worn_long', couleur, 0, 0.36, 0);
+  bloc(g, w - 0.12, 0.2, d - 0.16, 'wool_boucle', drap, 0, 0.54, 0);
+  bloc(g, w - 0.3, 0.16, 0.36, 'wool_boucle', 0xe8e0d0, 0, 0.72, tete * (d / 2 - 0.3));
+  bloc(g, w + 0.06, 1.3, 0.1, 'wood_cabinet_worn_long', couleur, 0, 0.65, tete * (d / 2 + 0.02));
+  bloc(g, w + 0.06, 0.7, 0.08, 'wood_cabinet_worn_long', couleur, 0, 0.35, -tete * (d / 2 + 0.02));
+  obstacle(x, z, w, d + 0.1, 0.75, y0);
+}
+// l'obstacle d'un meuble : une boîte au rez-de-chaussée ; à l'étage, une capsule à plancher
+// (une boîte du moteur n'a pas de dessous : on butait dessus depuis le rez-de-chaussée)
+function obstacle(x, z, w, d, h, y0 = 0) {
   if (y0 < 1) { addBox(x - w / 2, x + w / 2, z - d / 2, z + d / 2, y0 + h); return; }
   const r = Math.min(w, d) / 2, l = Math.max(w, d) / 2 - r, c = w > d ? addCap(x - l, z, x + l, z, r, y0 + h) : addCap(x, z - l, x, z + l, r, y0 + h);
   c.bottom = y0 - 0.3;
 }
 
-// Un mur droit de (ax, az) à (bx, bz), de y0 à y0 + h, percé de portes : { t (le milieu, en
-// mètres depuis a), w, y (le seuil, y0 par défaut), h (le haut de l'ouverture) }. Le linteau
-// n'arrête personne en dessous ; un mur d'étage (y0 > 0) a un plancher : on passe sous lui.
 // LES PORTES QU'ON FERME (6 octobre, C8 ; Eugène : « pas mal pour se cacher »). Chaque porte des
 // cloisons a son vantail de chêne, sur une charnière : ouvert, il est rabattu contre le mur ;
 // fermé, il bouche l'ouverture, et une capsule arrête qui passe — le moteur ne compte pas une
@@ -110,6 +184,9 @@ function poserPorte(d, ouverte) {
   d.pivot.updateMatrix(); d.pivot.updateMatrixWorld(true);
 }
 
+// Un mur droit de (ax, az) à (bx, bz), de y0 à y0 + h, percé de portes : { t (le milieu, en
+// mètres depuis a), w, y (le seuil, y0 par défaut), h (le haut de l'ouverture) }. Le linteau
+// n'arrête personne en dessous ; un mur d'étage (y0 > 0) a un plancher : on passe sous lui.
 function mur(ax, az, bx, bz, { ep = 0.25, h = H, y0 = 0, slug = 'chaux_craquelee', couleur = 0xeee6d6, portes = [], vantaux = false } = {}) {
   const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ry = -Math.atan2(bz - az, bx - ax), r = ep / 2 + 0.03;
   const piece = (a, b, ya, yb, dur, bas) => {
@@ -156,9 +233,13 @@ function maison(cle) {
   piece('le grand salon', 0, 12, 5, DEMI, 'wood_planks', 0xb08a62);
   piece('la salle à manger', 0, 12, -DEMI, -5, 'worn_tile_floor', 0xc8b8a4);
   piece('la galerie', 12, 16, -DEMI, DEMI, 'wood_planks', 0x9a7a58);
-  piece('la bibliothèque', 16, PROF, 6, DEMI, 'wood_planks', 0x8a6a4a);
-  piece('la cuisine', 16, PROF, -6, 6, 'worn_tile_floor', 0xbcae9a);
-  piece('le cellier', 16, PROF, -DEMI, -6, 'terre_battue', 0xa89478);
+  // LA PÉNOMBRE DES PIÈCES DU FOND (6 octobre, C8) : loin de la façade, peu de fenêtres. Pas de
+  // lumière en moins à poser (une lumière ne s'éteint pas pièce par pièce, et la règle 8 n'en veut
+  // pas de nouvelle) : les sols et les cloisons du fond sont plus sombres, et le jour des fenêtres
+  // reste clair — de quoi s'y cacher, et voir venir qui passe la porte, à contre-jour.
+  piece('la bibliothèque', 16, PROF, 6, DEMI, 'wood_planks', PENOMBRE(0x8a6a4a));
+  piece('la cuisine', 16, PROF, -6, 6, 'worn_tile_floor', PENOMBRE(0xbcae9a));
+  piece('le cellier', 16, PROF, -DEMI, -6, 'terre_battue', PENOMBRE(0xa89478));
   // ---- l'étage : les pièces (leur sol est le plancher, posé plus bas) ----
   piece('la galerie haute', 0, PROF, -5, 5, null, 0, H1);
   piece('la grande chambre', 0, 15, -DEMI, -5, null, 0, H1);
@@ -178,8 +259,8 @@ function maison(cle) {
   murM(16, -DEMI, 16, DEMI, { vantaux: true }, [[12, 2.6], [0, 2.8], [-12, 2.6]]);                    // galerie / fond
   murM(0, 5, 12, 5, { vantaux: true }, [[1.6, 2.6]]);                                                 // vestibule / salon
   murM(0, -5, 12, -5, { vantaux: true }, [[6, 2.6]]);                                                 // vestibule / salle à manger
-  murM(16, 6, PROF, 6, { vantaux: true }, [[23, 2.6]]);                                               // bibliothèque / cuisine
-  murM(16, -6, PROF, -6, { vantaux: true }, [[19, 2.6]]);                                            // cuisine / cellier (la cheminée est à u = 23)
+  murM(16, 6, PROF, 6, { vantaux: true, couleur: PENOMBRE(0xeee6d6) }, [[23, 2.6]]);                                               // bibliothèque / cuisine
+  murM(16, -6, PROF, -6, { vantaux: true, couleur: PENOMBRE(0xeee6d6) }, [[19, 2.6]]);                                            // cuisine / cellier (la cheminée est à u = 23)
   // ---- les cloisons de l'étage ----
   murM(0, 5, PROF, 5, { ...etage, vantaux: true }, [[13, 2.6], [22.5, 2.6]]);                                // galerie haute / billard (à l'est de la cage : à u = 7,5, la porte donnait sur 70 cm entre la cage et le mur), salle d'armes
   murM(0, -5, PROF, -5, { ...etage, vantaux: true }, [[7.5, 2.6], [22.5, 2.6]]);                             // galerie haute / chambres
@@ -362,8 +443,8 @@ function maison(cle) {
   canape(3.5, 12, -1); canape(8.5, 12, 1); meuble(mx(6), 12, 1.2, 1.8, 0.45, BOIS, SOMBRE);
   meuble(mx(1.2), 16.5, 1.0, 1.0, 1.0, 'fabric_pattern_07', 0x6a5a3a); meuble(mx(10.5), 7.2, 1.6, 2.2, 1.0, BOIS, 0x2a1e16);   // un fauteuil, le piano
   // la salle à manger : la longue table, les buffets contre le pignon et la cloison
-  meuble(mx(6), -11.5, 1.4, 6.0, 0.78, BOIS, SOMBRE); meuble(mx(6), -DEMI + 0.45, 3.4, 0.6, 1.2, BOIS, SOMBRE);
-  meuble(mx(11.4), -9, 0.6, 2.4, 1.0, BOIS, CLAIR);
+  table(mx(6), -11.5, 1.4, 6.0, 0.78, SOMBRE, 4); buffet(mx(6), -DEMI + 0.45, 3.4, 0.6, 1.2, SOMBRE, 0, [0, 1]);
+  buffet(mx(11.4), -9, 0.6, 2.4, 1.0, CLAIR, 0, [-s, 0]);
   // la galerie : des coffres, une horloge, une statue
   meuble(mx(15.4), -6, 0.7, 1.2, 0.7, BOIS, SOMBRE); meuble(mx(15.4), 6, 0.7, 1.2, 0.7, BOIS, SOMBRE);   // contre la cloison : au milieu, ils bouchaient la galerie meuble(mx(15.4), -16.5, 0.6, 0.6, 2.2, BOIS, SOMBRE);
   meuble(mx(15.3), 16.4, 0.9, 0.9, 1.9, 'granite_tile_03', 0xc8c2b6);   // la statue, dans le coin : au milieu, elle bouchait la galerie (40 cm de chaque côté)
@@ -374,25 +455,25 @@ function maison(cle) {
     meuble(x, v, w, 0.5, 2.4, 'wood_planks', 0x4a3424);
     for (let r = 0; r < 4; r++) for (const sd of [-1, 1]) poser(boite(w - 0.3, 0.34, 0.06, 'wood_cabinet_worn_long', { color: livres[(k + r) % 5] }), x, 0.4 + r * 0.55, v + sd * 0.27).castShadow = false;
   }
-  meuble(mx(28.3), 10, 1.2, 2.4, 0.78, BOIS, SOMBRE);
+  table(mx(28.3), 10, 1.2, 2.4, 0.78, SOMBRE);
   // la cuisine : la grande cheminée sur la cloison du cellier, la table, le vaisselier, des tonneaux
   { const fx = mx(23), fz = -6 + 0.55;
     poser(boite(3.0, 2.2, 0.9, 'stone_wall', { color: 0x9a9284 }), fx, 1.1, fz); addBox(fx - 1.5, fx + 1.5, fz - 0.45, fz + 0.45, 2.2);
     poser(new THREE.Mesh(boxG(1.8, 1.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xff7a2a })), fx, 0.65, fz + 0.46); }
-  meuble(mx(22), 1.5, 3.4, 1.4, 0.82, BOIS, CLAIR); meuble(mx(18), 5.4, 2.6, 0.55, 2.0, BOIS, SOMBRE);
+  table(mx(22), 1.5, 3.4, 1.4, 0.82, CLAIR, 3); armoire(mx(18), 5.4, 2.6, 0.55, 2.0, SOMBRE, 0, [0, -1]);
   const tonneau = (u, v) => { poser(new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.05, 14), phMat('wood_planks', 2.8, 1.05, { color: 0x6a4a2a })), mx(u), 0.525, v); addCap(mx(u), v, mx(u), v, 0.48, 1.05); };
   // le cellier : des rangs de tonneaux et de caisses
   for (const v of [-8.5, -11.5, -14.5]) for (const u of [20, 23, 26]) tonneau(u, v);       // 3 m d'axe en axe : on passe entre
   meuble(mx(23), -16.8, 4, 1.2, 1.5, 'wood_planks', 0x7a5a3a);
   // l'étage : la grande chambre (lit, armoire), la chambre du fond, le billard, la salle d'armes
   const y = H1;
-  meuble(mx(6), -15.8, 2.4, 2.2, 0.65, 'wool_boucle', 0xc8bca8, y); meuble(mx(6), -17.3, 2.4, 0.2, 1.5, BOIS, SOMBRE, y);
-  meuble(mx(12.5), -17.4, 2.0, 0.7, 2.3, BOIS, SOMBRE, y); meuble(mx(2), -8, 1.2, 0.6, 0.8, BOIS, CLAIR, y);
-  meuble(mx(24), -15.8, 2.2, 2.0, 0.65, 'wool_boucle', 0xb8c4c8, y); meuble(mx(28.8), -10, 0.7, 2.0, 2.2, BOIS, SOMBRE, y);
+  lit(mx(6), -15.9, 2.4, 2.2, SOMBRE, 0xc8bca8, y, -1);
+  armoire(mx(12.5), -17.4, 2.0, 0.7, 2.3, SOMBRE, y, [0, 1]); meuble(mx(2), -8, 1.2, 0.6, 0.8, BOIS, CLAIR, y);
+  lit(mx(24), -15.9, 2.2, 2.0, SOMBRE, 0xb8c4c8, y, -1); armoire(mx(28.8), -10, 0.7, 2.0, 2.2, SOMBRE, y, [-s, 0]);
   meuble(mx(7.5), 11.5, 2.6, 1.5, 0.85, BOIS, 0x2e4a2e, y);                                     // le billard
   meuble(mx(2), 16, 1.4, 0.5, 1.8, BOIS, SOMBRE, y);
   for (const v of [8, 11, 14]) meuble(mx(28.9), v, 0.5, 2.0, 2.1, BOIS, SOMBRE, y);              // les râteliers de la salle d'armes
-  meuble(mx(21), 11.5, 2.4, 1.2, 0.85, BOIS, CLAIR, y);
+  table(mx(21), 11.5, 2.4, 1.2, 0.85, CLAIR, 0, y);
   // la galerie haute : des bancs, deux bahuts
   meuble(mx(16), -4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y); meuble(mx(27.4), 4.2, 2.4, 0.5, 0.5, BOIS, CLAIR, y);   // pas devant la porte de la salle d'armes
   meuble(mx(20), -4.3, 1.4, 0.6, 1.1, BOIS, SOMBRE, y);
@@ -560,4 +641,4 @@ const level = {
 await PNJ.installerCamille(PNJ_E);
 bootLevel(level, null);
 
-window.__batut = { PORTES };      // pour les bancs (bancs/multi-*.mjs)
+window.__batut = { PORTES, GRAPHE };      // pour les bancs (bancs/multi-*.mjs)
