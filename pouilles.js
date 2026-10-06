@@ -14,7 +14,8 @@
 // de dessin, et pas une texture de plus que celles déjà chargées.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, scene, phMat, PH, G, state, sun, hemi, sky, SUN_DIR, renderer, showMessage, saveGame, addInteract } from './engine.js?v=41';
+import { THREE, TAU, scene, phMat, PH, G, state, sun, hemi, sky, SUN_DIR, renderer, showMessage, saveGame, addInteract,
+  SFX, KINDS, TOUCHES, AIDE, player } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -432,6 +433,9 @@ const INDICES4 = {
   mot: { txt: 'Donato est mort. Son voisin m’a donné un mot pour Nunzia.', qui: 'le voisin, à Matera', fait: () => passe4('trente') },
   apprenti: { txt: 'L’apprenti du train qui regardait la mer a été envoyé au bout de la ligne, à Alberobello.', qui: 'le chef de dépôt, à Matera', fait: () => state.lettre4 === 'lettre' },
   chateau: { txt: 'L’homme rouge est monté au château de Matera, le Tramontano.', qui: 'Nunzia, 30 ans', fait: () => passe4('rythme') },
+  rythme: { txt: 'Le château ne s’ouvre pas avec une clé, mais avec un rythme.', qui: 'un vieux des Sassi', fait: () => passe4('soixante') },
+  joueuse: { txt: 'Le rythme, c’est la pizzica. La joueuse de tambourin d’Alberobello l’apprendra — la fille de Nunzia.', qui: 'Nunzia, 60 ans', fait: () => passe4('corde') },
+  tarentules: { txt: 'Les tarentules ont volé la corde du tambourin. Elles viennent des grottes sous les remparts de Gallipoli, à marée basse.', qui: 'Assunta', fait: () => !!state.corde4 },
 };
 export function indice4(k) {
   state.ind4 = state.ind4 || {};
@@ -452,6 +456,11 @@ export function objectif4() {
     case 'quinze': return 'Trouve le grand-père de Nunzia, dans les Sassi de Matera (le petit train)';
     case 'grandpere': return 'Rapporte le mot de Donato à Nunzia, sur la jetée de Gallipoli';
     case 'trente': return 'Monte au château Tramontano, sur sa colline, à Matera';
+    case 'rythme': return 'Retourne voir Nunzia, à Gallipoli : le château ne s’ouvre qu’à un rythme';
+    case 'soixante': return 'Trouve la joueuse de tambourin, à Alberobello, près de la gare';
+    case 'corde': return state.corde4 ? 'Rapporte la corde à Assunta, à Alberobello'
+      : 'Va chercher la corde du tambourin dans la grotte sous le château de Gallipoli, à marée basse (par la jetée du Colosse)';
+    case 'tambourin': return 'Ouvre les portes du château Tramontano au tambourin (K), à Matera';
     default: return 'Les Pouilles : ici, le temps court.';
   }
 }
@@ -471,6 +480,11 @@ export function objectif4() {
     chef_depot: C && { ...C, metier: 'chef_depot', gabarit: 'droite', cheveuxC: 0x7a7470, barbe: 'coiffures_r:Hair_Beard', idle: 'Idle_Loop' },
     // l'apprenti qui a remplacé Cosimo sur le quai d'Alberobello
     apprenti: C && { ...C, metier: 'apprenti', cheveuxC: 0x5a3a20, idle: 'Idle_Loop' },
+    // le vieux des Sassi, contre la courtine du château
+    vieux_sassi: V && { ...V, metier: 'vieux_sassi', idle: 'Idle_Loop', tete: undefined, dos: undefined, haut: 0x4a4038, bas: 0x3a3430 },
+    // Assunta, la joueuse de tambourin : la fille de Nunzia, quarante ans, les cheveux noirs de
+    // sa mère noués, la jupe rouge de la pizzica
+    joueuse: N && { ...N, metier: 'joueuse', gabarit: 'droite', h: N.h * 1.03, cheveuxC: 0x1e1612, haut: 0xe8dcc4, bas: 0x8a2a24, valeurBas: 0.9 },
   }); }
 /** le rôle de Nunzia selon l'étape : on la retrouve plus âgée à chaque retour */
 export function roleNunzia() {
@@ -486,7 +500,7 @@ export function roleNunzia() {
 // du ciel, la brume. Pas une lumière de plus, et surtout pas de scene.environment basculé :
 // chaque bascule recompile tous les shaders (une image figée deux fois par journée).
 // À Gallipoli, la marée monte et descend de 1,2 m en trois minutes.
-export const TEMPS = { maree: 0, lent: 1, jour: 1, phase: 0.3 };
+export const TEMPS = { maree: 0, lent: 1, jour: 1, phase: 0.3, tMaree: 0 };
 const JOURNEE = 120, MAREE = 180;
 let T4 = null;
 const lisse = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -495,6 +509,7 @@ const ORANGE = new THREE.Color(0xff9a50), cTmp = new THREE.Color();
 function tempsQuiCourt(now, nom) {
   if (!state.running) return;
   if (!EN_INSTANCE && !state.acte4) passer4('arrivee');
+  if (state.tambourin && !EN_INSTANCE && !AIDE.extra.some(([k]) => k === 'K')) AIDE.extra.push(['K', 'battre le tambourin']);
   const u = sky && sky.material.uniforms;
   if (!T4) {
     if (!u) return;
@@ -507,7 +522,8 @@ function tempsQuiCourt(now, nom) {
   const court = !EN_INSTANCE && !passe4('heures');
   const dt = Math.max(0, Math.min(0.1, state.time - T4.t)); T4.t = state.time;
   if (!court) { if (T4.fige) return; T4.fige = true; TEMPS.phase = 0.3; TEMPS.maree = 0; }
-  else TEMPS.phase = (TEMPS.phase + dt * TEMPS.lent / JOURNEE) % 1;
+  else { TEMPS.phase = (TEMPS.phase + dt * TEMPS.lent / JOURNEE) % 1; TEMPS.tMaree += dt * TEMPS.lent; }
+  tambourinTick();
   const a = TEMPS.phase * TAU, s = Math.sin(a), j = lisse(-0.12, 0.22, s);
   TEMPS.jour = j;
   // la direction : le soleil le jour, la lune (à l'opposé) la nuit — toujours un peu levée, pour
@@ -525,7 +541,7 @@ function tempsQuiCourt(now, nom) {
   if (scene.fog && T4.brume) scene.fog.color.copy(NUIT4.brume).lerp(T4.brume, j).lerp(ORANGE, bas * 0.2);
   // la marée (Gallipoli) : le plan d'eau de monde.js monte et descend ; la règle de la mer
   // (bloque) reste celle du plan, à 60 cm près — on ne marche pas plus loin à marée basse
-  if (T4.mer && court) { TEMPS.maree = Math.sin(state.time * TEMPS.lent * TAU / MAREE) * 0.6; T4.mer.position.y = T4.merY + TEMPS.maree; }
+  if (T4.mer && court) { TEMPS.maree = Math.sin(TEMPS.tMaree * TAU / MAREE) * 0.6; T4.mer.position.y = T4.merY + TEMPS.maree; }
   else if (T4.mer) T4.mer.position.y = T4.merY;
 }
 
@@ -536,3 +552,38 @@ export function naitre4(role, x, y, z, yaw, prompt, fn, r = 3.5) {
   addInteract({ pos: v.position, r, prompt: () => prompt, fn, enabled: () => v.visible });
   return v;
 }
+
+// =====================================================================
+//  Le tambourin (acte IV, étape 8) — touche K, comme le gong de Thaïlande : un objet par monde
+// =====================================================================
+// La pizzica (trois coups, un silence) ralentit le temps autour de Camille pendant huit secondes :
+// la journée et la marée presque arrêtées, les bêtes au ralenti. Un cercle de poussière dorée au
+// sol dit jusqu'où. Les portes du château de Matera (lot 3) lisent le battement par `battu4`.
+const LENT = 0.12, DUREE_LENT = 8;
+export const TAMBOURIN = { jusqua: -1, cercle: null, battu: -1e9 };
+const VITESSES = {};          // les vitesses des bêtes, rangées le temps du ralenti
+export const battu4 = () => state.time - TAMBOURIN.battu;
+function battre() {
+  if (!state.tambourin || EN_INSTANCE || !state.running || state.paused) return;
+  if (state.time - TAMBOURIN.battu < 1.2) return;            // on finit sa mesure
+  TAMBOURIN.battu = state.time;
+  // trois coups, les grelots du cercle : le son des écus est le plus proche
+  [0, 180, 360].forEach((t) => setTimeout(() => SFX.piece(), t));
+  TAMBOURIN.jusqua = state.time + DUREE_LENT; TEMPS.lent = LENT;
+  for (const k of ['tarentule']) if (KINDS[k] && VITESSES[k] === undefined) { VITESSES[k] = KINDS[k].speed; KINDS[k].speed *= 0.25; }
+  if (!TAMBOURIN.cercle) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(5.5, 7, 48), new THREE.MeshBasicMaterial({ color: 0xffd890, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    m.rotation.x = -Math.PI / 2; m.userData.dynamic = true; scene.add(m); TAMBOURIN.cercle = m;
+  }
+}
+TOUCHES.KeyK = battre;
+// à chaque image (tempsQuiCourt) : le ralenti qui finit, le cercle qui suit Camille et s'éteint
+function tambourinTick() {
+  const reste = TAMBOURIN.jusqua - state.time;
+  if (reste <= 0 && TEMPS.lent !== 1) { TEMPS.lent = 1; for (const k in VITESSES) { KINDS[k].speed = VITESSES[k]; delete VITESSES[k]; } }
+  const c = TAMBOURIN.cercle; if (!c) return;
+  c.visible = reste > 0;
+  if (reste > 0) { c.position.set(player.pos.x, player.pos.y + 0.08, player.pos.z); c.material.opacity = 0.35 * Math.min(1, reste) * (0.8 + 0.2 * Math.sin(state.time * 6)); }
+}
+/** Assunta recorde le tambourin et le donne (alberobello.js) */
+export function donnerTambourin() { state.tambourin = true; passer4('tambourin'); SFX.pickup(); }

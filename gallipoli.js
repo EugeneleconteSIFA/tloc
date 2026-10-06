@@ -7,11 +7,15 @@
 //  - la place du COLOSSE : le géant de bronze inventé qui garde le port (STORY.md, acte IV ;
 //    son allure vient du colosse de Barletta), figé sur son socle pour l'instant ;
 //  - NUNZIA sur le quai, à l'âge que l'acte IV lui a laissé (pouilles.js, roleNunzia) ;
+//  - la GROTTE de l'acte IV (étape 8) : sous le château angevin, un banc de rochers que la mer
+//    découvre à marée basse, de la jetée du Colosse à une bouche noire au pied du mur ; les
+//    tarentules, et la corde du tambourin au fond ;
 //  - la PLACE DE LA GARE, juste de l'autre côté du pont (Eugène, 2 octobre au soir : « une
 //    place bien chaleureuse ») : dallée de pierre claire, une fontaine, des orangers en pots,
 //    les tables d'un café sous leurs parasols, des bancs, et des guirlandes d'ampoules.
 // =====================================================================
 import { ville, GARES, etape4, passe4, passer4, indice4, roleNunzia, TEMPS, EN_INSTANCE, naitre4 } from './pouilles.js';
+import { KINDS, setMaker, setAnimHook, spawnEnemy, player, showMessage, addInteract, saveGame, SFX } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { THREE, TAU, scene, phMat, mesh, boxG, dialogue, G, state } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -33,6 +37,94 @@ function solQuai(x, z) {
     if (Math.hypot(x - ax - dx * t, z - az - dz * t) < w) return HAUTEUR ? Math.max(y, HAUTEUR(x, z)) : y;
   }
   return null;
+}
+
+// ---------- le banc de rochers sous le château (acte IV, étape 8) ----------
+// Le pied du mur nord du château angevin, relevé sur l'enceinte d'OSM, du côté de la mer ; le banc
+// court à 3,2 m du mur (le mur fait 2,6 m d'épaisseur), et descend de la jetée du Colosse par une
+// rampe — la jetée est un mètre plus haut, une marche que Camille ne monte pas.
+const MUR_NORD = [[254, 50], [244, 55], [232, 53], [222, 43], [198, 52]], CHATEAU = [222, 28];
+const BANC = [];          // segments : [ax, az, ay, bx, bz, by, demi-largeur]
+let BOUCHE = null;        // [x, z, y, yaw] : la grotte, au bout du banc
+const decouvert = () => TEMPS.maree < -0.15;
+function solBanc(x, z) {
+  if (!decouvert()) return null;
+  for (const [ax, az, ay, bx, bz, by, w] of BANC) {
+    const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+    if (Math.hypot(x - ax - dx * t, z - az - dz * t) < w) return ay + (by - ay) * t;
+  }
+  return null;
+}
+function bancDeRochers() {
+  const y = Y_MER + 0.35, pts = MUR_NORD.map(([x, z], k) => {
+    // la normale moyenne des deux pans qui se rejoignent, tournée vers la mer (loin du château)
+    const [px, pz] = MUR_NORD[Math.max(0, k - 1)], [nx, nz] = MUR_NORD[Math.min(MUR_NORD.length - 1, k + 1)];
+    let ox = -(nz - pz), oz = nx - px; const l = Math.hypot(ox, oz); ox /= l; oz /= l;
+    if (ox * (x - CHATEAU[0]) + oz * (z - CHATEAU[1]) < 0) { ox = -ox; oz = -oz; }
+    return [x + ox * 3.2, z + oz * 3.2];
+  });
+  // la rampe : du bord de la jetée au premier rocher
+  BANC.push([249, 60, Y_MER + 1.3, pts[1][0], pts[1][1], y, 1.8]);
+  for (let k = 1; k < pts.length - 1; k++) BANC.push([pts[k][0], pts[k][1], y, pts[k + 1][0], pts[k + 1][1], y, 1.8]);
+  const roc = phMat('rocher_01', 2, 2, { color: 0x9a8a70 }), geos = [];
+  for (const [ax, az, ay, bx, bz, by, w] of BANC) {
+    const l = Math.hypot(bx - ax, bz - az), n = Math.ceil(l / 1.6);
+    for (let i = 0; i <= n; i++) { const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, top = ay + (by - ay) * t;
+      const b = new THREE.BoxGeometry(2.4 + (i % 3) * 0.3, top - (Y_MER - 2.5), w * 2 + 0.4 - (i % 2) * 0.3);
+      b.rotateY(-Math.atan2(bz - az, bx - ax) + (i % 4 - 1.5) * 0.08); b.translate(x, (top + Y_MER - 2.5) / 2, z); geos.push(b.toNonIndexed()); }
+  }
+  const m = new THREE.Mesh(mergeGeometries(geos), roc); m.castShadow = m.receiveShadow = true; scene.add(m);
+  // la bouche de la grotte : une arche noire au pied du mur, au bout du banc, des rochers autour
+  const [ex, ez] = pts[pts.length - 1], [fx, fz] = MUR_NORD[MUR_NORD.length - 1], yaw = Math.atan2(fx - ex, fz - ez);
+  const g = new THREE.Group(); g.position.set(ex, y, ez); g.rotation.y = yaw; scene.add(g);
+  const noir = new THREE.Mesh(new THREE.CircleGeometry(1.7, 24, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+  noir.position.set(0, 0, 1.6); noir.rotation.y = Math.PI; g.add(noir);
+  for (const [a, b, r] of [[-2.1, 0.6, 0.9], [2.0, 0.4, 0.8], [-1.6, 1.9, 0.7], [1.5, 2.1, 0.6], [0, 2.6, 0.75]]) g.add(mesh(new THREE.DodecahedronGeometry(r), roc, a, b, 1.4));
+  BOUCHE = [ex, ez, y, yaw];
+}
+
+// ---------- les tarentules (SCENARIO.md § 13 : la vieille croyance de la pizzica) ----------
+Object.assign(KINDS, { tarentule: { hp: 3, speed: 5.5, dmg: 1, range: 1.4, aggro: 11, windup: 0.4, cd: 1.3, fly: 0, r: 0.5, label: 'Tarentule des grottes', barY: 0.9 } });
+setMaker('tarentule', () => {
+  const g = new THREE.Group(), poil = phMat('rocher_01', 0.5, 0.5, { color: 0x5a4030, roughness: 0.95 }), noir = new THREE.MeshStandardMaterial({ color: 0x1a120c, roughness: 0.6 });
+  const abdo = mesh(new THREE.SphereGeometry(0.34, 14, 10), poil, 0, 0.42, -0.32); abdo.scale.set(1, 0.8, 1.2);
+  g.add(abdo, mesh(new THREE.SphereGeometry(0.22, 12, 8), poil, 0, 0.38, 0.1));
+  // les yeux, deux points rouges qu'on voit dans l'ombre du mur
+  for (const sx of [-0.07, 0.07]) g.add(mesh(new THREE.SphereGeometry(0.035, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3020 }), sx, 0.47, 0.29));
+  g.userData.pattes = [];
+  for (let k = 0; k < 8; k++) { const c = k < 4 ? -1 : 1, i = k % 4, p = new THREE.Group(); p.position.set(c * 0.16, 0.38, 0.18 - i * 0.12);
+    const haut = mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.42, 5), noir, c * 0.17, 0.12, 0); haut.rotation.z = -c * 1.0;
+    const bas = mesh(new THREE.CylinderGeometry(0.03, 0.015, 0.5, 5), noir, c * 0.4, -0.08, 0); bas.rotation.z = c * 0.5;
+    p.add(haut, bas); p.rotation.y = (i - 1.5) * 0.35 * c; g.add(p); g.userData.pattes.push(p); }
+  g.scale.setScalar(1.3); g.userData.anim = true; g.userData.dynamic = true; return g;
+});
+// les pattes qui courent ; le corps suit sa place (le moteur la calcule)
+setAnimHook('tarentule', (e, dt, v) => { e.patteT = (e.patteT || 0) + dt * (2 + v * 3);
+  e.mesh.userData.pattes.forEach((p, k) => { p.rotation.x = Math.sin(e.patteT * 6 + k * 1.3) * 0.35; });
+  e.mesh.position.copy(e.pos); e.mesh.rotation.y = e.yaw; return true; });
+let TARENTULES = null, CORDE = null, mouille = 0;
+function grotte() {
+  // les tarentules gardent le banc tant que la corde n'est pas reprise ; nées une fois, après le chargement
+  if (!TARENTULES && etape4() === 'corde' && !state.corde4 && BANC.length) {
+    TARENTULES = [];
+    for (let k = 1; k < BANC.length; k++) { const [ax, az, ay, bx, bz] = BANC[k]; for (const t of [0.35, 0.8]) TARENTULES.push(spawnEnemy('tarentule', ax + (bx - ax) * t, az + (bz - az) * t, 'grotte', ay)); }
+  }
+  // la corde, roulée dans la bouche de la grotte
+  if (!CORDE && BOUCHE && etape4() === 'corde' && !state.corde4) {
+    const [x, z, y, yaw] = BOUCHE;
+    CORDE = mesh(new THREE.TorusGeometry(0.22, 0.05, 6, 16), phMat('wood_planks', 0.3, 0.3, { color: 0x8a5a30 }), x + Math.sin(yaw) * 0.9, y + 0.08, z + Math.cos(yaw) * 0.9);
+    CORDE.rotation.x = Math.PI / 2; scene.add(CORDE);
+    addInteract({ pos: CORDE.position, r: 2.4, prompt: () => 'ramasser la corde du tambourin', enabled: () => CORDE.visible && decouvert(),
+      fn: () => { state.corde4 = true; CORDE.visible = false; SFX.pickup(); saveGame(true); showMessage('La corde du tambourin ! Rapporte-la à Assunta, à Alberobello.', 4); } });
+  }
+  // la mer remonte : sur le banc, Camille est repoussée vers la jetée, trempée (pas de noyade :
+  // l'acte III n'a pas encore donné le souffle)
+  if (BANC.length && !decouvert() && Date.now() - mouille > 3000) {
+    const p = player.pos; let sur = false;
+    for (const [ax, az, , bx, bz, , w] of BANC.slice(1)) { const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz, t = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.z - az) * dz) / l2));
+      if (Math.hypot(p.x - ax - dx * t, p.z - az - dz * t) < w + 0.5) sur = true; }
+    if (sur) { mouille = Date.now(); const [qx, qz, qy] = BANC[0]; p.set(qx, qy, qz); showMessage('La mer remonte ! Tu ressors trempée sur la jetée.', 3.5); }
+  }
 }
 
 function port({ hauteur, inscrire, PLAN, H0 }) {
@@ -133,6 +225,7 @@ function port({ hauteur, inscrire, PLAN, H0 }) {
 
   // Nunzia naît après le chargement (anime) : son âge dépend de l'étape de l'acte, que la
   // sauvegarde ne rend qu'une fois la partie lancée
+  if (!EN_INSTANCE) bancDeRochers();
   return { y: solQuai(NUNZIA.x, NUNZIA.z) ?? hauteur(NUNZIA.x, NUNZIA.z) };
 }
 
@@ -209,6 +302,13 @@ function parlerNunzia() {
       fn: () => { passer4('trente'); indice4('chateau'); } },
     ...lettre(),
   ]);
+  if (e === 'rythme') return dialogue([
+    { text: 'Nunzia a soixante ans. Un châle sur les épaules, les cheveux gris.' },
+    { who: 'Nunzia', text: 'Elle a ta taille, maintenant, ma fille. Elle avait trois ans la dernière fois.' },
+    { who: 'Nunzia', text: 'Le château ne s’ouvre qu’au rythme de **la pizzica**. **La vieille joueuse de tambourin d’Alberobello** te l’apprendra. C’est ma fille.',
+      fn: () => { passer4('soixante'); indice4('joueuse'); } },
+  ]);
+  if (e === 'soixante' || e === 'corde') return dialogue([{ who: 'Nunzia', text: 'Assunta, **à Alberobello**, près de la gare. Elle joue mieux que moi. Mieux que tout le monde.' }]);
   if (e === 'trente') return dialogue([
     { who: 'Nunzia', text: 'Le château de Matera, Camille. **Le Tramontano**, sur sa colline.' },
     ...lettre(),
@@ -226,7 +326,7 @@ function bercer(t) {
 }
 
 const lieuPret = ville('gallipoli', {
-  solLieu: solQuai,
+  solLieu: (x, z) => solQuai(x, z) ?? solBanc(x, z),
   plus(ctx) {
     const { y } = port(ctx); place(ctx);
     nunziaY = y;
@@ -237,6 +337,7 @@ const lieuPret = ville('gallipoli', {
     if (!nunzia && state.running) nunzia = naitre4(EN_INSTANCE ? 'nunzia' : roleNunzia(), NUNZIA.x, nunziaY, NUNZIA.z,
       Math.atan2(COLOSSE.x - NUNZIA.x, COLOSSE.z - NUNZIA.z), 'parler à Nunzia', parlerNunzia);
     if (nunzia && nunzia.userData.ctrl) PNJ.animeVillageois(nunzia, dt, false);
+    if (state.running && !EN_INSTANCE) grotte();
     // le Colosse, figé : une image de sa pose, une fois pour toutes
     if (colosse && coule++ < 900) couler();           // les quinze premières secondes
     if (colosse && !fige && colosse.userData.ctrl) { const c = colosse.userData.ctrl; c.jouer(colosse.userData.idle, 0); c.update(0.9); fige = true; }
@@ -282,3 +383,5 @@ const ARENE_GALLIPOLI = {
 };
 // le niveau naît dans monde() (après l'installation de Camille) : ville() rend sa promesse
 lieuPret.then(() => { if (G.level && G.level.name === 'gallipoli') G.level.arenes = [ARENE_GALLIPOLI]; });
+
+window.__gallipoli = { BANC, bouche: () => BOUCHE, decouvert };      // pour les bancs (bancs/acte4-*.mjs)

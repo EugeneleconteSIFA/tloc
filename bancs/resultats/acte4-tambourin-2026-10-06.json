@@ -1,0 +1,112 @@
+{
+ "pas": [
+  {
+   "nom": "5. une porte du château : pas de serrure",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "5. les trois portes s’atteignent à pied depuis l’arrivée",
+   "ok": true,
+   "detail": "[true,true,true]"
+  },
+  {
+   "nom": "5. le vieux des Sassi : un rythme",
+   "ok": true,
+   "detail": "Le vieux : Tu veux entrer là-dedans ? Personne n’y entre plus. | Le vieux : On ne l’ouvre pas avec une clé. On l’ouvre avec **un rythme**. Ma mère le savait."
+  },
+  {
+   "nom": "le train pour Gallipoli",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "6. Nunzia, 60 ans : la pizzica, la joueuse",
+   "ok": true,
+   "detail": " : Nunzia a soixante ans. Un châle sur les épaules, les cheveux gris. | Nunzia : Elle a ta taille, maintenant, ma fille. Elle avait trois ans la dernière fois. | Nunzia : Le château ne s’ouvre qu’au rythme de **la pizzica**. **La vieille joueuse de tambourin d’Alberobello** te l’apprendra. C’est ma fille."
+  },
+  {
+   "nom": "le train pour Alberobello",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "7. Assunta est là",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "7. Assunta : les tarentules, les grottes",
+   "ok": true,
+   "detail": "Assunta : Ma mère t’envoie ? Elle parle encore de toi. Une fille qui ne vieillit pas. | Assunta : Mon tambourin n’a plus de corde. **Les tarentules** l’ont emportée. Elles montent **des grottes sous les remparts de Gallipoli**. On n’y entre qu’**à marée basse**."
+  },
+  {
+   "nom": "le train pour Gallipoli",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "8. marée basse : le banc découvert",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "8. les tarentules gardent le banc",
+   "ok": true,
+   "detail": "6 tarentules"
+  },
+  {
+   "nom": "8. de la jetée à la grotte à pied, à marée basse",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "8. la corde ramassée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "8. la mer remonte : Camille repoussée sur la jetée",
+   "ok": true,
+   "detail": "0.0 m"
+  },
+  {
+   "nom": "le train pour Alberobello",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "8. Assunta : la pizzica, le tambourin",
+   "ok": true,
+   "detail": "Assunta : Tu l’as ! Attends… |  : Elle retend la peau, noue la corde, et frappe trois coups. Un silence. | Assunta : Écoute : trois coups, un silence. **La pizzica.** Bats-la, et **le temps ralentit autour de toi** (K). | Assunta : **Les portes du château de Matera** attendent ce rythme-là depuis longtemps."
+  },
+  {
+   "nom": "8. K : le temps ralentit autour de Camille",
+   "ok": true,
+   "detail": "lent 0.12"
+  },
+  {
+   "nom": "le carnet : la joueuse, les tarentules",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’objectif : les portes au tambourin",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

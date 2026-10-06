@@ -241,6 +241,7 @@ de Nunzia ; l'élan posé dans `state.elan`, le saut demandé à `engine.js` ; l
 | lot | état |
 |---|---|
 | 1 — le temps qui court, étapes 1 à 4 | **codé, joué en headless de bout en bout** (6 octobre, `bancs/acte4-enquete.mjs`, 22 pas sur 22, captures `bancs/resultats/acte4-enquete-…`) : la journée en deux minutes (soleil, lune, couleurs, brume, exposition), la marée de Gallipoli (le plan d'eau et les barques), Camille à l'arrivée, Cosimo, le train, Nunzia à 15 puis 30 ans (née après le chargement, à l'âge de l'étape), le voisin de Donato devant une porte des Sassi (atteignable à pied depuis l'arrivée), le chef de dépôt, la lettre confiée, le carnet du journal, l'objectif. Chargement (`bancs/acte4-charge.mjs`, A/B entrelacé) : Σ des trois villes 5,8–6,2 s avant, 5,7–5,9 s après. |
-| 2 – 5 | à faire |
+| 2 — étapes 5 à 8 | **codé, joué en headless de bout en bout** (6 octobre, `bancs/acte4-tambourin.mjs`, tout passé) : les trois portes du château (atteintes à pied depuis l'arrivée), le vieux des Sassi, Nunzia à 60 ans, Assunta devant son trullo près de la gare d'Alberobello (son tambourin en main), la grotte : un banc de rochers au pied du mur nord du château angevin, découvert à marée basse (`solLieu`), de la jetée du Colosse à une bouche noire ; six tarentules (`KINDS.tarentule`, leurs pattes animées) ; la corde ; la mer qui remonte rejette Camille sur la jetée ; le tambourin (K : huit secondes de ralenti, la journée, la marée et les tarentules). |
+| 3 – 5 | à faire |
 
 À reprendre : au loin, la nuit, la mer reste pâle (le reflet du ciel à l'horizon).

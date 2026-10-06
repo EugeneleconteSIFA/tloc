@@ -7,10 +7,11 @@
 // par des murs plus bas, jamais montés à leur hauteur. Les centres et les rayons sont lus sur
 // l'emprise d'OSM (retirée du plan par carte/mondes/gradins-pouilles.py).
 // Et, pour l'acte IV (docs/DECOUPAGE-ACTE4.md, étape 3) : le voisin de Donato, le grand-père de
-// Nunzia, devant une porte des Sassi ; le chef de dépôt sur le quai de la gare.
+// Nunzia, devant une porte des Sassi ; le chef de dépôt sur le quai de la gare. Étape 5 : les trois
+// portes des tours, sans serrure ni gonds, et le vieux des Sassi qui sait qu'elles s'ouvrent à un rythme.
 // =====================================================================
 import { ville, GARES, etape4, passe4, passer4, indice4, naitre4, EN_INSTANCE } from './pouilles.js';
-import { THREE, TAU, scene, phMat, dialogue, state } from './engine.js?v=41';
+import { THREE, TAU, scene, phMat, dialogue, state, showMessage, addInteract } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -65,7 +66,7 @@ function chateau({ hauteur, inscrire }) {
 }
 
 // ---------- l'acte IV : le voisin de Donato, le chef de dépôt ----------
-const GENS = { voisin: null, chef: null, places: null };
+const GENS = { voisin: null, chef: null, vieux: null, portes: null, places: null };
 // Devant une porte des Sassi, près de l'arrivée : la première place libre au pied d'une maison,
 // en cherchant de plus en plus loin — le plan bouge, une place écrite à la main tomberait un
 // jour dans un mur. Tournée dos à la maison.
@@ -97,6 +98,43 @@ function parlerChef() {
   ]);
   dialogue([{ who: 'Le chef de dépôt', text: 'Les trains partent à l’heure. C’est l’heure qui ne tient pas en place.' }]);
 }
+// ---------- le château fermé (étape 5) ----------
+// Une porte de bois par tour, du côté de la ville (vers l'arrivée) : c'est par là qu'on monte des
+// Sassi. Sans serrure ni gonds — elles s'ouvriront au tambourin (lot 3).
+function portesChateau({ hauteur }) {
+  const bois = phMat('wood_cabinet_worn_long', 1.2, 2.2, { color: 0x8a6a4a }), pierre = phMat('old_stone_wall_02', 1, 1, { color: 0xe4d8be });
+  return TOURS.map((T, i) => {
+    const dx = -40 - T.x, dz = 20 - T.z, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
+    const px = T.x + ux * (T.r - 0.05), pz = T.z + uz * (T.r - 0.05), y = hauteur(T.x + ux * (T.r * 1.25), T.z + uz * (T.r * 1.25));
+    const g = new THREE.Group(); g.position.set(px, y, pz); g.rotation.y = Math.atan2(ux, uz);
+    const v = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.4, 0.3), bois); v.position.y = 1.7; v.castShadow = true;
+    const arc = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.5, 0.5), pierre); arc.position.y = 3.65;
+    g.add(v, arc); scene.add(g);
+    const ix = T.x + ux * (T.r * 1.15 + 1.4), iz = T.z + uz * (T.r * 1.15 + 1.4);
+    const it = addInteract({ pos: new THREE.Vector3(ix, hauteur(ix, iz), iz), r: 3.2, prompt: () => 'pousser la porte', fn: () => toucherPorte(i) });
+    return { g, it, x: ix, z: iz, y: hauteur(ix, iz), yaw: Math.atan2(ux, uz) };
+  });
+}
+function toucherPorte(i) {
+  if (!state.tambourin) return showMessage('Pas de serrure. Pas de gonds.', 3);
+  showMessage('La porte attend un rythme. (K : le tambourin)', 3);
+}
+function parlerVieux() {
+  const e = etape4();
+  if (e === 'trente') return dialogue([
+    { who: 'Le vieux', text: 'Tu veux entrer là-dedans ? Personne n’y entre plus.' },
+    { who: 'Le vieux', text: 'On ne l’ouvre pas avec une clé. On l’ouvre avec **un rythme**. Ma mère le savait.', fn: () => { passer4('rythme'); indice4('rythme'); } },
+  ]);
+  if (passe4('tambourin')) return dialogue([{ who: 'Le vieux', text: 'Tiens… J’entends la pizzica. Ça faisait longtemps.' }]);
+  if (passe4('rythme')) return dialogue([{ who: 'Le vieux', text: 'Un rythme, petite. Ma mère le savait. À Gallipoli, on danse encore, peut-être.' }]);
+  dialogue([{ who: 'Le vieux', text: 'Ce château, on ne l’a jamais fini. On n’a jamais eu le temps.' }]);
+}
+// le vieux s'adosse à la courtine, à quelques pas de la porte du donjon
+function placeVieux({ hauteur, bloque }, p) {
+  for (let r = 3; r < 16; r += 1) for (let k = 0; k < 16; k++) { const a = k / 16 * TAU, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
+    if (!bloque(x, z, 0.9) && Math.abs(hauteur(x, z) - p.y) < 1.5) return [x, hauteur(x, z), z, Math.atan2(p.x - x, p.z - z)]; }
+  return [p.x, p.y, p.z, p.yaw];
+}
 let tAvant = 0;
 ville('matera', {
   plus(ctx) { chateau(ctx);
@@ -106,11 +144,13 @@ ville('matera', {
   anime(now) {
     const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
     if (!state.running || EN_INSTANCE || !GENS.ctx) return;
-    if (!GENS.places) { GENS.places = { voisin: placeVoisin(GENS.ctx), chef: GENS.chef0 }; return; }
+    if (!GENS.places) { GENS.portes = portesChateau(GENS.ctx);
+      GENS.places = { voisin: placeVoisin(GENS.ctx), chef: GENS.chef0, vieux: placeVieux(GENS.ctx, GENS.portes[1]) }; return; }
     // nés après le chargement, un par image
     if (!GENS.voisin) GENS.voisin = naitre4('voisin_sassi', ...GENS.places.voisin, 'parler au voisin', parlerVoisin);
     else if (!GENS.chef) GENS.chef = naitre4('chef_depot', ...GENS.places.chef, 'parler au chef de dépôt', parlerChef);
-    for (const v of [GENS.voisin, GENS.chef]) if (v && v.userData.ctrl) PNJ.animeVillageois(v, dt, false);
+    else if (!GENS.vieux) GENS.vieux = naitre4('vieux_sassi', ...GENS.places.vieux, 'parler au vieux', parlerVieux);
+    for (const v of [GENS.voisin, GENS.chef, GENS.vieux]) if (v && v.userData.ctrl) PNJ.animeVillageois(v, dt, false);
   },
 });
 window.__matera = GENS;      // pour les bancs (bancs/acte4-*.mjs) : où se tiennent les gens
