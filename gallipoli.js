@@ -6,14 +6,14 @@
 //  - le PORT : les jetées et les quais d'OSM, qu'on parcourt à pied, et les barques de pêche ;
 //  - la place du COLOSSE : le géant de bronze inventé qui garde le port (STORY.md, acte IV ;
 //    son allure vient du colosse de Barletta), figé sur son socle pour l'instant ;
-//  - NUNZIA, quinze ans, sur le quai ;
+//  - NUNZIA sur le quai, à l'âge que l'acte IV lui a laissé (pouilles.js, roleNunzia) ;
 //  - la PLACE DE LA GARE, juste de l'autre côté du pont (Eugène, 2 octobre au soir : « une
 //    place bien chaleureuse ») : dallée de pierre claire, une fontaine, des orangers en pots,
 //    les tables d'un café sous leurs parasols, des bancs, et des guirlandes d'ampoules.
 // =====================================================================
-import { ville, GARES } from './pouilles.js';
+import { ville, GARES, etape4, passe4, passer4, indice4, roleNunzia, TEMPS, EN_INSTANCE, naitre4 } from './pouilles.js';
 import { especeGeo } from './foret.js';
-import { THREE, TAU, scene, phMat, mesh, boxG, dialogue, G } from './engine.js?v=41';
+import { THREE, TAU, scene, phMat, mesh, boxG, dialogue, G, state } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as PNJ from './pnj.js';
 
@@ -22,7 +22,7 @@ const COLOSSE = { x: 284, z: 32, yaw: -2.2 };
 const NUNZIA = { x: 272, z: 40 };
 const QUAIS = [];           // segments praticables : [ax, az, bx, bz, demi-largeur, y]
 const BARQUES = [];
-let HAUTEUR = null, colosse = null, nunzia = null, fige = false, coule = 0, tAvant = 0, Y_MER = 0, BRONZE = null;
+let HAUTEUR = null, colosse = null, nunzia = null, nunziaY = 0, fige = false, coule = 0, tAvant = 0, Y_MER = 0, BRONZE = null;
 const couler = () => colosse.traverse((o) => { if (o.isMesh && o.material !== BRONZE) { o.material = BRONZE; o.castShadow = true; } });
 
 // le sol des quais : monde.js le demande partout (solLieu) ; null hors des quais
@@ -131,12 +131,8 @@ function port({ hauteur, inscrire, PLAN, H0 }) {
     colosse.scale.setScalar(G.echelle * 6.2); colosse.position.set(COLOSSE.x, yq + 3.5, COLOSSE.z); colosse.rotation.y = COLOSSE.yaw; scene.add(colosse);
   }
 
-  // ---------- Nunzia ----------
-  nunzia = PNJ.buildRole('nunzia');
-  if (nunzia) {
-    const y = solQuai(NUNZIA.x, NUNZIA.z) ?? hauteur(NUNZIA.x, NUNZIA.z);
-    nunzia.scale.setScalar(G.echelle); nunzia.position.set(NUNZIA.x, y, NUNZIA.z); nunzia.rotation.y = Math.atan2(COLOSSE.x - NUNZIA.x, COLOSSE.z - NUNZIA.z); scene.add(nunzia);
-  }
+  // Nunzia naît après le chargement (anime) : son âge dépend de l'étape de l'acte, que la
+  // sauvegarde ne rend qu'une fois la partie lancée
   return { y: solQuai(NUNZIA.x, NUNZIA.z) ?? hauteur(NUNZIA.x, NUNZIA.z) };
 }
 
@@ -189,13 +185,35 @@ function place({ hauteur, inscrire }) {
   ampoules.forEach(([x, y, z], k) => { m4.makeTranslation(x, y, z); im.setMatrixAt(k, m4); }); scene.add(im);
 }
 
+// Nunzia, aux âges de l'enquête (docs/DIALOGUES-ACTE4.md) : les trois témoins sont la même
+// personne. Elle ne sait que ce qu'elle a appris à son âge.
 function parlerNunzia() {
-  dialogue([
+  const e = etape4(), lettre = () => state.ind4 && state.ind4.apprenti && !state.lettre4
+    ? [{ who: 'Nunzia', text: 'Tu l’as trouvé ? Au bout de la ligne… **Porte-lui ça.** Ne lis pas.' },
+       { text: 'Nunzia te confie une lettre, cachetée.', fn: () => { state.lettre4 = 'lettre'; } }] : [];
+  if (!e || e === 'arrivee') return dialogue([
     { who: 'Nunzia', text: 'Tu n’es pas d’ici, toi. Ici, tout le monde court.' },
-    { who: 'Nunzia', text: 'Le Colosse ? Il a changé quand l’homme rouge est venu. Mon grand-père l’a vu.' },
+    { who: 'Nunzia', text: 'Le Colosse ? Il a changé quand l’homme rouge est venu. **Mon grand-père** l’a vu. Il vit **dans les Sassi de Matera**, à l’ombre : là-bas, on vieillit moins vite.' },
     { text: 'Elle serre dans sa main un ticket de train, poinçonné. Au loin, un sifflet : elle tourne la tête.' },
-    { who: 'Nunzia', text: 'C’est le petit train. Il ne s’arrête qu’une minute.' },
+    { who: 'Nunzia', text: 'C’est le petit train. Il ne s’arrête qu’une minute.',
+      fn: () => { if (!e) return; passer4('quinze'); indice4('grandpere'); indice4('ticket'); } },
   ]);
+  if (e === 'quinze') return dialogue([
+    { who: 'Nunzia', text: 'Grand-père est **dans les Sassi de Matera**. Va vite. Ici, vite, c’est déjà tard.' },
+  ]);
+  if (e === 'grandpere') return dialogue([
+    { who: 'Nunzia', text: 'Camille ? Tu n’as pas changé. Pas d’un jour.' },
+    { text: 'Elle a trente ans. Tu lui tends le mot de Donato ; elle le lit sans rien dire.' },
+    { who: 'Nunzia', text: 'Grand-père est mort, je sais.' },
+    { who: 'Nunzia', text: 'Il me l’avait dit, avant : **l’homme rouge est monté au château de Matera, le Tramontano.**',
+      fn: () => { passer4('trente'); indice4('chateau'); } },
+    ...lettre(),
+  ]);
+  if (e === 'trente') return dialogue([
+    { who: 'Nunzia', text: 'Le château de Matera, Camille. **Le Tramontano**, sur sa colline.' },
+    ...lettre(),
+  ]);
+  dialogue([{ who: 'Nunzia', text: 'Le temps passe, Camille. Pas pour toi.' }]);
 }
 
 // les barques se balancent sur l'eau (une matrice par barque et par image : quarante au plus)
@@ -203,7 +221,7 @@ const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(
 function bercer(t) {
   if (!BARQUES.coques) return;
   BARQUES.forEach((b, k) => { const ph = t * 1.3 + b.ph; e.set(Math.sin(ph) * 0.05, b.ry, Math.sin(ph * 0.8) * 0.07); q.setFromEuler(e);
-    m4.compose(v.set(b.x, Y_MER + 0.35 + Math.sin(ph * 1.1) * 0.08, b.z), q, un); BARQUES.coques.setMatrixAt(k, m4); BARQUES.planchers.setMatrixAt(k, m4); });
+    m4.compose(v.set(b.x, Y_MER + TEMPS.maree + 0.35 + Math.sin(ph * 1.1) * 0.08, b.z), q, un); BARQUES.coques.setMatrixAt(k, m4); BARQUES.planchers.setMatrixAt(k, m4); });
   BARQUES.coques.instanceMatrix.needsUpdate = BARQUES.planchers.instanceMatrix.needsUpdate = true;
 }
 
@@ -211,11 +229,13 @@ const lieuPret = ville('gallipoli', {
   solLieu: solQuai,
   plus(ctx) {
     const { y } = port(ctx); place(ctx);
-    if (nunzia) ctx.addInteract({ pos: new THREE.Vector3(NUNZIA.x, y, NUNZIA.z), r: 3.5, prompt: () => 'parler à Nunzia', fn: parlerNunzia });
+    nunziaY = y;
   },
   anime(now) {
     const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
     bercer(now / 1000);
+    if (!nunzia && state.running) nunzia = naitre4(EN_INSTANCE ? 'nunzia' : roleNunzia(), NUNZIA.x, nunziaY, NUNZIA.z,
+      Math.atan2(COLOSSE.x - NUNZIA.x, COLOSSE.z - NUNZIA.z), 'parler à Nunzia', parlerNunzia);
     if (nunzia && nunzia.userData.ctrl) PNJ.animeVillageois(nunzia, dt, false);
     // le Colosse, figé : une image de sa pose, une fois pour toutes
     if (colosse && coule++ < 900) couler();           // les quinze premières secondes

@@ -14,7 +14,8 @@
 // de dessin, et pas une texture de plus que celles déjà chargées.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, scene, phMat, PH } from './engine.js?v=41';
+import { THREE, TAU, scene, phMat, PH, G, state, sun, hemi, sky, SUN_DIR, renderer, showMessage, saveGame, addInteract } from './engine.js?v=41';
+import * as PNJ from './pnj.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Les gares : au BORD du cœur de chaque ville (Eugène, 2 octobre au soir : de petites parties
@@ -387,7 +388,9 @@ function gare({ hauteur, inscrire }, Gr, murs, lavage) {
  */
 export function ville(nom, propre = {}) {
   const f = { ...FICHES[nom], ...propre };
-  return monde({ ...f, gare: { ...GARES[nom], lignes: lignes(nom) },
+  const lieu = monde({ ...f, gare: { ...GARES[nom], lignes: lignes(nom) },
+    // le temps qui court passe avant ce qui est propre à la ville (Nunzia lit son âge)
+    anime: (now) => { tempsQuiCourt(now, nom); if (propre.anime) propre.anime(now); },
     toitSur: (b, g) => toitPouilles(b, g) || (propre.toitSur ? propre.toitSur(b, g) : false),
     plus: (ctx) => { const lav = f.murs === CHAUX ? LAVAGE : 0;
       // (les emprises du cœur, pour le muret du bord : relevées avant que habiller ne les oublie)
@@ -396,4 +399,140 @@ export function ville(nom, propre = {}) {
       if (ctx.PLAN.lointain) { bord(ctx); lointain(ctx, f.murs, lav); }
       BORD_MAISONS = [];
       if (propre.plus) propre.plus(ctx); } });
+  // le niveau naît dans monde() : l'objectif, le bandeau et le carnet de l'acte s'y branchent
+  lieu.then(() => { if (!G.level || G.level.name !== nom || EN_INSTANCE) return;
+    G.level.objective = objectif4; G.level.indices = carnet4;
+    G.level.counts = () => `<small>${FICHES[nom].titre}</small><br><small>Objectif : ${objectif4()}</small>`; });
+  return lieu;
+}
+
+// =====================================================================
+//  L'ACTE IV — la Cloche des Heures (docs/DECOUPAGE-ACTE4.md, docs/DIALOGUES-ACTE4.md)
+// =====================================================================
+// L'acte passe d'une ville à l'autre : son avancement (state.acte4), le carnet du journal et le
+// temps qui court sont ici, une fois pour les trois villes. Ce qui se passe dans une ville
+// (Nunzia, le voisin, le Colosse) est dans son fichier, qui lit l'étape ici.
+
+// Une instance du multi ne joue pas l'histoire : tloc-multi.js y tient le bandeau et l'arrivée
+// (la même lecture que la page, avant que tloc-multi.js ne se charge)
+export const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
+
+const ETAPES4 = ['arrivee', 'quinze', 'grandpere', 'trente', 'rythme', 'soixante', 'corde', 'tambourin', 'chateau', 'colosse', 'heures', 'temple'];
+export const etape4 = () => (EN_INSTANCE ? null : state.acte4 || null);
+/** vrai si l'acte est arrivé à `e` (ou plus loin) */
+export const passe4 = (e) => { const a = etape4(); return !!a && ETAPES4.indexOf(a) >= ETAPES4.indexOf(e); };
+export function passer4(e) {
+  if (passe4(e)) return;
+  state.acte4 = e; saveGame(true);
+}
+// les indices de l'acte : écrits au carnet quand un témoin les donne, barrés quand c'est fait
+const INDICES4 = {
+  grandpere: { txt: 'Le grand-père de Nunzia a vu l’homme rouge. Il vit dans les Sassi de Matera.', qui: 'Nunzia, 15 ans', fait: () => passe4('grandpere') },
+  ticket: { txt: 'Nunzia garde un ticket de train poinçonné, et tourne la tête au sifflet.', qui: 'Nunzia', fait: () => !!state.lettre4 },
+  mot: { txt: 'Donato est mort. Son voisin m’a donné un mot pour Nunzia.', qui: 'le voisin, à Matera', fait: () => passe4('trente') },
+  apprenti: { txt: 'L’apprenti du train qui regardait la mer a été envoyé au bout de la ligne, à Alberobello.', qui: 'le chef de dépôt, à Matera', fait: () => state.lettre4 === 'lettre' },
+  chateau: { txt: 'L’homme rouge est monté au château de Matera, le Tramontano.', qui: 'Nunzia, 30 ans', fait: () => passe4('rythme') },
+};
+export function indice4(k) {
+  state.ind4 = state.ind4 || {};
+  if (state.ind4[k]) return;
+  state.ind4[k] = true; showMessage('Indice noté au journal (J)', 3); saveGame(true);
+}
+function carnet4() {
+  if (!state.ind4) return '';
+  const l = Object.keys(INDICES4).filter((k) => state.ind4[k]).map((k) => { const i = INDICES4[k], f = i.fait();
+    return `<div style="margin:4px 0;${f ? 'opacity:.5;text-decoration:line-through' : ''}">${i.txt} <span style="opacity:.6">— ${i.qui}</span></div>`; });
+  return l.length ? `<h3 style="margin:18px 0 6px;color:#9fd0ff;font-size:16px;letter-spacing:1px">INDICES</h3><div style="padding:8px 14px;border-left:4px solid #9fd0ff;background:rgba(255,255,255,.06);border-radius:6px">${l.join('')}</div>` : '';
+}
+export function objectif4() {
+  const ici = G.level && G.level.name;
+  switch (etape4()) {
+    case 'arrivee': return ici === 'gallipoli' ? 'Parle à la jeune fille de la jetée, au pied du géant de bronze'
+      : 'Prends le petit train pour Gallipoli, la ville de la mer : le géant de bronze du port s’est mis à marcher';
+    case 'quinze': return 'Trouve le grand-père de Nunzia, dans les Sassi de Matera (le petit train)';
+    case 'grandpere': return 'Rapporte le mot de Donato à Nunzia, sur la jetée de Gallipoli';
+    case 'trente': return 'Monte au château Tramontano, sur sa colline, à Matera';
+    default: return 'Les Pouilles : ici, le temps court.';
+  }
+}
+
+// ---------- les gens de l'acte : complètent PNJ.ROLES sans toucher pnj.js ----------
+// Nunzia vieillit à chaque retour (STORY.md : « elle ne rajeunit jamais ») : les cheveux noirs
+// grisonnent puis blanchissent, la blouse de lin devient le noir des veuves du Sud, le dos se
+// voûte (le gabarit des vieux)
+{ const N = PNJ.ROLES.nunzia, V = PNJ.ROLES.pecheur, C = PNJ.ROLES.cosimo;
+  Object.assign(PNJ.ROLES, {
+    nunzia30: N && { ...N, metier: 'nunzia30', gabarit: 'droite', h: N.h * 1.04, cheveuxC: 0x2a1e18, bas: 0x24425a },
+    nunzia60: N && { ...N, metier: 'nunzia60', gabarit: 'droite', h: N.h * 1.02, cheveuxC: 0x8a8580, haut: 0x3a3634, valeur: 0.8, bas: 0x2a2a2e },
+    nunzia75: N && { ...N, metier: 'nunzia75', gabarit: 'sec', h: N.h * 0.97, cheveuxC: 0xe8e4dc, haut: 0x262426, valeur: 0.8, bas: 0x1e1e22 },
+    // le voisin de Donato, dans les Sassi : un vieux comme le pêcheur de Lille, debout, sans canne
+    voisin_sassi: V && { ...V, metier: 'voisin_sassi', idle: 'Idle_FoldArms_Loop', tete: undefined, dos: undefined, haut: 0x6a5a48 },
+    // le chef de dépôt de Matera : le bleu de Cosimo, plus vieux et barbu
+    chef_depot: C && { ...C, metier: 'chef_depot', gabarit: 'droite', cheveuxC: 0x7a7470, barbe: 'coiffures_r:Hair_Beard', idle: 'Idle_Loop' },
+    // l'apprenti qui a remplacé Cosimo sur le quai d'Alberobello
+    apprenti: C && { ...C, metier: 'apprenti', cheveuxC: 0x5a3a20, idle: 'Idle_Loop' },
+  }); }
+/** le rôle de Nunzia selon l'étape : on la retrouve plus âgée à chaque retour */
+export function roleNunzia() {
+  return passe4('chateau') ? 'nunzia75' : passe4('rythme') ? 'nunzia60' : passe4('grandpere') ? 'nunzia30' : 'nunzia';
+}
+
+// =====================================================================
+//  Le temps qui court (SCENARIO.md § 13, « le mal du temps »)
+// =====================================================================
+// La journée en deux minutes : le soleil fait le tour du ciel, la lumière passe du blanc de midi à
+// l'orange puis au bleu de nuit. Tout par ce que le moteur exporte, comme la nuit de Lille
+// (quetes.js) : SUN_DIR (que le ciel et l'ombre relisent à chaque image), sun, hemi, les couleurs
+// du ciel, la brume. Pas une lumière de plus, et surtout pas de scene.environment basculé :
+// chaque bascule recompile tous les shaders (une image figée deux fois par journée).
+// À Gallipoli, la marée monte et descend de 1,2 m en trois minutes.
+export const TEMPS = { maree: 0, lent: 1, jour: 1, phase: 0.3 };
+const JOURNEE = 120, MAREE = 180;
+let T4 = null;
+const lisse = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const NUIT4 = { top: new THREE.Color(0x050a18), mid: new THREE.Color(0x0e1a34), bot: new THREE.Color(0x1c2840), soleil: new THREE.Color(0x9cb4e8), ciel: new THREE.Color(0x30426e), sol: new THREE.Color(0x0b0d14), brume: new THREE.Color(0x0c1220) };
+const ORANGE = new THREE.Color(0xff9a50), cTmp = new THREE.Color();
+function tempsQuiCourt(now, nom) {
+  if (!state.running) return;
+  if (!EN_INSTANCE && !state.acte4) passer4('arrivee');
+  const u = sky && sky.material.uniforms;
+  if (!T4) {
+    if (!u) return;
+    T4 = { t: state.time, dir: SUN_DIR.clone(), top: u.top.value.clone(), mid: u.mid.value.clone(), bot: u.bot.value.clone(), cirrus: u.cirrus.value,
+      sc: sun.color.clone(), si: sun.intensity, hc: hemi.color.clone(), hg: hemi.groundColor.clone(), hi: hemi.intensity,
+      brume: scene.fog ? scene.fog.color.clone() : null, expo: renderer.toneMappingExposure, mer: null, merY: 0 };
+    scene.traverse((o) => { if (!T4.mer && o.isMesh && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius === 6000) { T4.mer = o; T4.merY = o.position.y; } });
+  }
+  // le temps reprend son pas quand la cloche des Heures a sonné ; en instance, il n'a jamais couru
+  const court = !EN_INSTANCE && !passe4('heures');
+  const dt = Math.max(0, Math.min(0.1, state.time - T4.t)); T4.t = state.time;
+  if (!court) { if (T4.fige) return; T4.fige = true; TEMPS.phase = 0.3; TEMPS.maree = 0; }
+  else TEMPS.phase = (TEMPS.phase + dt * TEMPS.lent / JOURNEE) % 1;
+  const a = TEMPS.phase * TAU, s = Math.sin(a), j = lisse(-0.12, 0.22, s);
+  TEMPS.jour = j;
+  // la direction : le soleil le jour, la lune (à l'opposé) la nuit — toujours un peu levée, pour
+  // que l'ombre reste sous les choses
+  const c = s >= 0 ? 1 : -1;
+  SUN_DIR.set(Math.cos(a) * c * 0.9, Math.max(0.14, Math.abs(s)), T4.dir.z).normalize();
+  const bas = (1 - lisse(0.08, 0.5, s)) * j;          // l'orange du soleil bas
+  u.top.value.copy(NUIT4.top).lerp(T4.top, j); u.mid.value.copy(NUIT4.mid).lerp(T4.mid, j).lerp(ORANGE, bas * 0.25); u.bot.value.copy(NUIT4.bot).lerp(T4.bot, j).lerp(ORANGE, bas * 0.45);
+  u.cirrus.value = T4.cirrus * (0.2 + 0.8 * j);
+  sun.color.copy(NUIT4.soleil).lerp(cTmp.copy(T4.sc).lerp(ORANGE, bas * 0.7), j); sun.intensity = 0.45 + (T4.si - 0.45) * j * (1 - bas * 0.4);
+  hemi.color.copy(NUIT4.ciel).lerp(T4.hc, j); hemi.groundColor.copy(NUIT4.sol).lerp(T4.hg, j); hemi.intensity = 0.4 + (T4.hi - 0.4) * j;
+  // la carte d'environnement du jour reste (la basculer recompile tout) : elle éclairait encore
+  // les murs blancs et la mer en pleine nuit — c'est l'exposition qui baisse, un simple réglage
+  renderer.toneMappingExposure = T4.expo * (0.45 + 0.55 * j);
+  if (scene.fog && T4.brume) scene.fog.color.copy(NUIT4.brume).lerp(T4.brume, j).lerp(ORANGE, bas * 0.2);
+  // la marée (Gallipoli) : le plan d'eau de monde.js monte et descend ; la règle de la mer
+  // (bloque) reste celle du plan, à 60 cm près — on ne marche pas plus loin à marée basse
+  if (T4.mer && court) { TEMPS.maree = Math.sin(state.time * TEMPS.lent * TAU / MAREE) * 0.6; T4.mer.position.y = T4.merY + TEMPS.maree; }
+  else if (T4.mer) T4.mer.position.y = T4.merY;
+}
+
+/** un habitant de l'acte, né après le chargement (règle 8), posé, tourné, et sa parole */
+export function naitre4(role, x, y, z, yaw, prompt, fn, r = 3.5) {
+  const v = PNJ.buildRole(role); if (!v) return null;
+  v.scale.setScalar(G.echelle); v.position.set(x, y, z); v.rotation.y = yaw; scene.add(v);
+  addInteract({ pos: v.position, r, prompt: () => prompt, fn, enabled: () => v.visible });
+  return v;
 }

@@ -6,9 +6,12 @@
 // plus basses aux bouts — reliées par des courtines crénelées, et une cour fermée à l'arrière
 // par des murs plus bas, jamais montés à leur hauteur. Les centres et les rayons sont lus sur
 // l'emprise d'OSM (retirée du plan par carte/mondes/gradins-pouilles.py).
+// Et, pour l'acte IV (docs/DECOUPAGE-ACTE4.md, étape 3) : le voisin de Donato, le grand-père de
+// Nunzia, devant une porte des Sassi ; le chef de dépôt sur le quai de la gare.
 // =====================================================================
-import { ville } from './pouilles.js';
-import { THREE, TAU, scene, phMat } from './engine.js?v=41';
+import { ville, GARES, etape4, passe4, passer4, indice4, naitre4, EN_INSTANCE } from './pouilles.js';
+import { THREE, TAU, scene, phMat, dialogue, state } from './engine.js?v=41';
+import * as PNJ from './pnj.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const TOURS = [
@@ -61,4 +64,53 @@ function chateau({ hauteur, inscrire }) {
   im.castShadow = im.receiveShadow = true; scene.add(im);
 }
 
-ville('matera', { plus: chateau });
+// ---------- l'acte IV : le voisin de Donato, le chef de dépôt ----------
+const GENS = { voisin: null, chef: null, places: null };
+// Devant une porte des Sassi, près de l'arrivée : la première place libre au pied d'une maison,
+// en cherchant de plus en plus loin — le plan bouge, une place écrite à la main tomberait un
+// jour dans un mur. Tournée dos à la maison.
+function placeVoisin({ hauteur, bloque }) {
+  const x0 = -40, z0 = 20;
+  for (let r = 8; r < 50; r += 2) for (let k = 0; k < 24; k++) {
+    const a = k / 24 * TAU, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
+    if (bloque(x, z, 1.2)) continue;
+    for (let j = 0; j < 8; j++) { const b = j / 8 * TAU;
+      if (bloque(x + Math.cos(b) * 1.6, z + Math.sin(b) * 1.6, 0.2) && !bloque(x - Math.cos(b) * 3, z - Math.sin(b) * 3, 0.6))
+        return [x, hauteur(x, z), z, Math.atan2(-Math.cos(b), -Math.sin(b))]; }
+  }
+  return [x0, hauteur(x0, z0), z0, 0];
+}
+function parlerVoisin() {
+  const e = etape4();
+  if (e === 'quinze') return dialogue([
+    { who: 'Le voisin', text: 'Le vieux Donato ? Mort la semaine dernière. Ici, une semaine…' },
+    { who: 'Le voisin', text: 'Il a laissé ça **pour la petite de Gallipoli**. Moi, je ne vais plus jusqu’à la mer.' },
+    { text: 'Il te donne un mot plié en quatre.', fn: () => { passer4('grandpere'); indice4('mot'); } },
+  ]);
+  if (e === 'grandpere') return dialogue([{ who: 'Le voisin', text: 'Porte-le à la petite. **À Gallipoli**, sur le port.' }]);
+  dialogue([{ who: 'Le voisin', text: 'À l’ombre des Sassi, on vieillit moins vite. Un peu moins.' }]);
+}
+function parlerChef() {
+  if (passe4('quinze') && state.ind4 && state.ind4.ticket && !state.ind4.apprenti) return dialogue([
+    { who: 'Le chef de dépôt', text: 'Une fille de Gallipoli, avec un ticket poinçonné ? Il y avait un apprenti qui regardait toujours vers la mer…' },
+    { who: 'Le chef de dépôt', text: '**Envoyé au bout de la ligne, à Alberobello.** Il y a longtemps. Enfin, ici, longtemps…', fn: () => indice4('apprenti') },
+  ]);
+  dialogue([{ who: 'Le chef de dépôt', text: 'Les trains partent à l’heure. C’est l’heure qui ne tient pas en place.' }]);
+}
+let tAvant = 0;
+ville('matera', {
+  plus(ctx) { chateau(ctx);
+    const g = GARES.matera, c = Math.cos(g.rot), s = Math.sin(g.rot), a = 7, b = -2.6;
+    // (la place du voisin se cherche après le chargement : 0,3 s de plus à Matera sinon)
+    GENS.ctx = ctx; GENS.chef0 = [g.x + a * c - b * s, g.y + 0.9, g.z + a * s + b * c, -g.rot + Math.PI / 2]; },
+  anime(now) {
+    const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
+    if (!state.running || EN_INSTANCE || !GENS.ctx) return;
+    if (!GENS.places) { GENS.places = { voisin: placeVoisin(GENS.ctx), chef: GENS.chef0 }; return; }
+    // nés après le chargement, un par image
+    if (!GENS.voisin) GENS.voisin = naitre4('voisin_sassi', ...GENS.places.voisin, 'parler au voisin', parlerVoisin);
+    else if (!GENS.chef) GENS.chef = naitre4('chef_depot', ...GENS.places.chef, 'parler au chef de dépôt', parlerChef);
+    for (const v of [GENS.voisin, GENS.chef]) if (v && v.userData.ctrl) PNJ.animeVillageois(v, dt, false);
+  },
+});
+window.__matera = GENS;      // pour les bancs (bancs/acte4-*.mjs) : où se tiennent les gens

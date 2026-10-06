@@ -1,0 +1,112 @@
+{
+ "pas": [
+  {
+   "nom": "1. l’arrivée : acte4 = arrivee",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "1. Camille : « Le soleil… il court. »",
+   "ok": true,
+   "detail": "Camille : Le soleil… il court."
+  },
+  {
+   "nom": "le soleil court",
+   "ok": true,
+   "detail": "[[-0.37,0.85,0.38],[-0.49,0.78,0.38]]"
+  },
+  {
+   "nom": "1. Cosimo jeune : Gallipoli, le géant",
+   "ok": true,
+   "detail": "Cosimo : Le train repart dans une minute. Ici, une minute, ce n’est rien. | Cosimo : Je descends jusqu’à **Gallipoli**, et je remonte. Tous les jours. **Le géant de bronze du port s’est mis à marcher**, là-bas. | Cosimo : À Gallipoli, il y a une fille, sur le quai… Non. Rien."
+  },
+  {
+   "nom": "le train pour Gallipoli",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "Gallipoli chargée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "l’objectif mène à la jetée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la marée bouge",
+   "ok": true,
+   "detail": "0.276 → 0.346"
+  },
+  {
+   "nom": "2. Nunzia est sur la jetée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "2. Nunzia, 15 ans : le grand-père, les Sassi",
+   "ok": true,
+   "detail": "Nunzia : Tu n’es pas d’ici, toi. Ici, tout le monde court. | Nunzia : Le Colosse ? Il a changé quand l’homme rouge est venu. **Mon grand-père** l’a vu. Il vit **dans les Sassi de Matera**, à l’ombre : là-bas, on vieillit moins vite. |  : Elle serre dans sa main un ticket de train, poinçonné. Au loin, un sifflet : elle tourne la tête. | Nunzia : C’est le petit train. Il ne s’arrête qu’une minute."
+  },
+  {
+   "nom": "2. acte4 = quinze, indices grandpere et ticket",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "le train pour Matera",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "3. le chef de dépôt : au bout de la ligne",
+   "ok": true,
+   "detail": "Le chef de dépôt : Une fille de Gallipoli, avec un ticket poinçonné ? Il y avait un apprenti qui regardait toujours vers la mer… | Le chef de dépôt : **Envoyé au bout de la ligne, à Alberobello.** Il y a longtemps. Enfin, ici, longtemps…"
+  },
+  {
+   "nom": "3. le voisin : Donato est mort, le mot",
+   "ok": true,
+   "detail": "Le voisin : Le vieux Donato ? Mort la semaine dernière. Ici, une semaine… | Le voisin : Il a laissé ça **pour la petite de Gallipoli**. Moi, je ne vais plus jusqu’à la mer. |  : Il te donne un mot plié en quatre."
+  },
+  {
+   "nom": "3. le voisin s’atteint à pied depuis l’arrivée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "le train pour Gallipoli",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "4. Nunzia, 30 ans : le Tramontano",
+   "ok": true,
+   "detail": "Nunzia : Camille ? Tu n’as pas changé. Pas d’un jour. |  : Elle a trente ans. Tu lui tends le mot de Donato ; elle le lit sans rien dire. | Nunzia : Grand-père est mort, je sais. | Nunzia : Il me l’avait dit, avant : **l’homme rouge est monté au château de Matera, le Tramontano.** | Nunzia : Tu l’as trouvé ? Au bout de la ligne… **Porte-lui ça.** Ne lis pas. |  : Nunzia te confie une lettre, cachetée."
+  },
+  {
+   "nom": "4. acte4 = trente, la lettre confiée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "le carnet du journal",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ],
+ "introuvables": []
+}
