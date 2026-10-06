@@ -23,3 +23,26 @@ pour ce qui fait avancer (il s'écrit aussi au journal). Les étapes sont celles
 - *(Khao Phing Kan)* Mali n'est pas dans sa barque. Elle est restée à terre, et regarde les pitons.
 - *(le grand piton)* Le passeur muet ne bouge pas. Il ne regarde personne.
 - *(Railay, Ton Sai)* Le passeur hausse les épaules. Sans les autres, il ne sait plus les passes.
+
+## 2. La clé du cloître (`cloitre`)
+
+**Les trois moines figés de l'escalier de Ton Sai** (au gong, ils finissent leur phrase ; chaque bout va au journal)
+- « …la clé du cloître, c'est le balayeur qui l'avait… »
+- « …Somchai balaie toujours la cour du puits… »
+- « …il cache la clé dans sa manche gauche… »
+
+**Les balayeurs** (figés) : *Sa manche gauche est pliée bizarrement.* / *Sa manche pend, toute droite.*
+— au gong, le bon : *Le balai repart, la manche se déplie : une clé tombe sur les dalles. La clé du cloître !*
+
+**La porte** : *La porte du cloître est fermée à clé. Les moines doivent l'avoir.* — puis : *La clé tourne. La porte du cloître s'ouvre.*
+
+**Le moine cuisinier** (figé au-dessus de sa marmite, la louche levée ; au gong)
+- *La louche retombe dans la marmite. Il te regarde, surpris.*
+- On ne monte pas mille marches pour les redescendre à pied. Tiens : **la poulie des moines**. Le câble part du belvédère.
+- *(ensuite)* « Bon appétit, là-haut. »
+
+**Le masque de bois** : *Un masque de bois peint, usé par les mains. Le passeur muet n'emmène que ceux qui en montrent un.*
+
+**Le câble, sans poulie** : *Un câble, et rien pour s'y accrocher. Les moines avaient une poulie.*
+
+**Somsak** (au retour) : « Les moines… ils sont toujours là-haut ? Alors tout n'est pas perdu. Ma petite-fille, Mali, s'est arrêtée à Khao Phing Kan. Elle ne veut plus naviguer. Je t'y emmène. »

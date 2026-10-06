@@ -54,6 +54,10 @@ function noter3(cle) {
 // Le carnet du journal (J) : chaque indice en gras s'y écrit, et se barre quand il a servi
 const INDICES3 = {
   somsak: { txt: 'Somsak conduisait les moines à Ton Sai chaque matin. Il y va encore, contre des écus.', qui: 'Nok', fait: () => atteint3('cloitre') },
+  balayeur: { txt: 'La clé du cloître, c’est le balayeur qui l’avait.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
+  somchai: { txt: 'Somchai balaie toujours la cour du puits, devant le cloître.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
+  manche: { txt: 'Il cache la clé dans sa manche gauche.', qui: 'un moine figé', fait: () => !!state.cleCloitre },
+  mali: { txt: 'Mali, la petite-fille de Somsak, s’est arrêtée à Khao Phing Kan.', qui: 'Somsak', fait: () => atteint3('masques') },
 };
 function indices3() {
   if (!state.ind3) return '';
@@ -342,7 +346,7 @@ function jungle({ hauteur, bloque, CADRE, PLAN }) {
     if (pente > 0.75 || (pente > 0.5 && Math.random() < 0.5) || bloque(px, pz, 3) || surChemin(px, pz)) continue;
     // ni dans l'escalier du grand piton, ni à moins de 4 m (seuls ses parapets sont inscrits dans les collisions)
     if ([[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]].some(([a, b]) => solEscalier(px + a, pz + b) != null)) continue;
-    if (auTemple(px, pz, h)) continue;
+    if (auTemple(px, pz, h) || RESERVES3.some(([x0, x1, z0, z1]) => px > x0 && px < x1 && pz > z0 && pz < z1)) continue;
     pts.push([px, pz, h]);
   }
   const n = pts.length, tr = new THREE.InstancedMesh(esp.tronc, esp.matT, n), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, n);
@@ -352,6 +356,98 @@ function jungle({ hauteur, bloque, CADRE, PLAN }) {
     m4.compose(v.set(x, h - 0.3, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); });
   tr.castShadow = hp.castShadow = true; scene.add(tr, hp);
 }
+
+// ---------- le cloître de Ton Sai (acte III, étape 2) ----------
+// SCENARIO.md § 12 met le cloître sur une île à lui ; dans la baie resserrée, il est sur la colline
+// des moines de Ton Sai (Eugène, 6 octobre), au départ du câble du grand piton : c'est là que la
+// poulie a un sens. Le haut de la colline est un replat de 36 × 52 m à 132 m (sonde du 6 octobre,
+// x 2592–2628, z 1710–1762) : le cloître en occupe le nord, la cour du puits le sud, devant sa
+// porte. La porte fait 3 m (Camille a 0,5 m de rayon : 2,6 m au moins, cf. batut.js).
+const CLOITRE = { x0: 2596, x1: 2622, z0: 1706, z1: 1726, porte: [2607.5, 2610.5], puits: [2603, 1743],
+  cuisine: { x0: 2612, z1: 1714, porte: [2615, 2618] }, masque: [2596.9, 1718], vantaux: [], fermee: null };
+// les places que l'acte garde libres d'arbres : jungle() les évite
+const RESERVES3 = [[2588, 2632, 1700, 1765]];
+function cloitre({ hauteur, inscrire, addInteract }) {
+  const C = CLOITRE, y = hauteur((C.x0 + C.x1) / 2, (C.z0 + C.z1) / 2), H = 3.2, E = 0.6;
+  const chaux = phMat('chaux_craquelee', 9, 1.2, { color: 0xf2ece0 }), tuiles = phMat('clay_roof_tiles_02', 4, 1, { color: 0xb04a2a }), bois = phMat('wood_planks', 1, 2, { color: 0x7a4a2a });
+  // un pan de mur : la chaux, un chaperon de tuiles qui déborde, et sa collision (toute hauteur)
+  const mur = (x0, z0, x1, z1) => {
+    const L = Math.hypot(x1 - x0, z1 - z0), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, rot = Math.atan2(x1 - x0, z1 - z0);
+    // fondé jusqu'au terrain le plus bas sous lui : au bord nord du replat, le sol descend de 4 m
+    // et le mur flottait. La chaux se répète selon la longueur du pan (un pan court l'étirait).
+    let bas = y; for (let k = 0; k <= 10; k++) bas = Math.min(bas, hauteur(x0 + (x1 - x0) * k / 10, z0 + (z1 - z0) * k / 10));
+    const haut = y + H - 0.4, hm = haut - bas + 0.6;
+    const m = mesh(boxG(E, hm, L), phMat('chaux_craquelee', Math.max(1, L / 3), hm / 3, { color: 0xf2ece0 }), cx, haut - hm / 2, cz); m.rotation.y = rot; scene.add(m);
+    const c = mesh(boxG(E + 0.5, 0.3, L + 0.3), tuiles, cx, y + H - 0.25, cz); c.rotation.y = rot; scene.add(c);
+    for (const o of [m, c]) { o.castShadow = true; o.receiveShadow = true; }
+    const ux = (x1 - x0) / L, uz = (z1 - z0) / L, nx = -uz * E / 2, nz = ux * E / 2;
+    inscrire([[x0 + nx, z0 + nz], [x1 + nx, z1 + nz], [x1 - nx, z1 - nz], [x0 - nx, z0 - nz]], cx, cz);
+  };
+  mur(C.x0, C.z0, C.x1, C.z0); mur(C.x0, C.z0, C.x0, C.z1); mur(C.x1, C.z0, C.x1, C.z1);
+  mur(C.x0, C.z1, C.porte[0], C.z1); mur(C.porte[1], C.z1, C.x1, C.z1);
+  // la cuisine, dans le coin nord-est : deux murs et sa porte
+  const K = C.cuisine;
+  mur(K.x0, C.z0, K.x0, K.z1); mur(K.x0, K.z1, K.porte[0], K.z1); mur(K.porte[1], K.z1, C.x1, K.z1);
+  // la porte du cloître : deux vantaux, et une collision qu'on vide en l'ouvrant. inscrire() garde
+  // le tableau de points tel quel : le vider (length = 0) ôte l'obstacle sans toucher à la grille.
+  const lv = (C.porte[1] - C.porte[0]) / 2;
+  for (const [sx, gond] of [[1, C.porte[0]], [-1, C.porte[1]]]) {
+    const g = new THREE.Group(); g.position.set(gond, y, C.z1); scene.add(g);
+    const v = mesh(boxG(lv, 2.9, 0.12), bois, sx * lv / 2, 1.45, 0); v.castShadow = true; g.add(v);
+    g.add(mesh(boxG(0.08, 0.08, 0.16), new THREE.MeshStandardMaterial({ color: 0x2a2a28, metalness: 0.8, roughness: 0.4 }), sx * (lv - 0.25), 1.3, 0.08));
+    g.userData.sens = sx; C.vantaux.push(g);
+  }
+  // le portail : deux piliers blancs, un toit thaï à deux étages de tuiles (rouge, liseré vert) et
+  // ses cornes dorées (les chofa) — sans lui, un mur chaulé ne dit pas « temple »
+  { const cx = (C.porte[0] + C.porte[1]) / 2, w = C.porte[1] - C.porte[0], g = new THREE.Group(); g.position.set(cx, y, C.z1); scene.add(g);
+    const or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.3 }), vert = phMat('clay_roof_tiles_02', 2, 1, { color: 0x3a7a4a });
+    for (const sx of [-1, 1]) { g.add(mesh(boxG(0.9, H + 0.8, 0.9), chaux, sx * (w / 2 + 0.45), (H + 0.8) / 2 - 0.4, 0)); g.add(mesh(new THREE.SphereGeometry(0.22, 10, 8), or, sx * (w / 2 + 0.45), H + 0.55, 0)); }
+    [[w + 3.2, 1.3, H + 0.5, tuiles], [w + 1.6, 1.0, H + 1.5, vert]].forEach(([L, h, y0, m]) => {
+      const t = new THREE.ConeGeometry(1, 1, 4, 1); t.rotateY(Math.PI / 4); t.scale(L / Math.SQRT2, h, 2.6 / Math.SQRT2);
+      g.add(mesh(t, m, 0, y0 + h / 2, 0)); });
+    for (const sx of [-1, 1]) { const c = mesh(new THREE.ConeGeometry(0.09, 0.9, 6), or, sx * (w / 2 + 1.5), H + 0.9, 0); c.rotation.z = -sx * 0.5; g.add(c); }
+    g.add(mesh(new THREE.ConeGeometry(0.12, 1.1, 8), or, 0, H + 3.0, 0));
+    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    inscrire([[cx - w / 2 - 0.9, C.z1 - 0.45], [cx - w / 2, C.z1 - 0.45], [cx - w / 2, C.z1 + 0.45], [cx - w / 2 - 0.9, C.z1 + 0.45]], cx - w / 2 - 0.45, C.z1);
+    inscrire([[cx + w / 2, C.z1 - 0.45], [cx + w / 2 + 0.9, C.z1 - 0.45], [cx + w / 2 + 0.9, C.z1 + 0.45], [cx + w / 2, C.z1 + 0.45]], cx + w / 2 + 0.45, C.z1); }
+  C.fermee = [[C.porte[0], C.z1 - 0.3], [C.porte[1], C.z1 - 0.3], [C.porte[1], C.z1 + 0.3], [C.porte[0], C.z1 + 0.3]];
+  inscrire(C.fermee, (C.porte[0] + C.porte[1]) / 2, C.z1);
+  if (state.porteCloitre) ouvrirCloitre(true);
+  addInteract({ pos: new THREE.Vector3((C.porte[0] + C.porte[1]) / 2, y, C.z1 + 1.2), r: 3, prompt: () => 'la porte du cloître', enabled: () => !state.porteCloitre, fn: () => {
+    if (!state.cleCloitre) return showMessage('La porte du cloître est fermée à clé. Les moines doivent l’avoir.', 3.5);
+    ouvrirCloitre(); showMessage('La clé tourne. La porte du cloître s’ouvre.', 3); SFX.dizaine && SFX.dizaine(); } });
+  // la marmite du moine cuisinier, sur son foyer
+  const fer = new THREE.MeshStandardMaterial({ color: 0x2a2826, metalness: 0.7, roughness: 0.5 });
+  const pierre = phMat('old_stone_wall_02', 1, 1, { color: 0x9a9080 });
+  scene.add(mesh(new THREE.CylinderGeometry(0.75, 0.85, 0.5, 12), pierre, 2619.5, y + 0.25, 1708.6));
+  scene.add(mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.5, 14), fer, 2619.5, y + 0.75, 1708.6));
+  inscrire([[2618.6, 1707.7], [2620.4, 1707.7], [2620.4, 1709.5], [2618.6, 1709.5]], 2619.5, 1708.6);
+  // le puits de la cour, devant la porte
+  { const [px, pz] = C.puits, yp = hauteur(px, pz), n = 12, pts = [];
+    scene.add(mesh(new THREE.CylinderGeometry(1.1, 1.15, 0.9, 16, 1, true), pierre, px, yp + 0.45, pz));
+    scene.add(mesh(new THREE.CircleGeometry(1.0, 16).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1a2a2a, roughness: 0.2 }), px, yp + 0.3, pz));
+    for (let k = 0; k < n; k++) pts.push([px + Math.cos(k / n * TAU) * 1.2, pz + Math.sin(k / n * TAU) * 1.2]);
+    inscrire(pts, px, pz); }
+  // le masque de bois, pendu au mur ouest (SCENARIO.md : le premier masque, pour le passeur muet)
+  { const [mx, mz] = C.masque, g = new THREE.Group(); g.position.set(mx, y + 1.6, mz); g.rotation.y = Math.PI / 2; scene.add(g);
+    const face = mesh(new THREE.SphereGeometry(0.22, 14, 10, 0, TAU, 0, Math.PI / 2), phMat('wood_cabinet_worn_long', 1, 1, { color: 0xa06a3a }), 0, 0, 0);
+    face.rotation.x = Math.PI / 2; face.scale.set(1, 0.5, 1.3); g.add(face);
+    const noir = new THREE.MeshStandardMaterial({ color: 0x141010, roughness: 0.9 }), rouge = new THREE.MeshStandardMaterial({ color: 0x9a2a20, roughness: 0.6 });
+    for (const sx of [-1, 1]) g.add(mesh(boxG(0.07, 0.035, 0.02), noir, sx * 0.08, 0.06, 0.105));
+    g.add(mesh(boxG(0.12, 0.03, 0.02), rouge, 0, -0.12, 0.1));
+    C.objetMasque = g; g.visible = !state.masqueBois;
+    addInteract({ pos: new THREE.Vector3(mx + 0.8, y, mz), r: 2.5, prompt: () => 'prendre le masque de bois', enabled: () => !state.masqueBois, fn: () => {
+      state.masqueBois = true; g.visible = false; SFX.pickup && SFX.pickup();
+      showMessage('Un masque de bois peint, usé par les mains. Le passeur muet n’emmène que ceux qui en montrent un.', 5);
+      finCloitre(); } }); }
+}
+function ouvrirCloitre(deja = false) {
+  const C = CLOITRE; state.porteCloitre = true; if (!deja) saveGame(true);
+  if (C.fermee) C.fermee.length = 0;
+  for (const g of C.vantaux) g.rotation.y = g.userData.sens * 1.9;
+}
+// la poulie et le masque en poche : Somsak ouvre le trajet vers sa petite-fille
+function finCloitre() { if (state.poulie && state.masqueBois) passer3('mali'); else saveGame(true); }
 
 // ---------- Ko Tapu, le clou : trop fin pour le relief (8 m à la base), on le tourne ----------
 function koTapu({ scene }) {
@@ -728,7 +824,7 @@ const MARCHANDES = [
   { col: 0, k: 2, role: 'nok', haut: 0xc0503a, qui: 'La marchande', dit: () => ['Des mangues, du riz gluant, des fleurs de lotus !', 'Sur l’eau, le temps passe encore. Alors on vend.'] },
   { col: 1, k: 5, role: 'nok', haut: 0x3a7a5a, qui: 'La marchande', dit: () => ['Tu veux aller sur une autre île ? Somsak attend au ponton, au bout du marché.', 'Il est vieux, mais il connaît toutes les passes.'] },
   { col: 0, k: 8, role: 'nok', haut: 0xd8a040, qui: 'La marchande', dit: () => state.gongThai
-    ? ['Tu as le gong de Nok ! Frappe-le près des moines du grand piton.', 'Ils finiront leurs phrases. Un peu.']
+    ? ['Tu as le gong de Nok ! Frappe-le près des moines de Ton Sai.', 'Ils finiront leurs phrases. Un peu.']
     : ['Là-haut, devant l’arche de pierre, il y a la petite Nok.', 'C’est la seule qui bouge encore sur l’île. Va la voir.'] },
   { col: 1, k: 11, role: 'pecheur', haut: 0x5a6a8a, qui: 'Le marchand', dit: () => ['Ce câble descend du grand piton jusqu’à nos barques.', 'Les moines y faisaient passer le riz. Maintenant, plus personne.'] },
   { col: 0, k: 12, role: 'nok', haut: 0x8a4a7a, qui: 'La marchande', dit: () => ['Marche doucement, d’une barque à l’autre. Elles bougent.', 'Nous aussi, on bouge. Les îles, non.'] },
@@ -784,6 +880,7 @@ function tyroliennes({ hauteur, addInteract }) {
 }
 function glisser(c) {
   if (GLISSE) return;
+  if (!EN_INSTANCE && !state.poulie) return showMessage('Un câble, et rien pour s’y accrocher. Les moines avaient une poulie.', 3.5);
   GLISSE = { c, t: 0 };
   player.yaw = Math.atan2(c.p1.x - c.p0.x, c.p1.z - c.p0.z); G.camYaw = player.yaw;
   showMessage('Tu passes la sangle dans la poulie des moines, et tu te laisses aller…', 3);
@@ -856,16 +953,18 @@ function habitants({ hauteur, bloque, addInteract, PLAN }) {
     NOK = PNJ.buildRole('nok');
     if (NOK) { NOK.position.set(x, hauteur(x, z), z); NOK.rotation.y = Math.atan2(104 - x, 10 - z); scene.add(NOK);
       addInteract({ pos: new THREE.Vector3(x, hauteur(x, z), z), r: 3.5, prompt: () => 'parler à Nok', fn: parlerNok }); } }
-  // les trois moines de l'enquête, devant le Wat Tham Suea, et les balayeurs de la cour
+  // les trois moines de l'enquête, au haut de l'escalier des moines de Ton Sai, et les balayeurs de
+  // la cour du puits, devant la porte du cloître (ils étaient au grand piton jusqu'au 6 octobre)
   const M = [
-    // (5 octobre) entre le temple et l'escalier, qui a pris la place où ils étaient
-    [912, 281, '« …la clé du cloître, c’est le balayeur qui l’avait… »'],
-    [926, 282, '« …Somchai balaie toujours la cour du puits… »'],
-    [938, 285, '« …il cache la clé dans sa manche gauche… »'],
+    [2604, 1786, '« …la clé du cloître, c’est le balayeur qui l’avait… »', 'balayeur'],
+    [2599, 1771, '« …Somchai balaie toujours la cour du puits… »', 'somchai'],
+    [2610, 1762, '« …il cache la clé dans sa manche gauche… »', 'manche'],
   ];
-  for (const [ax, az, texte] of M) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('moine', x, z, rand(0, TAU), texte); }
-  const B = [[905, 335, false], [915, 345, true], [898, 350, false]];
+  for (const [ax, az, texte, indice] of M) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('moine', x, z, rand(0, TAU), texte, { indice }); }
+  const B = [[2598, 1749, false], [2607, 1750, true], [2611, 1738, false]];
   for (const [ax, az, bon] of B) { const [x, z] = poserLibre(bloque, hauteur, ax, az); figer('balayeur', x, z, rand(0, TAU), null, { cle: bon && !state.cleCloitre, balayeur: true, bon }); }
+  // le moine cuisinier, figé au-dessus de sa marmite : le gong lui fait finir son geste
+  { const F = figer('moine', 2618.2, 1710.2, 2.4, '« On ne monte pas mille marches pour les redescendre à pied. »', { cuisinier: true, qui: 'Le moine', desc: 'Un moine figé au-dessus de sa marmite, la louche levée.' }); }
   // les habitants des îles, figés comme les moines au milieu d'un geste et d'une phrase : le gong
   // la leur fait finir. Ce qu'ils disaient mène quelque part (un quai, un câble, un temple).
   for (const [role, haut, ax, az, desc, texte, enfant] of HABITANTS) { const [x, z] = poserLibre(bloque, hauteur, ...surChemin(PLAN, hauteur, ax, az));
@@ -898,13 +997,21 @@ function parlerNok() {
     { text: 'Nok te donne le petit gong du temple. (K : frapper le gong)', fn: () => { state.gongThai = true; AIDE.extra.push(['K', 'frapper le gong']); SFX.gong(); } },
     { who: 'Nok', text: 'Somsak, le vieux passeur, conduisait les moines chaque matin. **Il va encore à Ton Sai**, si on le paie.', fn: () => noter3('somsak') },
   ]);
-  else dialogue([{ who: 'Nok', text: state.cleCloitre ? 'La clé du cloître ! Ce que tu as commencé…' : 'Frappe le gong près des moines. Ils finiront leurs phrases.' }]);
+  else dialogue([{ who: 'Nok', text: state.cleCloitre ? 'La clé du cloître ! Les moines vont bien ?' : 'Frappe le gong près des moines de Ton Sai. Ils finiront leurs phrases.' }]);
 }
 function parlerFige(F) {
   const vivant = gongActif() && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r;
   if (!F.balayeur) {
     if (!vivant) return showMessage((F.desc || 'Le moine est figé, la bouche ouverte, au milieu d’un mot.') + (state.gongThai ? ' (K : le gong)' : ''), 3.5);
-    F.fini = true; return showMessage((F.qui || 'Le moine') + ' finit sa phrase : ' + F.texte, 6);
+    if (F.cuisinier) {
+      F.fini = true;
+      if (state.poulie) return showMessage('Le moine cuisinier remue sa marmite. « Bon appétit, là-haut. »', 4);
+      state.poulie = true; SFX.pickup && SFX.pickup();
+      dialogue([{ who: 'Le moine cuisinier', text: 'La louche retombe dans la marmite. Il te regarde, surpris.' },
+        { who: 'Le moine cuisinier', text: 'On ne monte pas mille marches pour les redescendre à pied. Tiens : **la poulie des moines**. Le câble part du belvédère.', fn: finCloitre }]);
+      return;
+    }
+    F.fini = true; if (F.indice) noter3(F.indice); return showMessage((F.qui || 'Le moine') + ' finit sa phrase : ' + F.texte, 6);
   }
   if (!vivant) return showMessage('Un moine figé, le balai levé. Sa manche ' + (F.bon && !state.cleCloitre ? 'gauche est pliée bizarrement.' : 'pend, toute droite.'), 3.5);
   if (F.bon && !state.cleCloitre) {
@@ -988,12 +1095,15 @@ function passeurs({ hauteur, addInteract }) {
     addInteract({ pos: new THREE.Vector3(Q.ici[0], hauteur(...Q.ici), Q.ici[1]), r: 9, prompt: () => 'parler au passeur',
       fn: () => {
         const vers = Object.entries(QUAIS).filter(([n]) => n !== m && trajetOuvert(m, n));
-        showMenu('LE PASSEUR', Q.nom, vers.length ? PASSEUR[m] : (FERME[m] || 'Le passeur secoue la tête. Il ne va plus nulle part.'), [
+        let dit = vers.length ? PASSEUR[m] : (FERME[m] || 'Le passeur secoue la tête. Il ne va plus nulle part.');
+        if (m === 'panyi' && atteint3('mali') && !atteint3('masques')) { dit = SOMSAK_MALI; noter3('mali'); }
+        showMenu('LE PASSEUR', Q.nom, dit, [
           ...vers.map(([n, D]) => ({ label: 'Vers ' + D.nom + (prixTrajet(m, n) ? ` (${prixTrajet(m, n)} écus)` : ''), fn: () => { payerTrajet(m, n); traverser(D, hauteur, n); } })),
           { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]);
       } });
   }
 }
+const SOMSAK_MALI = 'Somsak te regarde arriver. « Les moines… ils sont toujours là-haut ? Alors tout n’est pas perdu. Ma petite-fille, Mali, s’est arrêtée à Khao Phing Kan. Elle ne veut plus naviguer. Je t’y emmène. »';
 // ce que dit un passeur qui ne va plus nulle part (STORY.md : ils ont perdu leur organisation)
 const FERME = {
   tapu: 'Mali n’est pas dans sa barque. Elle est restée à terre, et regarde les pitons.',
@@ -1120,9 +1230,10 @@ monde({
     { id: 'ko-tapu', nom: 'Ko Tapu, le clou', x: -684, z: 468, r: 95, type: 'lieu' },        // il est dans l'eau : on le découvre depuis la grève, à 75–95 m
     { id: 'quai-suea', nom: 'le grand piton, la grève', x: 985, z: 491, r: 20, type: 'passage' },
     { id: 'chedi', nom: 'le chedi doré', x: 983, z: 344, r: 20, type: 'lieu' },
-    { id: 'moines', nom: 'les moines du grand piton', x: 925, z: 282, r: 25, type: 'quete' },
+    { id: 'moines', nom: 'les moines de Ton Sai', x: 2603, z: 1775, r: 20, type: 'quete' },
+    { id: 'cloitre', nom: 'le cloître', x: 2609, z: 1716, r: 18, type: 'quete' },
     { id: 'escalier-piton', nom: 'l’escalier du grand piton', x: 901, z: 290, r: 10, type: 'passage' },
-    { id: 'cour-puits', nom: 'la cour du puits', x: 915, z: 334, r: 22, type: 'quete' },      // le centre, hors des bâtiments (il était dans l'un d'eux)
+    { id: 'cour-puits', nom: 'la cour du puits', x: 2604, z: 1745, r: 15, type: 'quete' },
     { id: 'quai-railay', nom: 'Railay, la plage de l’ouest', x: -657, z: 1530, r: 25, type: 'passage' },
     { id: 'cable-railay', nom: 'le câble de Railay', x: -587, z: 1920, r: 15, type: 'passage' },
     { id: 'railay', nom: 'le village de Railay', x: -500, z: 1700, r: 60, type: 'lieu' },
@@ -1139,7 +1250,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
@@ -1165,5 +1276,5 @@ monde({
   G.level.indices = indices3;
   A3.pret = true;
   // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
-  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3 };
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES };
 });
