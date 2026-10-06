@@ -248,3 +248,22 @@ de Nunzia ; l'élan posé dans `state.elan`, le saut demandé à `engine.js` ; l
 À reprendre (le bronze du Colosse est corrigé le 6 octobre : `marble_rock_03` n'existait pas, phMat rendait un gris de repli ; le genou à terre est le clip `Fixing_Kneeling`, il s'enfonçait de 3 m dans la jetée) : le retour au Temple (`temple.js`, demande écrite) ; les petites quêtes.
 
 À reprendre : au loin, la nuit, la mer reste pâle (le reflet du ciel à l'horizon).
+
+**Les cinq points du 6 octobre au soir** (demande d'Eugène) :
+- **Le retour au Temple** (`temple.js`, avec l'accord d'Eugène — le fichier n'était à personne pendant la
+  vague 1) : la Cloche des Heures pendue au troisième étage, le grand cadran dont l'aiguille va trop vite, un
+  tic-tac, la rive des Pouilles ; une scène une fois (la porte qui s'entrouvre, la Lozère : SCENARIO.md § 13),
+  puis `state.acte4 = 'temple'`. `bancs/acte4-temple.mjs`, tout passé.
+- **Les petites quêtes** (`bancs/acte4-quetes.mjs`, tout passé), au journal : la récolte (un fermier, trois
+  oliviers près de la gare d'Alberobello, six grappes mûres une seconde et demie — huit fois plus au tambourin ;
+  l'huile, une potion qui rend toute la vie) ; les douze signes peints à la chaux sur les cônes (le dernier, le
+  Temple ; un cœur de plus) ; la fête de la pizzica (quatre mesures avec Assunta ; la tenue : tunique rouge et
+  foulard safran, des couleurs que l'armoire connaît déjà) ; les oursins sur le banc de rochers à marée basse
+  (trois écus ; à la main, la canne n'existant qu'à Lille).
+- **La mer, la nuit** : son reflet du ciel suit le jour (`envMapIntensity`, sans recompilation).
+- **La marée après la cloche** : elle continue à son pas d'avant le mal (dix minutes) — arrêtée, le banc de
+  rochers ne se découvrait plus.
+- **Le chargement** avec le clip à genoux : Σ des trois villes 7,1 / 6,7 s avant, 7,2 / 7,1 s après (la
+  machine plus chargée qu'au matin) : rien de mesurable.
+
+À reprendre : un des trois oliviers tombe dans la maison voisine (la place se cherche au pied d'un mur).

@@ -21,6 +21,7 @@ import { especeGeo } from './foret.js';
 import { THREE, TAU, scene, phMat, mesh, boxG, dialogue, G, state } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as PNJ from './pnj.js';
+import * as BOURSE from './bourse.js';
 
 // la jetée en U de la Lega Navale, au sud du château angevin : le quai du Colosse
 const COLOSSE = { x: 284, z: 32, yaw: -2.2 };
@@ -103,13 +104,29 @@ setMaker('tarentule', () => {
 setAnimHook('tarentule', (e, dt, v) => { e.patteT = (e.patteT || 0) + dt * (2 + v * 3);
   e.mesh.userData.pattes.forEach((p, k) => { p.rotation.x = Math.sin(e.patteT * 6 + k * 1.3) * 0.35; });
   e.mesh.position.copy(e.pos); e.mesh.rotation.y = e.yaw; return true; });
-let TARENTULES = null, CORDE = null, mouille = 0;
+let TARENTULES = null, CORDE = null, mouille = 0, OURSINS = null;
+// Les oursins (SCENARIO.md § 13) : dans les creux du banc de rochers, à marée basse ; trois écus
+// chacun au marché. La quête les voulait « à la canne » : la pêche n'existe qu'à Lille (quetes.js),
+// on les ramasse à la main en attendant.
+function oursins() {
+  OURSINS = [];
+  const noir = phMat('rocher_01', 0.3, 0.3, { color: 0x2a1a2e, roughness: 0.7 });
+  for (let k = 1; k < BANC.length; k++) { const [ax, az, ay, bx, bz, , w] = BANC[k], l = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / l, nz = (bx - ax) / l;
+    for (const t of [0.2, 0.6]) { const x = ax + (bx - ax) * t + nx * w * 0.6, z = az + (bz - az) * t + nz * w * 0.6;
+      const o = new THREE.Group(); o.add(mesh(new THREE.SphereGeometry(0.14, 10, 8), noir, 0, 0.08, 0));
+      for (let i = 0; i < 14; i++) { const p = mesh(new THREE.ConeGeometry(0.012, 0.16, 4), noir, 0, 0.08, 0); p.rotation.set(Math.sin(i * 1.7) * 1.5, i * 0.9, Math.cos(i * 2.3) * 1.5); p.translateY(0.12); o.add(p); }
+      o.position.set(x, ay, z); scene.add(o); const u = { o, pris: false }; OURSINS.push(u);
+      addInteract({ pos: o.position, r: 1.8, prompt: () => 'ramasser un oursin', enabled: () => !u.pris && decouvert(),
+        fn: () => { u.pris = true; o.visible = false; SFX.piece(); BOURSE.gagner(3, o.position); state.oursins4 = (state.oursins4 || 0) + 1; showMessage('Un oursin : trois écus au marché.', 2); } }); } }
+}
 function grotte() {
   // les tarentules gardent le banc tant que la corde n'est pas reprise ; nées une fois, après le chargement
   if (!TARENTULES && etape4() === 'corde' && !state.corde4 && BANC.length) {
     TARENTULES = [];
     for (let k = 1; k < BANC.length; k++) { const [ax, az, ay, bx, bz] = BANC[k]; for (const t of [0.35, 0.8]) TARENTULES.push(spawnEnemy('tarentule', ax + (bx - ax) * t, az + (bz - az) * t, 'grotte', ay)); }
   }
+  if (!OURSINS && BANC.length) oursins();
+  if (OURSINS) for (const u of OURSINS) u.o.visible = !u.pris && decouvert();
   // la corde, roulée dans la bouche de la grotte
   if (!CORDE && BOUCHE && etape4() === 'corde' && !state.corde4) {
     const [x, z, y, yaw] = BOUCHE;
@@ -497,4 +514,4 @@ const ARENE_GALLIPOLI = {
 // le niveau naît dans monde() (après l'installation de Camille) : ville() rend sa promesse
 lieuPret.then(() => { if (G.level && G.level.name === 'gallipoli') G.level.arenes = [ARENE_GALLIPOLI]; });
 
-window.__gallipoli = { BANC, bouche: () => BOUCHE, decouvert, CO, colosse: () => colosse };      // pour les bancs (bancs/acte4-*.mjs)
+window.__gallipoli = { BANC, bouche: () => BOUCHE, decouvert, CO, colosse: () => colosse, oursins: () => OURSINS };      // pour les bancs (bancs/acte4-*.mjs)

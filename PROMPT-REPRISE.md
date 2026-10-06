@@ -2669,3 +2669,13 @@ secondaires », ouvertes à l'étape `pluie`, avancement dans `state.q2` :
   les boîtes de ce qui est déjà posé.
 - Banc : `bancs/acte2-quetes.mjs`, réussi ; `acte2-preuve` et `acte2-dormeur` repassés après le
   correctif, réussis.
+
+#### Acte IV, suite (6 octobre au soir, C3) — **lots 4 et 5, bronze, genou, petites quêtes, retour au Temple**
+- **Publiés** : lots 4 et 5 (071dfce), le bronze du Colosse (`marble_rock_03` n'existe pas : `phMat` rendait un
+  gris de repli), son genou à terre (`Fixing_Kneeling`, entré dans les clips des PNJ par un rôle
+  `colosse_genou` de `PNJ.ROLES`) ; puis les petites quêtes, la mer de nuit, la marée après la cloche et le
+  retour au Temple (`temple.js`, à la demande d'Eugène) — détail dans `docs/DECOUPAGE-ACTE4.md`.
+- **La demande pour `temple.js` (n° 2 ci-dessus) est faite.** Restent : l'élan dans `engine.js` (n° 1), et
+  pour `monde.js` le plan d'eau exposé et un crochet `bloqueLieu` (n° 3).
+- **Appris** : `phMat` d'un nom inconnu ne plante pas, il rend un gris uni (`mat(0x888888)`) et un
+  avertissement en console — chercher `matériau Poly Haven inconnu` dans la console d'un banc.

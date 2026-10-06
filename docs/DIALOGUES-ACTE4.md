@@ -140,3 +140,15 @@ tout le monde. »)
 | une porte, sans le tambourin | « Pas de serrure. Pas de gonds. » |
 | la dalle de la cour (le cinquième morceau de la prophétie) | « *Chaque heure sauvée coûtera des années, et nul ne les rendra.* » (`SCENARIO.md` § 2 : le morceau de l'acte IV, le quatrième vers) |
 | le mur du sommet du donjon | « Une main rouge a gravé ici un géant, et une cloche dans sa poitrine. » |
+
+---
+
+## Ajouts du 6 octobre (codés)
+
+| qui | étape | type | réplique |
+|---|---|---|---|
+| Nunzia, 75 ans | `chateau` | I | « Il passe devant moi tous les jours. **Le morceau qui brille dans sa poitrine**, c'est ça qu'il faut lui ôter ? » / « Alors **ralentis-le**, avec le tambourin d'Assunta. » |
+| Cosimo vieux | (lettre, sans tambourin) | I | « Il n'y a rien d'écrit, petite. **Le temps l'a bue.** Il faudrait le retenir un peu. » |
+| Assunta | `tambourin` | I | « Ce soir, c'est la pizzica… **Danse avec moi** : quatre mesures… toi **dans le silence** (K). » |
+| le fermier | — | I | « Cueille-m'en **six grappes mûres** : les noires, pas les vertes, pas les brunes. » / « **L'huile des Pouilles**. Elle soigne tout. » |
+| le mage, au Temple | `heures` | I | « **La Lozère**, à côté de l'Aveyron. On y a entendu parler de la pluie revenue chez les voisins. » |

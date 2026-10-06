@@ -1,0 +1,39 @@
+{
+ "pas": [
+  {
+   "nom": "la scène du retour : la Cloche des Heures, le cadran, la Lozère",
+   "ok": true,
+   "detail": " : Au troisième étage de la tour, la Cloche des Heures pend à son crochet. Elle ne vieillit plus. |  : Sur la tour, un grand cadran est apparu. L’aiguille tourne beaucoup trop vite. Tic, tac. |  : Une autre porte s’entrouvre : une odeur de châtaigne et de pierre mouillée, et le son d’une cloche de mouton. | Le vieux mage : « **La Lozère**, à côté de l’Aveyron. On y a entendu parler de la pluie revenue chez les voisins. »"
+  },
+  {
+   "nom": "l’acte IV passe à `temple`",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "une cloche pendue dans la tour",
+   "ok": true,
+   "detail": "1 cloche(s)"
+  },
+  {
+   "nom": "au retour suivant : pas de seconde scène",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "au retour suivant : la cloche toujours pendue",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

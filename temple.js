@@ -607,6 +607,30 @@ function finActeIScene() {
     L('Le vieux mage', '« **La porte du Midi est ouverte.** C’est par là qu’il est passé. »'),
   ], () => { state.templeVu = true; saveGame(true); });
 }
+// LE RETOUR DE L'ACTE IV (6 octobre ; DECISIONS-RECIT.md § 3, « après les Pouilles ») : la Cloche
+// des Heures sonnée à Gallipoli (state.acte4 === 'heures'), elle pend au troisième étage ; un grand
+// cadran sur la tour, dont l'aiguille va trop vite ; un tic-tac. Posé après le lancement, comme la
+// fin de l'acte I (build passe avant la sauvegarde). La première fois, le mage ; puis `temple`.
+let heuresPosees = false, heuresFaite = false, ticT = 0;
+const heuresSonnees = () => state.acte4 === 'heures' || state.acte4 === 'temple';
+function heuresPoser() {
+  const i = PORTES.findIndex((P) => P.geant === 'colosse');
+  if (i < 0 || ouverts().has('colosse')) return;            // (l'aperçu ?mondes=tous l'a déjà fait)
+  deborder(i, 'colosse'); silhouette(i, 'colosse'); pendreCloche(i, 'colosse'); cadran();
+}
+function heuresScene() {
+  if (heuresFaite || state.acte4 !== 'heures' || !state.running || state.paused) return;
+  heuresFaite = true;
+  const pl = { cam: [9, 9, R_COUR - 1], at: [0, 24, R_TOUR] };
+  cutscene([
+    { ...pl, who: '', say: 'Au troisième étage de la tour, la Cloche des Heures pend à son crochet. Elle ne vieillit plus.' },
+    { ...pl, who: '', say: 'Sur la tour, un grand cadran est apparu. L’aiguille tourne beaucoup trop vite. Tic, tac.' },
+    // (SCENARIO.md § 13, la fin de l'acte IV : rien de plus que ce que le scénario dit)
+    { ...pl, who: '', say: 'Une autre porte s’entrouvre : une odeur de châtaigne et de pierre mouillée, et le son d’une cloche de mouton.' },
+    { ...pl, who: 'Le vieux mage', say: '« **La Lozère**, à côté de l’Aveyron. On y a entendu parler de la pluie revenue chez les voisins. »' },
+  ], () => { state.acte4 = 'temple'; saveGame(true); });
+}
+
 // rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
 // à l'arrivée par une porte, la sauvegarde rend l'angle de caméra du niveau qu'on quitte : on
 // la remet une fois dans le dos de Camille, face à la tour
@@ -615,6 +639,10 @@ function animate(now, dt) {
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est dans le dos
   if (!finPosee && state.running && state.acte1 === 'temple') { finPosee = true; finActeIPoser(); }
   finActeIScene();                                                                                   // la fin de l'acte I, une fois
+  if (!heuresPosees && state.running && heuresSonnees()) { heuresPosees = true; heuresPoser(); }
+  heuresScene();                                                                                     // le retour de l'acte IV, une fois
+  // le tic-tac du cadran, une fois les Heures pendues
+  if (BOUGE.aiguille && state.running && (ticT += dt) > 1) { ticT = 0; PNJ_E.SFX.step(); }
   const t = now / 1000, troupeaux = ouverts().has('loup');
   for (const c of BOUGE.cloches) c.g.rotation.z = troupeaux ? Math.sin(t * 0.9 + c.ph) * 0.05 : 0;   // les cloches se balancent seules, très peu
   if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite

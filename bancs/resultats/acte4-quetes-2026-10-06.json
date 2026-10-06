@@ -1,0 +1,59 @@
+{
+ "pas": [
+  {
+   "nom": "la récolte : le fermier donne la quête",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la récolte : six grappes mûres",
+   "ok": true,
+   "detail": "6 / 6"
+  },
+  {
+   "nom": "la récolte : l’huile dans la gourde",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "les signes : douze signes à lire",
+   "ok": true,
+   "detail": "12 signes"
+  },
+  {
+   "nom": "les signes : un cœur de plus",
+   "ok": true,
+   "detail": "12 → 14"
+  },
+  {
+   "nom": "la fête : Assunta invite à danser",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "la fête : quatre mesures, la tenue (4 réussies)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "les oursins : sur le banc, à marée basse",
+   "ok": true,
+   "detail": "6 oursins"
+  },
+  {
+   "nom": "les oursins : trois écus chacun",
+   "ok": true,
+   "detail": "0 → 18"
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

@@ -17,6 +17,7 @@ import { monde } from './monde.js';
 import { THREE, TAU, scene, phMat, PH, G, state, sun, hemi, sky, SUN_DIR, renderer, showMessage, saveGame, addInteract,
   SFX, KINDS, TOUCHES, AIDE, player, QUESTS } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
+import * as BOURSE from './bourse.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Les gares : au BORD du cœur de chaque ville (Eugène, 2 octobre au soir : de petites parties
@@ -148,7 +149,7 @@ function unCone(cx, cz, r, haut) {
   const p = c.attributes.position, uv = c.attributes.uv; let pente = [0];
   for (let k = 1; k < prof.length; k++) pente.push(pente[k - 1] + prof[k].distanceTo(prof[k - 1]));
   for (let i = 0; i < p.count; i++) { const j = i % prof.length; uv.setXY(i, uv.getX(i) * TAU * r * 0.6, pente[j]); }
-  c.translate(cx, haut - 0.05, cz); cones.push(c.toNonIndexed()); CONES.push([cx, cz, r]);
+  c.translate(cx, haut - 0.05, cz); cones.push(c.toNonIndexed()); CONES.push([cx, cz, r, haut]);
   // le pinacle : un col, un disque, une boule — passé à la chaux comme le haut des murs
   const s = Math.max(0.7, Math.min(1.1, r / 3)), pin = [[cou, 0], [cou * 0.85, 0.12], [0.13, 0.3], [0.3, 0.36], [0.3, 0.42], [0.1, 0.46], [0.15, 0.52], [0.17, 0.6], [0.14, 0.68], [0.06, 0.73], [0, 0.74]];
   const q = new THREE.LatheGeometry(pin.map(([x, y], k) => new THREE.Vector2(k < 2 ? x : x * s, y * s)), 12);
@@ -491,6 +492,8 @@ export function objectif4() {
     // (pas un personnage : les PNJ ne chargent que les clips de leur liste, où entre l'attente de
     // chaque rôle ; ce rôle y fait entrer le clip à genoux, que le Colosse joue au combat)
     colosse_genou: PNJ.ROLES.colosse && { ...PNJ.ROLES.colosse, metier: 'colosse_genou', idle: 'Fixing_Kneeling' },
+    // le fermier de l'oliveraie, près d'Alberobello
+    fermier: V && { ...V, metier: 'fermier', idle: 'Farm_Watering', tete: V.tete, dos: undefined, haut: 0x7a6a4a },
     // Cosimo vieux, devant son trullo : les cheveux blancs, le bleu de travail passé
     cosimo_vieux: C && { ...C, metier: 'cosimo_vieux', gabarit: 'sec', h: C.h * 0.97, cheveuxC: 0xdedad2, haut: 0x5a6a7a, valeur: 0.85, idle: 'Idle_Loop' },
     // le vieux des Sassi, contre la courtine du château
@@ -499,6 +502,20 @@ export function objectif4() {
     // sa mère noués, la jupe rouge de la pizzica
     joueuse: N && { ...N, metier: 'joueuse', gabarit: 'droite', h: N.h * 1.03, cheveuxC: 0x1e1612, haut: 0xe8dcc4, bas: 0x8a2a24, valeurBas: 0.9 },
   }); }
+// Les petites quêtes (SCENARIO.md § 13), au journal avec les autres
+QUESTS.recolte4 = { title: 'La récolte', steps: [
+  'Le fermier de l’oliveraie, près de la gare d’Alberobello : cueillir six grappes d’olives mûres, avant qu’elles pourrissent. Elles ne restent mûres qu’un instant (le tambourin aide).',
+  'Six grappes cueillies. Les rapporter au fermier.', 'Terminée — le fermier m’a donné de l’huile d’olive, qui soigne.'] };
+QUESTS.signes4 = { title: 'Les signes des trulli', steps: [
+  'Douze signes blancs sont peints sur les cônes des trulli d’Alberobello. Les trouver et les lire.',
+  'Les douze signes sont lus.', 'Terminée — le dernier signe montrait le Temple. Un cœur de plus.'] };
+QUESTS.pizzica4 = { title: 'La fête de la pizzica', steps: [
+  'Assunta danse la pizzica devant son trullo : tenir quatre mesures avec elle au tambourin (K, et K dans le silence).',
+  'Quatre mesures tenues.', 'Terminée — Assunta m’a habillée pour la fête.'] };
+// l'huile de la récolte : une potion de plus (touche B), qui rend toute la vie
+BOURSE.POTIONS.huile = { nom: 'Huile d’olive des Pouilles', prix: 0, couleur: 0xc8b040, effet: 'rend toute la vie',
+  boire: () => { player.hp = player.maxHp; showMessage('L’huile des Pouilles : toute ta vie revient.', 3); } };
+
 // La lettre de Nunzia, la grande quête secondaire de l'acte (DECISIONS-RECIT.md § 1) : au journal
 // avec les autres (setQuest : 1 la lettre confiée, 2 la boîte de Cosimo, 3 rendue sur le quai)
 QUESTS.lettre = { title: 'La lettre de Nunzia', steps: [
@@ -545,9 +562,14 @@ function tempsQuiCourt(now, nom) {
     // la cloche sonnée : le soleil finit de descendre, lentement, jusqu'au couchant, puis s'y tient
     // (en instance, le midi de la fiche)
     const but = EN_INSTANCE ? 0.3 : 0.46;
-    if (T4.fige && TEMPS.phase === but) return;
+    const deja = T4.fige && TEMPS.phase === but;
     if (EN_INSTANCE || TEMPS.phase > but || TEMPS.phase < 0.2) TEMPS.phase = but; else TEMPS.phase = Math.min(but, TEMPS.phase + dt / 400);
-    T4.fige = TEMPS.phase === but; TEMPS.maree = 0;
+    if (deja && EN_INSTANCE) return;          // en instance : rien ne bouge, rien à refaire
+    T4.fige = TEMPS.phase === but;
+    // la marée, elle, continue — à son pas d'avant le mal, dix minutes par marée : arrêtée, le banc
+    // de rochers de Gallipoli (la grotte, les oursins) ne se découvrait plus jamais
+    if (!EN_INSTANCE) { TEMPS.tMaree += dt * MAREE / 600; TEMPS.maree = Math.sin(TEMPS.tMaree * TAU / MAREE) * 0.6; }
+    else TEMPS.maree = 0;
   }
   else { TEMPS.phase = (TEMPS.phase + dt * TEMPS.lent / JOURNEE) % 1; TEMPS.tMaree += dt * TEMPS.lent; }
   tambourinTick();
@@ -568,8 +590,11 @@ function tempsQuiCourt(now, nom) {
   if (scene.fog && T4.brume) scene.fog.color.copy(NUIT4.brume).lerp(T4.brume, j).lerp(ORANGE, bas * 0.2);
   // la marée (Gallipoli) : le plan d'eau de monde.js monte et descend ; la règle de la mer
   // (bloque) reste celle du plan, à 60 cm près — on ne marche pas plus loin à marée basse
-  if (T4.mer && court) { TEMPS.maree = Math.sin(TEMPS.tMaree * TAU / MAREE) * 0.6; T4.mer.position.y = T4.merY + TEMPS.maree; }
-  else if (T4.mer) T4.mer.position.y = T4.merY;
+  // la nuit, la mer gardait le reflet du ciel de jour (la carte d'environnement) : pâle à
+  // l'horizon, aux angles rasants. Son intensité suit le jour — un réglage, pas une recompilation
+  if (T4.mer) T4.mer.material.envMapIntensity = 0.12 + 0.88 * j;
+  if (T4.mer && court) TEMPS.maree = Math.sin(TEMPS.tMaree * TAU / MAREE) * 0.6;
+  if (T4.mer) T4.mer.position.y = T4.merY + TEMPS.maree;
 }
 
 /** un habitant de l'acte, né après le chargement (règle 8), posé, tourné, et sa parole */
