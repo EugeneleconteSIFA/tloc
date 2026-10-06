@@ -452,6 +452,7 @@ function ouvrirCloitre(deja = false) {
   for (const g of C.vantaux) g.rotation.y = g.userData.sens * 1.9;
 }
 // la poulie et le masque en poche : Somsak ouvre le trajet vers sa petite-fille
+function finActe3() { showMessage('Le Yak tombe à genoux. Le morceau de la Grande Cloche roule à tes pieds.', 5); }
 function finCloitre() { if (state.poulie && state.masqueBois) passer3('mali'); else saveGame(true); }
 
 // ---------- Khao Phing Kan : Mali, la statue, la cascade, la course (acte III, étape 3) ----------
@@ -756,6 +757,124 @@ function animeGrotte(dt) {
     e.caged = !vif;
     if (!vif) { e.pos.x = e.fige[0]; e.pos.z = e.fige[1]; e.kb.set(0, 0, 0); e.state = 'idle'; }
     else { e.fige = [e.pos.x, e.pos.z]; } }
+}
+
+// ---------- le belvédère de Ton Sai : la corniche des vents (acte III, étape 5) ----------
+// SCENARIO.md : « la mousson jette dans le vide » ; il faut le masque de Hanuman, le roi des singes.
+// Au départ du câble du grand piton, la mousson pousse Camille vers le bord, de plus en plus fort ;
+// tombée, elle revient au palier de l'escalier, un cœur en moins. Avec le masque, le vent glisse.
+const VENT = { x: 2605, z: 1790, r: 16, palier: [2600, 1772], dit: false };
+function animeVent(dt) {
+  if (EN_INSTANCE || GLISSE || !state.poulie || state.masqueHanuman || COURSE.actif) return;
+  const d = Math.hypot(player.pos.x - VENT.x, player.pos.z - VENT.z);
+  if (d > VENT.r) { VENT.t = 0; return; }
+  VENT.t = (VENT.t || 0) + dt;
+  if (!VENT.dit) { VENT.dit = true; showMessage('Une rafale de mousson ! Elle te pousse vers le bord du belvédère.', 3); }
+  // vers le vide : la pente du terrain, en bas (le côté ouest de la colline)
+  const h = HAUT, gx = h(player.pos.x + 2, player.pos.z) - h(player.pos.x - 2, player.pos.z), gz = h(player.pos.x, player.pos.z + 2) - h(player.pos.x, player.pos.z - 2), n = Math.hypot(gx, gz) || 1;
+  const f = Math.min(9, 2.5 + VENT.t * 2.2) * dt;
+  player.pos.x -= gx / n * f; player.pos.z -= gz / n * f;
+  // 6 m sous le plateau : elle est tombée
+  if (player.pos.y < h(VENT.x, VENT.z) - 6) {
+    VENT.t = 0; VENT.dit = false; damagePlayer(2, player.pos.x, player.pos.z);
+    fadeTo(1, () => { const [x, z] = VENT.palier; player.pos.set(x, HAUT(x, z), z); player.vy = 0; player.fallFrom = player.pos.y; fadeTo(0, null);
+      showMessage('La mousson t’a jetée dans le vide. Il faudrait marcher dans le vent comme Hanuman.', 4.5); });
+  }
+}
+
+// ---------- le Yak (acte III, étape 6) ----------
+// Le géant gardien du plus haut temple (SCENARIO.md : de faïence et de verre colorés, l'épée plantée
+// devant lui), le morceau de cloche planté au front. Il est hors du temps : ses coups arrivent avant
+// qu'on les voie (pas d'élan) et les nôtres le traversent. Le gong met Camille à son rythme six
+// secondes : il prend son élan, et on le touche. Trois touches au morceau. Entre deux, il fige des
+// paquets de pluie et les lance comme des pierres. Composé de volumes, en matières Poly Haven
+// (Eugène : « très bien »), sans aplats.
+const YAK = { x: 904, z: 321, porte: [904, 331], e: null, touches: 0, hpRef: 30, jets: [], jetT: 3, fini: false, statue: null };
+Object.assign(KINDS, { yak: { hp: 30, speed: 3.0, dmg: 2, range: 3.8, aggro: 40, windup: 0.08, cd: 1.7, fly: 0, r: 1.5, label: 'Le Yak, gardien du grand piton', boss: true, barY: 8.6 } });
+const YAK_LENT = { ...KINDS.yak, windup: 1.0, cd: 2.2, speed: 1.6 };
+function faireYak() {
+  const g = new THREE.Group();
+  const vert = phMat('worn_tile_floor', 2, 3, { color: 0x6ac09a }), rouge = phMat('worn_tile_floor', 2, 2, { color: 0xd04a34 }), peau = phMat('worn_tile_floor', 1, 1, { color: 0x7ad0c0 });
+  const or = new THREE.MeshStandardMaterial({ color: 0xd8a848, metalness: 0.85, roughness: 0.28 }), miroir = new THREE.MeshStandardMaterial({ color: 0xbfe0f0, metalness: 1, roughness: 0.05 });
+  const blanc = new THREE.MeshStandardMaterial({ color: 0xf2eee4, roughness: 0.4 }), noir = new THREE.MeshStandardMaterial({ color: 0x141010, roughness: 0.6 });
+  const add = (geo, m, x, y, z) => { const o = mesh(geo, m, x, y, z); g.add(o); return o; };
+  for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.42, 0.5, 2.4, 10), vert, sx * 0.62, 1.2, 0); add(boxG(0.7, 0.3, 1.1), or, sx * 0.62, 0.15, 0.15); }
+  add(new THREE.CylinderGeometry(1.0, 1.25, 1.3, 14), rouge, 0, 3.0, 0);                 // le pagne
+  add(boxG(2.0, 2.1, 1.2), vert, 0, 4.6, 0);                                             // le buste
+  { const c = add(new THREE.TorusGeometry(0.98, 0.1, 8, 24), or, 0, 3.65, 0); c.rotation.x = Math.PI / 2; }
+  for (let k = 0; k < 14; k++) { const a = k / 14 * TAU; add(new THREE.CircleGeometry(0.09, 8), miroir, Math.cos(a) * 0.7, 4.2 + (k % 3) * 0.45, 0.61).rotation.y = 0; }   // les éclats de miroir du plastron
+  add(new THREE.SphereGeometry(0.5, 10, 8), vert, -1.2, 5.5, 0); add(new THREE.SphereGeometry(0.5, 10, 8), vert, 1.2, 5.5, 0);
+  // les bras et l'épée : un groupe qui pivote à l'épaule (l'élan, le coup)
+  const bras = new THREE.Group(); bras.position.set(0, 5.4, 0.2); g.add(bras);
+  for (const sx of [-1, 1]) { const b = mesh(new THREE.CylinderGeometry(0.28, 0.32, 2.2, 8), vert, sx * 0.9, -1.0, 0.5); b.rotation.x = -0.6; b.rotation.z = -sx * 0.25; bras.add(b); }
+  const epee = new THREE.Group(); epee.position.set(0, -1.9, 1.3); bras.add(epee);
+  epee.add(mesh(boxG(0.22, 3.6, 0.06), new THREE.MeshStandardMaterial({ color: 0xd0d4da, metalness: 0.9, roughness: 0.25 }), 0, -1.6, 0));
+  epee.add(mesh(boxG(0.9, 0.16, 0.2), or, 0, 0.2, 0)); epee.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 6), or, 0, 0.6, 0));
+  // la tête : la face turquoise, les yeux ronds exorbités, les crocs, la couronne en flèche
+  add(new THREE.SphereGeometry(0.78, 16, 12), peau, 0, 6.35, 0.05).scale.set(1, 1.05, 0.95);
+  for (const sx of [-1, 1]) { add(new THREE.SphereGeometry(0.17, 10, 8), blanc, sx * 0.3, 6.5, 0.66); add(new THREE.SphereGeometry(0.08, 8, 6), noir, sx * 0.3, 6.5, 0.8);
+    const c = add(new THREE.ConeGeometry(0.07, 0.3, 6), blanc, sx * 0.22, 5.9, 0.7); c.rotation.x = Math.PI; }
+  add(boxG(0.5, 0.08, 0.1), rouge, 0, 6.0, 0.74);
+  [[0.82, 0.3, 7.05], [0.62, 0.35, 7.35], [0.42, 0.4, 7.7], [0.24, 0.45, 8.1]].forEach(([r, h, y]) => add(new THREE.CylinderGeometry(r * 0.8, r, h, 12), or, 0, y, 0));
+  add(new THREE.ConeGeometry(0.12, 0.9, 8), or, 0, 8.75, 0);
+  // le morceau de la Grande Cloche, planté au front : du bronze sombre qui luit un peu
+  const morceau = add(new THREE.TetrahedronGeometry(0.22), new THREE.MeshStandardMaterial({ color: 0x5a4a2a, metalness: 0.8, roughness: 0.35, emissive: 0x2a1a04 }), 0, 6.75, 0.72);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  g.userData = { anim: true, bras, epee, morceau };
+  return g;
+}
+setMaker('yak', () => faireYak());
+setAnimHook('yak', (e, dt) => {
+  const u = e.mesh.userData; if (!u.bras) return true;
+  // l'élan (windup) lève l'épée ; le coup la rabat ; au repos, elle pend devant lui
+  const cible = e.state === 'windup' ? -1.6 : e.state === 'cool' && e.t > (e.k.cd - 0.25) ? 0.6 : 0;
+  u.bras.rotation.x += (cible - u.bras.rotation.x) * Math.min(1, dt * (e.k === YAK_LENT ? 4 : 18));
+  u.morceau.rotation.y += dt * 2;
+  return true;
+});
+function yak({ addInteract }) {
+  // la statue du Yak revenu à sa porte (la fin) : même corps, immobile
+  YAK.statue = faireYak(); YAK.statue.visible = false; YAK.statue.userData.dynamic = true; scene.add(YAK.statue);
+}
+function animeYak(dt) {
+  if (EN_INSTANCE || YAK.fini || !atteint3('yak') || atteint3('fete')) return;
+  const d = Math.hypot(player.pos.x - YAK.x, player.pos.z - YAK.z);
+  if (!YAK.e) {
+    if (d > 45) return;
+    YAK.e = spawnEnemy('yak', YAK.x, YAK.z, 'acte3'); YAK.e.yaw = Math.atan2(player.pos.x - YAK.x, player.pos.z - YAK.z); YAK.hpRef = YAK.e.hp; YAK.touches = 0;
+    showMessage('Le Yak se tourne vers toi. Ton regard n’arrive pas à le suivre : il est déjà là où il frappe.', 5);
+    return;
+  }
+  const e = YAK.e; if (e.dead) return;
+  const lent = gongActif() && Math.hypot(GONG.x - e.pos.x, GONG.z - e.pos.z) < GONG.r + 4;
+  e.k = lent ? YAK_LENT : KINDS.yak;
+  // un coup reçu : au gong, une touche au morceau ; hors du gong, il le traverse
+  if (e.hp < YAK.hpRef) {
+    if (lent) { YAK.touches++; e.hp = 30 - 10 * YAK.touches; YAK.hpRef = e.hp; SFX.cloche && SFX.cloche(true); burst(e.pos.x, e.pos.y + 6.7, e.pos.z, 0xd8a848, 16, 4, 0.6);
+      showMessage(YAK.touches < 3 ? `Le morceau de cloche vibre sous le coup ! (${YAK.touches} / 3)` : 'Le morceau de cloche se détache !', 2.5);
+      if (YAK.touches >= 3) { e.hp = 0.01; e.caged = true; finYak(); } }
+    else { e.hp = YAK.hpRef; if (!(YAK.dit > performance.now())) { YAK.dit = performance.now() + 4000; showMessage('Ton coup le traverse : il n’est déjà plus là. (K : le gong, pour te mettre à son rythme)', 3); } }
+  }
+  // les paquets de pluie figée, lancés comme des pierres, quand on est loin de son épée
+  YAK.jetT -= dt;
+  if (YAK.jetT <= 0 && d > 6 && d < 40 && !e.caged) {
+    YAK.jetT = lent ? 5 : 3.2;
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), new THREE.MeshStandardMaterial({ color: 0xcfeef2, transparent: true, opacity: 0.75, roughness: 0.05 }));
+    m.position.set(e.pos.x, e.pos.y + 6, e.pos.z); scene.add(m);
+    const v = new THREE.Vector3(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z).normalize().multiplyScalar(lent ? 9 : 18);
+    YAK.jets.push({ m, v, t: 0 });
+  }
+  for (let i = YAK.jets.length - 1; i >= 0; i--) { const J = YAK.jets[i]; J.t += dt;
+    J.m.position.addScaledVector(J.v, dt); J.m.position.y += (player.pos.y + 1 - J.m.position.y) * Math.min(1, dt * 2);
+    if (J.m.position.distanceTo(player.pos.clone().setY(player.pos.y + 1)) < 1.3) { damagePlayer(1, J.m.position.x, J.m.position.z); burst(J.m.position.x, J.m.position.y, J.m.position.z, 0xcfeef2, 14, 4, 0.5); }
+    else if (J.t < 4) continue;
+    scene.remove(J.m); YAK.jets.splice(i, 1); }
+}
+// trois touches : le morceau tombe. La fin de l'acte (étape 7) prend la suite.
+function finYak() {
+  YAK.fini = true; state.yakLibre = true; passer3('fete');
+  for (const J of YAK.jets) scene.remove(J.m); YAK.jets.length = 0;
+  setTimeout(() => { if (YAK.e) { YAK.e.dead = true; YAK.e.mesh.visible = false; YAK.e.bar.visible = false; } finActe3(); }, 1800);
 }
 
 // ---------- Ko Tapu, le clou : trop fin pour le relief (8 m à la base), on le tourne ----------
@@ -1190,6 +1309,7 @@ function tyroliennes({ hauteur, addInteract }) {
 function glisser(c) {
   if (GLISSE) return;
   if (!EN_INSTANCE && !state.poulie) return showMessage('Un câble, et rien pour s’y accrocher. Les moines avaient une poulie.', 3.5);
+  if (!EN_INSTANCE && c.nom === 'vers le grand piton' && !state.masqueHanuman) return showMessage('La mousson te plaque contre la potence. Impossible de passer la sangle dans ce vent.', 4);
   GLISSE = { c, t: 0 };
   player.yaw = Math.atan2(c.p1.x - c.p0.x, c.p1.z - c.p0.z); G.camYaw = player.yaw;
   showMessage('Tu passes la sangle dans la poulie des moines, et tu te laisses aller…', 3);
@@ -1204,6 +1324,7 @@ function animeGlisse(dt) {
   player.pos.set(q.x, q.y - PENDU, q.z); player.vy = 0; player.fallFrom = player.pos.y;
   if (g.t >= 1) {
     const [x, z] = g.c.a, y = HAUT ? HAUT(x, z) : 0; player.pos.set(x, Math.max(y, 0.55), z); player.fallFrom = player.pos.y; player.vy = 0;
+    if (g.c.nom === 'vers le grand piton' && state.masqueHanuman) passer3('yak');
     GLISSE = null; showMessage('Les pieds touchent. ' + g.c.nom.replace('vers ', '').replace(/^./, (l) => l.toUpperCase()) + '.', 3);
   }
 }
@@ -1565,7 +1686,7 @@ monde({
     hemi.intensity = 1.25; hemi.color.setHex(0xe4ecf0); hemi.groundColor.setHex(0x5a6a50);
     // chaque morceau chronométré : le banc (bancs/lieu-thailande.mjs) les lit dans window.__lieu
     const durees = {}, chrono = (nom, fn) => { const t = performance.now(); fn(ctx); durees[nom] = Math.round(performance.now() - t); };
-    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['khao phing kan', khaoPhingKan], ['grotte', grotte], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
+    for (const [nom, fn] of [['parois', parois], ['voies', voies], ['escalier', escalier], ['esplanade', esplanade], ['cloître', cloitre], ['khao phing kan', khaoPhingKan], ['grotte', grotte], ['yak', yak], ['jungle', jungle], ['pilotis', pilotis], ['temples', templesThai], ['ko tapu', koTapu], ['chedi', chedi],
       ['passeurs', passeurs], ['pluie', pluie], ['habitants', habitants], ['marché', marche], ['pêcheurs', pecheurs], ['tyroliennes', tyroliennes], ['bâti', batiIles], ['garde', garde]]) chrono(nom, fn);
     placerPluie();
     // les quais et les câbles : le parcours du banc (TLOC_PARCOURS=1) s'en sert pour passer d'une île à l'autre
@@ -1575,7 +1696,7 @@ monde({
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
     animeHabitants(dt);
     for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
-    animeGlisse(dt); animeKpk(dt); animeCourse(dt); animeGrotte(dt);
+    animeGlisse(dt); animeKpk(dt); animeCourse(dt); animeGrotte(dt); animeVent(dt); animeYak(dt);
     if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
     if (gongActif()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
@@ -1591,5 +1712,5 @@ monde({
   G.level.indices = indices3;
   A3.pret = true;
   // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
-  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE, GROTTE };
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE, GROTTE, VENT, YAK, CABLES };
 });

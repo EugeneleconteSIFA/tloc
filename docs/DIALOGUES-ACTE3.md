@@ -82,3 +82,14 @@ pour ce qui fait avancer (il s'écrit aussi au journal). Les étapes sont celles
 - *Le mur fendu* : Le rocher est fendu de haut en bas. Une bombe le ferait céder. — *La mèche grésille…* — *Le rocher cède ! Derrière, une salle noire, et des silhouettes immobiles.*
 - *Le présentoir, gardé* : Les danseurs figés barrent le présentoir.
 - *Le masque* : Le masque de Hanuman, le roi des singes : blanc, couronné d'or. Il sait marcher dans le vent. — **Avec lui, la mousson du belvédère ne te jettera plus dans le vide.** Le câble du grand piton part de là.
+
+## 5. La corniche des vents (`corniche`)
+
+- *Au belvédère, sans le masque* : Une rafale de mousson ! Elle te pousse vers le bord du belvédère. — *tombée* : La mousson t'a jetée dans le vide. Il faudrait marcher dans le vent comme Hanuman.
+- *Le câble, sans le masque* : La mousson te plaque contre la potence. Impossible de passer la sangle dans ce vent.
+
+## 6. Le Yak (`yak`)
+
+- *Il paraît* : Le Yak se tourne vers toi. Ton regard n'arrive pas à le suivre : il est déjà là où il frappe.
+- *Un coup hors du gong* : Ton coup le traverse : il n'est déjà plus là. (K : le gong, pour te mettre à son rythme)
+- *Au gong* : Le morceau de cloche vibre sous le coup ! (1 / 3) … Le morceau de cloche se détache !
