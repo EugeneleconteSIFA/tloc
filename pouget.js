@@ -257,6 +257,9 @@ async function build() {
       ],
       betes: [['cheval_blanc.glb', CENTRE[0] + 52, CENTRE[1] + 38, 0.8, 'Eating']],
       vaches: { n: 4, taureau: false },
+      // Eugène, 6 octobre : « des chèvres et des poules au Pouget » ; la basse-cour sur le pré sous la
+      // première maison, au bout de la route d'arrivée
+      chevres: { n: 6 }, poules: { n: 12, centre: [CENTRE[0] + 22, CENTRE[1] - 16] },
     }).then((f) => { R.anime = f; }); }
 }
 

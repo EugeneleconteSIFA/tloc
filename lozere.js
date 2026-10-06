@@ -38,6 +38,8 @@ Object.assign(PH, {
   // aveyron.js (mêmes valeurs ; la seconde inscription ne change rien)
   asphalt_02:      { tuile: 3.0, maps: ['couleur', 'normale', 'rugosite'], repli: 0x8a8a88 },
   granite_tile_03: { tuile: 1.8, maps: ['couleur', 'normale'], repli: 0x8a8580 },
+  // la laine bouclée, pour le plumage des poules (déjà inscrite par aveyron.js, mêmes valeurs)
+  wool_boucle:     { tuile: 0.6, maps: ['couleur', 'normale', 'rugosite'], repli: 0xc8bca8 },
 });
 
 // ce que le lieu a bâti, pour le banc (bancs/lieu-lozere.mjs)
@@ -1016,29 +1018,120 @@ const BETES = {
   'vache.glb': { haut: 2.05, teintes: { Main: 0xb48c5a, Main_Light: 0xdcc8a0, Muzzle: 0x2e2622, Horns: 0xe6dcc4, Hooves: 0x2a2420 } },
   'taureau.glb': { haut: 2.25, teintes: { Main: 0x96704a, Main_Light: 0xc8aa7c, Muzzle: 0x2a2220, Horns: 0xe6dcc4, Hooves: 0x2a2420 } },
   'ane.glb': { haut: 1.75, teintes: { Main: 0x5e5852, Main_Light: 0xb4aea4, Main_Dark: 0x4a4642, Hair: 0x34302c, Muzzle: 0xd8d4cc } },
+  // La chèvre (Eugène, 6 octobre : « des chèvres au Pouget ») : il n'y en a dans aucun pack libre au
+  // style des autres bêtes (celles de Poly Pizza sont des jouets). On prend l'âne, le plus proche par
+  // les proportions (corps trapu, cou court), à la taille d'une chèvre (75 cm au garrot), en robe de
+  // l'Alpine chamoisée, la chèvre du Massif central : brun fauve, raie dorsale, pattes et tête noires.
+  // Les oreilles et la queue sont raccourcies (os : l'échelle de ces os, reposée après chaque image
+  // d'animation) et des cornes en arc, recourbées vers l'arrière, sont accrochées à l'os de la tête.
+  'chevre': { fichier: 'ane.glb', haut: 1.15, teintes: { Main: 0x8a5a30, Main_Light: 0xa87a4c, Main_Dark: 0x1c1816, Hair: 0x1c1816, Muzzle: 0x24201c, Hooves: 0x1a1714 },
+    os: { 'Ear1.L': 0.55, 'Ear1.R': 0.55, 'Tail2': 0.3 }, cornes: true },
 };
 const modelesBetes = new Map();
-function chargerBete(fichier) {
-  if (!modelesBetes.has(fichier)) modelesBetes.set(fichier, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')])
+// une clé par SORTE de bête : la chèvre et l'âne ont le même fichier, pas les mêmes teintes
+function chargerBete(sorte) {
+  const fichier = (BETES[sorte] || {}).fichier || sorte;
+  if (!modelesBetes.has(sorte)) modelesBetes.set(sorte, Promise.all([import('./lib/addons/loaders/GLTFLoader.js'), import('./lib/addons/utils/SkeletonUtils.js'), import('./lib/addons/utils/BufferGeometryUtils.js')])
     .then(([L, S, U]) => new L.GLTFLoader().loadAsync('assets_back/02_personnages/animaux/' + fichier + '?v=2').then((g) => {
-      const T = (BETES[fichier] || {}).teintes || {};
+      const T = (BETES[sorte] || {}).teintes || {};
       g.scene.traverse((o) => { if (!o.isSkinnedMesh) return; let ge = o.geometry.clone(); ge.deleteAttribute('normal'); ge = U.mergeVertices(ge, 1e-4); ge.computeVertexNormals(); o.geometry = ge;
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) { m.flatShading = false; m.roughness = 0.82; m.metalness = 0; if (T[m.name] != null) m.color.setHex(T[m.name]); m.needsUpdate = true; } });
       g.scene.updateMatrixWorld(true);
       const b = new THREE.Box3(); g.scene.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.update(); o.computeBoundingBox(); b.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
-      return { g, S, echelle: ((BETES[fichier] || {}).haut || 2.35) / (b.max.y - b.min.y) };
+      return { g, S, echelle: ((BETES[sorte] || {}).haut || 2.35) / (b.max.y - b.min.y) };
     })).catch((e) => { console.warn('décor : ' + fichier + ' indisponible —', e.message); return null; }));
-  return modelesBetes.get(fichier);
+  return modelesBetes.get(sorte);
 }
-async function beteAuRepos(fichier, x, y, z, yaw, clip) {
-  const m = await chargerBete(fichier); if (!m) return null;
+async function beteAuRepos(sorte, x, y, z, yaw, clip) {
+  const m = await chargerBete(sorte), D = BETES[sorte] || {}; if (!m) return null;
   const c = m.S.clone(m.g.scene); c.scale.setScalar(m.echelle * G.echelle);
   c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
   c.position.set(x, y, z); c.rotation.y = yaw; scene.add(c);
   const mix = new THREE.AnimationMixer(c), a = m.g.animations.find((k) => k.name === clip) || m.g.animations.find((k) => k.name === 'Idle');
   if (a) { const act = mix.clipAction(a); act.time = Math.random() * a.duration; act.play(); }
-  return mix;
+  const os = Object.entries(D.os || {}).map(([nom, e]) => [c.getObjectByName(nom), e]).filter(([b]) => b);
+  if (D.cornes) { mix.update(0); c.updateMatrixWorld(true); cornes(c); }
+  if (!os.length) return mix;
+  // l'animation repose l'échelle des os à chaque image : on la retaille après elle
+  return { update(dt) { mix.update(dt); for (const [b, e] of os) b.scale.setScalar(e); } };
 }
+// Les cornes de la chèvre : deux arcs effilés (un tube qui s'amincit), partis du haut du crâne,
+// montés puis recourbés vers l'arrière. Accrochées à l'os de la tête (elles suivent ses mouvements) ;
+// leur taille et leur pente se règlent dans le repère du monde, au moment de la pose.
+let geoCorne = null;
+function cornes(c) {
+  const tete = c.getObjectByName('Head'); if (!tete) return;
+  if (!geoCorne) { const courbe = new THREE.CatmullRomCurve3([V(0, 0, 0), V(0, 0.07, -0.02), V(0, 0.12, -0.07), V(0, 0.13, -0.13), V(0, 0.11, -0.17)]);
+    geoCorne = new THREE.TubeGeometry(courbe, 12, 0.014, 6, false);
+    const p = geoCorne.attributes.position;   // l'amincissement : chaque anneau (7 sommets) rétrécit vers la pointe
+    for (let i = 0; i < p.count; i++) { const k = Math.floor(i / 7) / 12, ax = courbe.getPoint(Math.min(1, k)), f = 1 - 0.75 * k;
+      p.setXYZ(i, ax.x + (p.getX(i) - ax.x) * f, ax.y + (p.getY(i) - ax.y) * f, ax.z + (p.getZ(i) - ax.z) * f); }
+    geoCorne.computeVertexNormals(); }
+  const mat = phMat('rocher_01', 0.2, 0.2, { color: 0x6e6252, roughness: 0.6 });
+  const qT = tete.getWorldQuaternion(new THREE.Quaternion()), sT = tete.getWorldScale(V()), pT = tete.getWorldPosition(V());
+  const qB = c.getWorldQuaternion(new THREE.Quaternion()), e = 1.1 * G.echelle;
+  for (const sg of [-1, 1]) {
+    // dans le repère de la bête (z vers l'avant) : 9 cm au-dessus de l'os de la tête, 4 cm en avant,
+    // 3 cm de côté ; la corne garde l'orientation de la bête (sa courbe part vers l'arrière, −z),
+    // inclinée de 0,25 rad vers l'extérieur
+    const o = new THREE.Mesh(geoCorne, mat), pw = pT.clone().add(V(sg * 0.03, 0.09, 0.04).multiplyScalar(e).applyQuaternion(qB));
+    const qw = qB.clone().multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), -sg * 0.25));
+    o.quaternion.copy(qT.clone().invert().multiply(qw)); o.position.copy(tete.worldToLocal(pw)); o.scale.set(e / sT.x, e / sT.y, e / sT.z);
+    o.castShadow = true; tete.add(o);
+  }
+}
+
+// Les poules (Eugène, 6 octobre : « des poules au Pouget ») : aucune poule libre au style réaliste
+// (celles de Poly Pizza sont un monstre et un cube). Faites ici, en mètres, sur la poule pondeuse
+// rousse de ferme (40 cm de haut) : un corps ovale relevé vers la queue, la queue en deux plumes
+// dressées, le cou et la tête, le bec et les pattes jaunes, la crête et les barbillons rouges.
+// Le plumage prend le relief de la laine bouclée (Poly Haven), teint par poule : rousse surtout,
+// blanche, noire, cendrée. Elles picorent (la tête plonge, pivot au bas du cou) et trottinent autour
+// de leur cour. Cinq maillages en instances pour toute la basse-cour.
+function geoPoule() {
+  const S = (r, sx, sy, sz, x, y, z) => { const g = new THREE.SphereGeometry(r, 12, 9); g.scale(sx, sy, sz); g.translate(x, y, z); return g; };
+  const nu = (gs) => mergeGeometries(gs.map((g) => { const n = g.index ? g.toNonIndexed() : g; if (!n.attributes.uv) n.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.attributes.position.count * 2), 2)); return n; }));
+  const corps = [S(1, 0.14, 0.13, 0.2, 0, 0.25, 0), S(1, 0.11, 0.1, 0.11, 0, 0.29, -0.13)];
+  for (const [a, h2] of [[-0.5, 0.17], [-0.85, 0.15]]) { const q = new THREE.ConeGeometry(0.06, h2, 5); q.scale(0.5, 1, 1.4); q.rotateX(a); q.translate(0, 0.37, -0.2); corps.push(q); }
+  const pattes = []; for (const sx of [-0.05, 0.05]) { const l = new THREE.CylinderGeometry(0.008, 0.008, 0.14, 5); l.translate(sx, 0.07, 0.02); pattes.push(l);
+    for (const a of [-0.5, 0, 0.5]) { const d = new THREE.BoxGeometry(0.008, 0.006, 0.055); d.translate(0, 0.003, 0.025); d.rotateY(a); d.translate(sx, 0, 0.03); pattes.push(d); } }
+  // la tête, autour de son pivot (le bas du cou, en 0, 0.3, 0.12) : le cou, la tête, le bec, la crête
+  const tete = [S(1, 0.055, 0.08, 0.055, 0, 0.06, 0.02), S(0.05, 1, 1, 1.15, 0, 0.13, 0.05)];
+  const bec = new THREE.ConeGeometry(0.014, 0.035, 5); bec.rotateX(Math.PI / 2); bec.translate(0, 0.125, 0.11);
+  const rouge = [S(0.018, 0.6, 1, 1, 0, 0.18, 0.06), S(0.016, 0.6, 1, 1, 0, 0.18, 0.03), S(0.014, 0.6, 1, 1, 0, 0.175, 0.005), S(0.012, 0.6, 1.4, 0.8, 0, 0.1, 0.08)];
+  return { corps: nu(corps), pattes: nu(pattes), tete: nu(tete), bec, rouge: nu(rouge) };
+}
+function basseCour(h, centre, n, libre) {
+  const G2 = geoPoule(), robes = [0x9a5428, 0x9a5428, 0x8a4a22, 0xe6e0d4, 0x2a2624, 0x9c968c];
+  // le relief de la laine seulement (sans son image, qui teinte en carreaux de tissu écossais) : la
+  // couleur est celle de la robe de chaque poule, le grain celui des plumes
+  const plume = phMat('wool_boucle', 0.4, 0.4, { color: 0xffffff, roughness: 0.95 }).clone(); plume.map = null; plume.normalScale.set(0.6, 0.6); plume.needsUpdate = true;
+  const jaune = new THREE.MeshStandardMaterial({ color: 0xd8a830, roughness: 0.6 }), rouge = new THREE.MeshStandardMaterial({ color: 0xa82418, roughness: 0.55 });
+  const im = { corps: new THREE.InstancedMesh(G2.corps, plume, n), pattes: new THREE.InstancedMesh(G2.pattes, jaune, n), tete: new THREE.InstancedMesh(G2.tete, plume, n), bec: new THREE.InstancedMesh(G2.bec, jaune, n), rouge: new THREE.InstancedMesh(G2.rouge, rouge, n) };
+  for (const m of Object.values(im)) { m.castShadow = true; m.frustumCulled = false; scene.add(m); }
+  const col = new THREE.Color(), P = [];
+  for (let k = 0; k < n; k++) { col.setHex(robes[k % robes.length]); im.corps.setColorAt(k, col); im.tete.setColorAt(k, col);
+    let x = centre[0], z = centre[1]; for (let j = 0; j < 30; j++) { const a = rand(0, TAU), r = rand(0, 4), x2 = centre[0] + Math.cos(a) * r, z2 = centre[1] + Math.sin(a) * r; if (libre(x2, z2)) { x = x2; z = z2; break; } }
+    P.push({ x, z, cap: rand(0, TAU), but: null, ph: rand(0, TAU), picore: rand(0, 3) }); }
+  const m4 = new THREE.Matrix4(), mt = new THREE.Matrix4(), mp = new THREE.Matrix4().makeTranslation(0, 0.3, 0.12), mr = new THREE.Matrix4(), q = new THREE.Quaternion(), e = G.echelle * 1.6, sc = V(e, e, e), v = V();
+  return (t, dt) => {
+    P.forEach((p, k) => {
+      // trottiner vers un but, puis picorer un moment ; un nouveau but à moins de 5 m du centre
+      if (!p.but && (p.picore -= dt) < 0) { for (let j = 0; j < 8; j++) { const a = rand(0, TAU), r = rand(0, 5), x = centre[0] + Math.cos(a) * r, z = centre[1] + Math.sin(a) * r; if (libre(x, z)) { p.but = [x, z]; break; } } p.picore = rand(1.5, 5); }
+      let bec = 0;
+      if (p.but) { const dx = p.but[0] - p.x, dz = p.but[1] - p.z, d = Math.hypot(dx, dz);
+        if (d < 0.1) p.but = null; else { const pas = Math.min(d, 0.5 * dt); p.x += dx / d * pas; p.z += dz / d * pas; p.cap = Math.atan2(dx, dz); } }
+      else bec = Math.max(0, Math.sin(t * 7 + p.ph)) * 1.1;          // la tête plonge vers le sol
+      const sautille = p.but ? Math.abs(Math.sin(t * 14 + p.ph)) * 0.012 : 0;
+      q.setFromAxisAngle(HAUT, p.cap); m4.compose(v.set(p.x, h(p.x, p.z) + sautille, p.z), q, sc);
+      im.corps.setMatrixAt(k, m4); im.pattes.setMatrixAt(k, m4);
+      mt.copy(m4).multiply(mp).multiply(mr.makeRotationX(bec));
+      im.tete.setMatrixAt(k, mt); im.bec.setMatrixAt(k, mt); im.rouge.setMatrixAt(k, mt);
+    });
+    for (const m of Object.values(im)) m.instanceMatrix.needsUpdate = true;
+  };
+}
+
 
 // ctx : { hauteur, bloque } ; o : { maisons [{pts}], rues [{pts, r}], libre(x, z), centre [x, z],
 // pres { rmin, rmax } (où semer fleurs et brebis), oiseaux [params de vol], brebis n, betes
@@ -1112,10 +1205,21 @@ export async function decorDeHameau(ctx, o) {
       ps.forEach(([x, z], k) => betes.push(['vache.glb', x, z, rand(0, TAU), ['Eating', 'Eating', 'Idle_Headlow', 'Idle', 'Idle_2'][k % 5]]));
       if (o.vaches.taureau) betes.push(['taureau.glb', c0[0] + 16, c0[1] + 6, rand(0, TAU), 'Idle']); }
   }
+  // les chèvres : un petit troupeau sur un pré à part, même en pente (elles aiment ça)
+  if (o.chevres) {
+    let c0 = null; for (let k = 0; k < 2000 && !c0; k++) { const a = rand(0, TAU), r = rand(o.pres.rmin, o.pres.rmax), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (o.libre(x, z) && surPre(x, z) && betes.every((b) => Math.hypot(b[1] - x, b[2] - z) > 25)) c0 = [x, z]; }
+    if (c0) for (let k = 0, m = 0; k < 400 && m < o.chevres.n; k++) { const a = rand(0, TAU), r = rand(0, 9), x = c0[0] + Math.cos(a) * r, z = c0[1] + Math.sin(a) * r;
+      if (o.libre(x, z) && betes.every((b) => Math.hypot(b[1] - x, b[2] - z) > 2.5)) { betes.push(['chevre', x, z, rand(0, TAU), ['Eating', 'Idle_Headlow', 'Idle', 'Eating'][m % 4]]); m++; } }
+  }
+  // la basse-cour : près des maisons, sur une place libre de terre ou d'herbe (pas sur la rue)
+  let poules = null;
+  if (o.poules) { const c0 = o.poules.centre ? surPre(...o.poules.centre) : null;
+    if (c0) { poules = basseCour(h, c0, o.poules.n, (x, z) => o.libre(x, z) && Math.hypot(x - c0[0], z - c0[1]) < 6); bilan.poules = o.poules.n; bilan.ou_poules = c0.map((v) => +v.toFixed(1)); } }
   bilan.ou = [];   // où sont les bêtes (pour le banc et les captures)
   const mixers = (await Promise.all(betes.map(([f, x0, z0, a, clip]) => { const p = surPre(x0, z0); if (p) bilan.ou.push([f, +p[0].toFixed(1), +p[1].toFixed(1)]); return p ? beteAuRepos(f, p[0], h(...p), p[1], a, clip) : null; }))).filter(Boolean); bilan.betes = mixers.length;
   bilan.ms = Math.round(performance.now() - t0); BILAN.decor = bilan;
-  return (t, dt) => { for (const f of vols) f(t, dt); for (const m of mixers) m.update(dt); };
+  return (t, dt) => { for (const f of vols) f(t, dt); for (const m of mixers) m.update(dt); if (poules) poules(t, dt); };
 }
 
 // ---------------------------------------------------------------------

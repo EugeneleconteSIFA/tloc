@@ -1869,6 +1869,20 @@ fiche de la Garde-Guérin et par pouget.js. Une seule fabrique pour les deux lie
   cinématique), comme à la Garde-Guérin : les chargements restent à 2,2 et 2,5 s. `BILAN.decor.ou` dit
   où sont les bêtes. Captures : `deco-gardeguerin-2026-10-05-vaches-*.jpg`, `-betes-ane.jpg`,
   `deco-pouget-2026-10-05-vaches-*.jpg`.
+- **Chèvres et poules au Pouget (6 octobre, Eugène)** : aucun modèle libre au style des autres bêtes.
+  Le pack Quaternius n'a ni l'une ni l'autre. Les poules de Poly Pizza (Quaternius, CC0) sont un monstre
+  à gros yeux et un cube à la Minecraft, et les chèvres de Poly by Google sont fixes et en CC-BY. La
+  biche du pack (Deer.gltf, rapatriée pour l'essai, non utilisée) se lit comme une biche.
+  - **La chèvre** est l'âne transformé (`BETES.chevre`) : 75 cm au garrot, robe de l'Alpine chamoisée,
+    oreilles et queue raccourcies (l'échelle de leurs os, reposée après chaque image), cornes en arc
+    accrochées à l'os `Head` (`cornes`, réglées dans le repère de la bête). Six sur un pré à part.
+    `chargerBete` a une clé par SORTE : même fichier que l'âne, autres teintes.
+  - **Les poules** sont faites à la main (`geoPoule`, `basseCour`, cinq maillages en instances) : 12 en
+    quatre robes, sous la première maison. Elles picorent (la tête pivote au bas du cou) et trottinent
+    autour de leur cour. Le plumage est le relief de `wool_boucle` SANS son image : teinte, l'image
+    donnait un tissu écossais.
+  - Captures : `bancs/resultats/basse-cour-pouget-2026-10-06-*.jpg`. La boucle des vieux chemins passe
+    toujours.
 - **Appris** : un nom de capture avec des espaces casse `$(ls …)` dans l'appel à publier-dev.sh (le
   commit échoue, la sortie filtrée ne le montre pas) ; ne jamais mettre d'espace dans un nom de fichier.
 
