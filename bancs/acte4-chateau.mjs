@@ -48,7 +48,8 @@ try {
   // on attend que le plancher soit en ruine, puis on traverse
   await attendre(() => !__matera.neuve(0));
   const loin = await dansTour(0, -(T0 - 1.2)); await marcher(loin, 2400);
-  ok('9. sans tambourin, le plancher en ruine rejette Camille à la porte', (await axe(0)) > T0 - 2, 'axe ' + (await axe(0)).toFixed(1));
+  // (le plancher en ruine est un obstacle, bloqueLieu : elle s'arrête au bord ; prise dessus, elle est rejetée à la porte)
+  ok('9. sans tambourin, le plancher en ruine ne se traverse pas', (await axe(0)) > 1.5, 'axe ' + (await axe(0)).toFixed(1));
   // au tambourin, figé neuf : on traverse
   await poser(await dansTour(0, 3.4)); await page.waitForTimeout(3000);
   await attendre(() => __matera.neuve(0)); await K();

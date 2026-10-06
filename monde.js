@@ -45,11 +45,14 @@ function densifier(pts, pas = 2) {
  *   gare: { x, z, lignes: [[nom, lieu, pos, yaw]] } | null, plus(ctx) pour ce qui est propre au lieu,
  *   socleMax (m) et socle: [slug, couleur] — le soubassement de pierre des bâtiments en pente,
  *   toitSur(b, geo) pour coiffer soi-même un bâtiment, anime(now), solLieu(x, z) → un sol à soi (ou null),
+ *   bloqueLieu(x, z, r) → vrai pour un obstacle À SOI, qui peut aller et venir (les salles du château de
+ *     Matera, qui vieillissent en boucle : un mur muré puis éboulé, un plancher neuf puis en ruine),
  *   reperes: [{ id, nom, x, z, r, type: 'lieu'|'pnj'|'quete'|'passage' }] — les endroits qui
  *     comptent : lieux à découvrir (atlas, touche M), et repères sur la minicarte,
  *   musique, counts, start, entry
  */
 export async function monde(f) {
+  let MER = null;          // le plan d'eau : G.level.mer (la marée des Pouilles le monte et le descend)
   let R = null, H0 = 0, PLAN = null, B = [], GRILLE = new Map(), CADRE = null, arbres = [], voiles = [];
   const hauteur = (x, z) => {
     if (!R) return 0;
@@ -132,6 +135,7 @@ export async function monde(f) {
   }
   function bloque(x, z, r = 0.4) {
     if (x < CADRE.x0 || x > CADRE.x1 || z < CADRE.z0 || z > CADRE.z1) return true;
+    if (f.bloqueLieu && f.bloqueLieu(x, z, r)) return true;
     // la mer — sauf là où le lieu pose un sol à lui (les barques du marché flottant de Ko Panyi)
     if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2 && !(f.solLieu && f.solLieu(x, z) != null)) return true;
     for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
@@ -186,7 +190,7 @@ export async function monde(f) {
       const m = new THREE.Mesh(g, phMat(f.loinSol ? f.loinSol[0] : 'forest_leaves_02', 300, 300, { color: f.loinSol ? f.loinSol[1] : 0x6a8058 })); m.receiveShadow = true; scene.add(m); }
     // ---------- la mer ----------
     if (f.mer != null) { const m = new THREE.Mesh(new THREE.CircleGeometry(6000, 64), new THREE.MeshStandardMaterial({ color: f.merCouleur || 0x2f6a8a, roughness: f.merPoli ?? 0.08, metalness: f.merMetal ?? 0.75 }));
-      m.rotation.x = -Math.PI / 2; m.position.y = f.mer - H0 + 0.05; scene.add(m); }
+      m.rotation.x = -Math.PI / 2; m.position.y = f.mer - H0 + 0.05; scene.add(m); MER = m; }
 
     // ---------- les bâtiments, fondus par matière ----------
     PLAN.batiments.filter((b) => dansCadre(b.pts)).forEach(batir);
@@ -312,6 +316,7 @@ export async function monde(f) {
   const level = {
     name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: zone,
     build, populate, animate, minimap,
+    get mer() { return MER; },
     counts: () => `<small>${f.counts}</small>`,
     start: () => showMessage(f.start, 6), arriveMessage: () => f.titre + '.',
     entry: () => f.entry, onKill: () => {},

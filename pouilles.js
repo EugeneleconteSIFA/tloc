@@ -553,7 +553,8 @@ function tempsQuiCourt(now, nom) {
     T4 = { t: state.time, dir: SUN_DIR.clone(), top: u.top.value.clone(), mid: u.mid.value.clone(), bot: u.bot.value.clone(), cirrus: u.cirrus.value,
       sc: sun.color.clone(), si: sun.intensity, hc: hemi.color.clone(), hg: hemi.groundColor.clone(), hi: hemi.intensity,
       brume: scene.fog ? scene.fog.color.clone() : null, expo: renderer.toneMappingExposure, mer: null, merY: 0 };
-    scene.traverse((o) => { if (!T4.mer && o.isMesh && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius === 6000) { T4.mer = o; T4.merY = o.position.y; } });
+    // le plan d'eau, que monde.js expose (G.level.mer)
+    if (G.level && G.level.mer) { T4.mer = G.level.mer; T4.merY = T4.mer.position.y; }
   }
   // le temps reprend son pas quand la cloche des Heures a sonné ; en instance, il n'a jamais couru
   const court = !EN_INSTANCE && !passe4('heures');

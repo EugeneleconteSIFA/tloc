@@ -176,7 +176,9 @@ function anneaux() {
 // (TEMPS.lent). Tour sud (0) : un plancher qui tombe en ruine — on ne le traverse que neuf. Tour
 // nord (2) : une porte murée quand la salle est neuve, éboulée quand elle est vieille — on ne passe
 // que par la brèche. Au fond de chacune, un levier ; les deux baissés, le donjon écoute.
-// (La règle se tient ici, à chaque image : monde.js ne sait pas bloquer puis débloquer un passage.)
+// La bande qu'on ne passe pas est un obstacle de monde.js (bloqueLieu) : Camille, les bêtes et la caméra
+// s'y arrêtent. Si l'état change pendant qu'on est dedans, la règle de chaque image reprend la main
+// (sallesTick : le plancher qui tombe, le mur qui revient).
 const SALLES = { c: 0, cote: {} };
 const neuve = (i) => { const c = SALLES.c % 2.4; return i === 0 ? c < 0.5 : c > 0.5; };
 function salles({ hauteur }) {
@@ -253,6 +255,14 @@ function sallesTick(dt) {
   const dedans = TOURS.some((T) => Math.hypot(p.x - T.x, p.z - T.z) < T.rin);
   G.camBack = dedans ? 5.5 : 10.5;
 }
+// l'obstacle des salles pour monde.js : la bande, quand elle n'est pas dans l'état qui laisse passer
+function bloqueChateau(x, z, r = 0.4) {
+  for (const i of [0, 2]) { const T = TOURS[i]; if (!T.neuf) continue;
+    const dx = x - T.x, dz = z - T.z; if (Math.hypot(dx, dz) > T.rin) continue;
+    const s = dx * T.ux + dz * T.uz, n = neuve(i);
+    if (Math.abs(s) < (i === 0 ? 2.2 : 0.85) + r && !(i === 0 ? n : !n)) return true; }
+  return false;
+}
 // le sol des salles (et la rampe du seuil) pour monde.js
 function solChateau(x, z) {
   for (const T of TOURS) { if (T.yf === undefined) continue;
@@ -279,7 +289,7 @@ function placeVieux({ hauteur, bloque }, p) {
 }
 let tAvant = 0;
 ville('matera', {
-  solLieu: solChateau,
+  solLieu: solChateau, bloqueLieu: bloqueChateau,
   plus(ctx) { chateau(ctx);
     const g = GARES.matera, c = Math.cos(g.rot), s = Math.sin(g.rot), a = 7, b = -2.6;
     // (la place du voisin se cherche après le chargement : 0,3 s de plus à Matera sinon)
