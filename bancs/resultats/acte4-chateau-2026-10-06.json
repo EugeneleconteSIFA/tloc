@@ -1,0 +1,93 @@
+{
+ "pas": [
+  {
+   "nom": "9. trop tôt dans la mesure : la porte reste fermée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. la pizzica dans le silence : la porte sud s’ouvre",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. le donjon n’écoute pas sans les leviers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. dans la salle : le sol de la salle",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. sans tambourin, le plancher en ruine rejette Camille à la porte",
+   "ok": true,
+   "detail": "axe 5.6"
+  },
+  {
+   "nom": "9. au tambourin, le plancher figé neuf : on traverse",
+   "ok": true,
+   "detail": "axe -4.9"
+  },
+  {
+   "nom": "9. le levier de la tour sud",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. la porte nord s’ouvre au rythme",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. murée, la salle ne laisse pas passer",
+   "ok": true,
+   "detail": "axe 0.9"
+  },
+  {
+   "nom": "9. au tambourin, figée en ruine : la brèche",
+   "ok": true,
+   "detail": "axe -5.1"
+  },
+  {
+   "nom": "9. les deux leviers",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. le donjon s’ouvre au rythme",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. le sommet : le Colosse",
+   "ok": true,
+   "detail": " : Tu montes l’escalier du donjon. Les marches s’usent sous tes pieds, puis redeviennent neuves. |  : Au sommet, le cadran de la tour. L’aiguille tourne, tourne, beaucoup trop vite. |  : Une main rouge a gravé ici un géant, et une cloche dans sa poitrine. | Camille : Le Colosse."
+  },
+  {
+   "nom": "9. la cour du château s’atteint à pied depuis l’arrivée",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "9. la dalle : le vers de l’acte IV",
+   "ok": true,
+   "detail": " : La poussière s’envole d’un coup. Les lettres sont neuves, comme taillées ce matin. |  : « Chaque heure sauvée coûtera des années, et nul ne les rendra. »"
+  },
+  {
+   "nom": "l’objectif : le Colosse",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

@@ -435,6 +435,8 @@ const INDICES4 = {
   chateau: { txt: 'L’homme rouge est monté au château de Matera, le Tramontano.', qui: 'Nunzia, 30 ans', fait: () => passe4('rythme') },
   rythme: { txt: 'Le château ne s’ouvre pas avec une clé, mais avec un rythme.', qui: 'un vieux des Sassi', fait: () => passe4('soixante') },
   joueuse: { txt: 'Le rythme, c’est la pizzica. La joueuse de tambourin d’Alberobello l’apprendra — la fille de Nunzia.', qui: 'Nunzia, 60 ans', fait: () => passe4('corde') },
+  colosse: { txt: 'Le morceau de la Cloche des Heures est planté dans la poitrine du Colosse de Gallipoli.', qui: 'le sommet du donjon', fait: () => passe4('heures') },
+  vers4: { txt: '« Chaque heure sauvée coûtera des années, et nul ne les rendra. »', qui: 'la dalle de la cour du château', fait: () => false },
   tarentules: { txt: 'Les tarentules ont volé la corde du tambourin. Elles viennent des grottes sous les remparts de Gallipoli, à marée basse.', qui: 'Assunta', fait: () => !!state.corde4 },
 };
 export function indice4(k) {
@@ -460,7 +462,11 @@ export function objectif4() {
     case 'soixante': return 'Trouve la joueuse de tambourin, à Alberobello, près de la gare';
     case 'corde': return state.corde4 ? 'Rapporte la corde à Assunta, à Alberobello'
       : 'Va chercher la corde du tambourin dans la grotte sous le château de Gallipoli, à marée basse (par la jetée du Colosse)';
-    case 'tambourin': return 'Ouvre les portes du château Tramontano au tambourin (K), à Matera';
+    case 'tambourin': return !(state.levier4 && state.levier4[0] && state.levier4[2])
+      ? 'Château Tramontano, à Matera : ouvre les tours au tambourin (K devant une porte : trois coups, un silence), et trouve leurs leviers'
+      : 'Ouvre la porte du donjon au tambourin, et monte au sommet';
+    case 'chateau': return state.ind4 && state.ind4.vers4 ? 'Libère le Colosse, sur la jetée de Gallipoli : ralentis-le au tambourin'
+      : 'Lis la dalle gravée, dans la cour du château, puis va libérer le Colosse à Gallipoli';
     default: return 'Les Pouilles : ici, le temps court.';
   }
 }
@@ -563,9 +569,12 @@ const LENT = 0.12, DUREE_LENT = 8;
 export const TAMBOURIN = { jusqua: -1, cercle: null, battu: -1e9 };
 const VITESSES = {};          // les vitesses des bêtes, rangées le temps du ralenti
 export const battu4 = () => state.time - TAMBOURIN.battu;
+// ce qui écoute le tambourin (les portes du château de Matera) : appelé à chaque battement compté
+export const ECOUTE4 = [];
 function battre() {
   if (!state.tambourin || EN_INSTANCE || !state.running || state.paused) return;
   if (state.time - TAMBOURIN.battu < 1.2) return;            // on finit sa mesure
+  for (const f of ECOUTE4) f();
   TAMBOURIN.battu = state.time;
   // trois coups, les grelots du cercle : le son des écus est le plus proche
   [0, 180, 360].forEach((t) => setTimeout(() => SFX.piece(), t));
