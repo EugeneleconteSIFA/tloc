@@ -14,12 +14,13 @@ import * as PNJ from './pnj.js';
 // En mètres, comme la carte (1 unité = 1 m) : Camille y a l'échelle de la ville (0,6).
 // =====================================================================
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
-  addCap, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state, dialogue, cutscene, saveGame } from './engine.js?v=41';
+  addCap, addHelix, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state, dialogue, cutscene, saveGame } from './engine.js?v=41';
 import { DONJON } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const R_ILE = 50, R_COUR = 26, R_TOUR = 10, EP_TOUR = 1.4, H_TOUR = 72;
-const MER = -1.3;                                    // la mer figée, sous le bord de l'île
+const MER = -1.3;
+const PROPHETIE = { plaque: null, vus: '', rai: null };   // la plaque des vers (graverProphetie, plus bas)                                    // la mer figée, sous le bord de l'île
 // les six portes, en cercle : Lille au sud (+z), là où l'on arrive
 const PORTES = [
   { nom: 'LILLE', sous: 'la Grande Cloche', ouverte: true, geant: 'lyderic' },
@@ -64,8 +65,10 @@ function hauteur(x, z) {
 }
 
 // une plaque gravée : lettres creusées (ombre dessous, lumière dessus) dans la pierre claire
-function plaqueGravee(lignes, w, h, taille) {
-  const W = 1024, H = Math.round(W * h / w), [c, x] = makeCanvas(W, H);
+// (W : la largeur du canevas ; une gravure faite APRÈS le chargement se fait à 512 px, la taille où le
+// moteur ramène les textures — en 1024, elle sortait deux fois, à l'échelle et en grand : banc acte2-temple)
+function plaqueGravee(lignes, w, h, taille, W = 1024) {
+  const H = Math.round(W * h / w), [c, x] = makeCanvas(W, H);
   x.fillStyle = '#b9b1a2'; x.fillRect(0, 0, W, H);
   for (let k = 0; k < 2600; k++) { x.fillStyle = `rgba(${60 + Math.random() * 60},${55 + Math.random() * 50},${45 + Math.random() * 40},${Math.random() * 0.12})`;
     x.fillRect(Math.random() * W, Math.random() * H, 2 + Math.random() * 6, 2 + Math.random() * 6); }
@@ -293,7 +296,11 @@ function build() {
       { t: 'Quand la Grande Cloche se fendra,', italique: true }, { t: 'le géant du Buc sortira.', italique: true },
       { t: '· · ·', couleur: 'rgba(40,32,24,0.35)' }, { t: '· · ·', couleur: 'rgba(40,32,24,0.35)' }, { t: '· · ·', couleur: 'rgba(40,32,24,0.35)' }, { t: '· · ·', couleur: 'rgba(40,32,24,0.35)' },
     ], 5.2, 2.6, 54), taille]);
-    p.position.set(Math.sin(a) * r, 1.9, Math.cos(a) * r); p.rotation.y = a; p.castShadow = true; scene.add(p); }
+    p.position.set(Math.sin(a) * r, 1.9, Math.cos(a) * r); p.rotation.y = a; p.castShadow = true; scene.add(p);
+    // la face qu'on regrave (graverProphetie) : un panneau à part, 1 cm devant la plaque — changer la
+    // matière de la boîte laissait l'ancienne gravure par-dessus (banc acte2-temple)
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(5.1, 2.5), mat(0xb9b1a2)); face.userData.dynamic = true;
+    face.position.set(Math.sin(a) * (r + 0.135), 1.9, Math.cos(a) * (r + 0.135)); face.rotation.y = a; face.visible = false; scene.add(face); PROPHETIE.plaque = face; }
 
   // ---------- les six portes ----------
   const PILIER = phMat('old_stone_wall_02', 1.2, 5.2, { color: 0xd8d0d6 });
@@ -631,6 +638,78 @@ function heuresScene() {
   ], () => { state.acte4 = 'temple'; saveGame(true); });
 }
 
+// LA PROPHÉTIE QUI SE GRAVE (passe D, 6 octobre) : la plaque du pied de la tour ne montrait que le
+// premier vers, et des points. Chaque vers trouvé dans un monde (gravé au cœur du Dormeur, sous la
+// Cloche des Îles, au sommet du château de Matera) y apparaît à son rang ; les autres restent des
+// points. STORY.md § 7 : six vers.
+const VERS_PROPHETIE = [
+  [() => true, 'Quand la Grande Cloche se fendra,', 'le géant du Buc sortira.'],
+  [() => state.acte2 === 'pluie', 'Une gardienne sonnera les cloches,', 'et chaque cloche le servira.'],
+  [() => state.clocheIles === true, 'Chaque géant donnera ce qu’il est,', 'et ne le reprendra pas.'],
+  [() => state.acte4 === 'heures' || state.acte4 === 'temple', 'Chaque heure sauvée coûtera des années,', 'et nul ne les rendra.'],
+];
+function graverProphetie() {
+  const P = PROPHETIE.plaque; if (!P) return;
+  const vus = VERS_PROPHETIE.map(([c]) => (c() ? 1 : 0)).join(''); if (vus === PROPHETIE.vus) return; PROPHETIE.vus = vus;
+  // une ligne par vers trouvé (petite : il en tient six), des points pour ceux qui manquent
+  const l = []; for (const [c, a, b] of VERS_PROPHETIE) if (c()) l.push({ t: a + ' ' + b, italique: true });
+  while (l.length < 6) l.push({ t: '· · ·', couleur: 'rgba(40,32,24,0.35)' });
+  P.material = plaqueGravee(l, 5.1, 2.5, 20, 512); P.visible = vus !== '1000';   // (le premier vers seul : la plaque d'origine suffit)
+}
+
+// LE RETOUR DE L'ACTE II (passe D, 6 octobre ; DECISIONS-RECIT.md § 3, « après l'Aveyron ») : la Cloche
+// du Midi rapportée du cœur du Dormeur (state.acte2 === 'pluie', aveyron.js), elle pend au premier
+// étage ; un escalier de pierre monte jusqu'à elle, dans la tour ; un rai de soleil fixe sur la cour ;
+// une cigale, qui ne s'arrête pas. On la sonne. Le deuxième vers apparaît sur la plaque. La porte des
+// Îles s'entrouvre. Une fois (state.midiVu) ; `state.acte2` reste à « pluie » (aveyron.js le lit).
+let midiPosees = false, midiFaite = false, CIGALE = null;
+const midiSonne = () => state.acte2 === 'pluie';
+function midiPoser() {
+  const i = PORTES.findIndex((P) => P.geant === 'dormeur');
+  if (i < 0) return;
+  if (!ouverts().has('dormeur')) { deborder(i, 'dormeur'); silhouette(i, 'dormeur'); pendreCloche(i, 'dormeur'); }
+  const yC = 14 + (i - 1) * 11;
+  // l'escalier : une vis de pierre contre le mur intérieur de la tour, jusqu'au palier sous la cloche
+  // (addHelix : on y monte vraiment, comme la vis de Beauregard)
+  { const r0 = R_TOUR - EP_TOUR - 2.2, r1 = R_TOUR - EP_TOUR - 0.1, tours = yC / 7.5, n = Math.round(yC / 0.25), morceaux = [];
+    addHelix(0, 0, r0, r1, 0, 7.5, tours, 0, false);
+    for (let k = 0; k < n; k++) { const a = (k + 0.5) / n * tours * TAU, y = (k + 1) * yC / n, rm = (r0 + r1) / 2;
+      // (le même angle que addHelix : a mesuré depuis +x, vers z croissant)
+      const gm = boxG(r1 - r0, 0.22, rm * tours * TAU / n * 1.15); gm.rotateY(-a); gm.translate(Math.cos(a) * rm, y - 0.11, Math.sin(a) * rm); morceaux.push(gm); }
+    const m = new THREE.Mesh(mergeGeometries(morceaux), phMat('old_stone_wall_02', 1, 1, { color: 0xb8b0a4 })); m.castShadow = m.receiveShadow = true; scene.add(m);
+    // le palier, sous la cloche
+    const pal = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 32), phMat('old_stone_wall_02', 4, 4, { color: 0xb8b0a4, side: THREE.DoubleSide })); pal.rotation.x = -Math.PI / 2; pal.position.y = yC + 0.02; scene.add(pal);
+    addInteract({ pos: new THREE.Vector3(r0 + 1, yC, 0), r: 4, prompt: () => 'sonner la Cloche du Midi', fn: () => { PNJ_E.SFX.cloche && PNJ_E.SFX.cloche(); showMessage('La Cloche du Midi sonne. Elle ne fait pas d’ombre : le soleil est toujours au-dessus d’elle.', 5); } }); }
+  // le rai de soleil : une colonne de lumière qui tombe du ciel sur la cour, et n'en bouge plus
+  { const a = angPorte(i) + 0.5, r = (R_TOUR + R_COUR) / 2, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    const rai = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.2, 60, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    rai.position.set(x, hauteur(x, z) + 30, z); scene.add(rai);
+    const tache = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), new THREE.MeshBasicMaterial({ color: 0xffe8a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    tache.rotation.x = -Math.PI / 2; tache.position.set(x, hauteur(x, z) + 0.04, z); scene.add(tache); PROPHETIE.rai = [x, z]; }
+}
+// la cigale : un grésillement aigu, par salves, très bas — qui ne s'arrête pas (DECISIONS-RECIT.md § 3)
+function cigale() {
+  if (CIGALE) return;
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), mod = c.createOscillator(), gm = c.createGain(), g = c.createGain(), salve = c.createOscillator(), gs = c.createGain();
+    o.type = 'square'; o.frequency.value = 4300; mod.frequency.value = 55; gm.gain.value = 0.5;
+    mod.connect(gm.gain); salve.type = 'square'; salve.frequency.value = 0.6; salve.connect(gs.gain); gs.gain.value = 0.5;
+    g.gain.value = 0.012; o.connect(gm); gm.connect(gs); gs.connect(g); g.connect(c.destination); o.start(); mod.start(); salve.start(); CIGALE = c; } catch (e) { CIGALE = 'muette'; }
+}
+function midiScene() {
+  if (midiFaite || state.midiVu || !midiSonne() || !state.running || state.paused) return;
+  midiFaite = true;
+  const i = PORTES.findIndex((P) => P.geant === 'dormeur'), yC = 14 + (i - 1) * 11;
+  const tour = { cam: [6, yC - 4, R_COUR - 2], at: [0, yC, 0] }, cour = { cam: [10, 5, R_COUR - 2], at: PROPHETIE.rai ? [PROPHETIE.rai[0], 0, PROPHETIE.rai[1]] : [0, 0, R_TOUR] };
+  const am = 0.55, px = Math.sin(am) * (R_TOUR + 0.75), pz = Math.cos(am) * (R_TOUR + 0.75), mur = { cam: [px - 1.6, 2.1, pz + 4.2], at: [px, 1.9, pz] };
+  const ai = PORTES.findIndex((P) => P.geant === 'yak'), a = angPorte(ai), porte = { cam: [Math.sin(a) * (R_COUR - 9), 2.2, Math.cos(a) * (R_COUR - 9)], at: [Math.sin(a) * R_COUR, 2, Math.cos(a) * R_COUR] };
+  cutscene([
+    { ...tour, who: '', say: 'Au premier étage de la tour, la Cloche du Midi pend à son crochet. Un escalier de pierre est apparu, qui monte jusqu’à elle.', fn: () => { PNJ_E.SFX.cloche && PNJ_E.SFX.cloche(); } },
+    { ...cour, who: '', say: 'Sur la cour, un rai de soleil s’est posé, et il n’en bouge plus. Une cigale chante. Elle ne s’arrête pas.', fn: cigale },
+    { ...mur, who: 'Le mur', say: 'Sous le premier vers, un deuxième : « Une gardienne sonnera les cloches, et chaque cloche le servira. »' },
+    { ...porte, who: '', say: 'Une autre porte s’entrouvre : derrière, une pluie qui ne tombe pas.' },
+  ], () => { state.midiVu = true; saveGame(true); });
+}
+
 // LE RETOUR DE L'ACTE III (6 octobre ; DECISIONS-RECIT.md § 3, « après la Thaïlande » ; SCENARIO.md
 // § 12, la fin) : la Cloche des Îles rapportée de la baie (state.clocheIles, thailande.js), elle pend
 // au deuxième étage ; des rigoles autour du pied de la tour, dont l'eau coule vers le HAUT ; la pluie,
@@ -682,6 +761,9 @@ function animate(now, dt) {
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est dans le dos
   if (!finPosee && state.running && state.acte1 === 'temple') { finPosee = true; finActeIPoser(); }
   finActeIScene();                                                                                   // la fin de l'acte I, une fois
+  if (!midiPosees && state.running && midiSonne()) { midiPosees = true; midiPoser(); if (state.midiVu) cigale(); }
+  midiScene();                                                                                       // le retour de l'acte II, une fois
+  if (state.running) graverProphetie();                                                             // les vers trouvés, sur la plaque
   if (!heuresPosees && state.running && heuresSonnees()) { heuresPosees = true; heuresPoser(); }
   heuresScene();                                                                                     // le retour de l'acte IV, une fois
   if (!ilesPosees && state.running && ilesSonnees()) { ilesPosees = true; ilesPoser(); }
