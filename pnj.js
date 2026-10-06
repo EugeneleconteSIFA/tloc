@@ -594,6 +594,21 @@ export const ROLES = {
     cheveux: 'coiffures_r:Hair_Buns', sourcils: 'coiffures_r:Eyebrows_Female', cheveuxC: 0x16110e,
     haut: 0xe8dcc4, valeur: 1.15, bas: 0x2e3a6a, valeurBas: 0.8, idle: 'Idle_Loop',
   },
+  // LES ENFANTS (demande de la Thaïlande et de Ko Panyi, 5 octobre : on y réduisait Nok à 0,72).
+  // Un corps d'adulte à 1,15 m : la banque n'a pas de corps d'enfant, mais un rôle à soi évite
+  // que chaque lieu rapetisse une jeune femme ; un garçon et une fille, en habits simples
+  enfant: {
+    metier: 'enfant', gabarit: 'mince', h: enUnites(1.15),
+    tenue: 'tenues:Male_Peasant', corps: 'corps:Superhero_Male_FullBody',
+    cheveux: 'coiffures_r:Hair_Buzzed', sourcils: 'coiffures_r:Eyebrows_Regular', cheveuxC: 0x1a1210,
+    haut: 0xd8c8a8, valeur: 1.1, bas: 0x4a5a6a, valeurBas: 0.8, idle: 'Idle_Loop',
+  },
+  enfante: {
+    metier: 'enfant', gabarit: 'mince', h: enUnites(1.12),
+    tenue: 'tenues:Female_Peasant', corps: 'corps:Superhero_Female_FullBody',
+    cheveux: 'coiffures_r:Hair_Buns', sourcils: 'coiffures_r:Eyebrows_Female', cheveuxC: 0x16110e,
+    haut: 0xe8a8a0, valeur: 1.1, bas: 0x2e3a6a, valeurBas: 0.8, idle: 'Idle_Loop',
+  },
   // les moines du grand piton, figés au milieu d'un geste : crâne rasé, robe safran
   moine: {
     metier: 'moine', gabarit: 'sec', h: enUnites(1.70),

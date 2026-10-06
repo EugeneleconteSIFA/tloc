@@ -16,6 +16,7 @@ import * as PNJ from './pnj.js';
 import { THREE, TAU, rand, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG,
   addInteract, goToLevel, showMessage, showMenu, hideMenu, bootLevel, minimapDots, makeSky, player, state, addLieu, estDecouvert } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
+import { PARTAGE } from './etat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const DIR = 'carte/mondes/';
@@ -54,6 +55,12 @@ function densifier(pts, pas = 2) {
 export async function monde(f) {
   let MER = null;          // le plan d'eau : G.level.mer (la marée des Pouilles le monte et le descend)
   let R = null, H0 = 0, PLAN = null, B = [], GRILLE = new Map(), CADRE = null, arbres = [], voiles = [];
+  // les lacs (PLAN.eau.plans) : leur niveau, leur maillage, et une grille de 4 m de leur eau PROFONDE
+  // (plus de 8 m de la rive), où l'on ne marche pas — on y entrait jusqu'au fond (demande de l'Aveyron,
+  // 5 octobre). G.level.lacs les expose : un lieu peut hausser un lac après coup (la pluie revenue).
+  const LACS = [];
+  // la mer de la minicarte : les cases de 12 m sous le niveau de la mer, comptées une fois
+  let MER_CASES = null; const MER_PAS = 12;
   const hauteur = (x, z) => {
     if (!R) return 0;
     const fx = Math.max(0, Math.min(R.nx - 1.001, (x - R.x0) / R.pas)), fz = Math.max(0, Math.min(R.nz - 1.001, (z - R.z0) / R.pas));
@@ -133,8 +140,12 @@ export async function monde(f) {
     for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gz = Math.floor(z0 / 20); gz <= Math.floor(z1 / 20); gz++) {
       const k = gx + ',' + gz; if (!GRILLE.has(k)) GRILLE.set(k, []); GRILLE.get(k).push(i); }
   }
-  function bloque(x, z, r = 0.4) {
+  function bloque(x, z, r = 0.4, y = null) {
     if (x < CADRE.x0 || x > CADRE.x1 || z < CADRE.z0 || z > CADRE.z1) return true;
+    // l'eau profonde d'un lac — pour qui est à sa hauteur (y inconnu : on la compte, c'est le cas des
+    // placements) ; un lieu peut bâtir au-dessus (les caves de l'Aveyron, à 600 m)
+    for (const l of LACS) { if (y != null && y > l.mesh.position.y + 4) continue; const i = Math.floor((x - l.x0) / 4), j = Math.floor((z - l.z0) / 4);
+      if (i >= 0 && j >= 0 && i < l.nx && j < l.nz && l.profond[j * l.nx + i]) return true; }
     if (f.bloqueLieu && f.bloqueLieu(x, z, r)) return true;
     // la mer — sauf là où le lieu pose un sol à lui (les barques du marché flottant de Ko Panyi)
     if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2 && !(f.solLieu && f.solLieu(x, z) != null)) return true;
@@ -220,7 +231,16 @@ export async function monde(f) {
       for (const l of (PLAN.eau.plans || [])) { if (!dansCadre(l.pts) || l.pts.length < 3) continue;
         const rives = l.pts.map(([x, z]) => hauteur(x, z)).sort((a, b) => a - b), niveau = rives[Math.floor(rives.length * 0.3)];
         const g = new THREE.ShapeGeometry(new THREE.Shape(l.pts.map(([x, z]) => new THREE.Vector2(x, -z)))); g.rotateX(-Math.PI / 2);
-        const lac = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3e6278, roughness: 0.05, metalness: 0.7 })); lac.position.y = niveau + 0.1; scene.add(lac); } }
+        const lac = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3e6278, roughness: 0.05, metalness: 0.7 })); lac.position.y = niveau + 0.1; scene.add(lac);
+        lac.userData.dynamic = true;          // (un lieu peut le hausser : la fusion ne doit pas le figer)
+        // l'eau profonde : les cases de 4 m dans le lac, à plus de deux cases de toute case hors du lac
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [x, z] of l.pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+        const nx = Math.ceil((x1 - x0) / 4) + 1, nz = Math.ceil((z1 - z0) / 4) + 1, d = new Uint8Array(nx * nz).fill(255);
+        let file = []; for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) if (!dansPoly(x0 + (i + 0.5) * 4, z0 + (j + 0.5) * 4, l.pts)) { d[j * nx + i] = 0; file.push(j * nx + i); }
+        for (let pas = 1; pas <= 2 && file.length; pas++) { const nf = []; for (const k of file) { const i = k % nx, j = (k - i) / nx;
+          for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const u = i + a, v = j + b; if (u < 0 || v < 0 || u >= nx || v >= nz || d[v * nx + u] <= pas) continue; d[v * nx + u] = pas; nf.push(v * nx + u); } } file = nf; }
+        const profond = new Uint8Array(nx * nz); for (let k = 0; k < d.length; k++) profond[k] = d[k] > 2 ? 1 : 0;
+        LACS.push({ nom: l.nom || '', pts: l.pts, niveau, mesh: lac, x0, z0, nx, nz, profond }); } }
 
     // ---------- les arbres ----------
     if (f.arbres) { const esp = especeGeo(f.arbres.espece);
@@ -244,7 +264,10 @@ export async function monde(f) {
         fn: () => showMenu('LE PETIT TRAIN', 'Gare de ' + f.titre, 'Il passe toutes les heures. Ici, une heure passe vite.',
           [...lignes.map(([nom, lieu, pos, yaw]) => ({ label: nom, fn: () => { hideMenu(); goToLevel(lieu, pos, yaw, 'Le petit train file à travers les oliviers…'); } })),
             { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) }); }
-    if (f.plus) f.plus({ hauteur, scene, PLAN, H0, bloque, addInteract, inscrire, CADRE });
+    // (repere : un repère de minicarte dont la place se calcule au chargement — les pêcheurs de Ko
+    // Panyi posent leur barque eux-mêmes ; il prend le chemin des repères déclarés, juste après)
+    const repereLieu = (r) => { (f.reperes = f.reperes || []).push(r); };
+    if (f.plus) f.plus({ hauteur, scene, PLAN, H0, bloque, addInteract, inscrire, CADRE, repere: repereLieu });
 
     // ---------- les repères : lieux à découvrir, et la minicarte ----------
     // (Eugène, 4 octobre : « les endroits importants visibles sur la minicarte, et comptés
@@ -252,9 +275,18 @@ export async function monde(f) {
     // du monde : la découverte se garde dans la sauvegarde avec celles de Lille, sans les croiser.
     for (const r of f.reperes || []) addLieu({ id: f.name + ':' + r.id, nom: r.nom, x: r.x, z: r.z, r: r.r || 18, type: r.type || 'lieu' });
     // les rues et les chemins de la minicarte, en traits clairs : de quoi s'orienter
-    TRAITS = [...PLAN.routes, ...PLAN.chemins].filter((c) => dansCadre(c.pts, 40)).map((c) => ({ pts: c.pts, w: c.r >= 3 ? 6 : c.r === 2 ? 4.5 : c.r === 1 ? 3 : 2 }));
+    // (l'Aveyron range ses rues sous PLAN.rues et PLAN.sentiers, qu'il bâtit lui-même : on les lit aussi)
+    TRAITS = [...(PLAN.routes || []), ...(PLAN.chemins || []), ...(PLAN.rues || []), ...(PLAN.sentiers || [])].filter((c) => dansCadre(c.pts, 40)).map((c) => ({ pts: c.pts, w: c.r >= 3 ? 6 : c.r === 2 ? 4.5 : c.r === 1 ? 3 : 2 }));
   }
   let TRAITS = [];
+  // la mer de la minicarte (demande de la Thaïlande : à Ko Panyi, le village sur pilotis semblait
+  // posé sur l'herbe) — comptée à la première minicarte, pas au chargement
+  function merCases() {
+    if (MER_CASES || f.mer == null) return MER_CASES; MER_CASES = [];
+    for (let x = CADRE.x0; x < CADRE.x1; x += MER_PAS) for (let z = CADRE.z0; z < CADRE.z1; z += MER_PAS)
+      if (hauteur(x + MER_PAS / 2, z + MER_PAS / 2) < f.mer - H0) MER_CASES.push([x, z]);
+    return MER_CASES;
+  }
 
   // la caméra : à l'arrivée par une porte, la sauvegarde rend l'angle du lieu qu'on quitte —
   // on la remet une fois dans le dos de Camille (camYaw = yaw : derrière elle, cf. engine.js)
@@ -290,6 +322,10 @@ export async function monde(f) {
   function minimap(g, W2) {
     const sc = W2 / 300, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc, W2 / 2 + (z - player.pos.z) * sc], px = player.pos.x, pz = player.pos.z;
     g.fillStyle = f.carteFond || '#7a8a5a'; g.fillRect(0, 0, W2, W2);
+    if (f.mer != null) { g.fillStyle = f.merCarte || '#3a6a8a'; const c = MER_PAS * sc + 0.6;
+      for (const [x, z] of merCases()) { if (Math.abs(x - px) > 170 || Math.abs(z - pz) > 170) continue; const [a, b] = P(x, z); g.fillRect(a, b, c, c); } }
+    g.fillStyle = '#4a7090';
+    for (const l of LACS) { g.beginPath(); l.pts.forEach(([x, z], k) => { const [a, b] = P(x, z); k ? g.lineTo(a, b) : g.moveTo(a, b); }); g.fill(); }
     // les rues et les chemins d'abord, sous le bâti
     g.strokeStyle = 'rgba(244, 236, 214, 0.8)'; g.lineCap = g.lineJoin = 'round';
     for (const t of TRAITS) { if (!t.pts.some(([x, z]) => Math.abs(x - px) < 180 && Math.abs(z - pz) < 180)) continue;
@@ -298,6 +334,11 @@ export async function monde(f) {
     g.fillStyle = '#6a6460';
     for (const m of B) { if (Math.abs(m.cx - px) > 170 || Math.abs(m.cz - pz) > 170) continue;
       g.beginPath(); m.pts.forEach(([x, z], k) => { const [a, b] = P(x, z); k ? g.lineTo(a, b) : g.moveTo(a, b); }); g.fill(); }
+    // la limite de l'aire du multi (PARTAGE.aires, posée par tloc-multi.js ; comme le Batut et le
+    // Pouget) : pleine, celle en vigueur ; en tirets, celle qui s'annonce
+    for (const a of PARTAGE.aires || []) {
+      g.save(); g.strokeStyle = a.couleur; g.lineWidth = 2; g.setLineDash(a.tirets ? [5, 4] : []);
+      g.beginPath(); a.pts.forEach(([x, z], k) => { const [u, v] = P(x, z); k ? g.lineTo(u, v) : g.moveTo(u, v); }); g.closePath(); g.stroke(); g.restore(); }
     // les repères : découverts en plein, les autres à peine (on sait qu'il y a quelque chose) ;
     // le nom du plus proche des découverts, en bas du carré
     let proche = null, dp = 1e9;
@@ -314,9 +355,10 @@ export async function monde(f) {
     return f.titre;
   }
   const level = {
-    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r) => bloque(x, z, r), zoneName: zone,
+    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r, vole, y) => bloque(x, z, r, y), zoneName: zone,
     build, populate, animate, minimap,
     get mer() { return MER; },
+    get lacs() { return LACS; },
     counts: () => `<small>${f.counts}</small>`,
     start: () => showMessage(f.start, 6), arriveMessage: () => f.titre + '.',
     entry: () => f.entry, onKill: () => {},

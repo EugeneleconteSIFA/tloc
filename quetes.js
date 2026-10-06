@@ -812,6 +812,9 @@ const INDICES = {
   canal:    { txt: 'La clé est tombée dans le canal de la Tortue, derrière le moulin.', qui: 'Émile', fait: () => !!state.cleBeffroi },
   pecheur:  { txt: 'Le vieux pêcheur du quai, devant la maison, a une canne.', qui: 'Émile', fait: () => !!state.canne },
   vers:     { txt: 'Des vers dans la terre du champ d’Émile, là où le blé est coupé.', qui: 'le vieux pêcheur', fait: () => !!state.vers },
+  // ceux des galeries (cave.js les pose dans state.ind ; demande de B2) : on les relit au carnet en remontant
+  bastien:  { txt: 'L’arc de l’intendant est au puits aux chauves-souris, à droite après la citerne.', qui: 'Bastien', fait: () => !!state.bow },
+  ratRoi:   { txt: 'Le Rat-Roi a avalé une clé ; une flèche dans les tonneaux pendus le fera sortir.', qui: 'Bastien', fait: () => !!state.clePoterne },
 };
 function noter(cle) {
   state.ind = state.ind || {};
