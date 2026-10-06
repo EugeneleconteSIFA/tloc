@@ -2641,3 +2641,6 @@ Assunta ; rien sur le père de la fille de Nunzia ; l'élan demandé à `engine.
 - La caméra sonde `blocked` : un anneau de collision la garde dans une tour creuse.
 - `publier-dev.sh` attend son tour dans la file des bancs ; une attente de 30 minutes ne suffit pas quand
   trois conversations tournent (`TOUR_ATTENTE=5400`). Préparer le lot suivant sur des copies pendant ce temps.
+- Complément (C7) : `bancs/multi-serveur.mjs` vérifie le serveur relancé — ralliements partout, fête à Lille
+  seulement, bannières là où l'arène en déclare : conforme dans les six arènes. Le serveur relancé depuis une
+  commande de Claude meurt avec elle : le relancer détaché (`Start-Process` de PowerShell sur Git Bash).

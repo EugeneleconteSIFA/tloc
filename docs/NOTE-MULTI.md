@@ -617,3 +617,8 @@ Trouvé par la passe :
   tournait encore le 6 avec le app.py de la veille. Après une modification d'app.py, relancer
   `./lancer.sh` (sous `bancs/tour.sh`, pour ne couper le banc de personne).
 - Lille : 0 ou 1 rencontre en 40 s à quatre (la citadelle fait 530 m ; c'était connu).
+
+**Le serveur, vérifié après sa relance** (`bancs/multi-serveur.mjs` : il envoie lui-même la fête et la
+saisie d'une bannière, posté au ralliement adverse, et relève ce que le serveur répond) : les
+ralliements sont acceptés dans les six arènes ; la fête seulement à Lille ; la bannière à Lille, à
+la Garde-Guérin, au Pouget et au Batut, refusée à Ko Panyi et à Gallipoli. Aucune pageerror.
