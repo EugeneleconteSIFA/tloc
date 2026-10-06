@@ -1859,6 +1859,16 @@ fiche de la Garde-Guérin et par pouget.js. Une seule fabrique pour les deux lie
   (Cow, Bull, Donkey…) était sur le Mac, en .gltf écartés par le .gitignore : il n'est pas sur le PC.
   Avec lui (assets_back/02_personnages/animaux/ et glb.py), des vaches d'Aubrac et l'âne du muletier
   se poseraient par le même `chevalAuRepos`. Pas de chien du berger non plus (il appartient à l'histoire).
+  → **Fait le soir même (Eugène : « tu peux télécharger »)** : Cow, Bull et Donkey repris du dossier
+  Drive partagé (« Ultimate Animated Animals - July 2021 », sous-dossier glTF, lien public), allégés par
+  `glb.py` en vache.glb, taureau.glb et ane.glb (Idle, Idle_2, Eating, Idle_Headlow, Walk ; 1,3 à
+  1,4 Mo). `chevalAuRepos` est devenu `beteAuRepos` : un chargement par fichier, la taille et les
+  teintes du pays dans `BETES` (la vache et le taureau d'Aubrac, froment, mufle sombre ; l'âne gris).
+  La Garde-Guérin : l'âne du muletier près de son cheval, six vaches et le taureau sur le plateau. Le
+  Pouget : quatre vaches sur le pré. Le décor n'est plus attendu au Pouget (il arrive pendant la
+  cinématique), comme à la Garde-Guérin : les chargements restent à 2,2 et 2,5 s. `BILAN.decor.ou` dit
+  où sont les bêtes. Captures : `deco-gardeguerin-2026-10-05-vaches-*.jpg`, `-betes-ane.jpg`,
+  `deco-pouget-2026-10-05-vaches-*.jpg`.
 - **Appris** : un nom de capture avec des espaces casse `$(ls …)` dans l'appel à publier-dev.sh (le
   commit échoue, la sortie filtrée ne le montre pas) ; ne jamais mettre d'espace dans un nom de fichier.
 
@@ -2076,6 +2086,19 @@ le maillage du sol. worn_tile_floor a le bon dessin mais il est sombre (le plate
 d'en haut) : éclairci dans le shader, comme parois() ; le marbre, essayé, n'avait pas de joints. 18 ms au
 chargement, A/B sans surcoût ; parcours 20/20 et 36/36. Planche : `…-realisme-esplanade-vues.png`.
 
+**Le haut de l'escalier, vu de la mer** (Eugène, même soir). Attention au repère : z croît vers le SUD.
+L'escalier est sur la face NORD du plateau ; depuis la grève sud des passeurs, il est de l'autre côté du
+sommet, il ne peut pas se voir. Du nord, il ne montrait qu'un pan de maçonnerie beige. Fait : une **sala** au
+bout du pont (six colonnes blanches, poutres laquées rouges, le toit des temples en travers du pont pour
+présenter ses pans rouge et vert au nord, flèche dorée de 12 m) et une **crête dorée** sur chaque parapet de
+naga. De la mer, au nord, au nord-ouest, au nord-est : la sala se voit en haut de la maçonnerie, mais petite
+(15 m à 200 m) ; les crêtes, trop fines à cette distance. Le vrai obstacle au nord est le **dôme blanc** du
+replat : le bâtiment « Wat Tham Suea » d'OSM (13 sommets, presque carré) que la règle des chedis de toitThai
+(plus de 12 sommets, côtés à moins de 1,25) transforme en chedi de 48 m, juste devant l'escalier. Question
+pour Eugène : le rendre en temple (un toit à étages), ce qui dégagerait l'escalier depuis la mer du nord ?
+Une toiture sur les volées (bandes rouges en zigzag) a été écartée : la caméra monte à 4–7 m au-dessus des
+pieds et passerait au-dessus. Planche : `…-realisme-sala-vues.png`.
+
 #### Aveyron : les intérieurs des trois maisons (5 octobre, `c6735bc`)
 
 Eugène : « fais les intérieurs des trois maisons, en exploitant ce qui a été fait pour le mode multi ».
@@ -2154,6 +2177,115 @@ de la végétation, des éléments (animaux, arbres, bancs, tonneaux) ».
   praticables 100 %, 26 cibles sur 26 hors des maisons. Planche : `…-regard-garnir-5-vues.png`.
 - **Reste** : la vis de Beauregard praticable ; les étages des corps bas du Batut ; des animaux de
   basse-cour (le jeu n'a pas de modèle de poule ni de chien) ; le châtaignier et le genêt (`foret.js`).
+
+#### Aveyron : la vis de Beauregard, l'étage du Batut (5 octobre, `c6750bc`)
+
+- **Défaut publié puis corrigé** : dans `b8b4644`, un commentaire `//` ajouté au bout d'une ligne
+  a avalé l'appel qui suivait sur la même ligne. Le mur entre le grand salon du Batut et l'aile
+  manquait (à la vue et à la marche). **À retenir : jamais deux instructions sur une ligne dont la
+  première porte un commentaire de fin.**
+- **La vis de Beauregard**, en deux volées `addHelix` (dans la maison tournée, l'angle et le sens se
+  convertissent en angle du monde : `th(a)`, `cw`) :
+  - la première part à gauche du passage vers le hall, tourne par la gauche et passe au-dessus de la
+    porte à 2,65 m ;
+  - la seconde, douce, tourne par la droite au-dessus de qui passe et arrive à 3,32 m côté hall. La
+    tour s'y ouvre à l'étage, et un palier rejoint celui du hall par-dessus le mur.
+
+  Au rez-de-chaussée, on passe à droite, sous la vis. Sous les marches de 1,35 à 1,8 m, des butées
+  de 35 cm de rayon, 1 m sous la marche : plus larges et plus hautes, elles arrêtaient Camille au bas
+  de la vis. Au-dessus de la porte d'entrée, la tour est fermée par une capsule à plancher (2,6 m).
+  L'escalier droit du hall reste : on monte par l'un et on redescend par l'autre, comme au Batut du
+  multi.
+- **L'étage des corps bas du Batut** : la chambre des enfants au-dessus de la bibliothèque (2,2 m sous
+  plafond, sous la pente), la chambre d'amis au-dessus de la salle à manger, le grenier au-dessus de la
+  cuisine (cloison et porte). Le rez-de-chaussée des corps bas passe à 3,10 m de plafond, pour que tous
+  les étages soient au même niveau (3,22 m). Les murs se percent aussi à l'étage : option
+  `etage: { y, h }` d'une porte de `interieur().mur()`, la même porte au-dessus de celle du bas.
+- **La caméra dans la tour** : son entrée de `DEDANS` n'avait pas de `bas`, et la caméra ne s'y tenait
+  jamais basse.
+- **La sonde** a six parcours, tous arrivés : les trois maisons jusqu'à leur chambre, la vis de
+  Beauregard, la chambre des enfants et le grenier du Batut. Rues praticables 100 %, 26 cibles sur 26.
+  Planche : `…-regard-vis-4-vues.png` (vue 4 : la vis ; vue 5 : l'étage de l'aile du Batut).
+
+#### Acte I, B3 : la citadelle et Phinaert (5 octobre au soir, `e901032`)
+
+Consigne B3 de `PLAN-2026-10-05-ACTE1.md`. Tout est dans `citadelle.js` (`ACTE1_CITADELLE`, en fin de
+fichier) ; le détail est dans `docs/DECOUPAGE-ACTE1.md` § 9 et § 10.
+- **Fait** : les soldats cachés (caporal, tambour, vieux soldat) ; l'armurerie du bastion du Roy, la
+  flèche dans la poudre, l'armurier et les bombes (touche **V**, `TOUCHES.KeyV`, dix dans le sac) ; la
+  Moule-Reine, le Capitaine sans tête (la nuit), la Grande Corbelle, leurs clés et les billets 4 à 6 ;
+  les trois cadenas ; Phinaert (la cloche à mi-vie, la corde coupée à l'arc, la dalle et la porte de
+  lumière à un quart) ; `temple`. Les créatures complètent `KINDS` et `BOURSE.PRIMES` depuis
+  citadelle.js (`setMaker`, `setAnimHook`), sans toucher à engine.js.
+- **Vérifié** : `bancs/acte1-citadelle.mjs`, 35/35, une capture par moment clé ; tous les lieux de
+  l'acte joignables à pied depuis la place (sonde sur une grille de 2 m). Chargement : 19,2 s avant
+  (Σ 13,8 s, machine chargée par les autres bancs), 11,0 s après (Σ 7,6 s) ; l'étape « personnages »
+  (où naît le décor de l'acte) 820 → 561 ms : rien de mesurable.
+- **Reste** : l'arrivée sur l'île (`temple.js`, ci-dessous) ; les intérieurs des casernes (SCENARIO.md,
+  « on entre partout ») ; l'atelier de l'armurier et les murs fendus (leurs répliques en gras attendent).
+
+**Demandes pour d'autres fichiers** (B3) :
+1. **`engine.js:2687`, urgent** : `if (state.bow) player.mesh.userData.bowBack.visible = true;` plante
+   `loadGame` dès qu'une sauvegarde a l'arc — la Camille riggée (pnj.js) n'a pas de `bowBack` (elle a
+   `arcDos`). La partie ne démarre plus : à la citadelle, à l'île du temps, partout. Garde :
+   `if (state.bow && player.mesh.userData.bowBack) …`. B2 l'avait vu aussi.
+2. **`quetes.js`** : au début d'`onKill`, `if (ACTE1_CITADELLE.onKill(e)) return;` ; dans `objective`
+   (ou `suiteActe1`), `const o = ACTE1_CITADELLE.objectif(); if (o) return o[0]` (le point d'or :
+   `o[1]`). Après quoi la **passerelle** de `ACTE1_CITADELLE.populate` (qui enveloppe
+   `G.level.onKill`, `.objective` et `.counts`) se retire. Aussi : la **dalle gravée provisoire** de
+   `populate` (devant la grille de l'enclos) mène à l'île sans condition — à cacher pendant l'acte I
+   jusqu'à `temple` (la vraie porte est dans citadelle.js). Et les répliques de la ville à l'étape
+   `citadelle` (le crieur, Hermès, la marchande) : B1.
+3. **`hud.js`, `counts()`** : prendre `ACTE1_CITADELLE.bandeau()` quand il n'est pas `null` (les clés
+   des cadenas et les bombes) ; pendant les étapes du bourg, le bandeau dit encore « Monstres vaincus
+   0 / 10 », qui ne veut plus rien dire.
+4. **`temple.js`** : l'arrivée de la fin de l'acte I, quand `state.acte1 === 'temple'` et la première
+   fois : le mage (« Je t'attendais depuis longtemps. »), le mythe, le premier vers lu au mur, « La
+   suite est effacée », « **La porte du Midi est ouverte.** » (DIALOGUES-ACTE1.md, « Le mage, au
+   Temple ») ; la porte du Midi entrouverte, du sable rouge dessous. On y arrive par
+   `goToLevel('temple', [0, 0, 23.5], Math.PI, …)`.
+
+**Appris** (B3) :
+- `updateEnemy` pose toute bête volante (`fly > 1`) sur un sol à 0 au moins : une bête au ras d'une
+  eau en contrebas (la Reine) flotte en l'air. On tient sa hauteur soi-même après le moteur.
+- Le garde-corps du pont de la Porte Royale arrête les flèches : on n'atteint pas le fossé à l'arc
+  depuis le pont. Les bombes passent par-dessus (citadelle.js ne teste le mur qu'au ras du sol).
+- `getH(x, z)` sans hauteur, près de la Porte Royale, rend le dessus d'une maçonnerie (3,5 m) au-dessus
+  de l'eau : donner la hauteur cherchée (`getH(x, z, EAU_Y)`).
+- Une bête qu'on sort de `enemies` (Phinaert pendant la cloche et la fin) n'est plus animée ni
+  « dé-rougie » par le moteur : la sortir pendant un coup reçu la laissait rouge.
+- Le terre-plein de Turenne ne se marche que sur une bande (de la rampe au magasin, 117 cases de
+  2 m sur 2 097) ; à 12 m de la courtine du nord-ouest, la rue du rempart traverse une caserne
+  (les fantômes de l'ancienne histoire y étaient) — à 22 m, 134 m de rue droite.
+- `SCENARIO.md` met l'armurerie sur l'emprise n° 6 « du bastion du Roi » : le relevé la met sur le
+  bastion de la Reine. Le vrai bastion du Roy a son magasin (emprise n° 8), près de la poterne.
+
+#### Acte I, B1 — le bourg et la nuit (5 octobre au soir, `b02b8c2`)
+
+Étapes 2 à 6 de `docs/DECOUPAGE-ACTE1.md`, de la fin du prologue à la lanterne en main. Le banc
+`bancs/acte1-b1.mjs` les joue de bout en bout dans une seule partie (23 vérifications, aucune erreur) ;
+`bancs/acte1-bourg.mjs` filme les témoins ; `bancs/acte1-outils.mjs` donne les gestes communs aux bancs
+de l'acte (une partie au prologue passé, parler, entrer dans un intérieur, filmer sans mur devant).
+- **Les témoins replacés** (le bourg relevé les avait déplacés) : le gardien dans l'axe du portail de la
+  chapelle (il se tenait à la porte du beffroi), le crieur au pied de la fontaine, tourné vers la
+  grand-rue, le pêcheur sur une berge d'où l'on voit l'eau (`rive()`, par `eauVisible`).
+- **Gustave** (`tavern.js`), ses deux répliques, l'indice `escalier`. **La porte basse** du beffroi :
+  un vantail bâti par `village.js` (`PARTAGE.porteBeffroi`), ouvert par défaut pour une ancienne partie,
+  fermé à clé par l'acte I jusqu'à la nuit où l'on a la clé (`state.porteBeffroi`).
+- **Les vers** : quatre mottes au bord du champ du nord, côté moulin (au milieu, le blé debout les
+  cachait ; de l'autre côté, le bois). **La pêche** : partout face à l'eau ; la clé au canal de la Tortue.
+- **La nuit** (`state.nuit`, posée par le lit de `house.js`) : `nuitLille()` dans `quetes.js`, par ce
+  que le moteur exporte. Une fenêtre sur trois s'allume : un tirage par baie sur le centre de son
+  quadrilatère, retrouvé dans le shader par les dérivées de l'écran (les baies sont fusionnées).
+  Pas de lumière ajoutée : celle du haut du colimaçon monte avec Désiré.
+- **Désiré** : le jour nulle part, la nuit au sommet, la lanterne donnée dans les rues. L'énigme
+  passe par `ATLAS.enigme({titre, sous, intro, gagne, perd})` ; la bonne réponse donne aussi la carte.
+- **Chargement** : rien de nouveau ne naît au chargement (14,3 s avant, 7,7 s après : la machine).
+
+**Demandes pour d'autres fichiers (B1)** :
+- `engine.js` : sur tactile, le bouton Agir envoie un appui de 80 ms (`envoyerTouche`) ; pour ramener
+  la ligne, il faudrait que la touche reste enfoncée tant qu'on appuie.
+- Pour B3 : la nuit existe (`state.nuit`, `nuitLille`) ; le Capitaine sans tête peut la lire.
 
 ## 5. Ce que le code a appris — à ne pas redécouvrir
 
