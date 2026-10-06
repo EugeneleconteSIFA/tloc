@@ -1,0 +1,94 @@
+{
+ "pas": [
+  {
+   "nom": "5. Cosimo vieux, devant son trullo",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "5. sans le tambourin, l’encre a pâli",
+   "ok": true,
+   "detail": " : Tu sors la lettre de Nunzia. Sous tes yeux, l’encre pâlit, les mots s’effacent. | Cosimo : Une lettre ? … Il n’y a rien d’écrit, petite. **Le temps l’a bue.** Il faudrait le retenir un peu."
+  },
+  {
+   "nom": "5. dans le ralenti : la boîte de lettres",
+   "ok": true,
+   "detail": "Cosimo : Une lettre ? De Gallipoli ? … Elle a mis des années à venir. |  : Il la lit, lentement. Il la relit. | Cosimo : Attends. Prends ça. **Toutes les lettres que je ne lui ai jamais envoyées.** Porte-les-lui."
+  },
+  {
+   "nom": "le train pour Gallipoli",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "10. le Colosse marche sur la jetée",
+   "ok": true,
+   "detail": "6.4 m en 4 s"
+  },
+  {
+   "nom": "10. ses pas font bondir le temps",
+   "ok": true,
+   "detail": "phase 0.387 → 0.600"
+  },
+  {
+   "nom": "5. Nunzia lit les lettres : la quête finie",
+   "ok": true,
+   "detail": " : Tu poses la boîte sur ses genoux. Elle l’ouvre : des lettres, des centaines, à son nom. |  : Elle les lit sur le quai, une à une. Le train siffle au loin ; elle ne tourne plus la tête. | Nunzia : Il m’a écrit tous les jours. Moi aussi. On aurait dû se le dire plus tôt."
+  },
+  {
+   "nom": "10. Nunzia, 75 ans : le morceau qui brille",
+   "ok": true,
+   "detail": " : Nunzia est vieille. Assise sur une chaise basse, face à la mer. | Nunzia : Il passe devant moi tous les jours. **Le morceau qui brille dans sa poitrine**, c’est ça qu’il faut lui ôter ? | Nunzia : Alors **ralentis-le**, avec le tambourin d’Assunta. Moi, je n’ai plus le temps de danser."
+  },
+  {
+   "nom": "10. ralenti, le Colosse met un genou à terre",
+   "ok": true,
+   "detail": "1.00"
+  },
+  {
+   "nom": "10. trois coups : le morceau ôté, l’étape `colosse`",
+   "ok": true,
+   "detail": "colosse"
+  },
+  {
+   "nom": "11. l’élan du Colosse",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "11. la Cloche des Heures, au pied du socle",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "11. la cloche sonnée : `heures`",
+   "ok": true,
+   "detail": " : Tu tires la corde du marteau. Une heure sonne, très longue, sur toute la côte. |  : Le soleil, qui courait, ralentit. Il descend vers la mer, lentement. |  : Nunzia ne rajeunit pas."
+  },
+  {
+   "nom": "11. le temps ralentit : le soleil descend vers le couchant",
+   "ok": true,
+   "detail": "phase 0.460"
+  },
+  {
+   "nom": "11. Nunzia reste vieille",
+   "ok": true,
+   "detail": "Nunzia : Une vie entière dans une boîte. Ce n’était pas rien, Camille."
+  },
+  {
+   "nom": "l’objectif : le retour au Temple",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "nom": "aucune erreur de page",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "erreurs": [
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "console.error Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

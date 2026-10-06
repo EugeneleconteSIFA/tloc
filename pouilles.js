@@ -15,7 +15,7 @@
 // =====================================================================
 import { monde } from './monde.js';
 import { THREE, TAU, scene, phMat, PH, G, state, sun, hemi, sky, SUN_DIR, renderer, showMessage, saveGame, addInteract,
-  SFX, KINDS, TOUCHES, AIDE, player } from './engine.js?v=41';
+  SFX, KINDS, TOUCHES, AIDE, player, QUESTS } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -467,6 +467,8 @@ export function objectif4() {
       : 'Ouvre la porte du donjon au tambourin, et monte au sommet';
     case 'chateau': return state.ind4 && state.ind4.vers4 ? 'Libère le Colosse, sur la jetée de Gallipoli : ralentis-le au tambourin'
       : 'Lis la dalle gravée, dans la cour du château, puis va libérer le Colosse à Gallipoli';
+    case 'colosse': return 'Sonne la Cloche des Heures, sur la jetée de Gallipoli';
+    case 'heures': return 'Retourne au Temple par la porte des Heures, à Alberobello (le petit train)';
     default: return 'Les Pouilles : ici, le temps court.';
   }
 }
@@ -486,12 +488,21 @@ export function objectif4() {
     chef_depot: C && { ...C, metier: 'chef_depot', gabarit: 'droite', cheveuxC: 0x7a7470, barbe: 'coiffures_r:Hair_Beard', idle: 'Idle_Loop' },
     // l'apprenti qui a remplacé Cosimo sur le quai d'Alberobello
     apprenti: C && { ...C, metier: 'apprenti', cheveuxC: 0x5a3a20, idle: 'Idle_Loop' },
+    // Cosimo vieux, devant son trullo : les cheveux blancs, le bleu de travail passé
+    cosimo_vieux: C && { ...C, metier: 'cosimo_vieux', gabarit: 'sec', h: C.h * 0.97, cheveuxC: 0xdedad2, haut: 0x5a6a7a, valeur: 0.85, idle: 'Idle_Loop' },
     // le vieux des Sassi, contre la courtine du château
     vieux_sassi: V && { ...V, metier: 'vieux_sassi', idle: 'Idle_Loop', tete: undefined, dos: undefined, haut: 0x4a4038, bas: 0x3a3430 },
     // Assunta, la joueuse de tambourin : la fille de Nunzia, quarante ans, les cheveux noirs de
     // sa mère noués, la jupe rouge de la pizzica
     joueuse: N && { ...N, metier: 'joueuse', gabarit: 'droite', h: N.h * 1.03, cheveuxC: 0x1e1612, haut: 0xe8dcc4, bas: 0x8a2a24, valeurBas: 0.9 },
   }); }
+// La lettre de Nunzia, la grande quête secondaire de l'acte (DECISIONS-RECIT.md § 1) : au journal
+// avec les autres (setQuest : 1 la lettre confiée, 2 la boîte de Cosimo, 3 rendue sur le quai)
+QUESTS.lettre = { title: 'La lettre de Nunzia', steps: [
+  'Nunzia m’a confié une lettre pour l’apprenti du petit train, au bout de la ligne, à Alberobello. L’encre pâlit vite, ici.',
+  'Cosimo m’a donné une boîte : toutes les lettres qu’il n’a jamais envoyées. Les porter à Nunzia, à Gallipoli.',
+  'Terminée — Nunzia a lu les lettres sur le quai. Cette vie a eu lieu.'] };
+
 /** le rôle de Nunzia selon l'étape : on la retrouve plus âgée à chaque retour */
 export function roleNunzia() {
   return passe4('chateau') ? 'nunzia75' : passe4('rythme') ? 'nunzia60' : passe4('grandpere') ? 'nunzia30' : 'nunzia';
@@ -527,7 +538,14 @@ function tempsQuiCourt(now, nom) {
   // le temps reprend son pas quand la cloche des Heures a sonné ; en instance, il n'a jamais couru
   const court = !EN_INSTANCE && !passe4('heures');
   const dt = Math.max(0, Math.min(0.1, state.time - T4.t)); T4.t = state.time;
-  if (!court) { if (T4.fige) return; T4.fige = true; TEMPS.phase = 0.3; TEMPS.maree = 0; }
+  if (!court) {
+    // la cloche sonnée : le soleil finit de descendre, lentement, jusqu'au couchant, puis s'y tient
+    // (en instance, le midi de la fiche)
+    const but = EN_INSTANCE ? 0.3 : 0.46;
+    if (T4.fige && TEMPS.phase === but) return;
+    if (EN_INSTANCE || TEMPS.phase > but || TEMPS.phase < 0.2) TEMPS.phase = but; else TEMPS.phase = Math.min(but, TEMPS.phase + dt / 400);
+    T4.fige = TEMPS.phase === but; TEMPS.maree = 0;
+  }
   else { TEMPS.phase = (TEMPS.phase + dt * TEMPS.lent / JOURNEE) % 1; TEMPS.tMaree += dt * TEMPS.lent; }
   tambourinTick();
   const a = TEMPS.phase * TAU, s = Math.sin(a), j = lisse(-0.12, 0.22, s);

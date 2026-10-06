@@ -5,7 +5,8 @@
 //    pierre dorée, du fond de l'eau jusqu'au parapet de la rue ;
 //  - le PORT : les jetées et les quais d'OSM, qu'on parcourt à pied, et les barques de pêche ;
 //  - la place du COLOSSE : le géant de bronze inventé qui garde le port (STORY.md, acte IV ;
-//    son allure vient du colosse de Barletta), figé sur son socle pour l'instant ;
+//    son allure vient du colosse de Barletta) : il marche sur la jetée tant que l'acte IV n'a pas
+//    retiré le morceau de cloche de sa poitrine (lots 4 du découpage), puis redevient statue ;
 //  - NUNZIA sur le quai, à l'âge que l'acte IV lui a laissé (pouilles.js, roleNunzia) ;
 //  - la GROTTE de l'acte IV (étape 8) : sous le château angevin, un banc de rochers que la mer
 //    découvre à marée basse, de la jetée du Colosse à une bouche noire au pied du mur ; les
@@ -15,7 +16,7 @@
 //    les tables d'un café sous leurs parasols, des bancs, et des guirlandes d'ampoules.
 // =====================================================================
 import { ville, GARES, etape4, passe4, passer4, indice4, roleNunzia, TEMPS, EN_INSTANCE, naitre4 } from './pouilles.js';
-import { KINDS, setMaker, setAnimHook, spawnEnemy, player, showMessage, addInteract, saveGame, SFX } from './engine.js?v=41';
+import { KINDS, setMaker, setAnimHook, spawnEnemy, player, showMessage, addInteract, saveGame, SFX, setQuest } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 import { THREE, TAU, scene, phMat, mesh, boxG, dialogue, G, state } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -281,9 +282,26 @@ function place({ hauteur, inscrire }) {
 // Nunzia, aux âges de l'enquête (docs/DIALOGUES-ACTE4.md) : les trois témoins sont la même
 // personne. Elle ne sait que ce qu'elle a appris à son âge.
 function parlerNunzia() {
-  const e = etape4(), lettre = () => state.ind4 && state.ind4.apprenti && !state.lettre4
+  const e = etape4();
+  // la boîte de Cosimo : la fin de la lettre passe avant tout le reste
+  if (state.lettre4 === 'boite') return dialogue([
+    { text: 'Tu poses la boîte sur ses genoux. Elle l’ouvre : des lettres, des centaines, à son nom.' },
+    { text: 'Elle les lit sur le quai, une à une. Le train siffle au loin ; elle ne tourne plus la tête.' },
+    { who: 'Nunzia', text: 'Il m’a écrit tous les jours. Moi aussi. On aurait dû se le dire plus tôt.',
+      fn: () => { state.lettre4 = 'rendue'; setQuest('lettre', 3); saveGame(true); } },
+  ]);
+  if (e === 'chateau') return dialogue([
+    { text: 'Nunzia est vieille. Assise sur une chaise basse, face à la mer.' },
+    { who: 'Nunzia', text: 'Il passe devant moi tous les jours. **Le morceau qui brille dans sa poitrine**, c’est ça qu’il faut lui ôter ?' },
+    { who: 'Nunzia', text: 'Alors **ralentis-le**, avec le tambourin d’Assunta. Moi, je n’ai plus le temps de danser.' },
+  ]);
+  if (e === 'colosse') return dialogue([{ who: 'Nunzia', text: 'Sonne-la, Camille. Ou ne la sonne pas. Moi, je regarde la mer.' }]);
+  if (passe4('heures')) return dialogue([
+    { who: 'Nunzia', text: state.lettre4 === 'rendue' ? 'Une vie entière dans une boîte. Ce n’était pas rien, Camille.' : 'J’ai eu une vie, Camille. Elle est passée vite, voilà tout. Va. Ce que tu as commencé…' },
+  ]);
+  const lettre = () => state.ind4 && state.ind4.apprenti && !state.lettre4
     ? [{ who: 'Nunzia', text: 'Tu l’as trouvé ? Au bout de la ligne… **Porte-lui ça.** Ne lis pas.' },
-       { text: 'Nunzia te confie une lettre, cachetée.', fn: () => { state.lettre4 = 'lettre'; } }] : [];
+       { text: 'Nunzia te confie une lettre, cachetée.', fn: () => { state.lettre4 = 'lettre'; setQuest('lettre', 1); } }] : [];
   if (!e || e === 'arrivee') return dialogue([
     { who: 'Nunzia', text: 'Tu n’es pas d’ici, toi. Ici, tout le monde court.' },
     { who: 'Nunzia', text: 'Le Colosse ? Il a changé quand l’homme rouge est venu. **Mon grand-père** l’a vu. Il vit **dans les Sassi de Matera**, à l’ombre : là-bas, on vieillit moins vite.' },
@@ -316,6 +334,89 @@ function parlerNunzia() {
   dialogue([{ who: 'Nunzia', text: 'Le temps passe, Camille. Pas pour toi.' }]);
 }
 
+// =====================================================================
+//  Le Colosse qui marche, et la Cloche des Heures (acte IV, étapes 10 et 11)
+// =====================================================================
+// Tant que le morceau de cloche est dans sa poitrine, le Colosse arpente la jetée en U, du socle au
+// bout et retour ; à chacun de ses pas, un BOND du temps : la lumière saute, la mer monte d'un coup.
+// Le tambourin le ralentit. À l'étape `chateau`, ralenti, il s'arrête et met un genou à terre :
+// Camille monte par sa main et frappe le morceau, trois fois (un battement chaque fois — il se
+// relève entre deux). Puis il revient sur son socle, redevient statue, et donne son élan ; la
+// Cloche des Heures sort de sa poitrine, et vieillit à vue d'œil tant qu'on ne la sonne pas.
+const RONDE = [[284, 37], [304, 38], [266, 52], [259, 26], [306, 8], [284, 27]];
+const CO = { k: 0, t: 0, pas: 0, coups: 0, vu: 0, morceau: null, cloche: null, yq: 0, genou: 0 };
+const marche = () => !EN_INSTANCE && !passe4('colosse');
+function morceauDeCloche() {
+  // un éclat vert-de-gris qui luit dans la poitrine (dans le repère du modèle : il grandit avec lui)
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.12, 12, 1, false, 0, Math.PI), new THREE.MeshStandardMaterial({ color: 0x5a8a70, metalness: 0.6, roughness: 0.4, emissive: 0x60ffb0, emissiveIntensity: 0.6 }));
+  m.rotation.x = Math.PI / 2; m.position.set(0, 2.05, 0.3); colosse.add(m); return m;
+}
+function cloche() {
+  // la cloche d'horloge plate et large, avec son marteau (DECISIONS-RECIT.md § 2)
+  const g = new THREE.Group(), vert = phMat('marble_rock_03', 1, 1, { color: 0x5a8a74, metalness: 0.45, roughness: 0.5 });
+  const prof = [[0.05, 1.0], [0.55, 0.98], [0.95, 0.8], [1.15, 0.45], [1.25, 0.08], [1.3, 0]].map(([a, b]) => new THREE.Vector2(a, b));
+  const c = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), vert); c.material.side = THREE.DoubleSide; c.position.y = 1.1; c.castShadow = true; g.add(c);
+  const fer = phMat('rocher_01', 0.5, 0.5, { color: 0x3a3430 });
+  for (const sx of [-1.5, 1.5]) g.add(mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.4, 8), fer, sx, 1.2, 0));
+  g.add(mesh(new THREE.BoxGeometry(3.2, 0.14, 0.14), fer, 0, 2.35, 0), mesh(new THREE.SphereGeometry(0.16, 10, 8), fer, 0.9, 1.3, 0));
+  g.userData.mat = vert; return g;
+}
+function colosseTick(dt) {
+  if (!colosse || EN_INSTANCE) return;
+  const p = player.pos, lent = TEMPS.lent, e = etape4();
+  if (marche()) {
+    if (!CO.morceau) { CO.morceau = morceauDeCloche(); CO.yq = Y_MER + 1.3; colosse.position.y = CO.yq; }
+    CO.morceau.material.emissiveIntensity = 0.5 + Math.sin(state.time * 3) * 0.3;
+    const d = Math.hypot(p.x - colosse.position.x, p.z - colosse.position.z);
+    // ralenti à l'étape du combat, assez près : il s'arrête et met un genou à terre
+    const aGenou = e === 'chateau' && lent < 1 && d < 18;
+    CO.genou += ((aGenou ? 1 : 0) - CO.genou) * Math.min(1, dt * 3);
+    colosse.position.y = CO.yq - CO.genou * 3.2; colosse.rotation.x = CO.genou * 0.35;
+    if (CO.genou > 0.05) { if (colosse.userData.ctrl) PNJ.animeVillageois(colosse, 0, false); }
+    else {
+      const [tx, tz] = RONDE[CO.k], dx = tx - colosse.position.x, dz = tz - colosse.position.z, l = Math.hypot(dx, dz), v = 1.6 * lent;
+      if (l < 0.6) CO.k = (CO.k + 1) % RONDE.length;
+      else { colosse.position.x += dx / l * Math.min(l, v * dt); colosse.position.z += dz / l * Math.min(l, v * dt); colosse.rotation.y = Math.atan2(dx, dz); }
+      if (colosse.userData.ctrl) { colosse.userData.cadence = 0.35; PNJ.animeVillageois(colosse, dt * lent, true); }
+      // un pas : un bond du temps (la lumière, la marée), un petit tremblement de la caméra
+      CO.pas += dt * lent; if (CO.pas > 1.8) { CO.pas = 0; TEMPS.phase = (TEMPS.phase + 0.06) % 1; TEMPS.tMaree += 18; G.shake = Math.max(G.shake || 0, d < 40 ? 0.25 : 0.08); SFX.stomp(); }
+      // trop près : le temps bouscule Camille, sans la blesser
+      if (d < 4.5) { const k = (4.5 - d) / (d || 1); p.x += (p.x - colosse.position.x) * k; p.z += (p.z - colosse.position.z) * k;
+        if (state.time - CO.vu > 6) { CO.vu = state.time; showMessage('Chaque pas du géant bouscule le temps. Tu es repoussée.', 3); } }
+    }
+    return;
+  }
+  // libéré : statue sur son socle, la cloche à ses pieds
+  if (!CO.statue) { CO.statue = true; colosse.position.set(COLOSSE.x, Y_MER + 1.3 + 3.5, COLOSSE.z); colosse.rotation.set(0, COLOSSE.yaw, 0);
+    if (CO.morceau) CO.morceau.visible = false;
+    if (colosse.userData.ctrl) { const c = colosse.userData.ctrl; c.jouer(colosse.userData.idle, 0); c.update(0.9); } }
+  if (!CO.cloche) { CO.cloche = cloche(); const x = COLOSSE.x - Math.sin(COLOSSE.yaw) * 6, z = COLOSSE.z - Math.cos(COLOSSE.yaw) * 6;
+    CO.cloche.position.set(x, Y_MER + 1.3, z); CO.cloche.rotation.y = COLOSSE.yaw; scene.add(CO.cloche); }
+  // elle vieillit tant qu'on ne la sonne pas : le vert-de-gris noircit
+  if (e === 'colosse') { const m = CO.cloche.userData.mat, t = Math.min(1, (state.time % 60) / 60); m.color.setHex(0x5a8a74).lerp(new THREE.Color(0x2a3a30), t); }
+}
+// les gestes du combat et de la cloche
+function frapperMorceau() {
+  if (TEMPS.lent >= 1) return showMessage('Il se relève ! Ralentis-le d’abord (K).', 2.5);
+  CO.coups++; SFX.hit(); G.shake = 0.3;
+  if (CO.coups < 3) return showMessage(['Le morceau se fend.', 'Il tient encore… une fois de plus !'][CO.coups - 1], 2.5);
+  passer4('colosse'); SFX.roar();
+  dialogue([
+    { text: 'Le morceau de cloche se détache de la poitrine du géant. Le Colosse se redresse, lentement.' },
+    { text: 'Il remonte sur son socle, face à la mer, et ne bouge plus. Le bronze redevient froid.' },
+    { text: 'Avant de se taire, il te donne son élan. (Tu sautes plus loin.)', fn: () => { state.elan = true; saveGame(true); } },
+    { text: 'À ses pieds, la Cloche des Heures. Elle verdit, elle noircit, elle vieillit à vue d’œil.' },
+    { who: 'Camille', text: 'Je sais pour qui elle sonne.' },
+  ]);
+}
+function sonnerCloche() {
+  dialogue([
+    { text: 'Tu tires la corde du marteau. Une heure sonne, très longue, sur toute la côte.', fn: () => { SFX.cloche(); passer4('heures'); } },
+    { text: 'Le soleil, qui courait, ralentit. Il descend vers la mer, lentement.' },
+    { text: 'Nunzia ne rajeunit pas.' },
+  ]);
+}
+
 // les barques se balancent sur l'eau (une matrice par barque et par image : quarante au plus)
 const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), un = new THREE.Vector3(1, 1, 1);
 function bercer(t) {
@@ -337,10 +438,16 @@ const lieuPret = ville('gallipoli', {
     if (!nunzia && state.running) nunzia = naitre4(EN_INSTANCE ? 'nunzia' : roleNunzia(), NUNZIA.x, nunziaY, NUNZIA.z,
       Math.atan2(COLOSSE.x - NUNZIA.x, COLOSSE.z - NUNZIA.z), 'parler à Nunzia', parlerNunzia);
     if (nunzia && nunzia.userData.ctrl) PNJ.animeVillageois(nunzia, dt, false);
-    if (state.running && !EN_INSTANCE) grotte();
+    if (state.running && !EN_INSTANCE) { grotte(); colosseTick(dt);
+      if (!CO.gestes && colosse) { CO.gestes = true;
+        // (les invites suivent le géant : leur position est la sienne, au sol)
+        const pied = new THREE.Vector3(); CO.pied = pied;
+        addInteract({ pos: pied, r: 6, prompt: () => 'monter sur sa main, frapper le morceau de cloche', enabled: () => etape4() === 'chateau' && CO.genou > 0.6, fn: frapperMorceau });
+        addInteract({ pos: new THREE.Vector3(COLOSSE.x - Math.sin(COLOSSE.yaw) * 6, Y_MER + 1.3, COLOSSE.z - Math.cos(COLOSSE.yaw) * 6), r: 3.5, prompt: () => 'sonner la Cloche des Heures', enabled: () => etape4() === 'colosse', fn: sonnerCloche }); }
+      if (CO.pied) CO.pied.set(colosse.position.x, Y_MER + 1.3, colosse.position.z); }
     // le Colosse, figé : une image de sa pose, une fois pour toutes
     if (colosse && coule++ < 900) couler();           // les quinze premières secondes
-    if (colosse && !fige && colosse.userData.ctrl) { const c = colosse.userData.ctrl; c.jouer(colosse.userData.idle, 0); c.update(0.9); fige = true; }
+    if (colosse && !fige && colosse.userData.ctrl && !(state.running && marche())) { const c = colosse.userData.ctrl; c.jouer(colosse.userData.idle, 0); c.update(0.9); fige = true; }
   },
 });
 
@@ -384,4 +491,4 @@ const ARENE_GALLIPOLI = {
 // le niveau naît dans monde() (après l'installation de Camille) : ville() rend sa promesse
 lieuPret.then(() => { if (G.level && G.level.name === 'gallipoli') G.level.arenes = [ARENE_GALLIPOLI]; });
 
-window.__gallipoli = { BANC, bouche: () => BOUCHE, decouvert };      // pour les bancs (bancs/acte4-*.mjs)
+window.__gallipoli = { BANC, bouche: () => BOUCHE, decouvert, CO, colosse: () => colosse };      // pour les bancs (bancs/acte4-*.mjs)

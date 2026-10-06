@@ -7,11 +7,11 @@
 // Et Assunta, la joueuse de tambourin, la fille de Nunzia, devant son trullo près de la gare
 // (étapes 7 et 8) : la corde volée par les tarentules, puis le tambourin.
 // =====================================================================
-import { ville, GARES, etape4, passe4, passer4, indice4, naitre4, donnerTambourin, EN_INSTANCE } from './pouilles.js';
-import { THREE, TAU, dialogue, G, state, saveGame, phMat } from './engine.js?v=41';
+import { ville, GARES, etape4, passe4, passer4, indice4, naitre4, donnerTambourin, EN_INSTANCE, TEMPS } from './pouilles.js';
+import { THREE, TAU, dialogue, G, state, saveGame, phMat, setQuest } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 
-let cosimo = null, apprenti = null, quai = null, tAvant = 0, joueuse = null, ctxA = null, placeJ = null;
+let cosimo = null, apprenti = null, quai = null, tAvant = 0, joueuse = null, ctxA = null, placeJ = null, vieux = null, placeV = null;
 
 function parlerCosimo() {
   dialogue([
@@ -42,9 +42,26 @@ function parlerJoueuse() {
   if (passe4('tambourin')) return dialogue([{ who: 'Assunta', text: '**Les portes du château de Matera.** Trois coups, un silence.' }]);
   dialogue([{ who: 'Assunta', text: 'Pas maintenant. Tout le monde court, ici.' }]);
 }
+// Cosimo vieux, devant son trullo près de la gare (la lettre, DECISIONS-RECIT.md § 1). L'encre de la
+// lettre pâlit en un instant ici : on la lui tend dans le ralenti du tambourin, ou elle ne se lit plus.
+function parlerVieuxCosimo() {
+  if (state.lettre4 === 'lettre' && TEMPS.lent >= 1) return dialogue([
+    { text: 'Tu sors la lettre de Nunzia. Sous tes yeux, l’encre pâlit, les mots s’effacent.' },
+    { who: 'Cosimo', text: 'Une lettre ? … Il n’y a rien d’écrit, petite. **Le temps l’a bue.** Il faudrait le retenir un peu.' },
+  ]);
+  if (state.lettre4 === 'lettre') return dialogue([
+    { who: 'Cosimo', text: 'Une lettre ? De Gallipoli ? … Elle a mis des années à venir.' },
+    { text: 'Il la lit, lentement. Il la relit.' },
+    { who: 'Cosimo', text: 'Attends. Prends ça. **Toutes les lettres que je ne lui ai jamais envoyées.** Porte-les-lui.',
+      fn: () => { state.lettre4 = 'boite'; setQuest('lettre', 2); saveGame(true); } },
+  ]);
+  if (state.lettre4 === 'boite') return dialogue([{ who: 'Cosimo', text: 'Elle est toujours sur le quai ? Alors **à Gallipoli**. Vite.' }]);
+  if (state.lettre4 === 'rendue') return dialogue([{ who: 'Cosimo', text: 'Une minute par jour. On aurait dû descendre du train.' }]);
+  dialogue([{ who: 'Cosimo', text: 'Je réparais les machines du petit train. Maintenant, je les écoute passer.' }]);
+}
+
 // devant un trullo, près de la gare : la première place libre au pied d'un mur, vers la ville
-function placeJoueuse({ hauteur, bloque }) {
-  const g = GARES.alberobello, x0 = g.x + 25, z0 = g.z;
+function placeJoueuse({ hauteur, bloque }, x0 = GARES.alberobello.x + 25, z0 = GARES.alberobello.z) {
   for (let r = 4; r < 50; r += 2) for (let k = 0; k < 24; k++) {
     const a = k / 24 * TAU, x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r;
     if (bloque(x, z, 1.2)) continue;
@@ -93,5 +110,11 @@ ville('alberobello', {
         if (joueuse && joueuse.userData.perso) PNJ.socket(joueuse, joueuse.userData.perso, 'hand_l', tambourin(), [0, 0.05, 0.08]); }
     }
     if (joueuse && joueuse.userData.ctrl) PNJ.animeVillageois(joueuse, dt, false);
+    // Cosimo vieux : dès que Nunzia a confié la lettre (il a vieilli avec elle)
+    if (!EN_INSTANCE && ctxA && joueuse && vieux === null && state.lettre4) {
+      if (!placeV) placeV = placeJoueuse(ctxA, GARES.alberobello.x + 30, GARES.alberobello.z + 22);
+      else vieux = naitre4('cosimo_vieux', ...placeV, 'parler au vieux Cosimo', parlerVieuxCosimo);
+    }
+    if (vieux && vieux.userData.ctrl) PNJ.animeVillageois(vieux, dt, false);
   },
 });
