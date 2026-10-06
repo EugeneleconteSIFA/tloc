@@ -11,7 +11,7 @@
 // carte/mondes/complet/.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame, keys as PNJ_KEYS, addBox, addCap, indexCapsules, world, spawnEnemy, KINDS, setMaker, setAnimHook, burst, damagePlayer, enemies } from './engine.js?v=41';
+import { THREE, TAU, rand, phMat, mesh, boxG, showMessage, showMenu, hideMenu, fadeTo, player, state, G, scene, camera, hemi, sun, dialogue, TOUCHES, AIDE, SFX, saveGame, cutscene, keys as PNJ_KEYS, addBox, addCap, indexCapsules, world, spawnEnemy, KINDS, setMaker, setAnimHook, burst, damagePlayer, enemies } from './engine.js?v=41';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { especeGeo } from './foret.js';
 import * as PNJ from './pnj.js';
@@ -452,7 +452,72 @@ function ouvrirCloitre(deja = false) {
   for (const g of C.vantaux) g.rotation.y = g.userData.sens * 1.9;
 }
 // la poulie et le masque en poche : Somsak ouvre le trajet vers sa petite-fille
-function finActe3() { showMessage('Le Yak tombe à genoux. Le morceau de la Grande Cloche roule à tes pieds.', 5); }
+// ---------- la fin de l'acte (étape 7) ----------
+// SCENARIO.md § 12, « La fin de l'acte » ; STORY.md : le souffle, l'écume, « Tu sonnes pour lui. »
+// La Cloche des Îles : haute et fine, bronze clair couvert de feuilles d'or, sans battant (on la
+// frappe du dehors) — DECISIONS-RECIT.md § 2.
+function faireClocheIles() {
+  const g = new THREE.Group(), bronze = new THREE.MeshStandardMaterial({ color: 0xc8a060, metalness: 0.85, roughness: 0.3 }), or = new THREE.MeshStandardMaterial({ color: 0xe8c060, metalness: 0.95, roughness: 0.18 });
+  g.add(mesh(new THREE.LatheGeometry([[0, 1.5], [0.18, 1.5], [0.3, 1.38], [0.36, 1.0], [0.42, 0.5], [0.55, 0.12], [0.62, 0]].map(([r, h]) => new THREE.Vector2(r, h)), 24), bronze, 0, 0, 0));
+  for (let k = 0; k < 5; k++) { const b = mesh(new THREE.TorusGeometry(0.36 + k * 0.05, 0.018, 6, 24), or, 0, 1.15 - k * 0.24, 0); b.rotation.x = Math.PI / 2; g.add(b); }
+  g.add(mesh(new THREE.TorusGeometry(0.1, 0.03, 8, 16), or, 0, 1.6, 0));
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material.side = THREE.DoubleSide; } });
+  g.userData.dynamic = true; return g;
+}
+// la course des longues barques, devenue une fête : les passeurs tournent sans fin au large du marché
+const FETE = { barques: [], c: null, r: 22, a: 0 };
+function feteBarques() {
+  if (FETE.barques.length || !HAUT) return;
+  // un cercle d'eau libre près du marché : le premier dont tout le tour a du fond
+  FETE.c = [[200, 20], [210, -30], [220, 70], [150, -40]].find(([cx, cz]) => { for (let k = 0; k < 24; k++) { const a = k / 24 * TAU; if (HAUT(cx + Math.cos(a) * (FETE.r + 8), cz + Math.sin(a) * (FETE.r + 8)) > -1) return false; } return true; });
+  if (!FETE.c) return;
+  for (const [k, pilote] of [['pecheur', 0x6a7a5a], ['nok', 0x3a6aa0], ['pecheur', 0x3a3a38], ['pecheur', 0x8a5a3a], ['pecheur', 0x4a5a7a]].entries()) {
+    const B = barque(0, 0, 0, pilote); BARQUES.pop(); FETE.barques.push({ g: B.g, a0: k / 5 * TAU, v: 0.32 + k * 0.012 });
+    // des guirlandes de jasmin à la proue (les guirlandes de Nok)
+    for (let q = 0; q < 4; q++) B.g.add(mesh(new THREE.SphereGeometry(0.12, 6, 5), new THREE.MeshStandardMaterial({ color: q % 2 ? 0xf8f4e8 : 0xe8a030, roughness: 0.7 }), 0, 1.6 + q * 0.18, -7.2 - q * 0.1));
+  }
+}
+function animeFete(dt) {
+  if (!FETE.c) return; FETE.a += dt;
+  for (const b of FETE.barques) { const a = b.a0 + FETE.a * b.v, x = FETE.c[0] + Math.cos(a) * FETE.r, z = FETE.c[1] + Math.sin(a) * FETE.r;
+    b.g.position.set(x, Math.sin(FETE.a * 2 + b.a0) * 0.1, z);
+    // la proue (−z local) dans le sens de la course : la tangente au cercle
+    b.g.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a)) + Math.PI; }
+}
+function poserFin() {
+  if (!YAK.cloche) { YAK.cloche = faireClocheIles(); scene.add(YAK.cloche); }
+  const [px, pz] = YAK.porte; YAK.cloche.position.set(px, HAUT(px, pz - 4) + 0.02, pz - 4); YAK.cloche.visible = true;
+  feteBarques();
+}
+function finActe3() {
+  const [px, pz] = YAK.porte, y0 = HAUT(px, pz), S = YAK.statue;
+  if (!YAK.cloche) { YAK.cloche = faireClocheIles(); scene.add(YAK.cloche); }
+  const cl = YAK.cloche; cl.visible = false;
+  cutscene([
+    { cam: [px + 9, y0 + 7, pz - 16], at: [px, y0 + 5, pz], dur: 3.2, fn: () => {
+      S.position.set(px, y0, pz - 1.5); S.rotation.set(0, Math.PI, 0);      // le dos à sa porte, face au sud S.visible = true; if (S.userData.morceau) S.userData.morceau.visible = false;
+      S.userData.bras.rotation.x = 0.45; }, text: 'Le Yak se relève. Il retourne devant sa porte, et plante son épée.' },
+    { say: 'Il pose la main sur ta tête. Un souffle froid t’entre dans la poitrine : **le souffle du Yak.** La mer la plus froide ne te fera plus peur.', fn: () => { state.souffle = true; saveGame(true); } },
+    { who: 'Le Yak', say: '**Tu sonnes pour lui.**' },
+    { cam: [px + 6, y0 + 5, pz - 11], at: [px, y0 + 4, pz - 1.5], dur: 3.4, fn: () => {
+      for (let k = 0; k < 6; k++) setTimeout(() => burst(px, y0 + 1 + k * 1.2, pz - 1.5, 0xf2f8fa, 26, 3.5, 1.2, 1, 2.2), k * 250);
+      setTimeout(() => { S.visible = false; }, 1400); }, text: 'Il devient écume. La mer l’emporte.' },
+    { cam: [990, 175, 470], at: [400, 30, 200], dur: 4.2, fn: () => { placerPluie(); }, text: 'La pluie tombe d’un coup sur toutes les îles. Les moines finissent leur geste ; les clochettes tintent.' },
+    { who: 'Nok', say: 'Ce que tu as commencé…' },
+    { cam: [px + 7, y0 + 4, pz - 13], at: [px, y0 + 3, pz - 4], dur: 3.6, fn: () => {
+      cl.position.set(px, y0 + 14, pz - 4); cl.visible = true; YAK.descente = { t: 0, y0: y0 + 14, y1: y0 + 0.02 }; SFX.cloche && SFX.cloche(); },
+      text: 'La Cloche des Îles descend du toit du temple. Dans sa gorge, le troisième morceau de la Grande Cloche.' },
+    { say: 'Gravé dessous : **Chaque géant donnera ce qu’il est, et ne le reprendra pas.**', fn: () => { state.clocheIles = true; saveGame(true); } },
+    { cam: [FETE.c ? FETE.c[0] + 40 : 180, 18, FETE.c ? FETE.c[1] + 40 : 80], at: [FETE.c ? FETE.c[0] : 150, 0, FETE.c ? FETE.c[1] : 40], dur: 4, fn: () => feteBarques(),
+      text: 'Au large du marché, Somsak, Mali et le passeur muet font la course. Plus personne ne compte les bouées : c’est la fête.' },
+  ], () => { G.freeCam = null; poserFin(); SFX.fanfare && SFX.fanfare(); showMessage('Le câble du plateau descend jusqu’au marché flottant. La porte de l’île t’attend.', 6); });
+}
+function animeFin(dt) {
+  const D = YAK.descente; if (!D || !YAK.cloche) return;
+  D.t = Math.min(1, D.t + dt / 3.2); const u = 1 - (1 - D.t) * (1 - D.t);
+  YAK.cloche.position.y = D.y0 + (D.y1 - D.y0) * u; YAK.cloche.rotation.y += dt * 0.6;
+  if (D.t >= 1) YAK.descente = null;
+}
 function finCloitre() { if (state.poulie && state.masqueBois) passer3('mali'); else saveGame(true); }
 
 // ---------- Khao Phing Kan : Mali, la statue, la cascade, la course (acte III, étape 3) ----------
@@ -535,7 +600,7 @@ function gongCascade() {
   setTimeout(() => showMessage(KPK.chute && KPK.chute.libre ? 'La cascade repart ! La barque bascule, tombe dans le bassin…' : 'La cascade repart, la barque tombe… et bute contre la statue. Le temps la reprend.', 4), 400);
 }
 function animeKpk(dt) {
-  const coule = gongActif() && Math.hypot(GONG.x - KPK.pied[0], GONG.z - KPK.pied[1]) < GONG.r;
+  const coule = tempsRendu() || (gongActif() && Math.hypot(GONG.x - KPK.pied[0], GONG.z - KPK.pied[1]) < GONG.r);
   for (const t of KPK.eau) if (coule) t.offset.y += dt * 1.6;
   const C = KPK.chute; if (!C || !KPK.barque) return;
   C.t += dt; const g = KPK.barque, yB = HAUT(...KPK.pied) + 0.3;
@@ -1341,6 +1406,8 @@ const GONG = { fin: -1, r: 16 };
 const FIGES = [];        // { g, x, z, texte, fini, cle, mauvais }
 let NOK = null;
 const gongActif = () => performance.now() < GONG.fin;
+// après le Yak (étape 7), le temps est rendu à toute la baie : la pluie tombe, les figés reprennent
+const tempsRendu = () => !EN_INSTANCE && atteint3('fete');
 function frapperGong() {
   if (!state.gongThai || gongActif()) return;
   SFX.gong(); GONG.fin = performance.now() + 6000; GONG.x = player.pos.x; GONG.z = player.pos.z;
@@ -1428,10 +1495,11 @@ function parlerNok() {
     { text: 'Nok te donne le petit gong du temple. (K : frapper le gong)', fn: () => { state.gongThai = true; AIDE.extra.push(['K', 'frapper le gong']); SFX.gong(); } },
     { who: 'Nok', text: 'Somsak, le vieux passeur, conduisait les moines chaque matin. **Il va encore à Ton Sai**, si on le paie.', fn: () => noter3('somsak') },
   ]);
+  else if (atteint3('fete')) dialogue([{ who: 'Nok', text: 'Ce que tu as commencé…' }, { text: 'Elle ne finit pas sa phrase. Elle te regarde, et sourit quand même.' }]);
   else dialogue([{ who: 'Nok', text: state.cleCloitre ? 'La clé du cloître ! Les moines vont bien ?' : 'Frappe le gong près des moines de Ton Sai. Ils finiront leurs phrases.' }]);
 }
 function parlerFige(F) {
-  const vivant = gongActif() && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r;
+  const vivant = tempsRendu() || (gongActif() && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r);
   if (!F.balayeur) {
     if (!vivant) return showMessage((F.desc || 'Le moine est figé, la bouche ouverte, au milieu d’un mot.') + (state.gongThai ? ' (K : le gong)' : ''), 3.5);
     if (F.cuisinier) {
@@ -1457,8 +1525,8 @@ function animeHabitants(dt) {
   for (const F of FIGES) { const c = F.g.userData.ctrl; if (!c) continue;
     // figé : la pose d'un instant choisi au hasard, une fois pour toutes ; le gong le relance
     if (!F.pose) { c.jouer(F.g.userData.idle, 0); c.update(F.t0); F.pose = true; }
-    else if (actif && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r) c.update(dt); }
-  if (actif) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
+    else if (tempsRendu() || (actif && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r)) c.update(dt); }
+  if (actif || tempsRendu()) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
 }
 
 // ---------- la garde : là où l'on ne passe plus ----------
@@ -1694,11 +1762,18 @@ monde({
   },
   anime(now) {
     const t = now / 1000, dt = Math.min(0.1, (now - (ANIME.t || now)) / 1000); ANIME.t = now;
+    // l'acte se pose à la première image de jeu, APRÈS le chargement de la sauvegarde : le faire
+    // dès que le monde est bâti sauvegardait un acte neuf par-dessus la partie qu'on rechargeait
+    if (!A3.pret && !EN_INSTANCE && state.running) {
+      A3.pret = true;
+      if (!state.acte3) { state.acte3 = 'gong'; saveGame(true); }
+      if (atteint3('fete') && state.clocheIles) poserFin();
+    }
     animeHabitants(dt);
     for (const v of VENDEURS) PNJ.animeVillageois(v, dt, false);
-    animeGlisse(dt); animeKpk(dt); animeCourse(dt); animeGrotte(dt); animeVent(dt); animeYak(dt);
+    animeGlisse(dt); animeKpk(dt); animeCourse(dt); animeGrotte(dt); animeVent(dt); animeYak(dt); animeFin(dt); animeFete(dt);
     if (MARCHE.coques) MARCHE.coques.position.y = Math.sin(t * 1.1) * 0.04;
-    if (gongActif()) placerPluie();
+    if (gongActif() || tempsRendu()) placerPluie();
     for (const b of BARQUES) { b.g.position.y = Math.sin(t * 1.3 + b.ph) * 0.12; b.g.rotation.z = Math.sin(t * 0.9 + b.ph) * 0.03; }
     if (PLUIE.tuiles.length && (t * 4 | 0) % 2 === 0) placerPluie();
     // vue de loin (le plan d'arrivée), la pluie ne serait qu'un pavé blanc posé sur la baie
@@ -1708,9 +1783,7 @@ monde({
   if (!(G.level && G.level.name === 'thailande')) return;
   G.level.arenes = [ARENE_PANYI];
   if (EN_INSTANCE) return;
-  if (!state.acte3) { state.acte3 = 'gong'; saveGame(true); }
   G.level.indices = indices3;
-  A3.pret = true;
   // pour les bancs (bancs/acte3-*.mjs) : les quais, les trajets ouverts
-  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE, GROTTE, VENT, YAK, CABLES };
+  window.__acte3 = { A3, QUAIS, trajetOuvert, atteint3, CLOITRE, FIGES, KPK, COURSE, GROTTE, VENT, YAK, CABLES, FETE };
 });

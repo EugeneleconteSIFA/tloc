@@ -93,3 +93,19 @@ pour ce qui fait avancer (il s'écrit aussi au journal). Les étapes sont celles
 - *Il paraît* : Le Yak se tourne vers toi. Ton regard n'arrive pas à le suivre : il est déjà là où il frappe.
 - *Un coup hors du gong* : Ton coup le traverse : il n'est déjà plus là. (K : le gong, pour te mettre à son rythme)
 - *Au gong* : Le morceau de cloche vibre sous le coup ! (1 / 3) … Le morceau de cloche se détache !
+
+## 7. La pluie tombe (`fete`)
+
+La cinématique, plan par plan :
+- *Le Yak se relève. Il retourne devant sa porte, et plante son épée.*
+- Il pose la main sur ta tête. Un souffle froid t'entre dans la poitrine : **le souffle du Yak.** La mer la plus froide ne te fera plus peur.
+- **Le Yak** : **Tu sonnes pour lui.**
+- *Il devient écume. La mer l'emporte.*
+- *La pluie tombe d'un coup sur toutes les îles. Les moines finissent leur geste ; les clochettes tintent.*
+- **Nok** : Ce que tu as commencé…
+- *La Cloche des Îles descend du toit du temple. Dans sa gorge, le troisième morceau de la Grande Cloche.*
+- Gravé dessous : **Chaque géant donnera ce qu'il est, et ne le reprendra pas.**
+- *Au large du marché, Somsak, Mali et le passeur muet font la course. Plus personne ne compte les bouées : c'est la fête.*
+- *(ensuite)* Le câble du plateau descend jusqu'au marché flottant. La porte de l'île t'attend.
+
+**Nok** (après) : Ce que tu as commencé… — *Elle ne finit pas sa phrase. Elle te regarde, et sourit quand même.*
