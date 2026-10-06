@@ -631,6 +631,49 @@ function heuresScene() {
   ], () => { state.acte4 = 'temple'; saveGame(true); });
 }
 
+// LE RETOUR DE L'ACTE III (6 octobre ; DECISIONS-RECIT.md § 3, « après la Thaïlande » ; SCENARIO.md
+// § 12, la fin) : la Cloche des Îles rapportée de la baie (state.clocheIles, thailande.js), elle pend
+// au deuxième étage ; des rigoles autour du pied de la tour, dont l'eau coule vers le HAUT ; la pluie,
+// très loin. La porte des Heures s'entrouvre. Le mage ne dit rien ; Camille hésite, pour la première
+// fois, devant une porte. Une fois (state.ilesVu) ; `state.acte3` reste à « fete » (thailande.js le lit).
+let ilesPosees = false, ilesFaite = false;
+const ilesSonnees = () => state.clocheIles === true;
+const RIGOLES = [];
+function ilesPoser() {
+  const i = PORTES.findIndex((P) => P.geant === 'yak');
+  if (i < 0 || ouverts().has('yak')) return;                 // (l'aperçu ?mondes=tous l'a déjà fait)
+  deborder(i, 'yak'); silhouette(i, 'yak'); pendreCloche(i, 'yak'); rigoles();
+}
+// les rigoles : un anneau de pierre au pied de la tour, et six filets d'eau qui MONTENT le long du
+// mur (une texture de traînées claires qui défile vers le haut) — le temps de la mousson, à l'envers
+function rigoles() {
+  // la rigole juste hors du socle à gradins (R_TOUR + 1,6) ; les filets sur le mur, au-dessus du socle (1,25 m)
+  const r = R_TOUR + 2.0, pierre = phMat('old_stone_wall_02', 6, 0.3, { color: 0x9a9284 });
+  const anneau = new THREE.Mesh(new THREE.TorusGeometry(r, 0.22, 6, 64), pierre); anneau.rotation.x = Math.PI / 2; anneau.position.y = hauteur(0, r) + 0.08; anneau.receiveShadow = true; scene.add(anneau);
+  const eauSol = new THREE.Mesh(new THREE.RingGeometry(r - 0.16, r + 0.16, 64), mat(0x5a9aa8, { metalness: 0.2, roughness: 0.05 })); eauSol.rotation.x = -Math.PI / 2; eauSol.position.y = hauteur(0, r) + 0.1; scene.add(eauSol);
+  const c = document.createElement('canvas'); c.width = 32; c.height = 128; const g = c.getContext('2d');
+  for (let k = 0; k < 260; k++) { g.fillStyle = `rgba(255,255,255,${(Math.random() * 0.55).toFixed(2)})`; g.fillRect(Math.random() * 32, Math.random() * 128, 1 + Math.random() * 2, 5 + Math.random() * 18); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 2); RIGOLES.push(t);
+  const m = new THREE.MeshStandardMaterial({ color: 0xcfeef2, map: t, transparent: true, opacity: 0.7, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide });
+  // cinq filets, loin de la porte de la tour (angle 0) et de la plaque du premier vers (0,55 rad)
+  for (let k = 0; k < 5; k++) { const a = 1.2 + k * 1.0, rr = R_TOUR + 0.64, f = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 6), m);
+    f.position.set(Math.sin(a) * rr, 4.3, Math.cos(a) * rr); f.rotation.y = a; f.userData.dynamic = true; scene.add(f); }
+}
+function ilesScene() {
+  if (ilesFaite || state.ilesVu || !ilesSonnees() || !state.running || state.paused) return;
+  ilesFaite = true;
+  // la cloche pend DANS la tour creuse (y ≈ 24,8) : on la filme de l'intérieur, d'un peu plus bas ; les filets, du côté où ils sont
+  const haut = { cam: [4, 21, 4], at: [0, 24.2, 0] }, af = 2.2, pied = { cam: [Math.sin(af) * (R_TOUR + 8), 3, Math.cos(af) * (R_TOUR + 8)], at: [Math.sin(af) * R_TOUR, 3.5, Math.cos(af) * R_TOUR] };
+  const a = angPorte(PORTES.findIndex((P) => P.geant === 'colosse')), porte = { cam: [Math.sin(a) * (R_COUR - 9), 2.2, Math.cos(a) * (R_COUR - 9)], at: [Math.sin(a) * R_COUR, 2, Math.cos(a) * R_COUR] };
+  cutscene([
+    { ...haut, who: '', say: 'Au deuxième étage de la tour, la Cloche des Îles pend à son crochet. On la sonne : elle n’a pas de battant, elle se frappe du dehors.', fn: () => { PNJ_E.SFX.cloche && PNJ_E.SFX.cloche(); } },
+    { ...pied, who: '', say: 'Au pied de la tour, des rigoles se sont remplies. L’eau y coule vers le haut. Très loin, on entend la pluie.' },
+    // (SCENARIO.md § 12, la fin de l'acte III : rien de plus que ce que le scénario dit)
+    { ...porte, who: '', say: 'Une autre porte s’entrouvre : une odeur de mer et d’olivier.' },
+    { ...porte, who: '', say: 'Le vieux mage ne dit rien. Camille, pour la première fois, hésite devant une porte.' },
+  ], () => { state.ilesVu = true; saveGame(true); });
+}
+
 // rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
 // à l'arrivée par une porte, la sauvegarde rend l'angle de caméra du niveau qu'on quitte : on
 // la remet une fois dans le dos de Camille, face à la tour
@@ -641,6 +684,9 @@ function animate(now, dt) {
   finActeIScene();                                                                                   // la fin de l'acte I, une fois
   if (!heuresPosees && state.running && heuresSonnees()) { heuresPosees = true; heuresPoser(); }
   heuresScene();                                                                                     // le retour de l'acte IV, une fois
+  if (!ilesPosees && state.running && ilesSonnees()) { ilesPosees = true; ilesPoser(); }
+  ilesScene();                                                                                       // le retour de l'acte III, une fois
+  for (const t of RIGOLES) t.offset.y -= dt * 0.8;                                                  // l'eau des rigoles monte
   // le tic-tac du cadran, une fois les Heures pendues
   if (BOUGE.aiguille && state.running && (ticT += dt) > 1) { ticT = 0; PNJ_E.SFX.step(); }
   const t = now / 1000, troupeaux = ouverts().has('loup');
