@@ -295,7 +295,7 @@ function placeVieux({ hauteur, bloque }, p) {
   return [p.x, p.y, p.z, p.yaw];
 }
 let tAvant = 0;
-ville('matera', {
+const lieuPret = ville('matera', {
   solLieu: solChateau, bloqueLieu: bloqueChateau,
   plus(ctx) { chateau(ctx);
     const g = GARES.matera, c = Math.cos(g.rot), s = Math.sin(g.rot), a = 7, b = -2.6;
@@ -315,3 +315,41 @@ ville('matera', {
   },
 });
 window.__matera = GENS; GENS.TOURS = TOURS; GENS.COUR = COUR; GENS.neuve = neuve;      // pour les bancs (bancs/acte4-*.mjs) : où se tiennent les gens
+
+// L'ARÈNE du multi (6 octobre, C8 ; cf. ARENE_GALLIPOLI et docs/NOTE-MULTI.md) : les Sassi en
+// gradins, les maisons sur les toits des autres. Relevée en marchant aux règles du moteur depuis
+// l'arrivée (bancs/multi-sonde.mjs) : 2,1 ha à moins de 140 m, de −39 à 5 m ; le centre marchable en
+// (−67, 62). Les camps sont les deux Sassi : le Barisano au nord-ouest, le Caveoso au sud-est. Le
+// château Tramontano est loin à l'ouest, hors de l'aire. Une instance ne joue pas l'acte IV.
+const ARENE_MATERA = {
+  id: 'matera', nom: 'Matera, les Sassi',
+  sd: (x, z) => Math.hypot(x + 67, z - 62), centre: [-67, 62],
+  depart: { x: -67, z: 62 },
+  aires: [
+    { id: 'sassi', nom: 'les Sassi', r: 85, couleur: '#e8dcc0', lueur: 0xffe0a8, eparpille: 40 },
+    { id: 'coeur', nom: 'le cœur des Sassi', r: 30, couleur: '#ffa070', lueur: 0xff7a3a, eparpille: 15 },
+  ],
+  camps: {
+    garnison: { nom: 'Ceux du Barisano', court: 'Barisano', pluriel: true },
+    bourg: { nom: 'Ceux du Caveoso', court: 'Caveoso', pluriel: true },
+  },
+  campsTexte: 'Le Sasso Barisano contre le Sasso Caveoso, de toit en toit, de ruelle en escalier.',
+  departsCamps: { garnison: [-120, 20], bourg: [-36, 92] },
+  objets: [
+    { id: 'armure-barisano', type: 'armure', x: -120, z: 20, nom: 'du côté du Barisano' },
+    { id: 'armure-caveoso', type: 'armure', x: -36, z: 92, nom: 'du côté du Caveoso' },
+    { id: 'arc-ouest', type: 'arc', x: -128, z: 90, nom: 'au bas des gradins, à l’ouest' },
+    { id: 'arc-est', type: 'arc', x: 0, z: 33, nom: 'au bord est des Sassi' },
+    { id: 'bouclier', type: 'bouclier', x: -67, z: 62, nom: 'au cœur des Sassi' },
+  ],
+  pointsForts: () => [
+    { id: 'coeur', nom: 'le cœur des Sassi', x: -67, z: 62 },
+    { id: 'barisano', nom: 'le Barisano', x: -120, z: 20 },
+    { id: 'caveoso', nom: 'le Caveoso', x: -36, z: 92 },
+    { id: 'gradins', nom: 'le haut des gradins', x: -90, z: 40 },
+    { id: 'est', nom: 'le bord est', x: 0, z: 33 },
+    { id: 'bas', nom: 'le bas des Sassi', x: -60, z: 130 },
+    { id: 'ouest', nom: 'l’ouest des gradins', x: -128, z: 90 },
+  ],
+};
+lieuPret.then(() => { if (G.level && G.level.name === 'matera') G.level.arenes = [ARENE_MATERA]; });

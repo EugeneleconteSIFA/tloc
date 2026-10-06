@@ -9,6 +9,9 @@ import * as PNJ_E from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { etapeActe1, atteintActe1 } from './etat.js';
 
+// en instance du multi (l'arène de l'estaminet, plus bas) : la même lecture que la page
+const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
+
 // Mobilier du Fantasy Props MegaKit. Si la banque manque, l'estaminet garde son mobilier
 // procédural : PROPS_OK reste faux et chaque appel à prop() ne fait rien.
 const TAVERN_PROPS = ['props:Stool', 'props:Mug', 'props:Chandelier', 'props:Lantern_Wall',
@@ -234,7 +237,12 @@ function build() {
   murAvecBaies(W / 2, -D / 2, W / 2, D / 2, [{ u: D / 2 + 1.3, w: 1.2, y0: FY + 0.15, h: 1.25 }]);   // pignon est : une baie sur la cour
   murAvecBaies(-W / 2, -D / 2, -W / 2, D / 2, []);            // pignon ouest : la cheminée
   murAvecBaies(-W / 2, -D / 2, W / 2, -D / 2, []);            // mur du fond (nord) : le comptoir
-  for (const [ax, az, bx, bz] of [[-W / 2, -D / 2, -0.85, D / 2], [0.85, D / 2, W / 2, D / 2], [-W / 2, -D / 2, W / 2, -D / 2], [-W / 2, -D / 2, -W / 2, D / 2], [W / 2, -D / 2, W / 2, D / 2]]) cap(ax, az, bx, bz, EP / 2);
+  // (le premier pan, la façade à gauche de la porte, partait du coin nord-ouest : une diagonale qui
+  // traversait la salle jusqu'à la porte — 6 octobre, relevé par l'arène du multi)
+  for (const [ax, az, bx, bz] of [[-W / 2, D / 2, -0.85, D / 2], [0.85, D / 2, W / 2, D / 2], [-W / 2, -D / 2, W / 2, -D / 2], [-W / 2, -D / 2, -W / 2, D / 2], [W / 2, -D / 2, W / 2, D / 2]]) cap(ax, az, bx, bz, EP / 2);
+  // en instance du multi, la porte est fermée : on se bat dans la salle, pas dans la rue (la porte
+  // ouverte donnait sur un dehors sans bord, hors de l'aire)
+  if (EN_INSTANCE) cap(-0.85, D / 2, 0.85, D / 2, EP / 2);
   // lambris d'appui et pans de bois : l'intérieur flamand n'est pas un enduit nu
   const murs = [[-W / 2, -D / 2, W / 2, -D / 2], [-W / 2, D / 2, W / 2, D / 2], [-W / 2, -D / 2, -W / 2, D / 2], [W / 2, -D / 2, W / 2, D / 2]];
   for (const [ax, az, bx, bz] of murs) {
@@ -254,7 +262,7 @@ function build() {
   porte.position.set(0, 0, D / 2 - EP / 2 + 0.02); porte.rotation.y = Math.PI; porte.scale.setScalar(1 / SC); put(porte);
   put(mesh(new THREE.BoxGeometry(DP + 0.5, 0.1, 0.7), M.pierre, 0, 0.04, D / 2 - 0.3));      // seuil usé
   put(mesh(new THREE.PlaneGeometry(DP, 2.4), M.vueRue, 0, 1.3, D / 2 + 0.02));
-  addInteract({ pos: V(0, 0, D / 2 - 1.0), r: 1.6 * SC, prompt: () => "sortir de l'estaminet", fn: () => goToLevel(EXIT.level, EXIT.pos, EXIT.yaw, 'Camille ressort sur la place…') });
+  addInteract({ pos: V(0, 0, D / 2 - 1.0), r: 1.6 * SC, prompt: () => "sortir de l'estaminet", enabled: () => !EN_INSTANCE, fn: () => goToLevel(EXIT.level, EXIT.pos, EXIT.yaw, 'Camille ressort sur la place…') });
 
   // ---------- fenêtres et lumière du jour ----------
   fenetre(-3.3, D / 2, Math.PI, 1.45, FH, FY);
@@ -565,8 +573,36 @@ function minimap(g, W2) {
   g.fillStyle = '#ffe07a'; { const [a, b] = P(-0.8, D / 2 - 0.5); g.fillRect(a, b, 1.6 * sc, 0.4 * sc); }      // la porte
   minimapDots(g, P);
 }
+// L'ARÈNE du multi (6 octobre, C8) : la bagarre de taverne, la plus petite arène — quatre au plus,
+// bots compris (le serveur le tient : ARENES_MAX, app.py). Une salle de 11 × 9 m, le zinc au fond,
+// quatre tables, l'âtre : on se cache derrière le comptoir, on tourne autour des tables. Les
+// habitués du zinc contre les joueurs de cartes (la table du fond, près de la porte). Une seule
+// aire, la salle ; un écu au milieu. Ni forge, ni bannières, ni fête.
+function sdSalle(x, z) { const dx = Math.abs(x) - (W / 2 - 0.6), dz = Math.abs(z) - (D / 2 - 0.6); return Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0); }
+const ARENE_ESTAMINET = {
+  id: 'estaminet', nom: 'L’estaminet',
+  sd: sdSalle, centre: [0, 0.2],
+  depart: { x: 0, z: 0.2 },
+  aires: [{ id: 'salle', nom: 'la salle', r: 0, couleur: '#ffd070', lueur: 0xffc860, eparpille: 2 }],
+  camps: {
+    garnison: { nom: 'Les habitués du zinc', court: 'Zinc', pluriel: true },
+    bourg: { nom: 'Les joueurs de cartes', court: 'Cartes', pluriel: true },
+  },
+  campsTexte: 'Les habitués du zinc contre les joueurs de cartes : une bagarre d’estaminet, quatre au plus.',
+  departsCamps: { garnison: [2, -0.5], bourg: [-2, 4] },          // recalés au sol marchable (bancs/multi-sonde.mjs, TLOC_PAS=0.5)
+  dispersion: 0.8,
+  serre: true,                   // tout reste dans la salle : l'arrivée, le drapeau (tloc-multi.js)
+  objets: [{ id: 'bouclier', type: 'bouclier', x: 0, z: 0.2, nom: 'au milieu de la salle' }],
+  pointsForts: () => [
+    { id: 'milieu', nom: 'le milieu de la salle', x: 0, z: 0.2 },
+    { id: 'zinc', nom: 'le zinc', x: 2, z: -0.5 },
+    { id: 'porte', nom: 'la porte', x: -2, z: 4 },
+    { id: 'atre', nom: 'l’âtre', x: -2.5, z: -0.5 },
+  ],
+};
+
 const level = {
-  name: 'tavern', musique: 'taverne', getH: () => 0, zoneName: () => "L'Estaminet", build, populate, animate, minimap, onLoad,
+  name: 'tavern', arenes: [ARENE_ESTAMINET], musique: 'taverne', getH: () => 0, zoneName: () => "L'Estaminet", build, populate, animate, minimap, onLoad,
   entry: () => ({ title: "L'Estaminet", sub: 'Gaufres et bière de la citadelle', cam: [3.6, 2.6, 3.4], at: [-1.5, 1.1, -1.5], cam2: [1.2, 2.0, 3.4], at2: [0, 1.3, 0.5], dur: 3.5 }),
   counts: () => `<small>L'estaminet du village — Gustave, au comptoir, offre une gaufre (Entrée). Les clients attablés ont aussi des choses à raconter. Porte derrière toi pour sortir.</small>`,
   start: () => showMessage("L'estaminet : ça sent la gaufre chaude et la bière de la citadelle. Gustave est au comptoir.", 5),

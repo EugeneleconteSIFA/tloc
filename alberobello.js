@@ -213,7 +213,7 @@ function tambourin() {
 
 window.__alberobello = { OLIVES, FETE, etatGrappe };      // pour les bancs (bancs/acte4-*.mjs)
 
-ville('alberobello', {
+const lieuPret = ville('alberobello', {
   plus(ctx) { ctxA = ctx; const { hauteur, addInteract, scene } = ctx;
     // au bord du quai, côté voies, un peu à l'écart du bâtiment : au milieu du quai, on ne
     // l'atteignait pas (le quai est un obstacle, on lui parle d'en bas)
@@ -261,3 +261,44 @@ ville('alberobello', {
     if (OLIVES.fermier && OLIVES.fermier.userData.ctrl) PNJ.animeVillageois(OLIVES.fermier, dt, false);
   },
 });
+
+// L'ARÈNE du multi (6 octobre, C8 ; cf. ARENE_GALLIPOLI et docs/NOTE-MULTI.md) : le Rione Monti, ses
+// ruelles de trulli en pente. Relevée en marchant aux règles du moteur depuis l'arrivée
+// (bancs/multi-sonde.mjs) : 1,1 ha à moins de 90 m, de −11 à 6 m ; le centre marchable en (3, 7).
+// Puis le cœur du quartier, autour de la porte de l'île. Deux camps de métier, comme à Gallipoli :
+// les trullari, maçons de la pierre sèche, et les paysans de la Murgia, qui montent des oliveraies.
+// Une instance ne joue pas l'acte IV (pouilles.js, EN_INSTANCE) : ni Assunta, ni l'oliveraie, ni le
+// soleil qui court.
+const ARENE_ALBEROBELLO = {
+  id: 'alberobello', nom: 'Alberobello, le Rione Monti',
+  sd: (x, z) => Math.hypot(x, z), centre: [0, 0],
+  depart: { x: -3, z: 2 },                        // l'arrivée, au pied de la porte de l'île
+  aires: [
+    { id: 'monti', nom: 'le Rione Monti', r: 80, couleur: '#f0e6c8', lueur: 0xffe8b0, eparpille: 40 },
+    { id: 'coeur', nom: 'le cœur du quartier', r: 30, sd: (x, z) => Math.hypot(x + 3, z - 2), couleur: '#ffb070', lueur: 0xff8a3a, eparpille: 15 },
+  ],
+  camps: {
+    garnison: { nom: 'Les trullari', court: 'Trullari', pluriel: true },
+    bourg: { nom: 'Les paysans de la Murgia', court: 'Paysans', pluriel: true },
+  },
+  campsTexte: 'Les trullari, maçons de la pierre sèche, contre les paysans de la Murgia, dans les ruelles des trulli.',
+  departsCamps: { garnison: [52, 31], bourg: [-57, -22] },
+  objets: [
+    { id: 'armure-trullari', type: 'armure', x: 52, z: 31, nom: 'du côté des trullari' },
+    { id: 'armure-paysans', type: 'armure', x: -57, z: -22, nom: 'du côté des paysans' },
+    { id: 'arc-est', type: 'arc', x: 63, z: -37, nom: 'au bout est du quartier' },
+    { id: 'arc-ouest', type: 'arc', x: -50, z: 46, nom: 'au bout ouest du quartier' },
+    { id: 'bouclier', type: 'bouclier', x: -3, z: 2, nom: 'au pied de la porte de l’île' },
+  ],
+  pointsForts: () => [
+    { id: 'porte', nom: 'la porte de l’île', x: -3, z: 2 },
+    { id: 'trullari', nom: 'le côté des trullari', x: 52, z: 31 },
+    { id: 'paysans', nom: 'le côté des paysans', x: -57, z: -22 },
+    { id: 'haut', nom: 'le haut du quartier', x: 20, z: 60 },
+    { id: 'ruelle', nom: 'la ruelle du sud', x: -17, z: -32 },
+    { id: 'est', nom: 'l’est du quartier', x: 30, z: 20 },
+    { id: 'nord', nom: 'le bas du quartier', x: -2, z: -71 },
+  ],
+};
+// le niveau naît dans monde() (après l'installation de Camille) : ville() rend sa promesse
+lieuPret.then(() => { if (G.level && G.level.name === 'alberobello') G.level.arenes = [ARENE_ALBEROBELLO]; });

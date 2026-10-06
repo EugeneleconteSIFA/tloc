@@ -622,3 +622,47 @@ Trouvé par la passe :
 saisie d'une bannière, posté au ralliement adverse, et relève ce que le serveur répond) : les
 ralliements sont acceptés dans les six arènes ; la fête seulement à Lille ; la bannière à Lille, à
 la Garde-Guérin, au Pouget et au Batut, refusée à Ko Panyi et à Gallipoli. Aucune pageerror.
+
+### Trois arènes nouvelles : Alberobello, Matera, l'estaminet (6 octobre, C8)
+
+**La sonde de terrain** (`bancs/multi-sonde.mjs page x z rayon "x1,z1;…"`) : depuis un point, ce
+qu'on atteint à pied aux règles du moteur (case de 1 m — `TLOC_PAS=0.5` dans un intérieur encombré —,
+huit voisines, `blocked` au rayon 0,5 m, marche de 0,6 m au plus). Elle rend la surface, l'étendue,
+les hauteurs, le centre marchable, deux points éloignés (les départs des camps), et recale sur le sol
+atteint les points qu'on lui donne (départs, objets, points forts). Les intérieurs n'ont pas de
+`blocked` à eux : la sonde prend celui du moteur.
+
+| arène | page | relevé | aires | camps | objets |
+|---|---|---|---|---|---|
+| Alberobello, le Rione Monti | `alberobello.html` | 1,1 ha à moins de 90 m de l'arrivée, de −11 à 6 m | le Rione Monti (80 m), le cœur du quartier (30 m, autour de la porte de l'île) | les trullari, les paysans de la Murgia | 2 armures, 2 arcs, l'écu à la porte de l'île |
+| Matera, les Sassi | `matera.html` | 2,1 ha à moins de 140 m, de −39 à 5 m ; centre (−67 ; 62) | les Sassi (85 m), le cœur (30 m) | ceux du Barisano (nord-ouest), ceux du Caveoso (sud-est) | 2 armures, 2 arcs, l'écu au cœur |
+| L'estaminet | `tavern.html` | la salle de 11 × 9 m (147 m² atteints, dehors compris par la porte) | la salle | les habitués du zinc, les joueurs de cartes | l'écu au milieu |
+
+**L'estaminet se joue à quatre au plus, bots compris** : `ARENES_MAX` (app.py) borne les places des
+humains (`places_humains(mode, bots, arene)`) et le nombre de bots à la création (il reste au moins une
+place à un humain). Aucune n'a de forge, de bannières ni de fête. Alberobello et Matera portent l'acte IV
+(C3) : en instance, rien de l'histoire (`EN_INSTANCE`, pouilles.js) — ni Assunta, ni l'oliveraie, ni le
+soleil qui court, ni les salles du château.
+
+**La passe** (`TLOC_ARENES="alberobello matera" bancs/multi-arenes.sh`) : aucune pageerror ; 5 objets
+posés ; les camps nommés ; l'aire tracée ; un drapeau en prise des drapeaux ; le graphe des bots tiré
+tout seul (1 431 points à Alberobello, 2 055 à Matera).
+
+| arène | rencontres en 40 s (balade / survie / chrono / drapeaux) |
+|---|---|
+| Alberobello | 3 / 6 / 7 / 6 |
+| Matera | 6 / 7 / 6 / 5 |
+
+- **Appris** : `bancs/rencontres.mjs` a sa table des pages par arène (`PAGE`) : une arène qu'on y oublie
+  charge `undefined` et le banc attend cinq minutes avant de tomber — sans une ligne de résultat dans
+  `multi-arenes.sh`, qui filtre la sortie.
+
+**L'estaminet, joué** (`TLOC_ARENES=estaminet bancs/multi-arenes.sh`) : 6 rencontres en 40 s à chaque
+règle, un drapeau posé dans la salle, aucune pageerror. Trois choses trouvées en le jouant :
+- **la porte** donnait sur un dehors sans bord, hors de l'aire : en instance, le seuil est fermé (une
+  capsule) et l'invite « sortir de l'estaminet » éteinte ;
+- **l'arrivée et le terrain du drapeau** étaient cherchés dans la rue (15 m de marge sous la limite, un
+  cercle libre de 8 m autour du drapeau : des mesures de quartier). Une arène peut se dire **`serre: true`** :
+  tout reste dans sa première aire, la marge tombe à 0,5 m et le cercle libre à 1,2 m (tloc-multi.js) ;
+- **un pan de mur de la salle** (la façade à gauche de la porte) partait du coin nord-ouest : une capsule
+  en diagonale à travers la salle. Remis le long de la façade (le solo aussi ; `acte1-b1.mjs` sans erreur).

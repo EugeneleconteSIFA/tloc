@@ -273,6 +273,11 @@ function etatAire(t) {
 // une aire peut avoir sa propre mesure (`sd`) : au Batut, le jardin n'est pas le domaine rétréci
 const sdAire = (id) => AIRES[id].sd || arene.sd;
 const horsAire = (x, z, aire) => AIRES[aire].r !== Infinity && sdAire(aire)(x, z) > AIRES[aire].r;
+// Une arène SERRÉE (`serre: true`, l'estaminet : une salle de 11 × 9 m) : l'arrivée et le terrain
+// d'un drapeau restent dans sa première aire, et les marges faites pour des quartiers (15 m en deçà
+// de la limite, un cercle libre de 8 m autour d'un drapeau) se réduisent à la taille d'une salle —
+// sans quoi on les cherchait dans la rue, derrière la porte (6 octobre, C8).
+const serre = () => !!(arene && arene.serre);
 const premiereAire = () => idsAires()[0];
 // Ce qu'une arène a se déclare dans son fichier (`forge`, `bannieres`, `fete`) ; ce qu'elle ne
 // déclare pas est éteint : la fête fauche l'herbe de Lille, la forge est celle de son bourg.
@@ -789,6 +794,7 @@ function praticable(x, z) {
     for (let k = 0; k < n; k++) {
       const a = k / n * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
       if (world.bounds && world.bounds(px, pz)) continue;
+      if (serre() && horsAire(px, pz, premiereAire())) continue;
       if (eau(px, pz) < 2) continue;
       const y = world.levelH ? world.levelH(px, pz) : 0;
       if (blocked(px, pz, 0.8, false, y)) continue;
@@ -805,10 +811,11 @@ function praticable(x, z) {
 // arrive là où les autres jouent (on choisissait sa rue à un kilomètre de tout le monde).
 function praticableOuvert(x, z) {
   const a0 = premiereAire();
-  if (horsAire(x, z, a0) || (AIRES[a0].r !== Infinity && sdAire(a0)(x, z) > AIRES[a0].r - 15)) {
+  const marge = serre() ? 0.5 : 15;
+  if (horsAire(x, z, a0) || (AIRES[a0].r !== Infinity && sdAire(a0)(x, z) > AIRES[a0].r - marge)) {
     const [cx, cz] = arene.centre;
     let lo = 0, hi = 1;                               // la part du chemin vers le centre
-    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (sdAire(a0)(x + (cx - x) * m, z + (cz - z) * m) > AIRES[a0].r - 15) lo = m; else hi = m; }
+    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (sdAire(a0)(x + (cx - x) * m, z + (cz - z) * m) > AIRES[a0].r - marge) lo = m; else hi = m; }
     x += (cx - x) * hi; z += (cz - z) * hi;
   }
   return praticableOuvertIci(x, z);
@@ -1330,8 +1337,8 @@ function terrainDrapeau(l, relie = null) {
     const n = r ? Math.ceil(r * 1.5) : 1;
     for (let k = 0; k < n; k++) {
       const a = k / n * TAU, x = l.x + Math.cos(a) * r, z = l.z + Math.sin(a) * r;
-      let ok = libre(x, z) && (!relie || relie[caseNav(x, z)] >= 0);
-      for (const rr of [3.5, RAYON_DRAPEAU - 1]) for (let j = 0; j < 12 && ok; j++) ok = libre(x + Math.cos(j / 12 * TAU) * rr, z + Math.sin(j / 12 * TAU) * rr);
+      let ok = libre(x, z) && (!relie || relie[caseNav(x, z)] >= 0) && !(serre() && horsAire(x, z, premiereAire()));
+      for (const rr of serre() ? [1.2] : [3.5, RAYON_DRAPEAU - 1]) for (let j = 0; j < 12 && ok; j++) ok = libre(x + Math.cos(j / 12 * TAU) * rr, z + Math.sin(j / 12 * TAU) * rr);
       if (ok) return { x, z };
     }
   }

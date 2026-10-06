@@ -75,5 +75,10 @@
 { "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
 </script>
 <script type="module" src="tavern.js?v=41"></script>
+<!-- le multi (6 octobre, C8) : seulement en instance — sans instance, l'estaminet du solo -->
+<script type="module">
+  let inst = null; try { inst = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); } catch (e) {}
+  if (inst && inst.code) { import('./tloc-multi.js?v=41'); }
+</script>
 </body>
 </html>

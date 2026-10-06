@@ -58,6 +58,9 @@ BANNIERE_PORTEE = 4.0           # mètres pour saisir une bannière
 COORD_MAX = 50000
 ARENES_FETE = {"lille"}         # la fête fauche l'herbe de Lille : ailleurs, rien à faucher
 ARENES_BANNIERES = {"lille", "gardeguerin", "pouget", "batut"}
+# les arènes trop petites pour douze : l'estaminet (une salle de 11 × 9 m) se joue à quatre au plus,
+# bots compris — les places des humains et le nombre de bots y sont bornés
+ARENES_MAX = {"estaminet": 4}
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
 # En balade par équipes, il n'y a pas de manche : le premier camp à VICTOIRE_BALADE points
@@ -235,9 +238,10 @@ def compter(cx: sqlite3.Connection, jid: int, cle: str, n: float):
                   ON CONFLICT(joueur, cle) DO UPDATE SET n = n + excluded.n""", (jid, cle, n))
 
 
-def places_humains(mode: str, bots: int) -> int:
-    """Les places laissées aux humains : celles du mode, dans la limite de douze en tout."""
-    return max(1, min(places(mode), TOTAL_MAX - bots))
+def places_humains(mode: str, bots: int, arene: str = "lille") -> int:
+    """Les places laissées aux humains : celles du mode, dans la limite de douze en tout (ou de
+    ce que l'arène tient, ARENES_MAX)."""
+    return max(1, min(places(mode), ARENES_MAX.get(arene, TOTAL_MAX) - bots))
 PORTEE_COUP = 7.0               # mètres : au-delà, le coup d'épée annoncé est refusé
 # Une flèche part à 40 m/s et vit 1,5 s (engine.js) : 60 m au plus. Avec la seule portée de
 # l'épée, toute flèche qui touchait au-delà de 7 m était perdue — entre joueurs comme sur un bot.
@@ -1035,7 +1039,7 @@ class NouvelleInstance(BaseModel):
     duree: int = Field(default=180, ge=60, le=900)
     # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) ; en ajouter une,
     # c'est l'ajouter ici et dans ARENES (tloc-compte.js)
-    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut|panyi|gallipoli)$")
+    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut|panyi|gallipoli|alberobello|matera|estaminet)$")
 
 
 def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
@@ -1044,7 +1048,7 @@ def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:
         "code": r["code"], "nom": r["nom"], "hote": pseudo_hote,
         "cree": r["cree"], "vu": r["vu"],
         "connectes": [p.perso for p in salon.humains()] if salon else [],
-        "places": places_humains(r["mode"], r["bots"]), "mode": r["mode"], "enjeu": bool(r["enjeu"]),
+        "places": places_humains(r["mode"], r["bots"], r["arene"]), "mode": r["mode"], "enjeu": bool(r["enjeu"]),
         "bots": r["bots"], "niveau": r["niveau"], "regle": r["regle"], "vies": r["vies"], "duree": r["duree"],
         "arene": r["arene"],
     }
@@ -1058,6 +1062,8 @@ def creer_instance(n: NouvelleInstance, j: sqlite3.Row = Depends(porteur)):
     code = nouveau_code()
     t = time.time()
     with db() as cx:
+        # une petite arène borne aussi les bots : il reste au moins une place à un humain
+        if n.arene in ARENES_MAX: n.bots = min(n.bots, ARENES_MAX[n.arene] - 1)
         cx.execute("INSERT INTO instances (code, nom, hote, cree, vu, mode, enjeu, bots, niveau, regle, vies, duree, arene) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                    (code, n.nom.strip() or "Partie entre amis", j["id"], t, t, n.mode, int(n.enjeu), n.bots, n.niveau, n.regle, n.vies, n.duree, n.arene))
         cx.execute("INSERT OR IGNORE INTO membres (code, joueur, rejoint) VALUES (?,?,?)", (code, j["id"], t))
@@ -1775,7 +1781,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
             pass
         salon.joueurs.pop(j["id"], None)
     equipes = inst["mode"] == "equipes"
-    if len(salon.humains()) >= places_humains(inst["mode"], inst["bots"]):
+    if len(salon.humains()) >= places_humains(inst["mode"], inst["bots"], inst["arene"]):
         await ws.close(code=4003, reason="instance complète")
         return
 
@@ -1793,7 +1799,7 @@ async def salon_ws(ws: WebSocket, code: str, jeton: str = "", perso: str = ""):
         for b in sans_pilote:
             b.pilote = moi.id
     await ws.send_text(json.dumps({
-        "t": "bienvenue", "code": code, "nom": inst["nom"], "places": places_humains(inst["mode"], inst["bots"]),
+        "t": "bienvenue", "code": code, "nom": inst["nom"], "places": places_humains(inst["mode"], inst["bots"], inst["arene"]),
         "moi": {"id": moi.id, "pseudo": moi.pseudo, "perso": moi.perso},
         "hote": moi.id == inst["hote"], "rdv": json.loads(inst["rdv"]) if inst["rdv"] else None,
         "mode": inst["mode"], "enjeu": bool(inst["enjeu"]), "arene": inst["arene"], "camps": salon.camps(), "points": salon.points,
