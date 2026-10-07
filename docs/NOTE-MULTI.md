@@ -721,5 +721,5 @@ La vraie maison des Roquette au bord du lac (aveyron.js, `ARENE_ROQUETTE`, id `r
 la rive). Six au plus (`ARENES_MAX`). Relevée par la sonde (1,5 ha à moins de 70 m, la maison atteinte en
 (−132 ; 166)). **En instance, l'acte II ne joue pas** (`EN_INSTANCE`, aveyron.js : ni `habitants` — les
 cavaliers —, ni `acte2`, ni son animation). Passe aux quatre règles : aucune pageerror, 5 objets, camps
-nommés, un drapeau, 6 à 10 rencontres en 40 s ; `acte2-temoins.mjs` (le solo) réussi. À refaire : la
-vignette (la maison y est petite, sous les arbres).
+nommés, un drapeau, 6 à 10 rencontres en 40 s ; `acte2-temoins.mjs` (le solo) réussi. La vignette se cadre sur
+la façade (vue 'facade', bancs/multi-vignettes.mjs : de haut, la maison disparaissait sous les arbres).

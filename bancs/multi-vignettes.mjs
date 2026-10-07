@@ -16,7 +16,7 @@ fs.mkdirSync(SORTIE, { recursive: true });
 const ARENES = {
   lille: ['index.html', [[230, 150, 260], [0, 0, -10]]], gardeguerin: ['garde-guerin.html'], pouget: ['pouget.html'],
   batut: ['batut.html', [[0, 34, 70], [0, 0, 0]]], panyi: ['thailande.html'], gallipoli: ['gallipoli.html'],
-  roquette: ['aveyron.html', [[-78, 58, 228], [-133, 12, 166]]], alberobello: ['alberobello.html'], matera: ['matera.html'], estaminet: ['tavern.html', [[4.6, 2.9, 3.6], [-2.2, 1.0, -1.6]]],
+  roquette: ['aveyron.html', 'facade'], alberobello: ['alberobello.html'], matera: ['matera.html'], estaminet: ['tavern.html', [[4.6, 2.9, 3.6], [-2.2, 1.0, -1.6]]],
 };
 const voulues = (process.argv[2] || Object.keys(ARENES).join(',')).split(',');
 const b = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });
@@ -34,7 +34,12 @@ for (const id of voulues) {
     const T = TLOC; for (const s of ['#hud', '#overlay', '#legend', '#msg', '#counts', '.cine', '#tactile', '#minimap']) document.querySelectorAll(s).forEach((e) => { e.style.display = 'none'; });
     if (T.menu && T.menu.active) document.getElementById('overlay')?.remove();
     let cam, at;
-    if (vue) [cam, at] = vue;
+    // 'facade' : en face de la façade, dans l'axe de la maison à l'invite qui la nomme (la maison du
+    // Batut de l'Aveyron : vue de haut, de biais, elle disparaissait sous les arbres)
+    if (vue === 'facade') { const it = T.interactables.find((i) => (typeof i.prompt === 'function' ? i.prompt() : '') === 'le Batut'), A = T.G.level.arenes[0], [cx, cz] = A.centre;
+      const dx = it.pos.x - cx, dz = it.pos.z - cz, l = Math.hypot(dx, dz), y = T.getH(it.pos.x, it.pos.z);
+      cam = [cx + dx / l * 24, y + 9, cz + dz / l * 24]; at = [cx, y + 4, cz]; }
+    else if (vue) [cam, at] = vue;
     else { const A = (T.G.level.arenes || [])[0], [cx, cz] = A ? A.centre : [0, 0], y = T.getH(cx, cz), r = A && A.aires[0].r ? A.aires[0].r : 80;
       cam = [cx + r * 0.55, y + r * 0.42, cz + r * 0.55]; at = [cx, y, cz]; }
     // Camille loin derrière la caméra : son corps ne bouche pas la vue
