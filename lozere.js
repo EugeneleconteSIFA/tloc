@@ -23,7 +23,7 @@
 // (acte V, Eugène, 7 octobre), place du Bosquet ; celle du Pouget reste, pour en revenir.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, KINDS, setMaker, setAnimHook, spawnEnemy } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, KINDS, setMaker, setAnimHook, spawnEnemy, renderer, sun, hemi } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -1694,6 +1694,7 @@ function acte5Garde(ctx) {
   { const S = SALLES[2], paille = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.3, 20), phMat('withered_grass', 2, 2, { color: 0xc8b070 })); paille.position.set(0, 0.15, -1.5); S.g.add(paille);
     for (let k = 0; k < 4; k++) { const gr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.02), new THREE.MeshBasicMaterial({ color: 0x1a1612 })); gr.position.set(-1 + k * 0.25, 2, -3.7); gr.rotation.z = 0.3; S.g.add(gr); } }
   chargerBete('loup1765').then((m) => { modeleLoup = m; });
+  acte5Loup(ctx);
 }
 function poserLoups1765(S) {
   A5.loups1765 = [[-2, -2], [2, -2.5], [0, -3]].map(([lx, lz]) => { const e = spawnEnemy('loup1765', S.x + lx, S.z + lz, 'acte5', S.y); e.home.y = S.y; return e; });
@@ -1701,6 +1702,103 @@ function poserLoups1765(S) {
 }
 function chambreDuLoup() {
   dialogue([{ who: '', text: 'Une litière de paille, grande comme une étable. Des griffes dans la pierre. Il est sorti.' }], () => { passer5('tour'); showMessage('Dehors, la nuit tombe sur le plateau.', 5); });
+}
+
+// ---- Le loup (étape 6) et la fin (étape 7), sur le plateau de la Garde-Guérin, la nuit ----
+// La nuit : on baisse l'exposition et la lumière (comme la nuit des Pouilles : changer la carte
+// d'environnement recompilerait tout) ; le jour revient quand le loup dort.
+REPLIQUES5.berger.push(['tour', () => R5('Le berger', 'Je ne peux pas regarder. Fais vite.')]);
+REPLIQUES5.berger.push(['course', () => R5('Le berger', 'Il a gardé mes bêtes toute ma vie. Garde les tiennes. Ce que tu as commencé…')]);
+function nuit5(on) {
+  if (A5.nuit === on) return; A5.nuit = on;
+  if (on) { A5.jour = { expo: renderer.toneMappingExposure, sun: sun.intensity, hemi: hemi.intensity, brume: scene.fog ? scene.fog.color.getHex() : null };
+    renderer.toneMappingExposure = A5.jour.expo * 0.42; sun.intensity = A5.jour.sun * 0.25; sun.color.setHex(0xa8b8e8); hemi.intensity = A5.jour.hemi * 0.6; hemi.color.setHex(0x6a7aa8);
+    if (scene.fog) scene.fog.color.setHex(0x1a2234); }
+  else if (A5.jour) { renderer.toneMappingExposure = A5.jour.expo; sun.intensity = A5.jour.sun; sun.color.setHex(0xfff0d8); hemi.intensity = A5.jour.hemi; hemi.color.setHex(0xd8e4f4); if (scene.fog && A5.jour.brume != null) scene.fog.color.setHex(A5.jour.brume); }
+}
+// le loup : loup.glb grand comme une grange ; il passe d'une époque à l'autre — une seconde ici, une
+// seconde ailleurs (figé, intouchable : e.caged) ; un coup de sonnaille le tient au présent cinq
+// secondes. On frappe le morceau planté dans son épaule.
+BETES.loupGeant = { fichier: 'loup.glb', haut: 4,   // (6,6 m mesurés : une grange ; à 7, il en faisait 11,5)
+  teintes: { M_Wolf: 0x4a4440 } };
+Object.assign(KINDS, { loupGeant: { hp: 8, speed: 5.5, dmg: 2, range: 4.2, aggro: 60, windup: 0.7, cd: 1.6, fly: 0, r: 2.2, label: 'Le loup de Lozère', boss: true, barY: 5 } });
+let modeleGeant = null;
+setMaker('loupGeant', () => { const g = modeleGeant ? modeleGeant.S.clone(modeleGeant.g.scene) : new THREE.Group(); if (modeleGeant) g.scale.setScalar(modeleGeant.echelle * G.echelle); g.userData.anim = true;
+  g.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.castShadow = true; } });
+  // le morceau de cloche dans l'épaule : un éclat de bronze qui luit
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.5, 10, 1, true, 0, 1.2), new THREE.MeshStandardMaterial({ color: 0x8a6a34, metalness: 0.8, roughness: 0.4, emissive: 0x3a2008, side: THREE.DoubleSide }));
+  m.position.set(0.6, 3.4, 1.4); m.rotation.set(0.6, 0.2, 0.8); g.add(m); g.userData.morceau = m;
+  if (modeleGeant) { const mix = new THREE.AnimationMixer(g), a = modeleGeant.g.animations.find((k) => /Walk/.test(k.name)), h = modeleGeant.g.animations.find((k) => /Howl/.test(k.name)); if (a) mix.clipAction(a).play(); g.userData.mix = mix; g.userData.hurle = h ? mix.clipAction(h) : null; }
+  return g; });
+setAnimHook('loupGeant', (e, dt) => { if (e.mesh.userData.mix) e.mesh.userData.mix.update(e.caged ? 0 : dt); return true; });
+A5.surSonnaille.push((ep) => { if (ep === 'present' && A5.loup && !A5.loup.dead) { A5.presentJusqua = performance.now() + 5000; showMessage('La sonnaille ! Le loup est tenu au présent. Frappe le morceau dans son épaule.', 3); } });
+function plateau(ctx) {
+  // une place ouverte sur le plateau, à l'est de l'enceinte, au-dessus des gorges du Chassezac
+  const libre = (x, z) => { for (let a = -12; a <= 12; a += 4) for (let b = -12; b <= 12; b += 4) if (ctx.bloque(x + a, z + b, 0.8)) return false; return true; };
+  for (let r = 0; r < 220; r += 6) for (let k = 0; k < 24; k++) { const x = 1880 + Math.cos(k / 24 * TAU) * r, z = -5320 + Math.sin(k / 24 * TAU) * r; if (libre(x, z)) return [x, z]; }
+  return [1880, -5320];
+}
+function acte5Loup(ctx) {
+  if (EN_INSTANCE) return;
+  const [px, pz] = A5.plateau = plateau(ctx), sol = A5.sol;
+  chargerBete('loupGeant').then((m) => { modeleGeant = m; });
+  // le berger et son chien, à la lisière, à 22 m : il ne peut pas regarder
+  const bx = px - 22, bz = pz + 6;
+  ctx.addInteract({ pos: new THREE.Vector3(bx, sol(bx, bz), bz), r: 2.8, prompt: () => 'parler au berger', enabled: () => atteint5('tour'), fn: () => dialogue(repl5('berger')) });
+  A5.bergerPlateau = [bx, bz];
+  // (ils montent quand l'étape « tour » est atteinte — dans la partie, ou rechargée : animeLoup)
+}
+function animeLoup(dt) {
+  if (A5.lieu !== 'gardeguerin' || !A5.plateau) return;
+  // la nuit, de la tour jusqu'à la course
+  nuit5(atteint5('tour') && !atteint5('course') && !A5.salle);
+  if (!atteint5('tour') || atteint5('course')) return;
+  if (!A5.bergerPose) { A5.bergerPose = true; const [bx, bz] = A5.bergerPlateau, sol = A5.sol;
+    A5.gens.bergerPlateau = personne5('a5_berger', bx, sol(bx, bz), bz, Math.atan2(-1, 0)); poserChien(bx + 1.2, sol(bx + 1.2, bz), bz + 0.8, 0).then((c) => { A5.chien = c; A5.chienRepos = true; }); }
+  const [px, pz] = A5.plateau, p = player.pos;
+  // le loup sort quand Camille arrive sur le plateau (et que le modèle est là)
+  if (!A5.loup && modeleGeant && Math.hypot(p.x - px, p.z - pz) < 45) {
+    A5.loup = spawnEnemy('loupGeant', px + 8, pz - 8, 'acte5'); A5.loup.yaw = Math.atan2(p.x - px, p.z - pz); A5.bascule = 0; passer5('loup');
+    showMessage('Le loup. Grand comme une grange. Il est là… et il n’est plus là.', 4);
+  }
+  const L = A5.loup; if (!L) return;
+  if (L.dead && !A5.fini) { A5.fini = true; finActe5(); return; }
+  if (L.dead) return;
+  // une seconde ici, une seconde ailleurs — sauf tenu au présent par la sonnaille
+  const tenu = performance.now() < (A5.presentJusqua || 0);
+  A5.bascule += dt; const ailleurs = !tenu && Math.floor(A5.bascule) % 2 === 1;
+  L.caged = ailleurs;
+  L.mesh.traverse((o) => { if (o.isMesh && o.material) o.material.opacity = ailleurs ? 0.18 : 1; });
+}
+function finActe5() {
+  const [bx, bz] = A5.bergerPlateau, sol = A5.sol;
+  // le loup endormi, couché près du berger : le même modèle, à terre, la tête vers lui
+  const m = modeleGeant ? modeleGeant.S.clone(modeleGeant.g.scene) : null;
+  if (m) { m.scale.setScalar(modeleGeant.echelle * G.echelle * 0.9); m.position.set(bx + 6, sol(bx + 6, bz) - 0.6, bz); m.rotation.set(0, -Math.PI / 2, 0.25); scene.add(m); A5.dort = m; }
+  dialogue([
+    { who: '', text: 'Le morceau de cloche sort de l’épaule. Le loup vient poser la tête sur les genoux du berger. Il ne bouge plus.' },
+    { who: '', text: 'Il te donne **sa course**. Puis il s’endort sous la montagne.' },
+    { who: 'Le berger', text: 'Il a gardé mes bêtes toute ma vie. Garde les tiennes. Ce que tu as commencé…' },
+  ], () => {
+    state.course = true; passer5('course'); saveGame(true); SFX.win && SFX.win();
+    clocheTroupeaux();
+    showMessage('Au sommet de la tour, la Cloche des Troupeaux. Les époques se séparent : le présent, partout.', 7);
+  });
+}
+// la Cloche des Troupeaux : une sonnaille géante (tôle rivée en tronc de pyramide, DECISIONS-RECIT.md
+// § 2) au sommet de la tour, et le vers gravé dessous
+function clocheTroupeaux() {
+  if (A5.cloche) return;
+  const t = BILAN.corps.find((c) => c.sp.tour), x = t ? t.cx : 1830, z = t ? t.cz : -5378, y = t ? t.avt : A5.ctx.hauteur(x, z) + 21;
+  const g = new THREE.Group(); g.position.set(x, y + 1.2, z); scene.add(g); g.userData.dynamic = true;
+  const s = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.75, 1.5, 4, 1, true), phMat('metal_plate_02', 1, 1, { color: 0x8a6a3a, metalness: 0.6, roughness: 0.5, side: THREE.DoubleSide }));
+  s.rotation.y = Math.PI / 4; s.position.y = 0.75; s.castShadow = true; g.add(s);
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const k = c.getContext('2d'); k.fillStyle = '#b9b1a2'; k.fillRect(0, 0, 512, 128);
+  k.fillStyle = 'rgba(40,32,24,0.92)'; k.font = 'italic bold 22px Georgia, serif'; k.textAlign = 'center';
+  k.fillText('Toutes les heures seront mêlées,', 256, 52); k.fillText('et la dernière sera la sienne.', 256, 88);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.9 })); p.position.set(0, -0.6, 0.8); g.add(p);
+  A5.cloche = g;
 }
 
 // ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
@@ -1726,12 +1824,13 @@ export const passeVu = () => A5.sonne === 'passe';
 // à chaque image, dans chaque lieu de l'acte
 export function acte5Anime(dt) {
   if (EN_INSTANCE) return;
-  if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } G.level.indices = indices5; }
+  if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } G.level.indices = indices5; if (A5.lieu === 'gardeguerin' && atteint5('course')) clocheTroupeaux(); }
   if (state.sonnaille && !AIDE.extra.some(([k]) => k === 'N')) AIDE.extra.push(['N', 'sonner la sonnaille']);
   const f = A5.aFaire.shift(); if (f) f();
   for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
-  if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu)) suivreChien(dt, A5.sol);
+  if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu) && !A5.chienRepos) suivreChien(dt, A5.sol);
   else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
+  animeLoup(dt);
   // le passé qui s'efface
   if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
 }
