@@ -2811,3 +2811,50 @@ en instance (`EN_INSTANCE`, lu dans `tloc_instance`), `habitants` et `acte2` ne 
 - **Appris** : à Gallipoli, le relevé met la mer à moins d'un mètre partout : la nage se règle sur la surface, pas
   sur le fond. **Appris (deux fois)** : un commentaire `//` ajouté en bout de ligne avale la suite de la ligne —
   l'objet `GROTTE` (thailande.js), puis la boucle des lacs (monde.js) ; les bancs l'ont vu avant publication.
+
+### Acte V, la Lozère (7 octobre, PC, consigne C4 de `PLAN-2026-10-06-VAGUE2.md`) — **fait, joué en headless, publié (0a91271, 6298afc, b43b5be)**
+
+Découpage et répliques validés par Eugène (« d'accord sur les six, réduis le loup pour le chien ») :
+`docs/DECOUPAGE-ACTE5.md`, `docs/DIALOGUES-ACTE5.md`. Tout l'acte est dans `lozere.js`, section
+« L'ACTE V » (pouget.js l'importe comme le poteau) : `state.acte5` (arrivee → chien → sonnaille → temoins
+→ tour → loup → course), le carnet `state.ind5` (`G.level.indices`), `state.sonnaille`, `state.chienSuit`,
+`state.chienRendu`, `state.course`. En instance du multi, rien ne joue (`EN_INSTANCE`).
+- **La porte de l'île est à Villefort**, place du Bosquet ; la porte des Troupeaux du Temple y mène (temple.js :
+  cette seule arrivée). Celle du Pouget reste pour revenir.
+- **Lot A** : le chemin du Pouget dans le brouillard de 1765 tant que le chien ne guide pas (le poteau) ;
+  l'enquête du chien — le vieux de la place, la boulangère (une devanture nouvelle, BOUTIQUES), le chef de
+  gare, les enfants du lavoir — ; le chien sous le pont Saint-Jean (il n'y a ni gare ni quai dans la zone),
+  `loup.glb` réduit (0,66 m mesurés) ; le berger du Pouget ; **la sonnaille, touche N** (un appui : le
+  présent ; deux appuis rapprochés : le passé du lieu, huit secondes, l'image en sépia ; les lieux s'y
+  abonnent par `A5.surSonnaille`).
+- **Lot B** : les trois témoins qu'on ne voit qu'au passé (le chevalier au péage de la Garde-Guérin,
+  l'ouvrier de 1870 et ses rails sur la voie de Villefort, la bergère de 1765 et ses claies au bois du
+  Pouget) ; la tour de la Garde-Guérin : la porte d'autrefois, trois salles (bâties à 700 m comme les caves de
+  l'Aveyron) en ruine au présent et intactes au passé, l'escalier qui n'existe qu'au passé, les loups de 1765
+  (`KINDS.loup1765`) qui fuient la sonnaille, la chambre du loup vide, la nuit.
+- **Lot C** : la nuit sur le plateau (exposition et lumière baissées), le berger et le chien à la lisière, le
+  loup (`KINDS.loupGeant`, 6,6 m) intouchable une seconde sur deux (`e.caged`), tenu au présent cinq secondes
+  par un coup de sonnaille ; la fin : la course, le loup endormi près du berger, la Cloche des Troupeaux au
+  sommet de la tour et le cinquième vers, le jour revenu.
+- **Bancs** : `bancs/acte5-chien.mjs`, `acte5-tour.mjs`, `acte5-loup.mjs`, tous réussis. Chargement (lieu-lozere) :
+  Villefort 3,5 s (2,8 s le 5 octobre, machine chargée), la Garde-Guérin 2,5 s (2,8), aucune erreur. En
+  instance (`rencontres.mjs`) : le Pouget sans erreur ; la Garde-Guérin, une erreur QUI N'EST PAS DE L'ACTE (ci-dessous).
+- **Appris** : `Object.assign(mesh, { position })` plante (la position d'un Mesh est en lecture seule) — et
+  le module entier avec. Un abonnement (`A5.surSonnaille.push`) doit suivre la création de la liste dans
+  l'ordre du FICHIER, pas seulement de l'exécution. La hauteur d'une bête de `chargerBete` (`haut`) est en
+  unités de Lille, puis × `G.echelle` : la mesurer au banc (`Box3`), pas à l'œil sur une capture.
+- **Laissé de côté** (Eugène, question 3) : le lac et la vallée d'avant, le viaduc, Castanet, le mont Lozère et
+  ses menhirs, le lasso, la poulie. Les quêtes secondaires de la Lozère : ni découpées ni codées.
+
+#### Demandes pour d'autres fichiers (acte V)
+- **`temple.js`** — le retour de l'acte V (`state.acte5 === 'course'`, une fois) : la Cloche des Troupeaux
+  au quatrième étage (une sonnaille géante, tôle rivée), toutes les portes ouvertes, les cloches qui se
+  balancent seules, très peu, les sonnailles toutes ensemble (DECISIONS-RECIT.md § 3) ; le mage, pâle : « Il
+  ne manque plus que la Grande Cloche de Lille. Qu'on la refonde, et elle sonnera avec les autres — et
+  Phinaert aura ce qu'il veut. Qu'on ne la refonde pas, et Phinaert ne pourra jamais être enfermé. »
+  (SCENARIO.md § 14) ; la plaque de la prophétie : le cinquième vers dans `VERS_PROPHETIE`.
+- **`engine.js`** — **la course** (`state.course`) : courir très vite (le don du loup), à brancher dans la
+  vitesse de Camille.
+- **`pnj.js` (la nage, une autre conversation)** — en instance à la Garde-Guérin, `animeCamille` lit
+  `p.pos.x` (`nageIci`, pnj.js:1249) sur le faux joueur que tloc-multi.js passe pour les avatars distants, qui
+  n'a pas de `pos` : une pageerror à chaque image (`TLOC_ARENE=gardeguerin bancs/rencontres.mjs`).
