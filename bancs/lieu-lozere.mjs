@@ -47,6 +47,14 @@ const LIEUX = {
       ['rue de la Bourgade', [1548, 1.7, -1120], [1585, 3, -1070]], ['le bout de l’avenue de la Gare', [1475, 1.7, -1271], [1425, 3, -1276]], ['place du Bosquet', [1583, 1.7, -1170], [1586, 3, -1090]],
       ['façade', [1576, 1.7, -1128], [1560, 3, -1122]], ['le bord nord, pont Saint-Jean', [1565, 1.7, -1380], [1540, 3, -1432]], ['le départ', [1578, 1.8, -1140], [1586, 3, -1090]]],
   },
+  // le lac de Villefort (consigne E4, 7 octobre) : un lieu sans maisons — la rive, le viaduc, la via ferrata
+  lac: {
+    page: 'lac.html', plan: 'carte/mondes/lozere-lac.json', grille: { x0: -480, z0: -2310, pas: 5 },
+    cibles: [['le poteau des vieux chemins', 131.5, -2018.6], ['le bas de la via ferrata', -271, -2000], ['le bout est de la route', 420, -2046]],
+    vues: [['aérienne', [520, 260, -2400], [0, 0, -1950]], ['dessus', [0, 520, -1975], [0, 0, -1976]],
+      ['la route de la rive', [200, 1.7, -2075], [60, 2, -2010]], ['le viaduc', [300, 1.7, -2080], [400, 10, -1950]], ['la via ferrata', [-230, 1.7, -2010], [-320, 20, -1970]],
+      ['le lac', [60, 1.8, -2030], [-20, 0, -1950]], ['sol', [140, 1.4, -2030], [146, 0, -2020]], ['le départ', [130, 1.8, -2022], [60, 3, -2022]]],
+  },
 };
 const L = LIEUX[nom];
 if (!L) { console.log('lieux : ' + Object.keys(LIEUX).join(', ')); process.exit(1); }

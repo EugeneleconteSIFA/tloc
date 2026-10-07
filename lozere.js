@@ -23,7 +23,7 @@
 // (acte V, Eugène, 7 octobre), place du Bosquet ; celle du Pouget reste, pour en revenir.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, KINDS, setMaker, setAnimHook, spawnEnemy, renderer, sun, hemi } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, PAGES, KINDS, setMaker, setAnimHook, spawnEnemy, renderer, sun, hemi } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -56,13 +56,19 @@ export const BILAN = { batiments: 0, corps: [], rubans: [] };
 export const ARRIVEES = {
   villefort:   { titre: 'Villefort',         pos: [1582, 0, -1132], yaw: Math.atan2(100, 157), poteau: [1584.5, -1129.5] },
   gardeguerin: { titre: 'La Garde-Guérin',   pos: [1852, 0, -5236], yaw: Math.atan2(-15, -60), poteau: [1850.5, -5233.8] },
+  // le lac de Villefort (consigne E4, Eugène, 7 octobre) : la route de la rive sud, face à la via ferrata
+  lac:         { titre: 'Le lac',            pos: [130, 0, -2022],   yaw: -Math.PI / 2, poteau: [131.5, -2018.6] },
   pouget:      { titre: 'Le Pouget',         pos: [52.6, 0, -104],  yaw: Math.atan2(42 - 52.6, -54 + 104), poteau: [53.8, -103.75] },
 };
 const RECIT = {
   villefort: 'Le chemin descend vers le bourg, le long de l’Altier.',
   gardeguerin: 'La vieille route monte au plateau : la Régordane, celle des pèlerins et des muletiers.',
   pouget: 'Le chemin raide qui monte au hameau, à travers les châtaigniers.',
+  lac: 'Le chemin descend vers le lac, sous le viaduc de l’Altier.',
 };
+// la page du lac : engine.js ne la connaît pas encore (demande pour la passe D3 : l'y écrire, pour qu'une
+// partie sauvegardée au lac reprenne aussi depuis l'accueil)
+PAGES.lac = 'lac.html';
 
 // ---------------------------------------------------------------------
 //  Outils
@@ -1256,6 +1262,42 @@ function preparer(ctx, f, rueMat) {
 }
 
 const FICHES = {
+  // ---------------------------------------------------------------- le lac de Villefort
+  // Un lieu neuf (consigne E4, Eugène, 7 octobre) : le bras de l'Altier du lac de barrage, le viaduc de
+  // l'Altier (la voie des Cévennes), la via ferrata de la falaise ouest. 870 × 550 m, tirés des relevés
+  // locaux (carte/mondes/plans-lieux-lozere.py lac, relief-lac-lozere.py). Pas de maisons. Le lac lui-
+  // même, monde.js le pose (PLAN.eau.plans, G.level.lacs) ; la sonnaille le fait disparaître (la vallée
+  // d'avant le barrage).
+  lac: {
+    ...COMMUN, name: 'lac', titre: 'Le lac de Villefort', plan: 'lozere-lac.json', fin: 'relief-lozere-lacvillefort.json', h0: 600,
+    grille: { x0: -480, z0: -2310, pas: 5 },
+    emprise: { x0: -412, x1: 442, z0: -2242, z1: -1708 },
+    reperes: [
+      { id: 'poteau', nom: 'le poteau des vieux chemins', x: 131.5, z: -2018.6, r: 6, type: 'passage' },
+      { id: 'viaduc', nom: 'le viaduc de l’Altier', x: 400, z: -1950, r: 30, type: 'lieu' },
+      { id: 'ferrata', nom: 'la via ferrata du lac', x: -300, z: -1975, r: 40, type: 'lieu' },
+      { id: 'vallee', nom: 'la rive du lac', x: 40, z: -1990, r: 25, type: 'lieu' },
+    ],
+    sol: ['grass_ground', 0x96a86e],
+    depart: { x: 130, z: -2022, yaw: -Math.PI / 2 },
+    counts: 'Le lac de Villefort : le bras de l’Altier, le viaduc de la voie des Cévennes, la via ferrata de la falaise. Le poteau des vieux chemins, sur la route de la rive.',
+    start: 'Un lac aux bras longs, l’eau verte, le viaduc qui l’enjambe. Sous l’eau, une vallée.',
+    entry: { title: 'Le lac de Villefort', sub: 'La Cloche des Troupeaux — Lozère', cam: [520, 120, -2300], at: [100, 0, -1950], cam2: [200, 30, -2060], at2: [60, 0, -1990], dur: 6 },
+    solLieu(x, z) { return FICHES.lac._sol ? FICHES.lac._sol(x, z) : null; },
+    plus(ctx) {
+      const { PLAN, CADRE } = ctx;
+      const rs = preparer(ctx, FICHES.lac, (c) => (c.r >= 2 ? ['asphalt_02', 0x9a9894] : ['rocky_trail', 0xb0a088, true]));
+      voieFerree(ctx);
+      const bois = (PLAN.verdure.bois || []).filter((b) => dansCadre(CADRE, b.pts)), lacs = (PLAN.eau.plans || []).filter((l) => l.pts.length > 2);
+      arbres(ctx, { espece: 'chene', n: 700, h: [8, 13], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
+        libre: (x, z) => !ctx.bloque(x, z, 3) && !lacs.some((l) => dansPoly(x, z, l.pts)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2.5) });
+      lisiere(ctx, rs, { cotes: ['ouest', 'nord', 'est', 'sud'], emprise: FICHES.lac.emprise,
+        libre: (x, z) => !ctx.bloque(x, z, 2.5) && !lacs.some((l) => dansPoly(x, z, l.pts)) && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1.5) });
+      poteau(ctx, 'lac');
+      acteLac(ctx, lacs);
+    },
+    anime(now) { const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now; acte5Anime(dt); },
+  },
   // ---------------------------------------------------------------- Villefort
   // Le bourg de pierre sombre au fond de la vallée de l'Altier (SCENARIO § 14 : « l'endroit où
   // l'on parle aux gens »), seul, du pont Saint-Jean au sud du bourg : 370 × 600 m où l'on marche
@@ -1943,6 +1985,80 @@ function parlerBerger() {
   return dialogue([{ who: B, text: 'Ici, il n’y a qu’un temps. Grâce à lui.' }]);
 }
 
+// ---- Le lac de Villefort (R3, R4, R6) ----
+// R3, la vallée d'avant : deux coups au bord, et le lac (monde.js) disparaît le temps du passé ; son eau
+// profonde ne bloque plus (on vide sa grille le temps du passé, on la rend au présent) ; au fond, les
+// murets et le pont de pierre d'avant le barrage. R4, le viaduc : au passé, en construction (échafaudages,
+// ouvriers). R6, la via ferrata : des anneaux (le lasso) et sa tyrolienne (la poulie), un cœur au bout.
+function acteLac(ctx, lacs) {
+  if (EN_INSTANCE) return;
+  A5.ctx = ctx; A5.lieu = 'lac'; A5.sol = (x, z) => (FICHES.lac._sol(x, z) ?? ctx.hauteur(x, z));
+  const { hauteur, addInteract } = ctx, sol = A5.sol;
+  const pierre = phMat('granit_lozere', 1, 1, { color: 0x8a8478 }), bois = phMat('wood_planks', 1, 1, { color: 0x7a5a3a });
+  // le fond d'autrefois : le vieux chemin et son pont de pierre, des murets de terrasses (sous l'eau d'aujourd'hui)
+  const avant = new THREE.Group(); avant.visible = false; avant.userData.dynamic = true; scene.add(avant);
+  const L = lacs[0];
+  if (L) {
+    const fond = (x, z) => hauteur(x, z) - 0.05;
+    // le pont : deux piles et un tablier, en travers du bras (de la rive sud vers le nord), là où le lac
+    // est le plus étroit dans le lieu
+    const px = 40, pz = -1985;
+    for (const dz of [-6, 6]) avant.add(posee(new THREE.Mesh(new THREE.BoxGeometry(2.2, 6, 2.2), pierre), px, fond(px, pz + dz) + 2.4, pz + dz));
+    avant.add(posee(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.6, 16), pierre), px, fond(px, pz) + 5.1, pz));
+    for (let k = 0; k < 9; k++) { const x = -60 + k * 22, z = -2005 + Math.sin(k) * 6; avant.add(posee(new THREE.Mesh(new THREE.BoxGeometry(8, 0.9, 0.6), pierre), x, fond(x, z) + 0.45, z)); }
+    avant.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  }
+  A5.surSonnaille.push((ep, p) => {
+    const passe = ep === 'passe' && (A5.lieu === 'lac');
+    avant.visible = passe;
+    for (const l of (G.level && G.level.lacs) || []) {
+      l.mesh.visible = !passe;
+      if (passe && !l.profondAvant) { l.profondAvant = l.profond.slice(); l.profond.fill(0); }
+      else if (!passe && l.profondAvant) { l.profond.set(l.profondAvant); l.profondAvant = null; }
+    }
+    if (passe && !A5.valleeVue) { A5.valleeVue = true; showMessage('L’eau se retire. Au fond, une vallée sèche, des murets, un pont de pierre.', 5); }
+    echafaudages.visible = passe;
+  });
+  // R4 : le viaduc en 1870 — des échafaudages de bois le long du tablier, deux ouvriers
+  const echafaudages = new THREE.Group(); echafaudages.visible = false; echafaudages.userData.dynamic = true; scene.add(echafaudages);
+  { const v = (ctx.PLAN.fer.voies || []).find((v) => v.pont); if (v) { const a = v.pts[0], b = v.pts[v.pts.length - 1];
+      for (let k = 1; k < 8; k++) { const t = k / 8, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t, y0 = hauteur(x, z), y1 = (ctx.dessin || hauteur)(a[0], a[1]) + 0.4;
+        for (const o of [-2.2, 2.2]) { const ux = -(b[1] - a[1]), uz = b[0] - a[0], n = Math.hypot(ux, uz); echafaudages.add(posee(new THREE.Mesh(new THREE.BoxGeometry(0.25, Math.max(1, y1 - y0), 0.25), bois), x + ux / n * o, (y0 + y1) / 2, z + uz / n * o)); }
+        echafaudages.add(posee(new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 1.2), bois), x, y1 - 0.6, z)); }
+      A5.viaduc = [a, b]; } }
+  // R6 : la via ferrata — les anneaux des ponts de singe (le lasso, de rive à rive de la gorge) et la
+  // tyrolienne (la poulie), puis un cœur au bout, sur le belvédère du haut
+  const VF = [[-283, -1992, -278, -1974], [-252, -1939, -245, -1932], [-348, -1962, -367, -1969]];
+  VF.forEach(([x0, z0, x1, z1], i) => {
+    const y1 = sol(x1, z1); anneauDeFer(x1, y1 + 1.6, z1, Math.atan2(x0 - x1, z0 - z1));
+    addInteract({ pos: new THREE.Vector3(x0, sol(x0, z0), z0), r: 4, enabled: () => !A5.hisse, prompt: () => (state.lasso ? 'lancer le lasso de l’autre côté' : 'l’anneau, de l’autre côté'),
+      fn: () => lasso([x1, y1 + 0.05, z1], [x1, y1 + 1.6, z1], i === 0 ? 'La corde file au-dessus du vide. Tu passes, accrochée.' : null) });
+  });
+  // (la tyrolienne d'OSM relie deux points presque à la même hauteur dans le relief du jeu, 58 et 60 m :
+  // elle ne descendrait dans aucun sens. On la tend au-dessus de la même gorge, du rocher du haut,
+  // 64 m, au pied du pont de singe, 43 m — mesuré au banc, 7 octobre)
+  { const de = [-316, -1968], a = [-367, -1969], y0 = sol(...de), y1 = sol(...a);
+    if (y1 < y0 - 2) {                                // la règle : on ne glisse que vers le bas
+      const p0 = new THREE.Vector3(de[0], y0 + 3.8, de[1]), p1 = new THREE.Vector3(a[0], y1 + 3.2, a[1]), fl = p0.distanceTo(p1) * 0.02;
+      const point = (t) => new THREE.Vector3(p0.x + (p1.x - p0.x) * t, p0.y + (p1.y - p0.y) * t - fl * 4 * t * (1 - t), p0.z + (p1.z - p0.z) * t);
+      const pts = []; for (let k = 0; k <= 30; k++) pts.push(point(k / 30));
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.035, 5), fer()));
+      A5.cableLac = { point, dur: 3, a: [a[0], y1, a[1]] };
+      addInteract({ pos: new THREE.Vector3(de[0], y0, de[1]), r: 3, enabled: () => !A5.glisseLac, prompt: () => 'la tyrolienne de la via ferrata',
+        fn: () => { if (!state.poulie) return showMessage('Un câble au-dessus de la gorge, et rien pour s’y accrocher.', 3.5); A5.glisseLac = { t: 0 }; SFX.roll && SFX.roll(); } });
+    } }
+  // le cœur, au belvédère du haut de la via ferrata
+  { const [x, z] = [-403, -1951], y = sol(x, z);
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !state.coeurFerrata, prompt: () => 'le haut de la via ferrata',
+      fn: () => { state.coeurFerrata = true; player.maxHp += 2; player.hp = player.maxHp; SFX.win && SFX.win(); saveGame(true); showMessage('Tout en haut de la falaise, au-dessus du lac : un morceau de cœur. Un cœur de plus.', 5); } }); }
+}
+function animeGlisseLac(dt) {
+  const Gl = A5.glisseLac, C = A5.cableLac; if (!Gl || !C) return;
+  Gl.t = Math.min(1, Gl.t + dt / C.dur); const q = C.point(Gl.t * Gl.t * (3 - 2 * Gl.t));
+  player.pos.set(q.x, q.y - 2.1, q.z); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
+  if (Gl.t >= 1) { A5.glisseLac = null; player.pos.set(...C.a); }
+}
+
 // ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
 // Deux appuis à moins de 0,45 s : deux coups. Le passé dure huit secondes autour de Camille ; les lieux
 // s'y abonnent (A5.surSonnaille). L'image passe au sépia tant qu'on est dans le passé.
@@ -1972,7 +2088,7 @@ export function acte5Anime(dt) {
   for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
   if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu) && !A5.chienRepos) suivreChien(dt, A5.sol);
   else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
-  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt);
+  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt); animeGlisseLac(dt);
   // le passé qui s'efface
   if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
 }
@@ -2003,6 +2119,7 @@ function voieFerree(ctx) {
 // entier, ses toits, ses rubans, ses arbres), pour que le banc mesure l'avant et l'après de la
 // même façon (bancs/lieu-lozere.mjs)
 export function lieu(nom) {
+  if (!FICHES[nom]) throw new Error('lieu de Lozère inconnu : ' + nom);
   const f = FICHES[nom];
   if (new URLSearchParams(location.search).has('avant'))
     return monde({ ...f, plan: 'lozere.json', solLieu: undefined, arbres: { espece: nom === 'villefort' ? 'chene' : 'pin', bois: 0.5, isoles: 0.02, h: [8, 14], max: 900 },
