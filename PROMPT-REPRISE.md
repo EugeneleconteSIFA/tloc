@@ -2729,3 +2729,52 @@ de Hanuman), 9ba7873 (5–6, la mousson du belvédère, le Yak), 103840e (7, la 
 - **`pnj.js`** : un rôle d'enfant (Ko Panyi ramène celui de Nok à 0,72) — déjà demandé, toujours utile.
 - **Le souffle** (`state.souffle`) n'a encore d'usage nulle part : nager en eau profonde et froide (SCENARIO.md
   § 17) — à brancher dans le moteur (engine.js) ou dans les mondes qui ont de l'eau profonde.
+
+#### Passe D, par C3 (6 octobre, nuit) — deux demandes d'`engine.js`, le reste laissé à l'autre passe D
+- ~~`engine.js` : le favicon (C1)~~ — **faite, a4268e2** : posé par le moteur quand une page n'en déclare pas.
+- ~~`engine.js` : le bouton Agir tenu sur tactile (B1)~~ — **faite, a4268e2** (`acte1-b1.mjs` sans erreur).
+- Le reste (le rôle d'enfant, la limite de l'aire, le lac, le sol, hud.js, la bombe, le souffle) : une autre
+  conversation fait la passe D en même temps (pnj.js, monde.js, quetes.js, temple.js) ; Eugène m'a dit de la
+  lui laisser.
+
+#### Passe D, par C1 (6 octobre, après-midi) — les demandes de `monde.js`, `quetes.js`, `pnj.js`, `temple.js`
+(menée en même temps que la passe D de C3, ci-dessus, qui a pris `engine.js` ; Eugène a partagé les fichiers)
+- ~~`quetes.js` : les indices `bastien` et `ratRoi` au carnet (B2)~~ — **faite, 2194a65**.
+- ~~`monde.js` : la minicarte trace `PLAN.rues` / `PLAN.sentiers` (Aveyron)~~ — **faite, 2194a65**.
+- ~~`monde.js` : l'eau profonde des lacs bloque (Aveyron)~~ — **faite, 2194a65** : à plus de 8 m de la rive
+  (grille de 4 m), seulement pour qui est à hauteur de l'eau (`blocked` reçoit `y`) — les caves de l'Aveyron,
+  bâties 600 m au-dessus, restent praticables. `G.level.lacs` expose niveau et maillage (hausser un lac).
+- ~~`monde.js` : la mer sur la minicarte (Thaïlande)~~ — **faite, 2194a65** (et les lacs).
+- ~~`monde.js` : un repère posé pendant `plus()` (Thaïlande)~~ — **faite, 2194a65** : `ctx.repere({...})`.
+- ~~`monde.js` : l'aire du multi sur la minicarte de la Garde-Guérin (C7)~~ — **faite, 2194a65** (`PARTAGE.aires`).
+- ~~`pnj.js` : un rôle d'enfant (Thaïlande, C2)~~ — **faite, 2194a65** : `enfant`, `enfante` (déjà pris par ef7256e).
+- ~~`temple.js` : le retour de l'acte II (C1)~~ — **faite, 843dbd4** : la Cloche du Midi au premier étage, un
+  escalier de pierre (addHelix) jusqu'au palier, un rai de soleil fixe, une cigale, la porte des Îles qui
+  s'entrouvre ; une fois (`state.midiVu`). Et la plaque de la prophétie se grave des vers trouvés (II, III, IV).
+  Banc `bancs/acte2-temple.mjs`.
+- ~~`hud.js` : les rues coupées de Lille sur la carte~~ — **déjà faite** avant la passe (« LA VILLE RESSERRÉE »).
+- **Pas faites, et pourquoi** :
+  - `monde.js`, le réservoir de Montézic coupé net au bord de la grille : c'est le relief récolté (carte/mondes),
+    pas monde.js ; et « hausser le lac » : le crochet est là (`G.level.lacs`), aveyron.js ne s'en sert pas encore ;
+  - `engine.js`, un lancer de bombe hors de la citadelle : il vit dans `citadelle.js` (hors de la passe) — à
+    déplacer dans le moteur, avec l'accord d'Eugène ; le souffle (nager en eau profonde) : une mécanique neuve, à
+    découper avant d'être codée ;
+  - `pnj.js`, des silhouettes de passants variées (Lille) : à faire avec les passants, qui ne marchent pas encore.
+- **Appris** : le moteur ramène les textures à 512 px ; une plaque gravée APRÈS le chargement sur un canevas
+  de 1024 sortait deux fois (à l'échelle et en grand) — graver directement en 512. Et toute pièce qu'on change
+  après coup porte `userData.dynamic`, sinon la fusion en garde une copie figée.
+
+### Multi, C8 — le Batut en mieux, trois arènes nouvelles (6 octobre, nuit, consigne C8 de `PLAN-2026-10-06-VAGUE2.md`) — **fait, vérifié au banc, publié**
+
+Le détail : `docs/NOTE-MULTI.md`, les trois dernières sections.
+- **Trois arènes** (8c8a7bd) : Alberobello (le Rione Monti), Matera (les Sassi), l'estaminet (quatre au plus :
+  `ARENES_MAX`, app.py ; `serre: true`, tloc-multi.js ; porte fermée en instance). Relevées par la sonde
+  `bancs/multi-sonde.mjs`. Passe aux quatre règles : aucune pageerror, objets, camps, aire, drapeau.
+- **Le Batut** : les portes qu'on ferme, partagées par le salon (29c29fb ; message `porte`) ; les meubles
+  composés et la pénombre du fond (80240ae). Bancs `multi-portes.mjs`, `multi-portes-salon.mjs`, `multi-batut.mjs`.
+- **Corrigé en route** : un pan de mur de l'estaminet posé en diagonale à travers la salle (le solo aussi).
+- **Pas encore mesuré** : un bot qui poursuit derrière une porte fermée (il l'ouvre à 1,8 m ; non joué).
+- **En attente d'Eugène** : la présentation des arènes à l'accueil (neuf maintenant), la maison du Batut de
+  l'Aveyron en arène (aveyron.js porte l'acte II : proposée, pas codée).
+
+**Demandes pour d'autres fichiers** : aucune.
