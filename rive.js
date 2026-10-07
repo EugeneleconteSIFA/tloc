@@ -34,13 +34,17 @@ const RIVIERE = [-8, 8], EAU = FOND - 0.3;                         // la rivièr
 const ESC = { x0: -2, x1: 2, z0: SUD, z1: -62, pas: 0.8, haut: 0.4 };   // l'escalier des géants, taillé dans la paroi sud
 const TROUS = [[10, 11.6], [24, 25.6], [38, 39.6]];                // les marches tombées, en mètres le long de l'escalier
 const PONT = { x0: 38, x1: 42 };                                   // le vieux pont des géants, quand il est abaissé
-const BORNES = { x0: -120, x1: 120, z0: -110, z1: 90 };
+const BORNES = { x0: -120, x1: 120, z0: -110, z1: 90 }, LOIN = 760;   // LOIN : jusqu'où la Blessure se voit
 const DEPART = { x: 0, z: 55, yaw: Math.PI };
 const marches = () => state.marches6 || 0;
 
 // la plaine : quelques ondulations, à peine (la Flandre est plate)
 const plaine = (x, z) => Math.sin(x * 0.045) * 0.35 + Math.cos(z * 0.06 + x * 0.02) * 0.3;
+// hors des bornes, la Blessure serpente (tirée au cordeau jusqu'à l'horizon, elle avait l'air d'un fossé) ;
+// entre les bornes elle reste droite : les corniches, l'escalier et le pont y sont posés
+const courbe = (x) => { const d = Math.abs(x) - BORNES.x1; return d > 0 ? Math.sin(d / 70) * 26 * Math.sign(x) * Math.min(1, d / 60) : 0; };
 function relief(x, z) {
+  z -= courbe(x);
   if (z >= BORD_N) return plaine(x, z);
   for (const [z0, z1, y] of CORNICHES) if (z >= z0 && z < z1) return y;
   if (z >= SUD) return z > RIVIERE[0] && z < RIVIERE[1] ? FOND - 1.5 : FOND;      // le lit de la rivière, plus bas
@@ -81,12 +85,23 @@ const TRONCS = [];
 // ---------- le décor ----------
 const R = { eau: null, pont: null, blocs: [] };
 function terrain() {
-  // une grille d'un mètre sur le canyon, deux mètres au-delà : deux maillages sur les mêmes sommets —
-  // l'herbe là où l'on est en haut, la roche dans la Blessure
-  const nx = 241, nz = 201, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2);
+  // une grille d'un mètre entre les bornes ; au-delà, de quatre mètres, la Blessure qui file à l'est et à
+  // l'ouest jusqu'à l'horizon (coupée aux bornes, elle s'ouvrait sur le ciel). Deux maillages sur les mêmes
+  // sommets : l'herbe là où l'on est en haut, la roche dans la Blessure
+  const XS = [];
+  for (let x = -LOIN; x < BORNES.x0; x += 4) XS.push(x);
+  for (let x = BORNES.x0; x <= BORNES.x1; x++) XS.push(x);
+  for (let x = BORNES.x1 + 4; x <= LOIN; x += 4) XS.push(x);
+  const nx = XS.length, nz = 201, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const x = BORNES.x0 + i, z = BORNES.z0 + j, k = j * nx + i;
-    const y = relief(x, z); pos.set([x, y, z], k * 3); uv.set([(x + y) / 3, (z - y) / 3], k * 2);   // ± y : les parois, en travers de x comme de z, ne s'étirent pas
+    const x = XS[i], z = BORNES.z0 + j, k = j * nx + i;
+    const y = relief(x, z);
+    // une paroi tirée au cordeau a l'air d'un mur : ses sommets s'écartent un peu (le sol où l'on marche,
+    // relief(), ne bouge pas ; l'écart, d'un mètre au plus, reste dans la roche)
+    let dx = 0, dz = 0;
+    if (Math.abs(relief(x, z - 1) - y) > 2 || Math.abs(relief(x, z + 1) - y) > 2) dz = Math.sin(x * 0.53 + y * 0.71) * 0.45 + Math.sin(x * 0.17 - y * 0.29) * 0.55;
+    if (Math.abs(relief(x - 1, z) - y) > 2 || Math.abs(relief(x + 1, z) - y) > 2) dx = Math.sin(z * 0.61 + y * 0.83) * 0.25;
+    pos.set([x + dx, y, z + dz], k * 3); uv.set([(x + y) / 3, (z - y) / 3], k * 2);   // ± y : les parois, en travers de x comme de z, ne s'étirent pas
   }
   const haut = [], bas = [];
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -97,13 +112,27 @@ function terrain() {
   const fais = (idx, m) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const o = new THREE.Mesh(g, m); o.receiveShadow = true; scene.add(o); return o; };
   fais(haut, phMat('grass_ground', 1, 1, { color: 0x9aae78 }));
-  fais(bas, phMat('falaise_02', 1, 1, { color: 0xb8ae9c }));
+  // la roche : chaque triangle projeté sur le plan qui lui fait face (des sommets à lui) — avec des UV
+  // partagés, une paroi en travers de x prenait u et v tous deux du seul y, et la pierre filait en stries
+  { const n = bas.length, p = new Float32Array(n * 3), t = new Float32Array(n * 2), A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), N = new THREE.Vector3();
+    for (let k = 0; k < n; k += 3) {
+      A.fromArray(pos, bas[k] * 3); B.fromArray(pos, bas[k + 1] * 3); C.fromArray(pos, bas[k + 2] * 3);
+      N.subVectors(C, B).cross(A.clone().sub(B)); const ax = Math.abs(N.x), ay = Math.abs(N.y), az = Math.abs(N.z);
+      [A, B, C].forEach((v, q) => { p.set([v.x, v.y, v.z], (k + q) * 3);
+        t.set(ay >= ax && ay >= az ? [v.x / 4, v.z / 4] : ax > az ? [v.z / 4, v.y / 4] : [v.x / 4, v.y / 4], (k + q) * 2); }); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('uv', new THREE.BufferAttribute(t, 2)); g.computeVertexNormals();
+    const o = new THREE.Mesh(g, phMat('falaise_02', 1, 1, { color: 0xb8ae9c })); o.receiveShadow = true; scene.add(o); }
   // au-delà des bornes, la plaine qui file à l'horizon
-  const loin = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), phMat('grass_ground', 300, 300, { color: 0x8a9e6c })); loin.rotation.x = -Math.PI / 2; loin.position.y = -0.4; scene.add(loin);
+  // (quatre bandes autour des bornes : un seul plan à −0,4 m comblait la Blessure, vue d'en haut)
+  const herbe = phMat('grass_ground', 1, 1, { color: 0x8a9e6c }), L = 1500;
+  for (const [x0, x1, z0, z1] of [[-L, L, -L, BORNES.z0 + 0.5], [-L, L, BORNES.z1 - 0.5, L], [-L, -LOIN + 0.5, BORNES.z0, BORNES.z1], [LOIN - 0.5, L, BORNES.z0, BORNES.z1]]) {
+    const o = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), herbe.clone()); o.material.map = o.material.map && o.material.map.clone(); if (o.material.map) { o.material.map.repeat.set((x1 - x0) / 10, (z1 - z0) / 10); o.material.map.needsUpdate = true; }
+    o.rotation.x = -Math.PI / 2; o.position.set((x0 + x1) / 2, -0.4, (z0 + z1) / 2); scene.add(o); }
 }
 function riviere() {
   const m = new THREE.MeshStandardMaterial({ color: 0x5a7a8c, roughness: 0.15, metalness: 0.15, transparent: true, opacity: 0.88 });
-  R.eau = new THREE.Mesh(new THREE.PlaneGeometry(BORNES.x1 - BORNES.x0, RIVIERE[1] - RIVIERE[0], 60, 4), m);
+  R.eau = new THREE.Mesh(new THREE.PlaneGeometry(2 * LOIN, RIVIERE[1] - RIVIERE[0], 240, 4), m);
+  { const p = R.eau.geometry.attributes.position; for (let k = 0; k < p.count; k++) p.setY(k, p.getY(k) - courbe(p.getX(k))); }   // la rivière suit la Blessure
   R.eau.rotation.x = -Math.PI / 2; R.eau.position.set(0, EAU, 0); scene.add(R.eau);
 }
 function escalier() {
@@ -125,9 +154,14 @@ function pont() {
   // le pont des géants : un tablier de pierre de 54 m, sur sa charnière côté autre rive ; relevé, il
   // se dresse au-dessus de la Blessure depuis 620
   const g = new THREE.Group(); g.position.set((PONT.x0 + PONT.x1) / 2, 0, SUD); scene.add(g);
-  const tab = mesh(boxG(PONT.x1 - PONT.x0 + 0.6, 0.8, BORD_N - SUD), phMat('ruines_02', 1, 14, { color: 0xc0b49c }), 0, -0.2, (BORD_N - SUD) / 2);
-  tab.castShadow = true; g.add(tab); R.pont = g;
-  for (const sx of [-1, 1]) { const p = mesh(boxG(1.2, 5, 1.2), phMat('ruines_02', 1, 2, { color: 0xb8ac94 }), sx * 3.4, 2.5, -2.5); p.castShadow = true; g.parent.add(p); p.position.set(g.position.x + sx * 3.4, 2.5, SUD - 2.5); }
+  // un pont de pierre, pas une poutre : un tablier épais, des parapets, des voussoirs dessous (la pierre
+  // de ruines_02 rendait presque noir à cette échelle, rock_wall_14 du liège : la roche des parois)
+  const L = BORD_N - SUD, W = PONT.x1 - PONT.x0, pierre = phMat('falaise_02', 1, 10, { color: 0xd0c4ac }), bord = phMat('falaise_02', 1, 6, { color: 0xc0b49c });
+  const tab = mesh(boxG(W + 0.6, 1.6, L), pierre, 0, -0.6, L / 2); tab.castShadow = tab.receiveShadow = true; g.add(tab);
+  for (const sx of [-1, 1]) { const p = mesh(boxG(0.5, 1, L), bord, sx * (W / 2 + 0.05), 0.7, L / 2); p.castShadow = true; g.add(p); }
+  for (let k = 1; k < 9; k++) { const c = mesh(boxG(W - 0.4, 1.2, 0.7), bord, 0, -1.9, (k / 9) * L); g.add(c); }   // les nervures sous le tablier
+  R.pont = g;
+  for (const sx of [-1, 1]) { const p = mesh(boxG(1.4, 6, 1.4), bord, 0, 0, 0); p.castShadow = true; scene.add(p); p.position.set(g.position.x + sx * (W / 2 + 1.2), 3, SUD - 1.5); }
   majPont();
 }
 function majPont() { R.pont.rotation.x = pontBas() ? 0 : -1.35; }
@@ -138,12 +172,28 @@ function lointain() {
   // quelques arbres sur les deux bords (la forêt du Buc, au lot 2)
   const esp = especeGeo('hetre'); if (!esp) return;
   const places = [];
-  for (let k = 0; k < 70; k++) { const x = BORNES.x0 + 8 + Math.random() * (BORNES.x1 - BORNES.x0 - 16), nord = k % 3 === 0, z = nord ? BORD_N + 12 + Math.random() * 30 : SUD - 12 - Math.random() * 80;
+  // en bosquets (une plaine semée au hasard a l'air d'un jeu) : 26 centres, 8 arbres autour de chacun
+  const centres = [];
+  for (let k = 0; k < 26; k++) { const nord = k % 3 === 0; centres.push([BORNES.x0 + 10 + Math.random() * (BORNES.x1 - BORNES.x0 - 20), nord ? BORD_N + 14 + Math.random() * 30 : SUD - 16 - Math.random() * 78]); }
+  for (let k = 0; k < 208; k++) { const [cx, cz] = centres[k % 26], a = Math.random() * TAU, d = Math.random() * 11, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+    if (z < BORD_N + 4 && z > SUD - 4) continue;
     if (Math.abs(x - DEPART.x) < 10 && Math.abs(z - DEPART.z) < 10) continue; if (x > ESC.x0 - 6 && x < ESC.x1 + 6 && z > ESC.z1 - 6) continue; if (x > PONT.x0 - 8 && x < PONT.x1 + 8) continue;
     places.push([x, z]); }
   const tr = new THREE.InstancedMesh(esp.tronc, esp.matT, places.length), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, places.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3();
   places.forEach(([x, z], k) => { const h = 8 + Math.random() * 4; q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * TAU); s.set(h, h, h); m4.compose(v.set(x, relief(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); TRONCS.push([x, z]); });
   tr.castShadow = hp.castShadow = true; scene.add(tr, hp);
+  // les éboulis : des blocs tombés des parois, au fond et sur les corniches (jamais sur les passages)
+  const roc = phMat('falaise_02', 1, 1, { color: 0xa89e8c }), eb = [];
+  for (let k = 0; k < 90; k++) { const x = BORNES.x0 + 4 + Math.random() * (BORNES.x1 - BORNES.x0 - 8), z = SUD + 0.5 + Math.random() * (BORD_N - SUD - 1);
+    if (Math.abs(x - ANCRES[0][0]) < 5 || (x > PONT.x0 - 3 && x < PONT.x1 + 3) || (x > ESC.x0 - 4 && x < 20 && z < SUD + 6) || dansRiviere(x, z)) continue; eb.push([x, z]); }
+  const ro = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), roc, eb.length), m5 = new THREE.Matrix4();
+  eb.forEach(([x, z], k) => { const r = 0.4 + Math.random() ** 2 * 2.2; q.setFromEuler(new THREE.Euler(Math.random() * 3, Math.random() * 3, 0)); s.set(r, r * 0.7, r * 1.1);
+    m5.compose(v.set(x, relief(x, z) + r * 0.25, z), q, s); ro.setMatrixAt(k, m5); });
+  ro.castShadow = ro.receiveShadow = true; scene.add(ro);
+  // la croix de chemin, au bord, côté Lille (SCENARIO.md : « une prairie, une croix de chemin, le vent »)
+  const cr = phMat('ruines_02', 1, 1, { color: 0x9a9284 }), cx = DEPART.x + 7, cz = DEPART.z + 2;
+  scene.add(mesh(boxG(0.35, 3, 0.35), cr, cx, 1.5, cz), mesh(boxG(1.5, 0.3, 0.3), cr, cx, 2.3, cz), mesh(boxG(1.2, 0.5, 1.2), cr, cx, 0.1, cz));
+  TRONCS.push([cx, cz]);
 }
 
 // ---------- les gestes : le lasso, les blocs, le treuil, la fêlure ----------
@@ -190,7 +240,7 @@ function animeLasso(dt) {
 // ---------- le niveau ----------
 function build() {
   makeSky(0x6a7f98, 0xb8c4cc, 0xd8d8d0, true);
-  scene.fog = new THREE.Fog(0xc8ccc8, 90, 900);
+  scene.fog = new THREE.Fog(0xc8ccc8, 80, 640);
   hemi.intensity = 0.75; hemi.color.setHex(0xe8eef4); hemi.groundColor.setHex(0x4a4a3a);
   sun.intensity = 2.2; sun.color.setHex(0xfff2e0); sun.castShadow = true;
   Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 1, far: 500 }); sun.shadow.camera.updateProjectionMatrix();
