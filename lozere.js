@@ -23,7 +23,7 @@
 // (acte V, Eugène, 7 octobre), place du Bosquet ; celle du Pouget reste, pour en revenir.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, KINDS, setMaker, setAnimHook, spawnEnemy } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -1372,6 +1372,7 @@ const FICHES = {
       arbres(ctx, { espece: 'pin', n: 450, h: [9, 15], bois: (x, z) => bois.some((b) => dansPoly(x, z, b.pts)),
         libre: (x, z) => !ctx.bloque(x, z, 3) && FICHES.gardeguerin._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 2.5) });
       poteau(ctx, 'gardeguerin');
+      acte5Garde(ctx);
       // la vie du village (Eugène, 5 octobre) : devant les maisons, bancs, tonneaux et géraniums ; les
       // choucas autour de la tour et les hirondelles sur les toits ; sur le plateau, des fleurs, un
       // troupeau de brebis et des vaches d'Aubrac, et le cheval et l'âne d'un muletier de la Régordane,
@@ -1396,6 +1397,7 @@ const FICHES = {
     anime(now) {
       const t = now / 1000, dt = Math.min(0.1, t - (FICHES.gardeguerin._t || t)); FICHES.gardeguerin._t = t;
       if (FICHES.gardeguerin._anime) FICHES.gardeguerin._anime(t, dt);
+      acte5Anime(dt);
     },
   },
 };
@@ -1415,7 +1417,7 @@ function passer5(e) { if (rang5(e) <= rang5(state.acte5 || 'arrivee')) return; s
 const sait5 = (k) => !!(state.ind5 && state.ind5[k]);
 function noter5(cle) { state.ind5 = state.ind5 || {}; if (state.ind5[cle]) return; state.ind5[cle] = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300); }
 // ce que l'acte a posé, pour les bancs (bancs/acte5-*.mjs)
-export const A5 = { aFaire: [], pret: false, chien: null, gens: {}, ctx: null, lieu: null, sonne: null, sonT: 0, appuis: [] };
+export const A5 = { aFaire: [], pret: false, chien: null, gens: {}, ctx: null, lieu: null, sonne: null, sonT: 0, appuis: [], surSonnaille: [] };
 if (typeof window !== 'undefined') window.__acte5 = A5;
 
 // Le carnet du journal (J)
@@ -1530,6 +1532,8 @@ function acte5Villefort(ctx, boutiques) {
         SFX.unlock && SFX.unlock(); dialogue([{ who: '', text: '(deux notes) Le chien sort de sous le pont, la queue basse, puis la queue haute. Il te suit.' }], () => {
           state.chienSuit = true; passer5('chien'); saveGame(true);
           poserChien(p[0] - 1.5, sol(...p), p[1], 0).then((c) => { A5.chien = c; }); }); } }); }
+  // l'ouvrier de 1870, sur la voie (on y posait les rails), et son chantier
+  { const x = 1524, z = -966; temoinDuPasse(ctx, 'a5_ouvrier', 'ouvrier', x, z, [1500, -1014], chantier1870(x + 2.5, sol(x + 2.5, z), z, Math.atan2(55, 110))); }
   if (state.chienSuit && !state.chienRendu) A5.aFaire.push(() => poserChien(player.pos.x - 2, player.pos.y, player.pos.z - 2, 0).then((c) => { A5.chien = c; }));
   A5.sol = sol;
 }
@@ -1545,14 +1549,164 @@ export function acte5Pouget(ctx) {
   A5.sol = hauteur; A5.berger = [x, y, z];
   A5.aFaire.push(() => { A5.gens.berger = personne5('a5_berger', x, y, z, yaw); });
   addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.8, prompt: () => 'parler au berger', fn: () => dialogue(repl5('berger')) });
+  // la bergère de 1765, au bois sous le hameau, et le parc de claies d'autrefois
+  { const bx = -40, bz = 60; temoinDuPasse(ctx, 2, 'bergere', bx, bz, [0, 5], claies1765(bx + 4, hauteur(bx + 4, bz), bz)); }
   // le chien : il suit Camille jusqu'ici, puis reste avec le berger
   if (state.chienSuit) A5.aFaire.push(() => poserChien(state.chienRendu ? x + 1.2 : player.pos.x - 2, y, state.chienRendu ? z + 0.8 : player.pos.z - 2, 0).then((c) => { A5.chien = c; }));
+}
+
+// (la position d'un Mesh ne s'assigne pas : Object.assign plantait le module au chargement)
+const posee = (o, x, y, z) => { o.position.set(x, y, z); return o; };
+
+// ---- Trois témoins, trois époques (étape 4) : on ne les voit qu'à deux coups de sonnaille ----
+// Chacun est posé à sa place, caché ; le passé le montre (et son décor : les claies, les rails), le
+// présent le cache. Sa réplique ne s'entend que pendant le passé.
+INDICES5.qui = { txt: 'Un géant rouge a passé la Régordane avec un loup grand comme une grange.', qui: 'le chevalier de la Garde-Guérin', fait: () => atteint5('tour') };
+INDICES5.ou = { txt: 'La Bête dort le jour dans la tour de la Garde-Guérin ; la nuit, elle sort sur le plateau.', qui: 'la bergère de 1765', fait: () => atteint5('tour') };
+INDICES5.comment = { txt: 'La tour est murée ; du temps des chevaliers, elle avait une porte. La sonnaille la ferait revenir.', qui: 'l’ouvrier de 1870', fait: () => atteint5('tour') };
+Object.assign(REPLIQUES5, {
+  chevalier: [['sonnaille', () => puis5(R5('Le chevalier', 'Halte. On paie pour passer la Régordane. Toi, tu n’as rien ? Passe quand même.',
+    'Un géant rouge est passé sans payer. Il menait **un loup grand comme une grange**, au bout d’une chaîne de fer.'), () => temoin('qui'))]],
+  bergere: [['sonnaille', () => puis5(R5('La bergère', 'Tu ne devrais pas être dans le bois. La Bête y chasse.',
+    'Le jour, elle dort **dans la tour de la Garde-Guérin**. La nuit, elle sort sur le plateau.'), () => temoin('ou'))]],
+  ouvrier: [['sonnaille', () => puis5(R5('L’ouvrier', 'On pose les rails jusqu’à Clermont. Si on finit un jour.',
+    'La tour ? Murée depuis longtemps. Mais du temps des chevaliers, **elle avait une porte**. Ta cloche, là — elle fait revenir les portes ?'), () => temoin('comment'))]],
+});
+function temoin(k) { noter5(k); if (sait5('qui') && sait5('ou') && sait5('comment')) passer5('temoins'); }
+Object.assign(PNJ.ROLES, {
+  // le chevalier de la Garde-Guérin : la cotte, le manteau sombre (le Rôdeur de la banque, comme le Colosse)
+  a5_chevalier: { ...PNJ.ROLES.colosse, haut: 0x5a5a62, valeur: 0.8, bas: 0x3a3430, valeurBas: 0.8, idle: 'Idle_Loop' },
+  a5_ouvrier: { ...PNJ.ROLES.cosimo, haut: 0x6a5a48, idle: 'Idle_Loop' },
+});
+// un témoin du passé : posé caché, montré par la sonnaille ; [rôle ou villageois, qui (REPLIQUES5), x, z, regarde, décor]
+function temoinDuPasse(ctx, role, qui, x0, z0, vers, decor = null) {
+  const { hauteur, bloque, addInteract } = ctx, sol = A5.sol || hauteur;
+  let x = x0, z = z0; for (let r = 0, ok = false; r < 20 && !ok; r += 1) for (let k = 0; k < 16 && !ok; k++) { const a = x0 + Math.cos(k / 16 * TAU) * r, b = z0 + Math.sin(k / 16 * TAU) * r; if (!bloque(a, b, 0.9)) { x = a; z = b; ok = true; } }
+  const y = sol(x, z), T = { o: null, decor, x, y, z };
+  A5.aFaire.push(() => { T.o = personne5(role, x, y, z, Math.atan2(vers[0] - x, vers[1] - z)); if (T.o) T.o.visible = false; });
+  if (decor) { decor.visible = false; decor.userData.dynamic = true; }
+  A5.surSonnaille.push((ep, p) => { const pres = Math.hypot(p.x - x, p.z - z) < 40, vu = ep === 'passe' && pres; if (T.o) T.o.visible = vu; if (decor) decor.visible = vu; });
+  addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, prompt: () => 'parler', enabled: () => passeVu() && atteint5('sonnaille'), fn: () => dialogue(repl5(qui)) });
+  (A5.temoins = A5.temoins || {})[qui] = [x, y, z];
+  return T;
+}
+// le décor de 1870 : une pile de rails et de traverses, une brouette
+function chantier1870(x, y, z, a) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = a; scene.add(g);
+  const bois = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a4636 }), fer = phMat('metal_plate_02', 1, 1, { color: 0x5a5450, metalness: 0.6, roughness: 0.5 });
+  for (let k = 0; k < 6; k++) g.add(posee(new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.14, 0.24), bois), 0, 0.07 + Math.floor(k / 3) * 0.15, -0.6 + (k % 3) * 0.6));
+  for (let k = 0; k < 4; k++) g.add(posee(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 5), fer), -1.6 + k * 0.12, 0.06, 2.6));
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  return g;
+}
+// le décor de 1765 : les claies d'un parc à moutons, au bois
+function claies1765(x, y, z) {
+  const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+  const bois = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x6a5642 });
+  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU, m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 0.06), bois); m.position.set(Math.cos(a) * 3, 0.45, Math.sin(a) * 3); m.rotation.y = -a + Math.PI / 2; g.add(m); }
+  return g;
+}
+
+// ---- La tour de la Garde-Guérin (étape 5) : la porte d'autrefois, trois salles ----
+// Comme les caves de l'Aveyron : les salles sont bâties très haut au-dessus du plateau, cachées, et
+// n'ont de sol et de murs que pendant qu'on y est. Chaque salle a sa ruine (le présent) et son
+// état d'autrefois (le passé) : la sonnaille change l'une en l'autre ; l'escalier qui monte à la
+// suivante n'existe qu'au passé.
+const Y5 = 700;
+const SALLES = [];
+function salle5(i, cx, cz) {
+  const w = 8, d = 8, h = 4, y = Y5 + i * 12, g = new THREE.Group(); g.position.set(cx, y, cz); g.visible = false; g.userData.dynamic = true; scene.add(g);
+  const pierre = phMat('granit_lozere', 1, 1, { color: 0x9a968c }), sol = phMat('granite_tile_03', 1, 1, { color: 0xa09a8e });
+  const boite = (W, H, D, m, x, yy, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), m); o.position.set(x, yy, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  for (const [x, z, W, D] of [[0, -d / 2, w, 0.5], [0, d / 2, w, 0.5], [-w / 2, 0, 0.5, d], [w / 2, 0, 0.5, d]]) boite(W, h, D, pierre, x, h / 2, z);
+  boite(w, 0.3, d, sol, 0, -0.15, 0); boite(w, 0.3, d, pierre, 0, h + 0.15, 0);
+  // le présent : un trou dans le plancher du fond, l'escalier coupé, des gravats ; le passé : la dalle
+  // entière et l'escalier de bois jusqu'à la trappe
+  const ruine = new THREE.Group(), jadis = new THREE.Group(); g.add(ruine, jadis); jadis.visible = false;
+  for (let k = 0; k < 7; k++) { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25 + (k % 3) * 0.12, 0), pierre); r.position.set(-2 + k * 0.6, 0.2, -2.6 + (k % 2) * 0.5); ruine.add(r); }
+  const bois = phMat('wood_planks', 1, 1, { color: 0x7a5a3a });
+  for (let k = 0; k < 8; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 0.4), bois); m.position.set(2.8, 0.3 + k * 0.48, 2.6 - k * 0.6); jadis.add(m); }
+  for (let k = 0; k < 2; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 0.4), bois); m.position.set(2.8, 0.3 + k * 0.48, 2.6 - k * 0.6); ruine.add(m); }
+  const S = { i, g, x: cx, z: cz, y, w, d, h, ruine, jadis, phys: [], obst: [] };
+  SALLES.push(S); return S;
+}
+function physSalle(S, on) {
+  if (!on) { for (const p of S.phys) { const a = world.boxes.indexOf(p), b = world.capsules.indexOf(p); if (a >= 0) world.boxes.splice(a, 1); if (b >= 0) world.capsules.splice(b, 1); } S.phys = []; indexCapsules(); return; }
+  S.phys = [addBox(S.x - S.w / 2 - 3, S.x + S.w / 2 + 3, S.z - S.d / 2 - 3, S.z + S.d / 2 + 3, S.y)];
+  const e = 0.3, x0 = S.x - S.w / 2 + e, x1 = S.x + S.w / 2 - e, z0 = S.z - S.d / 2 + e, z1 = S.z + S.d / 2 - e;
+  for (const [ax, az, bx, bz] of [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]) { const c = addCap(ax, az, bx, bz, 0.25, S.y + S.h); c.bottom = S.y - 1; S.phys.push(c); }
+}
+function entrerSalle(S, lx, lz) {
+  if (A5.salle) { physSalle(A5.salle, false); A5.salle.g.visible = false; }
+  physSalle(S, true); S.g.visible = true; A5.salle = S; montrerEpoque(A5.sonne);
+  player.pos.set(S.x + lx, S.y + 0.02, S.z + lz); player.vy = 0;
+  G.camMaxY = S.y + S.h - 0.3; G.camBack = 3.6; G.camUp = 1.9;
+}
+function sortirTour() {
+  const S = A5.salle; if (!S) return; physSalle(S, false); S.g.visible = false; A5.salle = null;
+  const [x, z] = A5.porteTour; player.pos.set(x, A5.ctx.hauteur(x, z) + 0.05, z); player.vy = 0; G.camMaxY = Infinity; G.camBack = 7; G.camUp = 3.4;
+  for (const e of A5.loups1765 || []) if (!e.dead) { e.dead = true; e.hp = 0; e.mesh.visible = false; if (e.bar) e.bar.visible = false; }
+  A5.loups1765 = null;
+}
+function montrerEpoque(ep) { const S = A5.salle; if (!S) return; S.ruine.visible = ep !== 'passe'; S.jadis.visible = ep === 'passe'; }
+
+// les loups de 1765 : des bêtes ordinaires, qui fuient la sonnaille
+BETES.loup1765 = { fichier: 'loup.glb', haut: 1.3, teintes: { M_Wolf: 0x5a5048 } };
+Object.assign(KINDS, { loup1765: { hp: 3, speed: 6.2, dmg: 1, range: 1.6, aggro: 14, windup: 0.4, cd: 1.3, fly: 0, r: 0.6, label: 'Loup de 1765', barY: 1.4 } });
+let modeleLoup = null;
+setMaker('loup1765', () => { const g = modeleLoup ? modeleLoup.S.clone(modeleLoup.g.scene) : new THREE.Group(); if (modeleLoup) g.scale.setScalar(modeleLoup.echelle * G.echelle); g.userData.anim = true;
+  if (modeleLoup) { const mix = new THREE.AnimationMixer(g), a = modeleLoup.g.animations.find((k) => /Walk/.test(k.name)); if (a) mix.clipAction(a).play(); g.userData.mix = mix; } return g; });
+setAnimHook('loup1765', (e, dt) => { if (e.mesh.userData.mix) e.mesh.userData.mix.update(dt); return true; });
+A5.surSonnaille.push(() => { for (const e of A5.loups1765 || []) if (!e.dead) { e.dead = true; e.hp = 0; e.mesh.visible = false; if (e.bar) e.bar.visible = false; } if ((A5.loups1765 || []).length) showMessage('Les loups de 1765 fuient la sonnaille de la brebis de tête.', 3); });
+A5.surSonnaille.push((ep) => montrerEpoque(ep));
+
+function acte5Garde(ctx) {
+  if (EN_INSTANCE) return;
+  A5.ctx = ctx; A5.lieu = 'gardeguerin'; A5.sol = (x, z) => (FICHES.gardeguerin._sol(x, z) ?? ctx.hauteur(x, z));
+  // le chevalier, au péage : à l'entrée du village, où arrive la Régordane
+  temoinDuPasse(ctx, 'a5_chevalier', 'chevalier', 1846, -5250, [1852, -5236]);
+  // la tour : sa face nord (vers le village), la porte murée au présent, ouverte au passé
+  const t = BILAN.corps.find((c) => c.sp.tour), [tx, tz] = t ? [t.cx, t.cz] : [1830, -5378];
+  const px = 1831, pz = -5373.6, y = ctx.hauteur(px, pz), porte = new THREE.Group(); porte.position.set(px, y, pz); porte.rotation.y = Math.atan2(px - tx, pz - tz); scene.add(porte); porte.userData.dynamic = true;
+  const murage = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 0.3), phMat('rustic_stone_wall_02', 1.6, 2.4, { color: 0x8a8478 })); murage.position.y = 1.2; porte.add(murage);
+  const ouverte = new THREE.Group(); porte.add(ouverte); ouverte.visible = false;
+  ouverte.add(posee(new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.3, 0.05), new THREE.MeshBasicMaterial({ color: 0x0a0806 })), 0, 1.15, 0.12));
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.18, 6, 14, Math.PI), phMat('granit_lozere', 1, 1, { color: 0xb0aea6 })); arc.position.set(0, 2.3, 0.2); ouverte.add(arc);
+  A5.surSonnaille.push((ep, p) => { const pres = Math.hypot(p.x - px, p.z - pz) < 30; murage.visible = !(ep === 'passe' && pres); ouverte.visible = !murage.visible; });
+  const [ax, az] = [px + Math.sin(porte.rotation.y) * 2, pz + Math.cos(porte.rotation.y) * 2]; A5.porteTour = [ax, az];
+  { const libre = (x, z) => { for (let a = -7; a <= 7; a += 3.5) for (let b = -7; b <= 7; b += 3.5) if (ctx.bloque(x + a, z + b, 0.5)) return false; return true; }, pris = [];
+    for (let r = 0; r < 200 && pris.length < 3; r += 6) for (let k = 0; k < 24 && pris.length < 3; k++) { const x = 1760 + Math.cos(k / 24 * TAU) * r, z = -5300 + Math.sin(k / 24 * TAU) * r;
+      if (libre(x, z) && pris.every(([a, b]) => Math.hypot(a - x, b - z) > 20)) pris.push([x, z]); }
+    pris.forEach(([x, z], i) => salle5(i, x, z)); }
+  ctx.addInteract({ pos: new THREE.Vector3(px, y, pz), r: 3, enabled: () => atteint5('sonnaille') && !A5.salle,
+    prompt: () => (passeVu() ? 'entrer dans la tour' : 'la porte de la tour'),
+    fn: () => { if (!passeVu()) { showMessage(sait5('comment') ? 'La porte est murée. Du temps des chevaliers, elle était là, ouverte.' : 'Une porte murée depuis des siècles, au pied de la tour.', 5); return; }
+      entrerSalle(SALLES[0], 0, 3); showMessage('Au présent, la tour est en ruine. Au passé, elle est debout. Sonne pour passer.', 5); } });
+  // dans la tour : monter (au passé seulement), sortir
+  SALLES.forEach((S, i) => {
+    ctx.addInteract({ pos: new THREE.Vector3(S.x + 2.8, S.y, S.z - 1.6), r: 2.4, enabled: () => A5.salle === S && i < 2,
+      prompt: () => (passeVu() ? 'monter l’escalier' : 'l’escalier effondré'),
+      fn: () => { if (!passeVu()) { showMessage('L’escalier s’arrête à hauteur d’homme. Au-dessus, le vide.', 3); return; }
+        entrerSalle(SALLES[i + 1], 0, 3); if (i + 1 === 1 && !A5.loups1765) poserLoups1765(SALLES[1]); if (i + 1 === 2) chambreDuLoup(); } });
+    ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 3.4), r: 1.8, enabled: () => A5.salle === S, prompt: () => 'redescendre et sortir', fn: sortirTour });
+  });
+  // la chambre du loup, en haut : sa litière, les griffes dans la pierre
+  { const S = SALLES[2], paille = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.3, 20), phMat('withered_grass', 2, 2, { color: 0xc8b070 })); paille.position.set(0, 0.15, -1.5); S.g.add(paille);
+    for (let k = 0; k < 4; k++) { const gr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.02), new THREE.MeshBasicMaterial({ color: 0x1a1612 })); gr.position.set(-1 + k * 0.25, 2, -3.7); gr.rotation.z = 0.3; S.g.add(gr); } }
+  chargerBete('loup1765').then((m) => { modeleLoup = m; });
+}
+function poserLoups1765(S) {
+  A5.loups1765 = [[-2, -2], [2, -2.5], [0, -3]].map(([lx, lz]) => { const e = spawnEnemy('loup1765', S.x + lx, S.z + lz, 'acte5', S.y); e.home.y = S.y; return e; });
+  showMessage('Des loups ! De 1765. Ils craignent la sonnaille de la brebis de tête.', 4);
+}
+function chambreDuLoup() {
+  dialogue([{ who: '', text: 'Une litière de paille, grande comme une étable. Des griffes dans la pierre. Il est sorti.' }], () => { passer5('tour'); showMessage('Dehors, la nuit tombe sur le plateau.', 5); });
 }
 
 // ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
 // Deux appuis à moins de 0,45 s : deux coups. Le passé dure huit secondes autour de Camille ; les lieux
 // s'y abonnent (A5.surSonnaille). L'image passe au sépia tant qu'on est dans le passé.
-A5.surSonnaille = [];
+// (A5.surSonnaille : la liste est créée avec A5, plus haut — les témoins et la tour s'y abonnent avant ce point)
 function sonnaille() {
   if (!state.sonnaille || EN_INSTANCE || !state.running || state.paused) return;
   A5.appuis.push(performance.now());
