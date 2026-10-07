@@ -588,11 +588,13 @@ const areneChoisie = () => (document.querySelector('input[name="areneInstance"]:
 {
   const z = $('choixArene');
   if (z) {
+    // une carte par arène (7 octobre, C8 : neuf arènes, neuf cases ne disaient plus rien) : sa vue, son
+    // nom, sa phrase, ses pastilles ; le bouton radio reste dessous, pour le clavier et les lecteurs d'écran
     z.insertAdjacentHTML('beforeend', Object.entries(C.ARENES).map(([id, a], k) =>
-      `<label class="regle-case"><input type="radio" name="areneInstance" value="${id}"${k ? '' : ' checked'} aria-describedby="descArene"><span><em>${ECH(a.nom)}</em></span></label>`).join(''));
-    const dire = () => { $('descArene').textContent = C.ARENES[areneChoisie()].dit + '.'; };
-    z.querySelectorAll('input').forEach((r) => { r.onchange = dire; });
-    dire();
+      `<label class="arene-carte"><input type="radio" name="areneInstance" value="${id}"${k ? '' : ' checked'}>`
+      + `<span class="arene-corps"><img class="arene-vue" src="${a.vignette}" alt="" loading="lazy" width="640" height="360">`
+      + `<b>${ECH(a.nom)}</b><small>${ECH(a.dit)}.</small>`
+      + `<span class="arene-pastilles">${(a.pastilles || []).map((p, i) => `<i${p === '4 au plus' ? ' class="borne"' : ''}>${ECH(p)}</i>`).join('')}</span></span></label>`).join(''));
   }
 }
 let nbVies = 1;

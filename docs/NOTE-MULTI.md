@@ -701,3 +701,15 @@ rien toucher au moteur. Invite « ouvrir / fermer la porte ». Toutes ouvertes a
   arêtes se parcourent sans heurter un meuble (rayon 0,45 m, à la hauteur de l'étage) — tout passé.
 - **L'arrivée en équipes « devant la façade de Beauregard »** (relevée une fois le 5 octobre) : deux parties
   à quatre en équipes, les huit arrivées dans le vestibule (x 41–44, z −3–0). Non reproduite.
+
+### L'accueil : les arènes en cartes (7 octobre, C8)
+
+Neuf arènes, neuf cases qui ne disaient que le nom : l'étape « Arène » est une grille de cartes — la vue de
+l'arène (`vignettes/arene-<id>.jpg`, 640 × 360, 16 à 41 Ko, prises par `bancs/multi-vignettes.mjs`), son nom,
+sa phrase, ses pastilles (sa taille, puis bannières, fête, forge, portes, « 4 au plus »). Le catalogue les
+porte (`vignette`, `pastilles` dans `C.ARENES`, tloc-compte.js), redites à la main comme le serveur tient
+les siennes : l'accueil ne charge pas les lieux. La carte choisie à l'or ; deux cartes par ligne sur téléphone.
+Le bouton radio reste sous la carte (clavier, lecteurs d'écran). Les styles sont dans `accueil.html`
+(`tloc-portail.css` n'est pas à C8) : l'étape a une hauteur libre, la hauteur fixe des étapes la faisait
+déborder sur le mode de jeu. Banc `bancs/multi-accueil.mjs` : neuf cartes, neuf vignettes chargées, un clic
+choisit l'arène, en largeur d'ordinateur et de téléphone.

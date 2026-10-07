@@ -225,16 +225,19 @@ export async function supprimerPartout(id) {
 // géométrie de chacune est déclarée par son lieu (`arenes` de l'objet niveau : game.js,
 // garde-guerin.js, pouget.js) ; ce catalogue ne dit que le nom et la page. Le serveur n'accepte
 // que ces identifiants (NouvelleInstance.arene, app.py).
+// `vignette` : une vue de l'arène (bancs/multi-vignettes.mjs) ; `pastilles` : sa taille, puis ce qu'elle
+// déclare dans son lieu (bannières, fête, forge, portes) et ses bornes (ARENES_MAX, app.py) — redits ici à
+// la main, comme le serveur les tient à la main : l'accueil ne charge pas les lieux
 export const ARENES = {
-  lille: { nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
-  gardeguerin: { nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
-  pouget: { nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
-  batut: { nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
-  panyi: { nom: 'Ko Panyi', page: 'thailande.html', dit: 'le village sur pilotis de la baie des pitons : de passerelle en passerelle, jusqu’au marché flottant' },
-  gallipoli: { nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
-  alberobello: { nom: 'Alberobello', page: 'alberobello.html', dit: 'le Rione Monti : des ruelles en pente entre les trulli, cônes de pierre et murs blancs' },
-  estaminet: { nom: 'L’estaminet', page: 'tavern.html', dit: 'la bagarre de taverne, quatre au plus : le zinc, les tables, l’âtre' },
-  matera: { nom: 'Matera', page: 'matera.html', dit: 'les Sassi en gradins : des maisons sur les toits des autres, des ruelles en escalier' },
+  lille: { vignette: 'vignettes/arene-lille.jpg', pastilles: ['quartier', 'bannières', 'fête', 'forge'], nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
+  gardeguerin: { vignette: 'vignettes/arene-gardeguerin.jpg', pastilles: ['village', 'bannières'], nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
+  pouget: { vignette: 'vignettes/arene-pouget.jpg', pastilles: ['hameau', 'bannières'], nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
+  batut: { vignette: 'vignettes/arene-batut.jpg', pastilles: ['maisons', 'portes', 'bannières'], nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
+  panyi: { vignette: 'vignettes/arene-panyi.jpg', pastilles: ['village sur l’eau'], nom: 'Ko Panyi', page: 'thailande.html', dit: 'le village sur pilotis de la baie des pitons : de passerelle en passerelle, jusqu’au marché flottant' },
+  gallipoli: { vignette: 'vignettes/arene-gallipoli.jpg', pastilles: ['vieille ville'], nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
+  alberobello: { vignette: 'vignettes/arene-alberobello.jpg', pastilles: ['quartier'], nom: 'Alberobello', page: 'alberobello.html', dit: 'le Rione Monti : des ruelles en pente entre les trulli, cônes de pierre et murs blancs' },
+  estaminet: { vignette: 'vignettes/arene-estaminet.jpg', pastilles: ['salle', '4 au plus'], nom: 'L’estaminet', page: 'tavern.html', dit: 'la bagarre de taverne, quatre au plus : le zinc, les tables, l’âtre' },
+  matera: { vignette: 'vignettes/arene-matera.jpg', pastilles: ['gradins'], nom: 'Matera', page: 'matera.html', dit: 'les Sassi en gradins : des maisons sur les toits des autres, des ruelles en escalier' },
 };
 export const pageArene = (id) => (ARENES[id] || ARENES.lille).page;
 export const instance = () => lire(CLE_INSTANCE);
