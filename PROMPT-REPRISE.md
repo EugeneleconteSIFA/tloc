@@ -2889,3 +2889,55 @@ Découpage et répliques validés par Eugène (« d'accord sur les six, réduis 
   entre dans la caserne et en ressort), `acte1-b1`, `acte1-souterrains` sans erreur.
 - **Reste** : une partie de l'acte I jouée à la main, chronométrée (Eugène) ; la marchande aux étapes `fete` et
   `grille` (marquer les lieux de quête, les coins de pêche) n'est pas codée.
+
+### La Lozère, les restes (7 octobre, PC, consigne E4 de `PLAN-2026-10-07-VAGUE3.md`) — **fait, joué en headless, publié**
+
+Découpage validé par Eugène (`docs/DECOUPAGE-ACTE5.md`, « Les restes », et ses réponses : le lac, lieu neuf ;
+**le berger donne le lasso** ; les menhirs sur le plateau de la Garde-Guérin ; la tyrolienne de la tour vers
+Villefort). Répliques : `docs/DIALOGUES-ACTE5.md`, « Les restes ». Tout dans `lozere.js`, section « LES RESTES ».
+Lots : cb144ef (1), e279de3 (2), et le lot 3 (les quêtes).
+- **Lot 1** : la transhumance (le berger, après l'acte : `state.transh` 1 → 2 → 3 ; six brebis suivent Camille d'un
+  lieu à l'autre par les vieux chemins, jusqu'à l'enclos d'estive du plateau) ; **le lasso** (`state.lasso`, « la
+  corde des brebis tombées ») : devant un **anneau de fer**, « lancer le lasso », Camille se hisse ou descend jusqu'à
+  lui (`lasso(vers, ancre)`, `anneauDeFer`) ; la sonnaille plus forte (`state.sonnailleForte` : le passé dure 12 s) ;
+  la tour de la Garde-Guérin par le dehors (l'anneau du sommet, un plancher `addBox`) ; la tyrolienne du sommet vers
+  Villefort (la poulie : la glisse, un fondu, Villefort).
+- **Lot 2** : **le lac de Villefort, un lieu neuf** (`lac.js`, `lac.html`, `FICHES.lac` ; 870 × 550 m : le bras de
+  l'Altier, le viaduc de l'Altier, la via ferrata ; plan et relief tirés des relevés LOCAUX :
+  `carte/mondes/plans-lieux-lozere.py lac`, `relief-lac-lozere.py`) ; un quatrième vieux chemin (« Le lac ») dans
+  tous les lieux ; la vallée d'avant le barrage (deux coups : le lac disparaît, son eau profonde ne bloque plus, un
+  pont de pierre et des murets) ; le viaduc en construction au passé ; la via ferrata (les anneaux, sa tyrolienne,
+  un cœur au belvédère du haut, `state.coeurFerrata`).
+- **Lot 3** : les châtaignes du Pouget, la clède et la farine (touche **H** : trois cœurs, trois parts) ; les onze
+  menhirs du plateau (deux coups devant chacun, une époque ; tous vus : un cœur) ; la pêche au lac (la canne de
+  l'acte I ; au passé, la truite d'avant) ; le train de 1870 (au passé, trois poutres à la force ; la travée posée,
+  un train du présent s'arrête au viaduc et mène à Villefort).
+- Bancs : `bancs/acte5-lasso.mjs`, `acte5-lac.mjs`, `acte5-quetes.mjs`, tous réussis ; les trois de l'acte V
+  repassés à chaque lot ; la Garde-Guérin et le Pouget en instance (`rencontres.mjs`) sans erreur ;
+  `bancs/lieu-lozere.mjs lac` : **2,4 s** de chargement.
+
+**Pour E1 (l'acte VI, la Blessure)** : `state.lasso` existe (le berger du Pouget le donne au retour de la
+transhumance, après l'acte V). Le geste est dans `lozere.js` (`lasso`, `anneauDeFer`, `animeLasso`) : Camille se
+hisse jusqu'à un anneau ; pour la Blessure, le recopier ou attendre qu'une passe D3 le monte dans le moteur.
+
+- **Appris** : **le niveau d'un lac (monde.js) est le 30ᵉ centile des hauteurs de son CONTOUR**. Le lac de Villefort
+  entier (3 km, 483 points) posait l'eau à 630 m, 23 m au-dessus du bras du lieu (rive à 606 m) : une plaque d'eau
+  en l'air. Rogné au lieu (`rogner` dans plans-lieux-lozere.py, la vraie rive resserrée tous les 2 m pour qu'elle
+  l'emporte sur les points de la coupe), il tombe à 606,7 m — et le chargement passe de 8,5 s à 2,4 s (la grille
+  de l'eau profonde se calculait sur l'emprise du lac entier, 538 000 cases).
+- **Appris** : le relief IGN d'un lac de barrage est la surface de l'eau le jour du relevé (ici 592,5 m, en basses
+  eaux) : plat, 14 m sous la cote pleine. À deux coups de sonnaille, c'est la « vallée d'avant ».
+- **Appris** : une tyrolienne d'OSM peut être presque à plat dans le relief du jeu (58 et 60 m) : mesurer ses deux
+  bouts au banc avant de la tendre (la règle refuse ce qui ne descend pas).
+- **Appris (encore)** : la Lozère bâtit chaque lieu AVANT de charger la sauvegarde : tout ce qui dépend de l'état
+  (le troupeau en route) va dans `A5.apres`, joué quand l'acte se pose.
+- **Appris** : une caméra de capture SOUS le relief montre le dessous du terrain : une « plaque blanche » qui n'est
+  pas un défaut (vu au lac, la route longe une pente de 70 à 150 m).
+
+**Demandes pour d'autres fichiers** (pour la passe D3) :
+- **`engine.js`** : `PAGES.lac = 'lac.html'` (lozere.js l'ajoute en attendant ; une partie sauvegardée au lac ne
+  reprend pas depuis une page qui ne charge pas lozere.js) ; **le geste du lasso** (anneaux, se hisser) dans le
+  moteur, pour la Lozère et la Blessure (acte VI).
+- **`hud.js` / la carte** : le lac n'a pas de place sur la carte M (l'atlas est celui de Lille).
+- **`monde.js`** : le niveau d'un lac au 30ᵉ centile de son contour entier ne vaut pas pour un lac qu'un lieu ne
+  montre qu'en partie (corrigé ici en rognant le plan) — un `niveau` donné par le plan serait plus sûr.

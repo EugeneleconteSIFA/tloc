@@ -201,6 +201,7 @@ async function build() {
       if (libre(x, z, 6) && proche.every((p) => Math.hypot(p.x - x, p.z - z) > (p.espece === 'bouleau' ? 6 : 11))) proche.push({ x, z, y: hauteur(x, z) - 0.15, espece: 'chataignier', s: rand(0.85, 1.15) });
     }
     TRONCS = planterArbresDePres(proche);
+    R.chataigniers = proche.filter((p) => p.espece === 'chataignier').map((p) => [p.x, p.z]);     // (les bogues de la quête des châtaignes, lozere.js)
     R.arbres = proche.map((p) => [p.x, p.z]); }
   // ---------- le grand enclos des brebis, en face de la première maison (Eugène, 2 octobre) ----------
   if (bordEnclos && bordEnclos.length > 3) ENCLOS = await enclos({ h: hauteur, bord: bordEnclos, troncs: TRONCS });
@@ -238,7 +239,7 @@ async function build() {
   // qu'à Villefort et à la Garde-Guérin ; sans lui, on ne repartait du Pouget que par la porte) ----------
   poteau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), scene, addInteract }, 'pouget');
   // l'acte V (lozere.js) : le berger, devant le haut du hameau, et son chien
-  acte5Pouget({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), addInteract, bloque: blocked, bergerA: [20, -40] });
+  acte5Pouget({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), addInteract, bloque: blocked, bergerA: [20, -40], chataigniers: R.chataigniers });
 
   // ---------- la vie du hameau (Eugène, 5 octobre : « ça manque de bancs, tonneaux, fleurs, oiseaux,
   // animaux et troupeaux ») : la fabrique de lozere.js, comme à la Garde-Guérin. Devant les maisons,

@@ -1593,6 +1593,7 @@ export function acte5Pouget(ctx) {
   A5.aFaire.push(() => { A5.gens.berger = personne5('a5_berger', x, y, z, yaw); });
   addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.8, prompt: () => 'parler au berger', fn: parlerBerger });
   A5.apres.push(() => { if (state.transh === 1) poserTroupeau(player.pos.x, player.pos.z); });
+  chataignes(ctx, ctx.chataigniers);
   // la bergère de 1765, au bois sous le hameau, et le parc de claies d'autrefois
   { const bx = -40, bz = 60; temoinDuPasse(ctx, 2, 'bergere', bx, bz, [0, 5], claies1765(bx + 4, hauteur(bx + 4, bz), bz)); }
   // le chien : il suit Camille jusqu'ici, puis reste avec le berger
@@ -1740,7 +1741,7 @@ function acte5Garde(ctx) {
     for (let k = 0; k < 4; k++) { const gr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.02), new THREE.MeshBasicMaterial({ color: 0x1a1612 })); gr.position.set(-1 + k * 0.25, 2, -3.7); gr.rotation.z = 0.3; S.g.add(gr); } }
   chargerBete('loup1765').then((m) => { modeleLoup = m; });
   acte5Loup(ctx);
-  tourParLeDehors(ctx); estive(ctx);
+  tourParLeDehors(ctx); estive(ctx); menhirs(ctx);
 }
 function poserLoups1765(S) {
   A5.loups1765 = [[-2, -2], [2, -2.5], [0, -3]].map(([lx, lz]) => { const e = spawnEnemy('loup1765', S.x + lx, S.z + lz, 'acte5', S.y); e.home.y = S.y; return e; });
@@ -2051,6 +2052,7 @@ function acteLac(ctx, lacs) {
   { const [x, z] = [-403, -1951], y = sol(x, z);
     addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !state.coeurFerrata, prompt: () => 'le haut de la via ferrata',
       fn: () => { state.coeurFerrata = true; player.maxHp += 2; player.hp = player.maxHp; SFX.win && SFX.win(); saveGame(true); showMessage('Tout en haut de la falaise, au-dessus du lac : un morceau de cœur. Un cœur de plus.', 5); } }); }
+  pecheLac(ctx); train1870(ctx);
 }
 function animeGlisseLac(dt) {
   const Gl = A5.glisseLac, C = A5.cableLac; if (!Gl || !C) return;
@@ -2058,6 +2060,119 @@ function animeGlisseLac(dt) {
   player.pos.set(q.x, q.y - 2.1, q.z); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
   if (Gl.t >= 1) { A5.glisseLac = null; player.pos.set(...C.a); }
 }
+
+// ---- Les quêtes secondaires de la Lozère (Q1, Q3, Q4, Q5 ; SCENARIO.md § 14) ----
+// Q1, les châtaignes (le Pouget) : des bogues sous les châtaigniers ; vingt châtaignes à la clède (le
+// séchoir de pierre), et une farine qui rend des cœurs (touche H, tant qu'il en reste).
+const CLEDE = [-24, 44];
+function chataignes(ctx, arbres) {
+  const { hauteur, addInteract, bloque } = ctx, brun = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.6 }), bogue = new THREE.MeshStandardMaterial({ color: 0x8a9a4a, roughness: 0.9 });
+  (arbres || []).slice(0, 8).forEach(([x0, z0], i) => {
+    const g = new THREE.Group(), x = x0 + 1.8, z = z0 + 1.2, y = hauteur(x, z); g.position.set(x, y, z); g.userData.dynamic = true; scene.add(g);
+    for (let k = 0; k < 6; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), k % 2 ? bogue : brun); b.position.set(rand(-0.8, 0.8), 0.05, rand(-0.8, 0.8)); g.add(b); }
+    const pris = () => !!(state.chataignesPrises && state.chataignesPrises[i]);
+    g.visible = false; A5.apres.push(() => { g.visible = !pris(); });
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.2, enabled: () => !pris() && (state.chataignes || 0) < 20, prompt: () => 'ramasser des châtaignes', fn: () => {
+      state.chataignesPrises = { ...(state.chataignesPrises || {}), [i]: true }; state.chataignes = Math.min(20, (state.chataignes || 0) + 4); g.visible = false; SFX.pickup && SFX.pickup(); saveGame(true);
+      showMessage(state.chataignes >= 20 ? 'Vingt châtaignes. La clède du hameau les fera sécher.' : `${state.chataignes} châtaignes sur vingt.`, 3); } });
+  });
+  // la clède : une petite maison de pierre basse, un toit de lauzes, la fumée qui passe entre les pierres
+  // dans un pré, 5 m au large de tout (elle se perdait entre deux maisons)
+  { let [x, z] = CLEDE; trouve: for (let r = 0; r < 60; r += 3) for (let k = 0; k < 16; k++) { const a = CLEDE[0] + Math.cos(k / 16 * TAU) * r, b = CLEDE[1] + Math.sin(k / 16 * TAU) * r; if (!bloque(a, b, 5)) { x = a; z = b; break trouve; } }
+    const y = hauteur(x, z), g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+    const pierre = phMat('granit_lozere', 1, 1, { color: 0x9a968c }), lauze = phMat('lauze_lozere', 1, 1, { color: 0x8a8984 });
+    g.add(posee(new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 2.6), pierre), 0, 1.1, 0));
+    const toit = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.2, 4), lauze); toit.rotation.y = Math.PI / 4; toit.scale.set(1.25, 1, 1); toit.position.y = 2.8; g.add(toit);
+    g.add(posee(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.1), new THREE.MeshStandardMaterial({ color: 0x1a1612 })), 0, 0.8, 1.32));
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        for (const [ax, az, bx, bz] of [[-1.6, -1.3, 1.6, -1.3], [1.6, -1.3, 1.6, 1.3], [1.6, 1.3, -1.6, 1.3], [-1.6, 1.3, -1.6, -1.3]]) addCap(x + ax, z + az, x + bx, z + bz, 0.3, y + 3);
+    A5.clede = [x, z];
+    addInteract({ pos: new THREE.Vector3(x, y, z + 2.2), r: 2.6, prompt: () => (state.farine ? 'la clède' : 'mettre les châtaignes à la clède'), fn: () => {
+      if ((state.chataignes || 0) < 20) return showMessage(`La clède, le séchoir du hameau. Il faudrait vingt châtaignes (${state.chataignes || 0}).`, 3.5);
+      if (!state.farineFaite) { state.farineFaite = true; state.farine = 3; state.chataignes = 0; saveGame(true); SFX.win && SFX.win();
+        showMessage('La fumée sèche les châtaignes ; on les pile : une farine de châtaigne, trois parts. (H : en manger, des cœurs)', 6); return; }
+      showMessage('La clède fume doucement. Il n’y a plus rien à sécher.', 3); } });
+  }
+}
+function mangerFarine() {
+  if (!(state.farine > 0) || !state.running || state.paused) return;
+  state.farine--; player.hp = Math.min(player.maxHp, player.hp + 6); SFX.pickup && SFX.pickup(); saveGame(true);
+  showMessage(`Une galette de farine de châtaigne. Trois cœurs.${state.farine ? ` (encore ${state.farine})` : ''}`, 3);
+}
+TOUCHES.KeyH = mangerFarine;
+
+// Q3, les menhirs (le plateau de la Garde-Guérin, faute de mont Lozère dans les relevés — Eugène, 7
+// octobre) : onze pierres dressées ; deux coups devant chacune, une époque et une phrase ; toutes vues :
+// un cœur, et la onzième montre le loup endormi.
+const MENHIRS = [
+  'Des pèlerins de la Régordane, à genoux devant la pierre, le bâton planté à côté d’eux.',
+  'Un berger qui compte ses bêtes en touchant la pierre à chaque dizaine.',
+  'Des paysans de 1765, fourches à la main, qui guettent la lisière.',
+  'Un ouvrier de 1870, un niveau à la main, qui mesure la pente pour la voie.',
+  'Un soldat qui rentre à pied, et s’assoit contre la pierre pour souffler.',
+  'Une noce : des rubans noués à la pierre, un violon, des rires.',
+  'Des enfants qui grimpent sur la pierre, et un chien qui aboie en bas.',
+  'Un peintre, son chevalet tourné vers les gorges.',
+  'La neige d’un hiver : la pierre seule, blanche jusqu’à mi-hauteur.',
+  'Le plateau vide, aujourd’hui. Le vent.',
+  'Sous la montagne, très loin, le loup qui dort. Il respire.',
+];
+function menhirs(ctx) {
+  const [px, pz] = A5.plateau || plateau(ctx), sol = A5.sol, pierre = phMat('granit_lozere', 1, 1, { color: 0x8a8880 }), pris = [];
+  for (let k = 0, n = 0; k < 400 && pris.length < 11; k++, n++) { const a = n * 2.4, r = 30 + (n % 6) * 12, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
+    if (ctx.bloque(x, z, 2) || pris.some(([u, v]) => Math.hypot(u - x, v - z) < 14)) continue; pris.push([x, z]); }
+  A5.menhirs = pris;
+  pris.forEach(([x, z], i) => {
+    const y = sol(x, z), h = 2.2 + (i % 4) * 0.5, m = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, h, 6), pierre);
+    m.position.set(x, y + h / 2 - 0.2, z); m.rotation.y = i; m.scale.set(1, 1, 0.6); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, prompt: () => 'le menhir', fn: () => {
+      if (!passeVu()) return showMessage('Une pierre dressée, couverte de lichen. (Deux coups de sonnaille : son passé.)', 3.5);
+      const vus = state.menhirsVus = { ...(state.menhirsVus || {}), [i]: true }; saveGame(true);
+      showMessage(MENHIRS[i], 6);
+      if (Object.keys(vus).length >= 11 && !state.coeurMenhirs) { state.coeurMenhirs = true; player.maxHp += 2; player.hp = player.maxHp; SFX.win && SFX.win(); saveGame(true);
+        setTimeout(() => showMessage('Onze pierres, onze temps. Un morceau de cœur : un cœur de plus.', 5), 6200); } } });
+  });
+}
+
+// Q4, la pêche au lac ; Q5, le train de 1870 (le lac) — posés par acteLac
+function pecheLac(ctx) {
+  const [x, z] = [-150, -2035], y = A5.sol(x, z);
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 4, enabled: () => !A5.peche, prompt: () => (state.canne ? 'pêcher dans le lac' : 'la rive du lac'), fn: () => {
+    if (!state.canne) return showMessage('L’eau est claire, on voit filer des truites. Il faudrait une canne.', 3.5);
+    A5.peche = { t: 0, passe: passeVu() }; showMessage('Tu lances la ligne. Le bouchon flotte…', 2.5); } });
+}
+function animePeche(dt) {
+  const P = A5.peche; if (!P) return;
+  if ((P.t += dt) < 3) return;
+  A5.peche = null; SFX.pickup && SFX.pickup();
+  if (P.passe) { if (!state.truiteAvant) { state.truiteAvant = true; saveGame(true); } showMessage('Une truite comme on n’en pêche plus : la rivière qui l’a nourrie est sous le lac. (La truite d’avant)', 6); }
+  else { state.truites = (state.truites || 0) + 1; saveGame(true); showMessage(`Une truite du lac. (${state.truites})`, 3); }
+}
+function train1870(ctx) {
+  const V = A5.viaduc; if (!V) return;
+  const [a, b] = V, mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2, ux = -(b[1] - a[1]), uz = b[0] - a[0], n = Math.hypot(ux, uz);
+  // trois poutres au pied du viaduc, du côté de la rive sud, qu'on ne voit qu'au passé
+  const bois = phMat('wood_planks', 1, 1, { color: 0x7a5a3a }), poutres = [];
+  for (let k = 0; k < 3; k++) { const x = a[0] + (mx - a[0]) * 0.4 + ux / n * (8 + k * 2.5), z = a[1] + (mz - a[1]) * 0.4 + uz / n * (8 + k * 2.5), y = A5.sol(x, z);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 6), bois); m.position.set(x, y + 0.25, z); m.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]); m.castShadow = true; m.userData.dynamic = true; m.visible = false; scene.add(m);
+    poutres.push(m);
+    ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, enabled: () => passeVu() && !(state.poutres && state.poutres[k]) && !state.viaducFini, prompt: () => 'pousser la poutre vers le chantier', fn: () => {
+      if (!state.force) return showMessage('Une poutre de chêne de six mètres. Trop lourde pour toi seule.', 3.5);
+      state.poutres = { ...(state.poutres || {}), [k]: true }; m.visible = false; SFX.stomp && SFX.stomp();
+      const nb = Object.keys(state.poutres).length;
+      if (nb >= 3) { state.viaducFini = true; SFX.win && SFX.win(); dialogue([{ who: 'L’ouvrier de 1870', text: 'Elle tient. Un jour, il passera des trains ici. Tu les prendras.' }]); }
+      else showMessage(`L’ouvrier : « Encore ${3 - nb} ! Avant que notre époque s’efface. »`, 3.5);
+      saveGame(true); } }); }
+  A5.surSonnaille.push((ep) => { for (const [k, m] of poutres.entries()) m.visible = ep === 'passe' && A5.lieu === 'lac' && !(state.poutres && state.poutres[k]) && !state.viaducFini; });
+  // l'ouvrier, au passé, au pied de la pile
+  { const x = a[0] + (mx - a[0]) * 0.4 + ux / n * 5, z = a[1] + (mz - a[1]) * 0.4 + uz / n * 5; temoinDuPasse(ctx, 'a5_ouvrier', 'ouvrierViaduc', x, z, [mx, mz]); }
+  // le train du présent : la travée posée, il s'arrête au pied du viaduc et mène à Villefort
+  { const x = a[0] + (mx - a[0]) * 0.2 + ux / n * 6, z = a[1] + (mz - a[1]) * 0.2 + uz / n * 6, y = A5.sol(x, z);
+    ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !!state.viaducFini, prompt: () => 'attendre le train', fn: () => {
+      showMessage('Un train des Cévennes ralentit sur le viaduc, et s’arrête pour toi.', 3);
+      setTimeout(() => goToLevel('villefort', ARRIVEES.villefort.pos, ARRIVEES.villefort.yaw, 'Le train file vers Villefort, au-dessus du lac.'), 1500); } }); }
+}
+REPLIQUES5.ouvrierViaduc = [['arrivee', () => R5('L’ouvrier de 1870', 'La travée du milieu, on la pose ce soir. Si l’époque nous laisse le temps. Pousse avec nous ! Les poutres sont là, au pied de la pile.')]];
 
 // ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
 // Deux appuis à moins de 0,45 s : deux coups. Le passé dure huit secondes autour de Camille ; les lieux
@@ -2084,11 +2199,12 @@ export function acte5Anime(dt) {
   if (EN_INSTANCE) return;
   if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } for (const f of A5.apres.splice(0)) f(); G.level.indices = indices5; if (A5.lieu === 'gardeguerin' && atteint5('course')) clocheTroupeaux(); }
   if (state.sonnaille && !AIDE.extra.some(([k]) => k === 'N')) AIDE.extra.push(['N', 'sonner la sonnaille']);
+  if (state.farine > 0 && !AIDE.extra.some(([k]) => k === 'H')) AIDE.extra.push(['H', 'manger la farine de châtaigne']);
   const f = A5.aFaire.shift(); if (f) f();
   for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
   if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu) && !A5.chienRepos) suivreChien(dt, A5.sol);
   else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
-  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt); animeGlisseLac(dt);
+  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt); animeGlisseLac(dt); animePeche(dt);
   // le passé qui s'efface
   if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
 }
