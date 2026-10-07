@@ -2778,3 +2778,15 @@ Le détail : `docs/NOTE-MULTI.md`, les trois dernières sections.
   l'Aveyron en arène (aveyron.js porte l'acte II : proposée, pas codée).
 
 **Demandes pour d'autres fichiers** : aucune.
+
+#### Demandes de C2 (acte III) — où elles en sont (7 octobre)
+- ~~`temple.js` : le retour de l'acte III~~ — **faite, 3b6ac15** : la Cloche des Îles au deuxième étage, sonnée ; des
+  rigoles au pied de la tour, dont l'eau monte le long du mur ; la pluie au loin ; la porte des Heures s'entrouvre,
+  Camille hésite ; une fois (`state.ilesVu`). Banc `bancs/acte3-temple.mjs`.
+- ~~`pnj.js` : un rôle d'enfant~~ — **faite, 2194a65** (la passe D de C1) ; thailande.js s'en sert depuis **ef7256e**
+  (le garçon de la passerelle, la fille de l'école ; plus de Nok réduite). Le corps reste un corps d'adulte
+  réduit : la banque n'a pas de corps d'enfant.
+- ~~Le souffle : nager en eau profonde~~ — **faite pour la baie de Thaïlande, 08b78b5** (Eugène : « nage en eau
+  profonde ») : avec `state.souffle`, `thailande.js` fait de la mer un sol (`solNage`, les épaules hors de l'eau ;
+  du bord, on marche sur le fond). **Reste** : la même règle dans `monde.js` pour les autres mondes de mer
+  (Gallipoli), et un clip de nage (Camille nage avec l'animation de la marche).
