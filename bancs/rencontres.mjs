@@ -38,7 +38,7 @@ const ETIQ = process.env.TLOC_ETIQUETTE || 'essai';
 const PRES = 30, LOIN = 40;
 const ARENE = process.env.TLOC_ARENE || 'lille', MODE = process.env.TLOC_MODE || 'libre';
 // la page de chaque arène (= C.ARENES, tloc-compte.js)
-const PAGE = { lille: 'index.html', gardeguerin: 'garde-guerin.html', pouget: 'pouget.html', batut: 'batut.html', panyi: 'thailande.html', gallipoli: 'gallipoli.html', alberobello: 'alberobello.html', matera: 'matera.html', estaminet: 'tavern.html' }[ARENE];
+const PAGE = { lille: 'index.html', gardeguerin: 'garde-guerin.html', pouget: 'pouget.html', batut: 'batut.html', panyi: 'thailande.html', gallipoli: 'gallipoli.html', alberobello: 'alberobello.html', matera: 'matera.html', estaminet: 'tavern.html', roquette: 'aveyron.html' }[ARENE];
 
 async function api(chemin, corps, jeton) {
   const r = await fetch(ORIGINE + chemin, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(jeton ? { Authorization: 'Bearer ' + jeton } : {}) }, body: JSON.stringify(corps || {}) });

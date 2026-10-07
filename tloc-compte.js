@@ -237,6 +237,7 @@ export const ARENES = {
   gallipoli: { vignette: 'vignettes/arene-gallipoli.jpg', pastilles: ['vieille ville'], nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
   alberobello: { vignette: 'vignettes/arene-alberobello.jpg', pastilles: ['quartier'], nom: 'Alberobello', page: 'alberobello.html', dit: 'le Rione Monti : des ruelles en pente entre les trulli, cônes de pierre et murs blancs' },
   estaminet: { vignette: 'vignettes/arene-estaminet.jpg', pastilles: ['salle', '4 au plus'], nom: 'L’estaminet', page: 'tavern.html', dit: 'la bagarre de taverne, quatre au plus : le zinc, les tables, l’âtre' },
+  roquette: { vignette: 'vignettes/arene-roquette.jpg', pastilles: ['maison', '6 au plus'], nom: 'La maison du Batut', page: 'aveyron.html', dit: 'la vraie maison des Roquette, au bord du lac : ses pièces, son étage, sa cour' },
   matera: { vignette: 'vignettes/arene-matera.jpg', pastilles: ['gradins'], nom: 'Matera', page: 'matera.html', dit: 'les Sassi en gradins : des maisons sur les toits des autres, des ruelles en escalier' },
 };
 export const pageArene = (id) => (ARENES[id] || ARENES.lille).page;

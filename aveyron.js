@@ -1816,6 +1816,9 @@ function noter2(cle) {
 // les places que l'acte garde libres (l'enclos, la forge, la faille, le puits) : arbres() et les
 // affleurements de sol() les évitent — un rocher s'était posé dans le puits de Perpignou
 const RESERVES = [];
+// En instance du multi (l'arène de la maison du Batut, en fin de fichier), l'acte II ne joue pas :
+// ni ses gens, ni ses cavaliers, ni ses quêtes — la même lecture que la page (7 octobre, C8)
+const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
 const A2 = { aFaire: [], salle: null, sur: null, gardeT: 0, pret: false, gens: {}, ctx: null, eaux: [], barrage: null };
 
 // Le carnet du journal (J) : chaque indice en gras s'y écrit, et se barre quand il a servi
@@ -2735,8 +2738,7 @@ monde({
     troupeaux(ctx);       // le modèle se charge en tâche de fond : les brebis arrivent après
     bourg(ctx);
     source(ctx);
-    habitants(ctx);
-    acte2(ctx);
+    if (!EN_INSTANCE) { habitants(ctx); acte2(ctx); }
     t = duree('le reste (bourg, gens, sécheresse)', t);
     arbres(ctx); t = duree('arbres', t);
     sol(ctx); duree('sol', t);
@@ -2753,7 +2755,44 @@ monde({
       if (ici) { G.camMaxY = ici.plafond - 0.3; G.camBack = 3.6; G.camUp = 1.9; camDedans = true; }
       else if (camDedans) { G.camMaxY = Infinity; G.camBack = 7; G.camUp = 3.4; camDedans = false; } }
     for (const m of chevaux) m.update(dt);
-    animeActe2(dt);
+    if (!EN_INSTANCE) animeActe2(dt);
     for (const g of gens) if (g.userData.ctrl) PNJ.animeVillageois(g, dt, false);
   },
-});
+}).then(() => { if (G.level && G.level.name === 'aveyron') G.level.arenes = [ARENE_ROQUETTE]; });
+
+// L'ARÈNE du multi (7 octobre, C8 ; cf. ARENE_BATUT de batut.js, d'où vient l'idée) : la vraie maison
+// du Batut, au bord du lac — son rez-de-chaussée, son étage, sa cour et son domaine. Relevée en
+// marchant aux règles du moteur (bancs/multi-sonde.mjs) : 1,5 ha à moins de 70 m, la maison atteinte
+// en (−132, 166). Six au plus (ARENES_MAX, app.py) : trois contre trois. Ceux de la maison partent de
+// dedans, ceux du lac de la rive ; on s'y cache comme au Batut des arènes. En instance, rien de l'acte II.
+const ARENE_ROQUETTE = {
+  id: 'roquette', nom: 'La maison du Batut, au bord du lac',
+  sd: (x, z) => Math.hypot(x + 135, z - 170), centre: [-135, 170],
+  depart: { x: -132, z: 166 },
+  aires: [
+    { id: 'domaine', nom: 'le domaine du Batut', r: 45, couleur: '#e8d8a8', lueur: 0xffe0a0, eparpille: 22 },
+    { id: 'maison', nom: 'la maison et sa cour', r: 14, couleur: '#ff9a70', lueur: 0xff6a3a, eparpille: 6 },
+  ],
+  camps: {
+    garnison: { nom: 'Ceux de la maison', court: 'Maison', pluriel: true },
+    bourg: { nom: 'Ceux du lac', court: 'Lac', pluriel: true },
+  },
+  campsTexte: 'Ceux de la maison, qui la tiennent, contre ceux du lac, qui montent de la rive.',
+  departsCamps: { garnison: [-132, 166], bourg: [-135, 140] },
+  dispersion: 3,
+  objets: [
+    { id: 'armure-maison', type: 'armure', x: -132, z: 166, nom: 'dans la maison' },
+    { id: 'armure-lac', type: 'armure', x: -135, z: 140, nom: 'du côté du lac' },
+    { id: 'arc-nord', type: 'arc', x: -150, z: 190, nom: 'derrière la maison' },
+    { id: 'arc-est', type: 'arc', x: -110, z: 150, nom: 'à l’est du domaine' },
+    { id: 'bouclier', type: 'bouclier', x: -160, z: 150, nom: 'à l’ouest du domaine' },
+  ],
+  pointsForts: () => [
+    { id: 'maison', nom: 'la maison du Batut', x: -132, z: 166 },
+    { id: 'rive', nom: 'la rive', x: -135, z: 140 },
+    { id: 'derriere', nom: 'derrière la maison', x: -150, z: 190 },
+    { id: 'est', nom: 'l’est du domaine', x: -110, z: 150 },
+    { id: 'ouest', nom: 'l’ouest du domaine', x: -160, z: 150 },
+    { id: 'nord', nom: 'le haut du domaine', x: -113, z: 197 },
+  ],
+};

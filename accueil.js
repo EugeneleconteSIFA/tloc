@@ -594,7 +594,7 @@ const areneChoisie = () => (document.querySelector('input[name="areneInstance"]:
       `<label class="arene-carte"><input type="radio" name="areneInstance" value="${id}"${k ? '' : ' checked'}>`
       + `<span class="arene-corps"><img class="arene-vue" src="${a.vignette}" alt="" loading="lazy" width="640" height="360">`
       + `<b>${ECH(a.nom)}</b><small>${ECH(a.dit)}.</small>`
-      + `<span class="arene-pastilles">${(a.pastilles || []).map((p, i) => `<i${p === '4 au plus' ? ' class="borne"' : ''}>${ECH(p)}</i>`).join('')}</span></span></label>`).join(''));
+      + `<span class="arene-pastilles">${(a.pastilles || []).map((p, i) => `<i${/au plus$/.test(p) ? ' class="borne"' : ''}>${ECH(p)}</i>`).join('')}</span></span></label>`).join(''));
   }
 }
 let nbVies = 1;

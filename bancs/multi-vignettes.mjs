@@ -16,7 +16,7 @@ fs.mkdirSync(SORTIE, { recursive: true });
 const ARENES = {
   lille: ['index.html', [[230, 150, 260], [0, 0, -10]]], gardeguerin: ['garde-guerin.html'], pouget: ['pouget.html'],
   batut: ['batut.html', [[0, 34, 70], [0, 0, 0]]], panyi: ['thailande.html'], gallipoli: ['gallipoli.html'],
-  alberobello: ['alberobello.html'], matera: ['matera.html'], estaminet: ['tavern.html', [[4.6, 2.9, 3.6], [-2.2, 1.0, -1.6]]],
+  roquette: ['aveyron.html', [[-78, 58, 228], [-133, 12, 166]]], alberobello: ['alberobello.html'], matera: ['matera.html'], estaminet: ['tavern.html', [[4.6, 2.9, 3.6], [-2.2, 1.0, -1.6]]],
 };
 const voulues = (process.argv[2] || Object.keys(ARENES).join(',')).split(',');
 const b = await chromium.launch({ channel: 'chrome', headless: true, args: [`--use-angle=${process.platform === 'darwin' ? 'metal' : 'd3d11'}`, '--enable-gpu', '--ignore-gpu-blocklist'] });

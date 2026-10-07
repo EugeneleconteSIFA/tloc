@@ -60,7 +60,7 @@ ARENES_FETE = {"lille"}         # la fête fauche l'herbe de Lille : ailleurs, r
 ARENES_BANNIERES = {"lille", "gardeguerin", "pouget", "batut"}
 # les arènes trop petites pour douze : l'estaminet (une salle de 11 × 9 m) se joue à quatre au plus,
 # bots compris — les places des humains et le nombre de bots y sont bornés
-ARENES_MAX = {"estaminet": 4}
+ARENES_MAX = {"estaminet": 4, "roquette": 6}
 BANNIERE_RETOUR = int(os.environ.get("TLOC_BANNIERE_RETOUR", 30))   # une bannière tombée rentre seule (s)
 BANNIERE_POINTS = 3             # rapporter la bannière adverse vaut trois mises à terre
 # En balade par équipes, il n'y a pas de manche : le premier camp à VICTOIRE_BALADE points
@@ -1039,7 +1039,7 @@ class NouvelleInstance(BaseModel):
     duree: int = Field(default=180, ge=60, le=900)
     # les arènes prêtes (déclarées par leur lieu, cf. `arenes` dans game.js) ; en ajouter une,
     # c'est l'ajouter ici et dans ARENES (tloc-compte.js)
-    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut|panyi|gallipoli|alberobello|matera|estaminet)$")
+    arene: str = Field(default="lille", pattern="^(lille|gardeguerin|pouget|batut|panyi|gallipoli|alberobello|matera|estaminet|roquette)$")
 
 
 def vue_instance(r: sqlite3.Row, pseudo_hote: str) -> dict:

@@ -2790,3 +2790,8 @@ Le détail : `docs/NOTE-MULTI.md`, les trois dernières sections.
   profonde ») : avec `state.souffle`, `thailande.js` fait de la mer un sol (`solNage`, les épaules hors de l'eau ;
   du bord, on marche sur le fond). **Reste** : la même règle dans `monde.js` pour les autres mondes de mer
   (Gallipoli), et un clip de nage (Camille nage avec l'animation de la marche).
+
+#### Pour C1 (acte II) — `aveyron.js` touché par C8 (7 octobre, à la demande d'Eugène)
+L'arène du multi « La maison du Batut, au bord du lac » (`ARENE_ROQUETTE`, en fin de fichier) et une garde :
+en instance (`EN_INSTANCE`, lu dans `tloc_instance`), `habitants` et `acte2` ne sont pas appelés, ni
+`animeActe2`. En solo, rien ne change (`acte2-temoins.mjs` réussi). `aveyron.html` charge le multi en instance.

@@ -713,3 +713,13 @@ Le bouton radio reste sous la carte (clavier, lecteurs d'écran). Les styles son
 (`tloc-portail.css` n'est pas à C8) : l'étape a une hauteur libre, la hauteur fixe des étapes la faisait
 déborder sur le mode de jeu. Banc `bancs/multi-accueil.mjs` : neuf cartes, neuf vignettes chargées, un clic
 choisit l'arène, en largeur d'ordinateur et de téléphone.
+
+### La maison du Batut de l'Aveyron, en arène (7 octobre, C8, à la demande d'Eugène)
+
+La vraie maison des Roquette au bord du lac (aveyron.js, `ARENE_ROQUETTE`, id `roquette`) : le domaine
+(45 m), puis la maison et sa cour (14 m) ; ceux de la maison (départ dedans) contre ceux du lac (départ sur
+la rive). Six au plus (`ARENES_MAX`). Relevée par la sonde (1,5 ha à moins de 70 m, la maison atteinte en
+(−132 ; 166)). **En instance, l'acte II ne joue pas** (`EN_INSTANCE`, aveyron.js : ni `habitants` — les
+cavaliers —, ni `acte2`, ni son animation). Passe aux quatre règles : aucune pageerror, 5 objets, camps
+nommés, un drapeau, 6 à 10 rencontres en 40 s ; `acte2-temoins.mjs` (le solo) réussi. À refaire : la
+vignette (la maison y est petite, sous les arbres).
