@@ -723,3 +723,21 @@ la rive). Six au plus (`ARENES_MAX`). Relevée par la sonde (1,5 ha à moins de 
 cavaliers —, ni `acte2`, ni son animation). Passe aux quatre règles : aucune pageerror, 5 objets, camps
 nommés, un drapeau, 6 à 10 rencontres en 40 s ; `acte2-temoins.mjs` (le solo) réussi. La vignette se cadre sur
 la façade (vue 'facade', bancs/multi-vignettes.mjs : de haut, la maison disparaissait sous les arbres).
+
+### Un bot qui poursuit derrière des portes fermées (7 octobre, C8)
+
+Banc `bancs/multi-porte-bot.mjs` : au Batut, un joueur posté, invulnérable, dans la grande chambre de
+l'étage ; un bot vétéran ; des passes portes ouvertes, puis les 30 portes fermées. `TLOC_FERMEES=1` ne joue
+que les fermées ; `TLOC_SONDE=1` relève toutes les 10 s la position du bot, la porte fermée la plus proche, et
+son état (cible, chasse, chemin du graphe, but).
+- **Trouvé par la sonde** : derrière des portes fermées, aucun point du graphe ne « voyait » la cible, le
+  chemin manquait et le bot filait tout droit jusqu'au bassin, où il restait collé (la traque réécrivait à
+  chaque image la destination de rechange du bot coincé) ; et, en poursuite, le chemin refait toutes les 2 s
+  depuis le point le plus proche le ramenait à l'étape 0 : il oscillait devant la façade.
+- **Corrigé** : le chemin se cherche comme si les portes étaient ouvertes (`G.level.sansPortes`, batut.js) —
+  le bot les ouvre devant elles ; le chemin en cours est gardé tant que la cible ne change pas de point du
+  graphe ; un bot coincé garde sa destination de rechange 3 s.
+- **Mesuré** : avant, portes fermées 6/8 au contact (ouvertes 8/8) ; après, fermées 16/21 (7 à 25 s), ouvertes
+  14/15 (7 à 38 s). Le bot rouvre une porte par poursuite.
+- **Défaut connu, à traiter à part** : il reste des poursuites où le bot n'arrive pas en 120 s — aussi portes
+  ouvertes (1 sur 5 au dernier passage), plus souvent portes fermées. La sonde est prête pour le chercher.

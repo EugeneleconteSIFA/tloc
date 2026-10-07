@@ -2255,10 +2255,19 @@ function suivreGraphe(b, c, dt, now) {
     if (b.vu || Math.hypot(c.x - b.pos.x, c.z - b.pos.z) < 3) { b.chemin = null; return false; }
   }
   if (!b.chemin || now > b.chemin.refait) {
-    const s = noeudVu(Gr, b.pos.x, b.pos.z, b.pos.y), t = noeudVu(Gr, c.x, c.z, cy);
-    const ch = s >= 0 && t >= 0 ? cheminGraphe(Gr, s, t) : null;
-    if (!ch) { b.chemin = null; return false; }
-    b.chemin = { pts: ch.map((i) => Gr.n[i]), k: 0, refait: now + 2000, coince: 0, dPrec: Infinity };
+    // Le chemin se cherche comme si les portes du lieu étaient ouvertes (G.level.sansPortes, le
+    // Batut) : le bot les ouvre en arrivant devant. Derrière des portes fermées, aucun point du graphe
+    // ne « voyait » la cible, le chemin manquait, et le bot filait tout droit jusqu'au bassin (7 octobre).
+    const chercher = () => [noeudVu(Gr, b.pos.x, b.pos.z, b.pos.y), noeudVu(Gr, c.x, c.z, cy)];
+    const [s, t] = G.level && G.level.sansPortes ? G.level.sansPortes(chercher) : chercher();
+    // la cible n'a pas changé de point du graphe : on garde le chemin en cours — le refaire depuis
+    // le point le plus proche ramenait le bot à l'étape 0, et il oscillait devant une façade
+    if (b.chemin && t === b.chemin.t && t >= 0) b.chemin.refait = now + 2000;
+    else {
+      const ch = s >= 0 && t >= 0 ? cheminGraphe(Gr, s, t) : null;
+      if (!ch) { b.chemin = null; return false; }
+      b.chemin = { pts: ch.map((i) => Gr.n[i]), k: 0, t, refait: now + 2000, coince: 0, dPrec: Infinity };
+    }
   }
   const C = b.chemin;
   let q = C.pts[C.k];
@@ -2657,7 +2666,9 @@ function penserBot(b, dt, now) {
   // personne en vue : on se refait une santé, et on se promène (ou on chasse)
   if ((b.calme += dt) > 5 && b.hp < b.mx && regle === 'balade') { b.hp = Math.min(b.mx, b.hp + 1); b.calme = 3; }
   const traque = b.chasse && ennemis.find((e) => e.id === b.chasse);
-  if (traque) b.but = { x: traque.x, z: traque.z };
+  // coincé il y a peu : la destination de rechange tient trois secondes (la traque la réécrivait à
+  // chaque image, et le bot restait collé au bassin du Batut)
+  if (traque && !(b.repitT > now)) b.but = { x: traque.x, z: traque.z };
   if (!b.but || Math.hypot(b.but.x - b.pos.x, b.but.z - b.pos.z) < 2.5) {
     b.but = butAuHasard(b);
     const Gr = arene && (arene.graphe || grapheAuto());
@@ -2666,7 +2677,7 @@ function penserBot(b, dt, now) {
   const avant = b.pos.clone();
   avancer(b, b.but.x - b.pos.x, b.but.z - b.pos.z, P.vitesse * (traque ? 1 : 0.6), dt);
   // coincé contre un mur : autre destination
-  if (avant.distanceTo(b.pos) < P.vitesse * 0.6 * dt * 0.2) { if ((b.coince += dt) > 1) { b.but = butAuHasard(b); b.coince = 0; } }
+  if (avant.distanceTo(b.pos) < P.vitesse * 0.6 * dt * 0.2) { if ((b.coince += dt) > 1) { b.but = butAuHasard(b); b.coince = 0; b.repitT = now + 3000; } }
   else b.coince = 0;
 }
 

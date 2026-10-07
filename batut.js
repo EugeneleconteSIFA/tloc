@@ -631,7 +631,10 @@ const level = {
   build, populate, animate, minimap, arenes: [ARENE_BATUT],
   // les portes (tloc-multi.js) : ce que le salon dit, et celles qu'un bot doit ouvrir
   porte: (id, o) => { const d = PORTES.find((p) => p.id === id); if (d && d.ouverte !== !!o) poserPorte(d, !!o); },
-  portesFermees: () => PORTES.filter((p) => !p.ouverte),   // son graphe (GRAPHE) est rempli au build
+  portesFermees: () => PORTES.filter((p) => !p.ouverte),
+  // le temps d'un calcul (le chemin d'un bot, tloc-multi.js), les portes fermées ne comptent pas :
+  // le bot les ouvrira en arrivant devant
+  sansPortes: (fn) => { const f = PORTES.filter((p) => !p.ouverte); for (const p of f) p.c.r = 0; try { return fn(); } finally { for (const p of f) p.c.r = p.R; } },   // son graphe (GRAPHE) est rempli au build
   counts: () => '<small>Le Batut et Beauregard — deux maisons, un jardin entre les deux.</small>',
   start: () => showMessage('Le Batut à l’ouest, Beauregard à l’est. Le jardin entre les deux.', 5),
   arriveMessage: () => 'Le Batut et Beauregard.',
