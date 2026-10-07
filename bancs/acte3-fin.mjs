@@ -59,10 +59,13 @@ verifier('le souffle et la cloche', await dans(() => TLOC.state.souffle === true
 verifier('la fête des barques tourne', await dans(() => { const F = window.__acte3.FETE; return !!(F.c && F.barques.length === 5); }));
 
 // 3 bis. le souffle : du ponton de Somsak, on entre dans la mer et l'on nage
-{ const r = await dans(() => { const T = TLOC, p = T.player.pos; p.set(118, T.getH(118, 7.5), 7.5);
-    for (let k = 0; k < 60; k++) T.tryMove(p, 0.4, 0.05, 0.5, false);
-    p.y = T.getH(p.x, p.z); return [+p.x.toFixed(1), +p.y.toFixed(2), +p.z.toFixed(1)]; });
-  verifier('avec le souffle, on nage en eau profonde', r[0] > 135 && r[1] < -0.5, JSON.stringify(r)); }
+// (les maisons sur pilotis sont posées au hasard à chaque chargement : on essaie plusieurs caps vers le large)
+{ const r = await dans(() => { const T = TLOC, p = T.player.pos; let best = null;
+    for (const a of [0, -0.4, 0.4, -0.8, 0.8]) { p.set(118, T.getH(118, 7.5), 7.5);
+      for (let k = 0; k < 60; k++) T.tryMove(p, Math.cos(a) * 0.4, Math.sin(a) * 0.4, 0.5, false);
+      p.y = T.getH(p.x, p.z); if (!best || p.x > best[0]) best = [+p.x.toFixed(1), +p.y.toFixed(2), +p.z.toFixed(1)]; }
+    return best; });
+  verifier('avec le souffle, on nage en eau profonde', Math.hypot(r[0] - 118, r[2] - 7.5) > 15 && r[1] < -0.5, JSON.stringify(r)); }
 await filmer(page, nom('nage'), [126, 4, 18], [140, 0, 8], { camille: true });
 
 // 4. rechargée : la cloche devant la porte, la fête au large

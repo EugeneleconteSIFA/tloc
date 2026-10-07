@@ -140,15 +140,35 @@ export async function monde(f) {
     for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gz = Math.floor(z0 / 20); gz <= Math.floor(z1 / 20); gz++) {
       const k = gx + ',' + gz; if (!GRILLE.has(k)) GRILLE.set(k, []); GRILLE.get(k).push(i); }
   }
+  // LE SOUFFLE DU YAK (acte III ; Eugène, 7 octobre : « la nage pour Gallipoli ») : avec lui, la mer
+  // n'arrête plus Camille, elle y nage, les épaules hors de l'eau. La surface est celle du plan d'eau
+  // (MER), que la marée des Pouilles monte et descend ; près du bord, on marche sur le fond. Hors
+  // d'une instance du multi, qui a ses propres règles.
+  const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
+  let nageDite = false;
+  const dire = () => { if (!nageDite) { nageDite = true; setTimeout(() => showMessage('Le souffle du Yak : l’eau profonde ne te retient plus. Tu nages.', 4), 0); } };
+  function nage(x, z) {
+    if (EN_INSTANCE || !state.souffle) return null;
+    // l'eau profonde d'un lac se nage aussi, à son niveau à lui (à Ko Panyi, une eau du relevé en est un)
+    for (const l of LACS) { const i = Math.floor((x - l.x0) / 4), j = Math.floor((z - l.z0) / 4);
+      if (i >= 0 && j >= 0 && i < l.nx && j < l.nz && l.profond[j * l.nx + i]) { dire(); return l.mesh.position.y - 0.9; } }
+    if (f.mer == null) return null;
+    const s = MER ? MER.position.y : f.mer - H0 + 0.05, h = hauteur(x, z);
+    if (h >= s + 0.15) return null;
+    if (h > s - 0.3) return h;                     // le bord : on marche sur le fond
+    // au-delà, on nage, quel que soit le fond (à Gallipoli, le relevé met la mer à moins d'un mètre)
+    dire(); return s - 0.9;
+  }
   function bloque(x, z, r = 0.4, y = null) {
     if (x < CADRE.x0 || x > CADRE.x1 || z < CADRE.z0 || z > CADRE.z1) return true;
+    // (avec le souffle, l'eau d'un lac ne bloque plus : on y nage, cf. nage())
     // l'eau profonde d'un lac — pour qui est à sa hauteur (y inconnu : on la compte, c'est le cas des
     // placements) ; un lieu peut bâtir au-dessus (les caves de l'Aveyron, à 600 m)
-    for (const l of LACS) { if (y != null && y > l.mesh.position.y + 4) continue; const i = Math.floor((x - l.x0) / 4), j = Math.floor((z - l.z0) / 4);
+    for (const l of LACS) { if ((y != null && y > l.mesh.position.y + 4) || (state.souffle && !EN_INSTANCE)) continue; const i = Math.floor((x - l.x0) / 4), j = Math.floor((z - l.z0) / 4);
       if (i >= 0 && j >= 0 && i < l.nx && j < l.nz && l.profond[j * l.nx + i]) return true; }
     if (f.bloqueLieu && f.bloqueLieu(x, z, r)) return true;
     // la mer — sauf là où le lieu pose un sol à lui (les barques du marché flottant de Ko Panyi)
-    if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2 && !(f.solLieu && f.solLieu(x, z) != null)) return true;
+    if (f.mer != null && hauteur(x, z) < f.mer - H0 + 0.2 && !(f.solLieu && f.solLieu(x, z) != null) && nage(x, z) == null) return true;
     for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
       const l = GRILLE.get(Math.floor((x + dx) / 20) + ',' + Math.floor((z + dz) / 20)); if (!l) continue;
       for (const i of l) if (dansPoly(x + dx, z + dz, B[i].pts)) return true;
@@ -355,7 +375,7 @@ export async function monde(f) {
     return f.titre;
   }
   const level = {
-    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: f.solLieu ? (x, z) => { const s = f.solLieu(x, z); return s != null ? s : hauteur(x, z); } : hauteur, blocked: (x, z, r, vole, y) => bloque(x, z, r, y), zoneName: zone,
+    name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: (x, z) => { const s = f.solLieu ? f.solLieu(x, z) : null; if (s != null) return s; const n = nage(x, z); return n != null ? n : hauteur(x, z); }, blocked: (x, z, r, vole, y) => bloque(x, z, r, y), zoneName: zone,
     build, populate, animate, minimap,
     get mer() { return MER; },
     get lacs() { return LACS; },

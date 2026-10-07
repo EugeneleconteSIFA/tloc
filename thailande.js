@@ -646,17 +646,6 @@ function departCourse() {
 const avantDe = (rot) => [-Math.sin(rot), -Math.cos(rot)];       // la proue regarde vers −z local
 // le pont de la barque de Camille, pendant la course : un sol pour le moteur (solLieu), sinon il la
 // croit en chute au-dessus de l'eau et lui donne la pose de la chute
-// LE SOUFFLE DU YAK (Eugène, 6 octobre : « nage en eau profonde ») : la mer, que monde.js bloque,
-// devient un sol où Camille nage, les épaules hors de l'eau (la surface est à 0). Hors d'une
-// instance seulement. Les autres mondes de mer (Gallipoli) l'auront par monde.js.
-const NAGE_Y = -0.85;
-function solNage(x, z) {
-  // monde.js bloque la mer dès que le fond passe sous 0,2 m : du bord jusque-là, on marche sur le fond
-  const h = EN_INSTANCE || !state.souffle || !HAUT ? 1 : HAUT(x, z);
-  if (h >= 0.2) return null;
-  if (h < NAGE_Y && !A3.nageDit) { A3.nageDit = true; setTimeout(() => showMessage('Le souffle du Yak : l’eau profonde ne te retient plus. Tu nages.', 4), 0); }
-  return Math.max(h, NAGE_Y);
-}
 function solCourse(x, z) {
   if (!COURSE.actif || !COURSE.moi) return null;
   const m = COURSE.moi, [fx, fz] = avantDe(m.rot), dx = x - m.x, dz = z - m.z, long = dx * fx + dz * fz, trav = dx * fz - dz * fx;
@@ -1730,7 +1719,7 @@ monde({
   counts: 'La baie des pitons : Ko Panyi et son village sur pilotis, Khao Phing Kan, Railay, Phi Phi, et le grand piton du temple. Les passeurs attendent aux pontons.',
   start: 'La pluie ne tombe pas. Elle est là, en l’air, goutte par goutte. Seule la mer bouge encore.',
   entry: { title: 'La baie des pitons', sub: 'La Cloche des Îles — Thaïlande', cam: [700, 260, 900], at: [0, 20, 0], cam2: [180, 30, 80], at2: [40, 10, -40], dur: 6 },
-  toitSur: toitThai, solLieu: (x, z) => solMarche(x, z) ?? solEscalier(x, z) ?? solCourse(x, z) ?? solNage(x, z),
+  toitSur: toitThai, solLieu: (x, z) => solMarche(x, z) ?? solEscalier(x, z) ?? solCourse(x, z),      // la nage (le souffle du Yak) est dans monde.js, pour tous les mondes de mer
   // les endroits qui comptent, pour la minicarte et les lieux découverts (la forme commune à tous
   // les mondes, lue par monde.js) — type : 'lieu' | 'pnj' | 'quete' | 'passage'
   reperes: [
