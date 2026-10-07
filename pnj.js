@@ -1246,7 +1246,9 @@ export function animeCamille(m, p, dt, ctx) {
   // elle, suit le joueur — ou glisse vers la position annoncée, pour un avatar distant)
   // dans l'eau profonde (le niveau le dit : nageIci, monde.js), la nage ; le pivot remonte le corps
   // couché de la brasse à fleur d'eau (le sol de la nage est 0,9 m sous la surface)
-  const L = MOTEUR && MOTEUR.G.level, nage = !!(L && L.nageIci && L.nageIci(p.pos.x, p.pos.z));
+  // (le faux joueur que tloc-multi.js passe pour les avatars des autres n'a pas de `pos` : leur place,
+  // c'est celle du personnage même — sans cette garde, une pageerror à chaque image en instance, passe D2)
+  const ici = p.pos || m.position, L = MOTEUR && MOTEUR.G.level, nage = !!(L && L.nageIci && ici && L.nageIci(ici.x, ici.z));
   if (ud.pivot) ud.pivot.position.y = ctx.monte ? (ctx.selle || 0) / (m.scale.y || 1) : nage ? ((walking || running) ? NAGE_PIVOT : NAGE_PIVOT_SURPLACE) / (m.scale.y || 1) : 0;
   if (pose) a.jouer({ lie: CLIP.couche, kneel: CLIP.genou, sit: CLIP.assis, cheer: CLIP.joie }[pose] || CLIP.repos, 0.3);
   else if (ctx.monte && p.attackT < 0) a.jouer(CLIP.assis, 0.25);

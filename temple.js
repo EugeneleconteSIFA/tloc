@@ -647,6 +647,7 @@ const VERS_PROPHETIE = [
   [() => state.acte2 === 'pluie', 'Une gardienne sonnera les cloches,', 'et chaque cloche le servira.'],
   [() => state.clocheIles === true, 'Chaque géant donnera ce qu’il est,', 'et ne le reprendra pas.'],
   [() => state.acte4 === 'heures' || state.acte4 === 'temple', 'Chaque heure sauvée coûtera des années,', 'et nul ne les rendra.'],
+  [() => state.acte5 === 'course', 'Toutes les heures seront mêlées,', 'et la dernière sera la sienne.'],
 ];
 function graverProphetie() {
   const P = PROPHETIE.plaque; if (!P) return;
@@ -710,6 +711,36 @@ function midiScene() {
   ], () => { state.midiVu = true; saveGame(true); });
 }
 
+// LE RETOUR DE L'ACTE V (passe D2, 7 octobre ; DECISIONS-RECIT.md § 3, « après la Lozère » ; SCENARIO.md
+// § 14, la fin) : le loup endormi sous la montagne (state.acte5 === 'course', lozere.js), la Cloche des
+// Troupeaux pend au quatrième étage ; toutes les cloches se balancent seules, très peu ; on entend les
+// sonnailles, toutes ensemble. Le mage, pâle : il ne manque plus que la Grande Cloche. Le cinquième vers
+// sur la plaque. Une fois (state.troupeauxVu) ; `state.acte5` reste à « course » (lozere.js le lit).
+let troupeauxPosees = false, troupeauxFaite = false, sonnT = 0;
+const troupeauxSonne = () => state.acte5 === 'course';
+function troupeauxPoser() {
+  const i = PORTES.findIndex((P) => P.geant === 'loup');
+  if (i < 0 || ouverts().has('loup')) return;                // (l'aperçu ?mondes=tous l'a déjà fait)
+  deborder(i, 'loup'); silhouette(i, 'loup'); pendreCloche(i, 'loup');
+}
+function troupeauxScene() {
+  if (troupeauxFaite || state.troupeauxVu || !troupeauxSonne() || !state.running || state.paused) return;
+  troupeauxFaite = true;
+  if (!finPosee) { finPosee = true; finActeIPoser(); }          // le mage, même sans la fin de l'acte I vue
+  const haut = { cam: [9, 9, R_COUR - 1], at: [0, 40, 0] }, am = 0.55, mx = Math.sin(am) * (R_TOUR + 3.2), mz = Math.cos(am) * (R_TOUR + 3.2);
+  const mage = { cam: [mx - 4.5, 2.6, mz + 7], at: [mx, 1.5, mz] }, px = Math.sin(am) * (R_TOUR + 0.75), pz = Math.cos(am) * (R_TOUR + 0.75), mur = { cam: [px - 1.6, 2.1, pz + 4.2], at: [px, 1.9, pz] };
+  cutscene([
+    { ...haut, who: '', say: 'Au quatrième étage de la tour, la Cloche des Troupeaux pend à son crochet. Toutes les cloches se balancent, très peu, toutes seules.', fn: () => { PNJ_E.SFX.cloche && PNJ_E.SFX.cloche(); } },
+    { ...haut, who: '', say: 'On entend des sonnailles, toutes ensemble, comme un troupeau qui passe très loin.', fn: sonnailles },
+    { ...mur, who: 'Le mur', say: 'Sous les autres vers, un cinquième : « Toutes les heures seront mêlées, et la dernière sera la sienne. »' },
+    // (SCENARIO.md § 14, la fin de l'acte V : les mots du mage, tels quels)
+    { ...mage, who: 'Le vieux mage', say: '(pâle) « Il ne manque plus que la Grande Cloche de Lille. Qu’on la refonde, et elle sonnera avec les autres — et Phinaert aura ce qu’il veut. »' },
+    { ...mage, who: 'Le vieux mage', say: '« Qu’on ne la refonde pas, et Phinaert ne pourra jamais être enfermé. »' },
+  ], () => { state.troupeauxVu = true; saveGame(true); });
+}
+// les sonnailles, toutes ensemble : trois grelots décalés (le son des écus, le plus proche), de temps en temps
+function sonnailles() { [0, 140, 330, 520].forEach((t) => setTimeout(() => PNJ_E.SFX.piece && PNJ_E.SFX.piece(), t)); }
+
 // LE RETOUR DE L'ACTE III (6 octobre ; DECISIONS-RECIT.md § 3, « après la Thaïlande » ; SCENARIO.md
 // § 12, la fin) : la Cloche des Îles rapportée de la baie (state.clocheIles, thailande.js), elle pend
 // au deuxième étage ; des rigoles autour du pied de la tour, dont l'eau coule vers le HAUT ; la pluie,
@@ -768,10 +799,13 @@ function animate(now, dt) {
   heuresScene();                                                                                     // le retour de l'acte IV, une fois
   if (!ilesPosees && state.running && ilesSonnees()) { ilesPosees = true; ilesPoser(); }
   ilesScene();                                                                                       // le retour de l'acte III, une fois
+  if (!troupeauxPosees && state.running && troupeauxSonne()) { troupeauxPosees = true; troupeauxPoser(); }
+  troupeauxScene();                                                                                  // le retour de l'acte V, une fois
+  if (state.troupeauxVu && state.running && (sonnT += dt) > 9) { sonnT = 0; sonnailles(); }          // les sonnailles, de loin en loin
   for (const t of RIGOLES) t.offset.y -= dt * 0.8;                                                  // l'eau des rigoles monte
   // le tic-tac du cadran, une fois les Heures pendues
   if (BOUGE.aiguille && state.running && (ticT += dt) > 1) { ticT = 0; PNJ_E.SFX.step(); }
-  const t = now / 1000, troupeaux = ouverts().has('loup');
+  const t = now / 1000, troupeaux = ouverts().has('loup') || troupeauxSonne();
   for (const c of BOUGE.cloches) c.g.rotation.z = troupeaux ? Math.sin(t * 0.9 + c.ph) * 0.05 : 0;   // les cloches se balancent seules, très peu
   if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite
   if (BOUGE.passeur) PNJ.animeVillageois(BOUGE.passeur, dt, false);

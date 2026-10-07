@@ -2347,7 +2347,7 @@ function majAide() {
   const P = state.poche && Array.isArray(state.poche.objets) ? state.poche.objets : [];
   const gaufres = P.some((o) => o && o.id === 'gaufre' && o.n > 0);
   // à cheval (G.monte, tloc-multi.js) : on saute (le cheval aussi), on ne roule pas — l'aide ne promet que ce qui marche
-  const l = [['Z Q S D', G.monte ? 'mener le cheval' : 'se déplacer'], ['Souris', 'regarder'], ['Z + S', G.monte ? 'galoper' : 'courir']];
+  const l = [['Z Q S D', G.monte ? 'mener le cheval' : 'se déplacer'], ['Souris', 'regarder'], ['Z + S', G.monte ? 'galoper' : state.course && !EN_INSTANCE_MOTEUR ? 'courir (la course du loup)' : 'courir']];
   l.push(['Espace', G.monte ? 'sauter l’obstacle' : state.elan ? 'sauter (en courant : le grand saut)' : 'sauter']);
   if (state.sword || (state.bow && G.bowOut)) l.push(['Clic G · F', state.bow && G.bowOut ? 'tirer' : 'frapper, faucher']);
   if (G.bouclier) l.push(['Clic D', 'lever le bouclier']);
@@ -2906,6 +2906,8 @@ function suivreColimacon(dt) {
   }
   p.helix = h; p.helixA = a;
 }
+// une instance du multi (tloc_instance, posée par l'accueil) : les dons du solo n'y jouent pas (la course)
+const EN_INSTANCE_MOTEUR = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
 export function updatePlayer(dt) {
   const p = player;
   p.invuln = Math.max(0, p.invuln - dt); p.attackCd = Math.max(0, p.attackCd - dt); p.rollCd = Math.max(0, p.rollCd - dt);
@@ -3014,6 +3016,10 @@ export function updatePlayer(dt) {
   let speed = p.walkTo ? (p.walkSpeed || 4.5) : p.speed;
   if (court) speed *= ENDURANCE.gain;
   if (p.elanSaut && !p.onGround) speed *= 1.5;        // le grand saut porte loin
+  // LA COURSE du loup (acte V, lozere.js : state.course ; passe D2) : en courant, Camille va bien plus
+  // vite — « assez pour passer avant qu'un pont s'effondre » (SCENARIO.md § 14). Ni à cheval, ni à la
+  // nage (le niveau le dit : nageIci), ni en instance du multi : les dons du solo n'y vont pas.
+  if (court && state.course && !G.monte && !EN_INSTANCE_MOTEUR && !(G.level && G.level.nageIci && G.level.nageIci(p.pos.x, p.pos.z))) speed *= 1.45;
   if (p.garde) speed *= 0.4;
   if (p.rollT >= 0) {
     p.rollT += dt;
