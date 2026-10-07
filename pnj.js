@@ -65,6 +65,9 @@ function choisirClips(b) {
     assis:    a('Sitting_Idle_Loop', 'Assis'),
     genou:    a('Fixing_Kneeling', 'Genou'),
     joie:     a('Dance_Loop', 'Joie'),
+    // la nage (le souffle du Yak, monde.js) : la brasse en avançant, la nage sur place à l'arrêt
+    nage:     a('Swim_Fwd_Loop', 'Marche'),
+    nageRepos: a('Swim_Idle_Loop', 'Repos'),
     couche:   'Couche',                       // aucun volume n'a de pose allongée
     arc:      'Arc',                          // ni de tir à l'arc (seulement du pistolet)
     coups:    ['Sword_Regular_A', 'Sword_Regular_B', 'Sword_Regular_C'].filter(n => b.clips.has(n)),
@@ -1090,7 +1093,7 @@ export function faireCuirasse(niveau = 1) {
 const clipsCamille = () => tousClips(
   CLIP.repos, CLIP.garde, CLIP.marche, CLIP.course, CLIP.saut, CLIP.sautDepart, CLIP.sautFin,
   CLIP.roulade, CLIP.touche, CLIP.parle, CLIP.assis, CLIP.genou, CLIP.joie, CLIP.couche, CLIP.arc,
-  CLIP.coups, ['Sword_Block'],
+  CLIP.coups, ['Sword_Block'], CLIP.nage, CLIP.nageRepos,
 );
 
 export function buildCamille(makeBow) {
@@ -1229,6 +1232,11 @@ function enfourcher(os, racine) {
   }
 }
 
+// le moteur, gardé à l'installation de Camille : l'animation y lit le niveau (la nage)
+let MOTEUR = null;
+// la brasse est couchée : on remonte le corps à fleur d'eau ; la nage sur place est debout, et son
+// clip se tient plus haut que la marche : on l'enfonce, pour que n'en sortent que les épaules
+const NAGE_PIVOT = 0.45, NAGE_PIVOT_SURPLACE = -0.35;
 export function animeCamille(m, p, dt, ctx) {
   const ud = m.userData, a = ud.ctrl;
   if (!a) return false;
@@ -1236,9 +1244,13 @@ export function animeCamille(m, p, dt, ctx) {
 
   // à cheval : la pose assise, remontée à la hauteur de la selle par le pivot (la racine,
   // elle, suit le joueur — ou glisse vers la position annoncée, pour un avatar distant)
-  if (ud.pivot) ud.pivot.position.y = ctx.monte ? (ctx.selle || 0) / (m.scale.y || 1) : 0;
+  // dans l'eau profonde (le niveau le dit : nageIci, monde.js), la nage ; le pivot remonte le corps
+  // couché de la brasse à fleur d'eau (le sol de la nage est 0,9 m sous la surface)
+  const L = MOTEUR && MOTEUR.G.level, nage = !!(L && L.nageIci && L.nageIci(p.pos.x, p.pos.z));
+  if (ud.pivot) ud.pivot.position.y = ctx.monte ? (ctx.selle || 0) / (m.scale.y || 1) : nage ? ((walking || running) ? NAGE_PIVOT : NAGE_PIVOT_SURPLACE) / (m.scale.y || 1) : 0;
   if (pose) a.jouer({ lie: CLIP.couche, kneel: CLIP.genou, sit: CLIP.assis, cheer: CLIP.joie }[pose] || CLIP.repos, 0.3);
   else if (ctx.monte && p.attackT < 0) a.jouer(CLIP.assis, 0.25);
+  else if (nage) a.jouer(walking || running ? CLIP.nage : CLIP.nageRepos, 0.3);
   else if (p.rollT >= 0 && CLIP.roulade) a.jouer(CLIP.roulade, 0.06, false);
   else if (p.attackT >= 0 && CLIP.coups.length) {
     // les coups alternent : un enchaînement, pas un moulinet identique
@@ -1314,6 +1326,6 @@ export async function installerCamille(E) {
   const m = buildCamille(E.makeBow);
   if (!m) return false;
   E.setPlayerMesh(m);
-  E.setCamilleHook(animeCamille);
+  E.setCamilleHook(animeCamille); MOTEUR = E;
   return true;
 }

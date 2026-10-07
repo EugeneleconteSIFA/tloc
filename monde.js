@@ -147,16 +147,17 @@ export async function monde(f) {
   const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
   let nageDite = false;
   const dire = () => { if (!nageDite) { nageDite = true; setTimeout(() => showMessage('Le souffle du Yak : l’eau profonde ne te retient plus. Tu nages.', 4), 0); } };
-  function nage(x, z) {
-    if (EN_INSTANCE || !state.souffle) return null;
+  // (`question` : rend seulement si l'on nage — true — ou non, sans rien dire au joueur)
+  function nage(x, z, question = false) {
+    if (EN_INSTANCE || !state.souffle) return question ? false : null;
     // l'eau profonde d'un lac se nage aussi, à son niveau à lui (à Ko Panyi, une eau du relevé en est un)
     for (const l of LACS) { const i = Math.floor((x - l.x0) / 4), j = Math.floor((z - l.z0) / 4);
-      if (i >= 0 && j >= 0 && i < l.nx && j < l.nz && l.profond[j * l.nx + i]) { dire(); return l.mesh.position.y - 0.9; } }
-    if (f.mer == null) return null;
+      if (i >= 0 && j >= 0 && i < l.nx && j < l.nz && l.profond[j * l.nx + i]) { if (question) return true; dire(); return l.mesh.position.y - 0.9; } }
+    if (f.mer == null) return question ? false : null;
     const s = MER ? MER.position.y : f.mer - H0 + 0.05, h = hauteur(x, z);
-    if (h >= s + 0.15) return null;
-    if (h > s - 0.3) return h;                     // le bord : on marche sur le fond
+    if (h > s - 0.3) return question ? false : h >= s + 0.15 ? null : h;     // le bord : on marche sur le fond
     // au-delà, on nage, quel que soit le fond (à Gallipoli, le relevé met la mer à moins d'un mètre)
+    if (question) return true;
     dire(); return s - 0.9;
   }
   function bloque(x, z, r = 0.4, y = null) {
@@ -378,6 +379,8 @@ export async function monde(f) {
     name: f.name, echelle: 0.6, musique: f.musique || 'campagne', getH: (x, z) => { const s = f.solLieu ? f.solLieu(x, z) : null; if (s != null) return s; const n = nage(x, z); return n != null ? n : hauteur(x, z); }, blocked: (x, z, r, vole, y) => bloque(x, z, r, y), zoneName: zone,
     build, populate, animate, minimap,
     get mer() { return MER; },
+    // ici, Camille nage-t-elle (eau profonde, avec le souffle) ? pnj.js y choisit le clip de la brasse
+    nageIci: (x, z) => nage(x, z, true) === true,
     get lacs() { return LACS; },
     counts: () => `<small>${f.counts}</small>`,
     start: () => showMessage(f.start, 6), arriveMessage: () => f.titre + '.',
