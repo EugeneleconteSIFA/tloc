@@ -14,7 +14,7 @@ import * as PNJ from './pnj.js';
 // En mètres, comme la carte (1 unité = 1 m) : Camille y a l'échelle de la ville (0,6).
 // =====================================================================
 import { THREE, TAU, scene, G, mat, phMat, hemi, sun, renderer, bloom, mesh, boxG, makeCanvas, tex,
-  addCap, addHelix, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state, dialogue, cutscene, saveGame } from './engine.js?v=41';
+  addCap, addHelix, addInteract, goToLevel, showMessage, bootLevel, minimapDots, makeSky, player, state, dialogue, cutscene, saveGame, PAGES } from './engine.js?v=41';
 import { DONJON } from './carte.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -342,7 +342,19 @@ function build() {
       colosse: ['alberobello', [6.5, 0, 4.6], Math.PI, 'la porte des Heures', 'La porte s’ouvre sous un toit de pierre en cône…'],
       // les Îles mènent à Ko Panyi, au village sur pilotis de la baie des pitons (2 octobre)
       yak: ['thailande', [60.47, 0, -75.24], -2.842, 'la porte des Îles', 'La porte s’ouvre sur une pluie qui ne tombe pas…'] };
-    if (VERS[P.geant]) { const [lieu, pos, yaw, nomP, label] = VERS[P.geant];
+    // LA FÊLURE (acte VI, docs/DECOUPAGE-ACTE6.md) : la fin de l'acte V faite, elle mène à la rive
+    // oubliée, sur le bord de la Blessure ; la première fois, le mage dit le nom de maître Cornil
+    if (P.geant === 'fissure') { PAGES.rive = 'rive.html';
+      const ouverte = () => state.acte5 === 'course' || !!state.acte6;
+      const passer = () => goToLevel('rive', [0, 0, 55], Math.PI, 'La fêlure s’ouvre d’un trait de lumière froide…');
+      addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => (ouverte() ? 'passer la fêlure' : 'pousser la porte'), fn: () => {
+        if (!ouverte()) return showMessage('La pierre est fendue. Rien ne bouge derrière.', 4);
+        if (state.acte6) return passer();
+        state.acte6 = 'felure'; saveGame(true);
+        dialogue([{ who: 'Le vieux mage', text: '« La porte qui n’avait pas de nom. Elle s’ouvre enfin. »' },
+          { who: 'Le vieux mage', text: '« Le dernier fondeur de cloches s’appelait **maître Cornil**. Sa famille a fondu la Grande Cloche, en 620. Il est parti **de l’autre côté de la Blessure**. »' },
+          { who: 'Le vieux mage', text: '« Là-bas, c’est encore 620. Je n’y suis jamais retourné. »' }], passer); } }); }
+    else if (VERS[P.geant]) { const [lieu, pos, yaw, nomP, label] = VERS[P.geant];
       addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser ' + nomP, fn: () => goToLevel(lieu, pos, yaw, label) }); }
     else if (!P.ouverte && P.geant !== 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte',
       fn: () => showMessage(P.geant === 'fissure' ? 'La pierre est fendue. Rien ne bouge derrière.' : 'La porte ne s’ouvre pas encore.', 4) });
