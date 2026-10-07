@@ -152,3 +152,88 @@ loup, la fin). Les quêtes secondaires après, découpées seulement.
    cinquième : « Toutes les heures seront mêlées, et la dernière sera la sienne. » — le cinquième ?
 6. **La course** (le don du loup) demande le moteur (`engine.js`, interdit pendant la vague) : je
    pose `state.course` et la demande, d'accord ?
+
+---
+
+# Les restes de la Lozère (version 1, 7 octobre, consigne E4 de `PLAN-2026-10-07-VAGUE3.md`, à valider par Eugène)
+
+Ce que l'acte V a laissé de côté (question 3 ci-dessus) et les quêtes secondaires de `SCENARIO.md`
+§ 14. Tout se joue **après** l'acte V (`state.acte5 === 'course'`) ou en marge, jamais à sa place : les
+trois bancs de l'acte V doivent toujours passer. Une instance du multi n'en voit rien (`EN_INSTANCE`).
+
+## Ce que les relevés permettent, sans récolte réseau
+
+L'extrait OSM local (`carte/mondes/lozere-villefort-pouget.osm`) et le relief du lac
+(`relief-lozere-lac.json`, IGN 5 m, x −1690…1755, z −4655…−1630) ont ce qui manque aux trois lieux :
+
+| ce qui manque | où il est (coordonnées du jeu) | |
+|---|---|---|
+| le lac de Villefort | un long lac, x −1540…1600, z −4510…−1780 | relevé |
+| le barrage | (1568 ; −2704), 1,3 km au nord de Villefort | relevé |
+| **le viaduc de l'Altier** (la voie des Cévennes) | x 354…449, z −2060…−1840, au-dessus d'un bras du lac | relevé |
+| **la via ferrata du lac** (ponts de singe, passerelle, **une tyrolienne**) | x −400…−230, z −2000…−1915 | relevé |
+| le château de Castanet | (−1329 ; −2365), 1,3 km plus à l'ouest | relevé, loin |
+| le mont Lozère, ses menhirs | — | **rien** dans les relevés |
+
+## Le fil des restes
+
+| # | quoi | où | ce qu'il faut | ce que ça donne |
+|---|---|---|---|---|
+| R1 | **un lieu neuf : le lac de Villefort** (question 1) | x −420…450, z −2250…−1700 (870 × 550 m) : le bras du lac, le viaduc de l'Altier, la via ferrata | un quatrième poteau des vieux chemins (« le lac ») | le lieu de R3, R4, R6, Q4, Q5 |
+| R2 | **le lasso** (question 2) | le Pouget (le berger) | la transhumance (Q2) | `state.lasso` — l'acte VI l'attend |
+| R3 | **la vallée d'avant** | le lac | la sonnaille, deux coups au bord : l'eau se retire, le fond sec et ses vieux chemins, un pont de pierre noyé | la traversée à pied du bras du lac (au présent : à la nage, avec le souffle) |
+| R4 | **le viaduc de 1870** | le viaduc de l'Altier | un coup : le viaduc d'aujourd'hui ; deux coups : en construction, échafaudages, la travée du milieu manquante | Q5 |
+| R5 | **la tour par le dehors, et la poulie** | la Garde-Guérin | le lasso : un anneau de fer au sommet de la tour, on y monte par le mur ; la poulie : de là-haut, un câble vers Villefort (on ne glisse que vers le bas) | un retour rapide de la Garde-Guérin à Villefort |
+| R6 | **la via ferrata** | le lac | le lasso (les ponts de singe : un anneau de l'autre côté), la poulie (sa tyrolienne, au-dessus du lac) | un morceau de cœur au bout |
+
+Castanet et ses caves sous le lac : laissés (question 1). Le mont Lozère n'est pas dans les relevés : ses
+menhirs vont **sur le plateau de la Garde-Guérin**, celui du combat du loup (Q3, question 3).
+
+## Le geste du lasso, et celui de la poulie
+
+- **Le lasso** s'accroche à ce qui est fait pour : des **anneaux de fer** scellés (le sommet de la tour, les
+  rochers de la via ferrata), visibles de loin (un éclat de métal). Devant un anneau à portée (12 m),
+  l'invite « lancer le lasso » : la corde file, Camille se hisse — ou se laisse descendre — jusqu'à lui, en une
+  ou deux secondes. Ni balancement ni combat au lasso ici (SCENARIO les met ailleurs).
+- **La poulie** (gagnée en Thaïlande, `state.poulie`) : la même tyrolienne qu'en Thaïlande (la règle :
+  l'arrivée plus basse que le départ). Sans poulie, le câble ne se prend pas.
+- Le geste s'écrit dans `lozere.js` ; l'acte VI (la Blessure, E1) en aura besoin aussi : **demande pour la
+  passe D3** de le monter dans le moteur, pour les deux.
+
+## Les quêtes secondaires (`SCENARIO.md` § 14)
+
+| quête | où | quoi | récompense |
+|---|---|---|---|
+| **Q1. Les châtaignes** | le Pouget | ramasser vingt châtaignes sous les châtaigniers du hameau, les porter au séchoir (une clède : petite maison de pierre, la fumée par le toit — à bâtir) | une **farine de châtaigne** : en manger rend des cœurs (comme les gaufres) |
+| **Q2. La transhumance** | du Pouget au plateau de la Garde-Guérin, par les vieux chemins | le berger confie le troupeau ; les brebis suivent la sonnaille ; le poteau les emmène ; sur le plateau, les mener jusqu'à l'enclos d'estive | une **sonnaille plus forte** (le passé dure 12 s au lieu de 8) ; et **le lasso** (R2), « la corde des brebis tombées » |
+| **Q3. Les menhirs** | le plateau de la Garde-Guérin | onze menhirs ; deux coups devant chacun : une époque, une phrase | un **morceau de cœur** ; le onzième montre le loup endormi |
+| **Q4. La pêche au lac** | le lac | pêcher à la canne (acte I) au présent ; à deux coups, dans la rivière d'avant le barrage | **la truite d'avant**, « qui n'existe plus » |
+| **Q5. Le train de 1870** | le viaduc de l'Altier | à deux coups, aider les ouvriers à poser la dernière travée (trois poutres à pousser, avec la force) avant que leur époque ne s'efface | le train du présent s'arrête : **un voyage rapide** vers la porte de l'île (Villefort) |
+
+## L'ordre du code
+
+1. **Le lasso d'abord** (l'acte VI l'attend) : le geste, l'anneau du sommet de la tour, la tyrolienne de la
+   tour vers Villefort (R5) ; la transhumance (Q2), qui donne le lasso. — 2. **Le lac** (R1) : son plan tiré
+   du relevé local, son relief, ses gens ; R3, R4, R6. — 3. Q1, Q3, Q4, Q5.
+Un banc par lot (`bancs/acte5-lasso.mjs`, `acte5-lac.mjs`, `acte5-quetes.mjs`), et les trois de l'acte V à
+chaque lot ; les arènes de la Garde-Guérin et du Pouget au banc des rencontres.
+
+## Questions pour Eugène (les restes)
+
+1. **Le lac de Villefort, un lieu neuf** (x −420…450, z −2250…−1700 : le bras du lac, le viaduc, la via
+   ferrata), atteint par un quatrième poteau ? Il faut deux fichiers neufs (`lac.js`, `lac.html`) et un plan
+   tiré des relevés locaux (`carte/mondes/lozere-lac.json`) — **la consigne ne les prévoit pas**. Castanet
+   (1,3 km plus loin) : laissé, ou un second lieu plus tard ?
+2. **Qui donne le lasso** : je propose **le berger**, sa « corde des brebis tombées », au retour de la
+   transhumance (personne de nouveau). Ou un muletier de la Régordane à l'auberge de la Garde-Guérin
+   (quelqu'un de nouveau) ? Si E1 en a besoin vite, il peut venir avant, sans la transhumance.
+3. **Les menhirs sur le plateau de la Garde-Guérin** (le mont Lozère n'est pas dans les relevés) : d'accord ?
+   Et leurs onze époques : une liste dans `DIALOGUES-ACTE5.md`, à relire.
+4. **La tyrolienne de la tour vers Villefort** traverse 4 km entre deux lieux : on glisse quelques secondes,
+   puis un fondu, et l'on arrive à Villefort. D'accord ?
+
+## Réponses d'Eugène (7 octobre)
+
+Tout est accepté : le lac de Villefort, lieu neuf (`lac.js`, `lac.html`, à créer) ; Castanet laissé ; **le
+lasso donné par le berger**, au retour de la transhumance ; les menhirs sur le plateau de la Garde-Guérin ;
+la tyrolienne de la tour vers Villefort (la glisse, un fondu, Villefort).

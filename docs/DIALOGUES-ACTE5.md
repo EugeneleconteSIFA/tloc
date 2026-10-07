@@ -103,3 +103,29 @@ sert, et seulement ce qu'on peut faire à l'étape).
 
 Gravé sous la Cloche des Troupeaux (question 5 du découpage) : **Toutes les heures seront mêlées,
 et la dernière sera la sienne.**
+
+---
+
+## Les restes (propositions, à relire — consigne E4)
+
+**Le berger** (quand on revient après l'acte V) — Il reste un troupeau à monter à l'estive, et mes jambes ne
+veulent plus. **Mène-les au plateau de la Garde-Guérin.** Elles suivront la sonnaille.
+— *(au retour)* Elles y sont ? Alors tiens : **la corde des brebis tombées**. Dans les gorges, c'est elle qui
+les remonte. Lance-la sur un anneau, et tiens bon.
+
+**Les anneaux** : *Un anneau de fer scellé dans la pierre.* — avec le lasso : « lancer le lasso ».
+
+**La tyrolienne de la tour** : *Un câble part du sommet, vers Villefort.* — sans poulie : *Un câble, et rien
+pour s'y accrocher.*
+
+**Le lac, deux coups** : *L'eau se retire. Au fond, une vallée sèche, des murets, un pont de pierre.*
+
+**L'ouvrier du viaduc (1870)** — La travée du milieu, on la pose ce soir. Si l'époque nous laisse le temps.
+Pousse avec nous ! — *(fini)* Elle tient. Un jour, il passera des trains ici. Tu les prendras.
+
+**Les menhirs** (deux coups devant chacun ; une phrase par menhir, onze) — des pèlerins de la Régordane qui
+prient ; un berger qui compte ses bêtes ; des paysans de 1765, fourches à la main ; un ouvrier de 1870 qui
+mesure la pente ; un soldat qui rentre à pied ; une noce ; des enfants qui grimpent sur la pierre ; un peintre ;
+la neige d'un hiver ; le plateau vide, aujourd'hui ; *(le onzième)* le loup, endormi sous la montagne.
+
+**La truite d'avant** : *Une truite comme on n'en pêche plus : la rivière qui l'a nourrie est sous le lac.*

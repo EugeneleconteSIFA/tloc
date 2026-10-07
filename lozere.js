@@ -1417,7 +1417,7 @@ function passer5(e) { if (rang5(e) <= rang5(state.acte5 || 'arrivee')) return; s
 const sait5 = (k) => !!(state.ind5 && state.ind5[k]);
 function noter5(cle) { state.ind5 = state.ind5 || {}; if (state.ind5[cle]) return; state.ind5[cle] = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300); }
 // ce que l'acte a posé, pour les bancs (bancs/acte5-*.mjs)
-export const A5 = { aFaire: [], pret: false, chien: null, gens: {}, ctx: null, lieu: null, sonne: null, sonT: 0, appuis: [], surSonnaille: [] };
+export const A5 = { aFaire: [], apres: [], pret: false, chien: null, gens: {}, ctx: null, lieu: null, sonne: null, sonT: 0, appuis: [], surSonnaille: [] };
 if (typeof window !== 'undefined') window.__acte5 = A5;
 
 // Le carnet du journal (J)
@@ -1536,6 +1536,7 @@ function acte5Villefort(ctx, boutiques) {
   { const x = 1524, z = -966; temoinDuPasse(ctx, 'a5_ouvrier', 'ouvrier', x, z, [1500, -1014], chantier1870(x + 2.5, sol(x + 2.5, z), z, Math.atan2(55, 110))); }
   if (state.chienSuit && !state.chienRendu) A5.aFaire.push(() => poserChien(player.pos.x - 2, player.pos.y, player.pos.z - 2, 0).then((c) => { A5.chien = c; }));
   A5.sol = sol;
+  A5.apres.push(() => { if (state.transh === 1) poserTroupeau(player.pos.x, player.pos.z); });
 }
 
 // ---- Le Pouget : le berger, devant sa maison ; le chien rendu ----
@@ -1548,7 +1549,8 @@ export function acte5Pouget(ctx) {
   const y = hauteur(x, z), yaw = Math.atan2(52.6 - x, -104 - z);
   A5.sol = hauteur; A5.berger = [x, y, z];
   A5.aFaire.push(() => { A5.gens.berger = personne5('a5_berger', x, y, z, yaw); });
-  addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.8, prompt: () => 'parler au berger', fn: () => dialogue(repl5('berger')) });
+  addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.8, prompt: () => 'parler au berger', fn: parlerBerger });
+  A5.apres.push(() => { if (state.transh === 1) poserTroupeau(player.pos.x, player.pos.z); });
   // la bergère de 1765, au bois sous le hameau, et le parc de claies d'autrefois
   { const bx = -40, bz = 60; temoinDuPasse(ctx, 2, 'bergere', bx, bz, [0, 5], claies1765(bx + 4, hauteur(bx + 4, bz), bz)); }
   // le chien : il suit Camille jusqu'ici, puis reste avec le berger
@@ -1561,6 +1563,7 @@ const posee = (o, x, y, z) => { o.position.set(x, y, z); return o; };
 // ---- Trois témoins, trois époques (étape 4) : on ne les voit qu'à deux coups de sonnaille ----
 // Chacun est posé à sa place, caché ; le passé le montre (et son décor : les claies, les rails), le
 // présent le cache. Sa réplique ne s'entend que pendant le passé.
+INDICES5.transhumance = { txt: 'Mener le troupeau du berger à l’enclos d’estive, sur le plateau de la Garde-Guérin.', qui: 'le berger', fait: () => (state.transh || 0) >= 2 };
 INDICES5.qui = { txt: 'Un géant rouge a passé la Régordane avec un loup grand comme une grange.', qui: 'le chevalier de la Garde-Guérin', fait: () => atteint5('tour') };
 INDICES5.ou = { txt: 'La Bête dort le jour dans la tour de la Garde-Guérin ; la nuit, elle sort sur le plateau.', qui: 'la bergère de 1765', fait: () => atteint5('tour') };
 INDICES5.comment = { txt: 'La tour est murée ; du temps des chevaliers, elle avait une porte. La sonnaille la ferait revenir.', qui: 'l’ouvrier de 1870', fait: () => atteint5('tour') };
@@ -1695,6 +1698,7 @@ function acte5Garde(ctx) {
     for (let k = 0; k < 4; k++) { const gr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.02), new THREE.MeshBasicMaterial({ color: 0x1a1612 })); gr.position.set(-1 + k * 0.25, 2, -3.7); gr.rotation.z = 0.3; S.g.add(gr); } }
   chargerBete('loup1765').then((m) => { modeleLoup = m; });
   acte5Loup(ctx);
+  tourParLeDehors(ctx); estive(ctx);
 }
 function poserLoups1765(S) {
   A5.loups1765 = [[-2, -2], [2, -2.5], [0, -3]].map(([lx, lz]) => { const e = spawnEnemy('loup1765', S.x + lx, S.z + lz, 'acte5', S.y); e.home.y = S.y; return e; });
@@ -1801,6 +1805,144 @@ function clocheTroupeaux() {
   A5.cloche = g;
 }
 
+// =====================================================================
+//  LES RESTES DE LA LOZÈRE (consigne E4 ; docs/DECOUPAGE-ACTE5.md, « Les restes »)
+// =====================================================================
+// Après l'acte V (state.acte5 === 'course'), jamais à sa place. L'avancement : state.transh (0 rien,
+// 1 le troupeau en route, 2 à l'estive, 3 le berger a donné le lasso), state.lasso, state.sonnailleForte.
+
+// ---- Le lasso (Eugène, 7 octobre : « le berger », la corde des brebis tombées) ----
+// Il s'accroche à ce qui est fait pour : des anneaux de fer scellés, visibles de loin. Devant l'un d'eux,
+// à portée, Camille lance, la corde file, et elle se hisse (ou se laisse descendre) jusqu'à lui. Le geste
+// vit ici ; l'acte VI en aura besoin : demande pour la passe D3 de le monter dans le moteur.
+const fer = () => new THREE.MeshStandardMaterial({ color: 0x4a4644, metalness: 0.85, roughness: 0.35 });
+function anneauDeFer(x, y, z, yaw = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g);
+  const a = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.045, 8, 18), fer()); a.position.z = 0.1; g.add(a);
+  const tige = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8), fer()); tige.rotation.x = Math.PI / 2; g.add(tige);   // scellée dans la pierre
+  return g;
+}
+// la corde, tendue entre Camille et l'anneau pendant qu'elle monte ou descend
+let corde = null;
+function tendreCorde(a, b) {
+  if (!corde) { corde = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 6), new THREE.MeshStandardMaterial({ color: 0xb8a070, roughness: 0.9 })); corde.userData.dynamic = true; scene.add(corde); }
+  const d = b.clone().sub(a), L = d.length(); corde.visible = true;
+  corde.position.copy(a).addScaledVector(d, 0.5); corde.scale.set(1, L, 1);
+  corde.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+}
+// se hisser (ou descendre) jusqu'à `vers` ; `ancre` : l'anneau, où la corde est nouée
+function lasso(vers, ancre, msg) {
+  if (A5.hisse) return;
+  if (!state.lasso) { showMessage('Un anneau de fer, là-haut. Il faudrait une corde à lancer.', 3.5); return; }
+  A5.hisse = { de: player.pos.clone(), vers: new THREE.Vector3(...vers), ancre: new THREE.Vector3(...ancre), t: 0 };
+  A5.hisse.dur = Math.min(2.4, Math.max(1.2, A5.hisse.de.distanceTo(A5.hisse.vers) / 12));
+  SFX.roll && SFX.roll(); if (msg) showMessage(msg, 2.5);
+}
+function animeLasso(dt) {
+  const H = A5.hisse; if (!H) return;
+  H.t = Math.min(1, H.t + dt / H.dur); const u = H.t * H.t * (3 - 2 * H.t);
+  player.pos.lerpVectors(H.de, H.vers, u); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
+  tendreCorde(player.pos.clone().setY(player.pos.y + 0.9), H.ancre);
+  if (H.t >= 1) { A5.hisse = null; if (corde) corde.visible = false; }
+}
+
+// ---- La tour par le dehors (R5) : l'anneau du sommet, et la tyrolienne vers Villefort (la poulie) ----
+// Le sommet de la tour (BILAN.corps, `avt`) reçoit un plancher du moteur (addBox) : on y tient debout,
+// au milieu ; ses murs (inscrits par le lieu) empêchent d'y marcher — on n'y fait que deux choses :
+// redescendre au lasso, ou prendre le câble. Le câble descend vers Villefort (on ne glisse que vers le
+// bas : du sommet, 900 m environ, vers les gorges) ; au bout de quelques secondes, un fondu, Villefort
+// (Eugène, 7 octobre : « la glisse, un fondu, Villefort »).
+function tourParLeDehors(ctx) {
+  const t = BILAN.corps.find((c) => c.sp.tour); if (!t || !A5.porteTour) return;
+  const { hauteur } = ctx, x = t.cx, z = t.cz, y = t.avt;
+  A5.sommet = [x, y, z];
+  addBox(x - 2.2, x + 2.2, z - 2.2, z + 2.2, y);
+  // l'anneau, scellé au parapet du côté du village (au-dessus de la porte), et sa lueur de métal
+  const [px, pz] = A5.porteTour, a = Math.atan2(px - x, pz - z), ax = x + Math.sin(a) * 2.4, az = z + Math.cos(a) * 2.4;
+  anneauDeFer(ax, y + 0.4, az, a);
+  ctx.addInteract({ pos: new THREE.Vector3(px, hauteur(px, pz), pz), r: 5, enabled: () => !A5.salle && !A5.hisse && player.pos.y < y - 3,
+    prompt: () => (state.lasso ? 'lancer le lasso au sommet de la tour' : 'l’anneau du sommet'),
+    fn: () => lasso([x, y + 0.05, z], [ax, y + 0.4, az], 'La corde s’enroule autour de l’anneau. Tu te hisses le long du mur.') });
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !A5.hisse && player.pos.y > y - 1, prompt: () => 'redescendre au lasso',
+    fn: () => lasso([px, hauteur(px, pz) + 0.05, pz], [ax, y + 0.4, az]) });
+  // le câble : vers Villefort (le nord), jusqu'au premier point 40 m plus bas que le sommet
+  const vx = 1582 - x, vz = -1132 - z, n = Math.hypot(vx, vz), ux = vx / n, uz = vz / n;
+  let fin = null; for (let d = 120; d < 560 && !fin; d += 20) { const ex = x + ux * d, ez = z + uz * d; if (hauteur(ex, ez) < y - 40) fin = [ex, ez]; }
+  if (!fin) fin = [x + ux * 400, z + uz * 400];
+  const y1 = Math.min(hauteur(...fin) + 3, y - 30);
+  if (!(y1 < y - 2)) return;                        // la règle : on ne glisse que vers le bas
+  const p0 = new THREE.Vector3(x + ux * 1.5, y + 3.4, z + uz * 1.5), p1 = new THREE.Vector3(fin[0], y1, fin[1]), fl = p0.distanceTo(p1) * 0.02;
+  const point = (t) => new THREE.Vector3(p0.x + (p1.x - p0.x) * t, p0.y + (p1.y - p0.y) * t - fl * 4 * t * (1 - t), p0.z + (p1.z - p0.z) * t);
+  const pts = []; for (let k = 0; k <= 40; k++) pts.push(point(k / 40));
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.04, 5), new THREE.MeshStandardMaterial({ color: 0x2a2a2c, metalness: 0.7, roughness: 0.45 })));
+  { const bois = phMat('wood_cabinet_worn_long', 0.3, 2, { color: 0x7a6650 }), g = new THREE.Group(); g.position.set(p0.x, y, p0.z); scene.add(g);
+    g.add(posee(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3.6, 7), bois), 0, 1.8, 0)); }
+  A5.cable = { point, dur: 6 };
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !A5.hisse && !A5.glisse && player.pos.y > y - 1,
+    prompt: () => 'glisser vers Villefort, sur le câble',
+    fn: () => { if (!state.poulie) { showMessage('Un câble part du sommet, vers Villefort. Et rien pour s’y accrocher.', 3.5); return; }
+      A5.glisse = { t: 0 }; showMessage('La poulie des moines file sur le câble, au-dessus des gorges…', 3); SFX.roll && SFX.roll(); } });
+}
+function animeGlisse5(dt) {
+  const Gl = A5.glisse, C = A5.cable; if (!Gl || !C) return;
+  Gl.t = Math.min(1, Gl.t + dt / C.dur); const q = C.point(Gl.t * Gl.t * (3 - 2 * Gl.t) * 0.85);
+  player.pos.set(q.x, q.y - 2.1, q.z); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
+  if (Gl.t >= 1 && !Gl.fini) { Gl.fini = true; goToLevel('villefort', ARRIVEES.villefort.pos, ARRIVEES.villefort.yaw, 'Le câble plonge vers la vallée. Villefort, en bas.'); }
+}
+
+// ---- La transhumance (Q2) : mener le troupeau du berger à l'estive, sur le plateau de la Garde-Guérin ----
+// Les brebis suivent Camille (la sonnaille) d'un lieu à l'autre : chaque lieu les fait renaître tant que
+// le troupeau est en route (state.transh === 1). À l'enclos d'estive, elles restent.
+const TROUPEAU = { n: 6, betes: [], estive: null };
+A5.troupeau = TROUPEAU;                // (pour les bancs)
+async function poserTroupeau(cx, cz, autour = true) {
+  const { modeleBrebis } = await import('./pouget-enclos.js'), mod = await modeleBrebis(); if (!mod) return;
+  for (let k = 0; k < TROUPEAU.n; k++) { const m = new THREE.Mesh(mod.geo, mod.mat); m.castShadow = true; m.userData.dynamic = true;
+    const a = k / TROUPEAU.n * TAU, r = autour ? 3 + (k % 2) * 1.5 : 1.5 + k * 0.8; m.position.set(cx + Math.cos(a) * r, A5.sol ? A5.sol(cx, cz) : 0, cz + Math.sin(a) * r); scene.add(m);
+    TROUPEAU.betes.push({ m, off: [Math.cos(a) * (2.5 + k * 0.6), Math.sin(a) * (2.5 + k * 0.6)], ph: rand(0, TAU) }); }
+}
+function animeTroupeau(dt) {
+  if (!TROUPEAU.betes.length || !A5.sol) return;
+  const suit = state.transh === 1, p = player.pos, t = performance.now() / 1000;
+  for (const B of TROUPEAU.betes) { const o = B.m.position;
+    if (suit) { const tx = p.x - 3 + B.off[0], tz = p.z - 3 + B.off[1], dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz);
+      if (d > 50) { o.x = tx; o.z = tz; } else if (d > 0.6) { const v = Math.min(d, (d > 6 ? 7 : 3.5) * dt); o.x += dx / d * v; o.z += dz / d * v; B.m.rotation.y = Math.atan2(dx, dz); } }
+    o.y = A5.sol(o.x, o.z) - 0.03 + (suit ? Math.abs(Math.sin(t * 7 + B.ph)) * 0.05 : 0); }
+  // l'enclos d'estive : le troupeau y entre (la moitié des bêtes à moins de 9 m), et y reste
+  const E = TROUPEAU.estive;
+  if (suit && E && TROUPEAU.betes.filter((B) => Math.hypot(B.m.position.x - E[0], B.m.position.z - E[1]) < 9).length >= TROUPEAU.n / 2) {
+    state.transh = 2; saveGame(true); SFX.win && SFX.win();
+    TROUPEAU.betes.forEach((B, k) => { const a = k / TROUPEAU.n * TAU; B.m.position.set(E[0] + Math.cos(a) * 3, B.m.position.y, E[1] + Math.sin(a) * 3); });
+    showMessage('Les brebis passent la claie et se mettent à brouter. L’estive. Le berger t’attend au Pouget.', 6);
+  }
+}
+// l'enclos d'estive, sur le plateau, à côté de la place du loup ; le troupeau qui y est
+function estive(ctx) {
+  const [px, pz] = A5.plateau || plateau(ctx), x = px + 28, z = pz - 12, y = A5.sol(x, z);
+  TROUPEAU.estive = [x, z];
+  // l'enclos : un cercle de claies de 7 m, ouvert vers le village (deux claies manquent)
+  { const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g); const bois = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x6a5642 });
+    for (let k = 0; k < 18; k++) { if (k === 8 || k === 9) continue; const a = k / 18 * TAU, m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.95, 0.07), bois);
+      m.position.set(Math.cos(a) * 7, 0.47 + (A5.sol(x + Math.cos(a) * 7, z + Math.sin(a) * 7) - y), Math.sin(a) * 7); m.rotation.y = -a + Math.PI / 2; m.castShadow = true; g.add(m); } }
+  // (après le chargement de la sauvegarde : au moment où le lieu se bâtit, state.transh n'est pas encore lu)
+  A5.apres.push(() => { if (state.transh === 1) poserTroupeau(player.pos.x, player.pos.z); else if (state.transh >= 2) poserTroupeau(x, z); });
+}
+// le berger, après l'acte : la transhumance, puis la corde
+function parlerBerger() {
+  if (!atteint5('course')) return dialogue(repl5('berger'));
+  const B = 'Le berger';
+  if (!state.transh) return dialogue([
+    { who: B, text: 'Il a gardé mes bêtes toute ma vie. Garde les tiennes. Ce que tu as commencé…' },
+    { who: B, text: 'Il reste un troupeau à monter à l’estive, et mes jambes ne veulent plus. **Mène-les au plateau de la Garde-Guérin.** Elles suivront la sonnaille.',
+      fn: () => { state.transh = 1; saveGame(true); noter5('transhumance'); poserTroupeau(player.pos.x, player.pos.z); } }]);
+  if (state.transh === 1) return dialogue([{ who: B, text: 'Par les vieux chemins, jusqu’au plateau de la Garde-Guérin. Il y a un enclos de claies, au-dessus des gorges.' }]);
+  if (state.transh === 2) return dialogue([
+    { who: B, text: 'Elles y sont ? Alors tiens : **la corde des brebis tombées.** Dans les gorges, c’est elle qui les remonte. Lance-la sur un anneau, et tiens bon.' },
+    { who: B, text: 'Et ta sonnaille : je lui ai mis un battant de plus. **Le passé tiendra plus longtemps.**',
+      fn: () => { state.transh = 3; state.lasso = true; state.sonnailleForte = true; saveGame(true); SFX.fanfare && SFX.fanfare(); showMessage('LE LASSO : devant un anneau de fer, lance-le.', 5); } }]);
+  return dialogue([{ who: B, text: 'Ici, il n’y a qu’un temps. Grâce à lui.' }]);
+}
+
 // ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
 // Deux appuis à moins de 0,45 s : deux coups. Le passé dure huit secondes autour de Camille ; les lieux
 // s'y abonnent (A5.surSonnaille). L'image passe au sépia tant qu'on est dans le passé.
@@ -1813,7 +1955,7 @@ function sonnaille() {
 }
 function sonner(n) {
   for (let k = 0; k < n; k++) setTimeout(() => SFX.piece && SFX.piece(), k * 260);
-  A5.sonne = n === 2 ? 'passe' : 'present'; A5.sonT = n === 2 ? 8 : 0;
+  A5.sonne = n === 2 ? 'passe' : 'present'; A5.sonT = n === 2 ? (state.sonnailleForte ? 12 : 8) : 0;      // 12 s : la sonnaille du berger, après la transhumance
   const cv = document.querySelector('canvas'); if (cv) cv.style.filter = n === 2 ? 'sepia(0.55) contrast(1.05)' : '';
   for (const f of A5.surSonnaille) f(A5.sonne, player.pos);
   if (n === 2 && A5.lieu === 'pouget') showMessage('Le Pouget ne change pas. Ici, il n’y a qu’un temps.', 3);
@@ -1824,13 +1966,13 @@ export const passeVu = () => A5.sonne === 'passe';
 // à chaque image, dans chaque lieu de l'acte
 export function acte5Anime(dt) {
   if (EN_INSTANCE) return;
-  if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } G.level.indices = indices5; if (A5.lieu === 'gardeguerin' && atteint5('course')) clocheTroupeaux(); }
+  if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } for (const f of A5.apres.splice(0)) f(); G.level.indices = indices5; if (A5.lieu === 'gardeguerin' && atteint5('course')) clocheTroupeaux(); }
   if (state.sonnaille && !AIDE.extra.some(([k]) => k === 'N')) AIDE.extra.push(['N', 'sonner la sonnaille']);
   const f = A5.aFaire.shift(); if (f) f();
   for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
   if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu) && !A5.chienRepos) suivreChien(dt, A5.sol);
   else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
-  animeLoup(dt);
+  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt);
   // le passé qui s'efface
   if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
 }
