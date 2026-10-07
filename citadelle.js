@@ -1839,6 +1839,64 @@ function lieuxA1() {
   return (A1C.lieux = L);
 }
 
+// ---------- L'INTÉRIEUR DE LA CASERNE (E3, 7 octobre ; DIALOGUES-ACTE1.md : « cachés dans une caserne ») ----------
+// Les trois soldats se tenaient DEVANT la caserne, derrière des caisses. Ils sont dedans, dans la
+// chambrée : les lits de camp, le râtelier vide, la table et le banc, une lanterne. Les casernes sont
+// des volumes pleins (poserBatiment) : la chambrée est bâtie comme les caves de l'Aveyron, très haut au-
+// dessus de la place d'Armes, cachée, et n'a de sol et de murs que pendant qu'on y est. Une porte de
+// planches sur la façade y mène.
+const Y_CHAMBREE = 420, CH = { S: null, dedans: false };
+function chambree() {
+  if (CH.S) return CH.S;
+  // au-dessus d'un sol libre de la place (blocked ne connaît pas la hauteur : sous une caserne, la
+  // chambrée serait un mur)
+  const libre = (x, z) => { for (let a = -8; a <= 8; a += 4) for (let b = -6; b <= 6; b += 3) if (E.blocked(x + a, z + b, 0.5, false, getH(x + a, z + b) + 0.5)) return false; return true; };
+  let c = [DONJON.x + 40, DONJON.z]; for (let r = 30, ok = false; r < 160 && !ok; r += 6) for (let k = 0; k < 24 && !ok; k++) { const x = DONJON.x + Math.cos(k / 24 * TAU) * r, z = DONJON.z + Math.sin(k / 24 * TAU) * r; if (libre(x, z)) { c = [x, z]; ok = true; } }
+  const [cx, cz] = c, w = 12, d = 7, h = 3.4, g = new THREE.Group(); g.position.set(cx, Y_CHAMBREE, cz); g.visible = false; g.userData.dynamic = true; scene.add(g);
+  const pierre = pbrRepeat(T.brick, 3, 1.2), bois = phMat('wood_planks', 1, 1, { color: 0x8a6a4a }), drap = mat(0x6a6458, { roughness: 1 }), cadre = phMat('wood_cabinet_worn_long', 1, 1, { color: 0x5a4636 });
+  const bt = (W, H, D, m, x, y, z) => { const o = mesh(boxG(W, H, D), m, x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  for (const [x, z, W, D] of [[0, -d / 2, w, 0.4], [0, d / 2, w, 0.4], [-w / 2, 0, 0.4, d], [w / 2, 0, 0.4, d]]) bt(W, h, D, pierre, x, h / 2, z);
+  bt(w, 0.3, d, bois, 0, -0.15, 0); bt(w, 0.3, d, cadre, 0, h + 0.15, 0);
+  for (let k = -2; k <= 2; k++) bt(0.25, 0.25, d, cadre, k * 2.4, h - 0.12, 0);                  // les solives
+  // trois lits de camp contre le mur du fond, le râtelier vide, la table et son banc, la lanterne
+  for (const x of [-4, -1.2, 1.6]) { bt(0.9, 0.35, 2.0, cadre, x, 0.3, -d / 2 + 1.2); bt(0.8, 0.12, 1.9, drap, x, 0.52, -d / 2 + 1.2); }
+  bt(2.4, 1.6, 0.25, cadre, 4.3, 0.95, -d / 2 + 0.35);
+  for (let k = 0; k < 5; k++) { const f = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5), IRON(), 3.5 + k * 0.4, 0.95, -d / 2 + 0.5); f.rotation.z = 0.08; g.add(f); }
+  bt(2.2, 0.08, 0.9, bois, 3.2, 0.8, 0.9); for (const x of [2.3, 4.1]) bt(0.1, 0.8, 0.1, cadre, x, 0.4, 0.9); bt(2.2, 0.08, 0.35, bois, 3.2, 0.45, 1.8);
+  const lan = mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd08a }), 3.2, 1.05, 0.9); g.add(lan);
+  CH.S = { g, x: cx, z: cz, y: Y_CHAMBREE, w, d, h, phys: [] };
+  return CH.S;
+}
+function physChambree(on) {
+  const S = CH.S;
+  if (!on) { for (const q of S.phys) { const a = world.boxes.indexOf(q), b = world.capsules.indexOf(q); if (a >= 0) world.boxes.splice(a, 1); if (b >= 0) world.capsules.splice(b, 1); } S.phys = []; E.indexCapsules(); return; }
+  S.phys = [addBox(S.x - S.w / 2 - 3, S.x + S.w / 2 + 3, S.z - S.d / 2 - 3, S.z + S.d / 2 + 3, S.y)];
+  const e = 0.3, x0 = S.x - S.w / 2 + e, x1 = S.x + S.w / 2 - e, z0 = S.z - S.d / 2 + e, z1 = S.z + S.d / 2 - e;
+  for (const [ax, az, bx, bz, r] of [[x0, z0, x1, z0, 0.25], [x1, z0, x1, z1, 0.25], [x1, z1, x0, z1, 0.25], [x0, z1, x0, z0, 0.25],
+    [S.x - 4.6, S.z - S.d / 2 + 1.2, S.x + 2.2, S.z - S.d / 2 + 1.2, 0.55], [S.x + 2.1, S.z + 0.9, S.x + 4.3, S.z + 0.9, 0.5]]) { const c = addCap(ax, az, bx, bz, r, S.y + S.h); c.bottom = S.y - 1; S.phys.push(c); }
+}
+function entrerChambree() {
+  const S = chambree(); physChambree(true); S.g.visible = true; CH.dedans = true;
+  for (const q of ['caporal', 'tambour', 'vieux']) if (A1C.gens[q]) A1C.gens[q].visible = true;
+  player.pos.set(S.x, S.y + 0.02, S.z + 2.4); player.vy = 0; player.yaw = Math.PI; G.camYaw = Math.PI;
+  G.camMaxY = S.y + S.h - 0.3; G.camBack = 3.6; G.camUp = 1.9;
+}
+function sortirChambree() {
+  const S = CH.S, f = lieuxA1().caserne; physChambree(false); S.g.visible = false; CH.dedans = false;
+  for (const q of ['caporal', 'tambour', 'vieux']) if (A1C.gens[q]) A1C.gens[q].visible = false;
+  const x = f.x + f.nx * 1.6, z = f.z + f.nz * 1.6; player.pos.set(x, getH(x, z) + 0.05, z); player.vy = 0; player.yaw = Math.atan2(f.nx, f.nz); G.camYaw = player.yaw;
+  G.camMaxY = Infinity; G.camBack = 7; G.camUp = 3.4;
+}
+function porteCaserne() {
+  const f = lieuxA1().caserne, S = chambree();
+  // la porte de planches sur la façade, à la place des caisses
+  { const g = new THREE.Group(); g.position.set(f.x + f.nx * 0.08, getH(f.x, f.z), f.z + f.nz * 0.08); g.rotation.y = Math.atan2(f.nx, f.nz); g.userData.dynamic = true; scene.add(g);
+    g.add(mesh(boxG(1.5, 2.3, 0.1), phMat('wood_planks', 1.5, 2.3, { color: 0x6a5038 }), 0, 1.15, 0)); g.add(mesh(boxG(1.8, 0.2, 0.18), phMat('wood_cabinet_worn_long', 1, 1, { color: 0x4a3828 }), 0, 2.4, 0)); }
+  addInteract({ pos: new THREE.Vector3(f.x + f.nx * 1.4, getH(f.x, f.z), f.z + f.nz * 1.4), r: 2.2, prompt: () => 'entrer dans la caserne', enabled: () => !CH.dedans && atteint('citadelle'), fn: entrerChambree });
+  addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 2.9), r: 1.6, prompt: () => 'sortir de la caserne', enabled: () => CH.dedans, fn: sortirChambree });
+  PARTAGE.chambree = CH;                   // pour les bancs (bancs/acte1-hermes.mjs)
+}
+
 // ---------- le décor de l'acte, posé au peuplement (avant la fusion : tout est mobile) ----------
 const dyn = (o) => { o.userData.dynamic = true; return o; };
 function decorA1() {
@@ -1855,13 +1913,8 @@ function decorA1() {
     const px = f.x + f.nx * 1.05 + f.ux * 2.6, pz = f.z + f.nz * 1.05 + f.uz * 2.6;   // contre le soubassement
     t.position.set(px, y, pz); dyn(t); scene.add(t); D.poudre = t; D.poudreP = { x: px, z: pz, y };
     D.poudreCap = addCap(px, pz, px + f.ux * 1.05, pz + f.uz * 1.05, 0.55, y + 2.4); }
-  // les caisses derrière lesquelles se cachent les soldats
-  { const f = L.caserne, cm = phMat('wood_cabinet_worn_long', 1, 1, { color: 0xb89a70 });
-    for (const [s, d, h] of [[-2.6, 3.4, 0], [-1.5, 3.9, 0], [-1.9, 3.6, 1.0], [2.4, 3.5, 0], [3.3, 3.2, 0]]) {
-      const x = f.x + f.ux * s + f.nx * d, z = f.z + f.uz * s + f.nz * d;
-      const c = dyn(mesh(boxG(1.0, 1.0, 1.0), cm, x, getH(x, z) + h + 0.5, z)); c.rotation.y = Math.atan2(f.nx, f.nz) + s * 0.1; scene.add(c);
-      if (!h) addCap(x, z, x, z, 0.6, getH(x, z) + 1.1);
-    } }
+  // la porte de la caserne des soldats (ils sont dans la chambrée, E3 ; les caisses de la façade sont parties)
+  porteCaserne();
   // les trois cadenas, accrochés à la grille du donjon (ils tournent avec elle)
   { const g = PARTAGE.donjonGate, laiton = GOLD(); D.cadenas = [];
     for (const dx of [1.6, 2.5, 3.4]) {
@@ -1906,11 +1959,13 @@ function naitreA1() {
   v = v || makePrince();
   let x, z, yaw;
   if (qui === 'armurier') { const f = L.armurerie; x = f.x + f.nx * 1.8 - f.ux * 1.2; z = f.z + f.nz * 1.8 - f.uz * 1.2; yaw = Math.atan2(f.nx, f.nz); }
-  else { const f = L.caserne, s = { caporal: 0, tambour: -1.7, vieux: 1.7 }[qui], d = qui === 'caporal' ? 1.9 : 1.4;
-    x = f.x + f.ux * s + f.nx * d; z = f.z + f.uz * s + f.nz * d; yaw = Math.atan2(f.nx, f.nz); }
-  v.position.set(x, getH(x, z, (qui === 'armurier' ? L.armurerie.y : 0) + 0.5), z); v.rotation.y = yaw; v.scale.setScalar(G.echelle);
-  v.userData.dynamic = true; scene.add(v); A1C.gens[qui] = v; addCap(x, z, x, z, 0.4);
-  if (qui === 'tambour') { const t = mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.42, 14), mat(0xb02a2a, { roughness: 0.7 }), x + Math.cos(yaw) * 0.7, v.position.y + 0.21, z - Math.sin(yaw) * 0.7); dyn(t); scene.add(t); }
+  else { const S = chambree(), [lx, lz] = { caporal: [-1.2, -0.4], tambour: [-3.4, 0.6], vieux: [1.2, 0.4] }[qui];
+    x = S.x + lx; z = S.z + lz; yaw = Math.atan2(0, 1); }
+  v.position.set(x, qui === 'armurier' ? getH(x, z, L.armurerie.y + 0.5) : Y_CHAMBREE, z);
+  if (qui !== 'armurier') v.visible = CH.dedans; v.rotation.y = yaw; v.scale.setScalar(G.echelle);
+  v.userData.dynamic = true; scene.add(v); A1C.gens[qui] = v;
+  { const c = addCap(x, z, x, z, 0.4); if (qui !== 'armurier') c.bottom = Y_CHAMBREE - 1; }   // (dans la chambrée : seulement à sa hauteur)
+  if (qui === 'tambour') { const t = mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.42, 14), mat(0xb02a2a, { roughness: 0.7 }), x + Math.cos(yaw) * 0.7, v.position.y + 0.21, z - Math.sin(yaw) * 0.7); dyn(t); scene.add(t); chambree().g.attach(t); }   // (le tambour suit la chambrée)
   addInteract({ pos: v.position, r: 2.6, enabled: () => v.visible && atteint('citadelle'), prompt: () => `parler ${NOMS_A1[qui].replace(/^le /, 'au ').replace(/^l’/, 'à l’')}`,
     fn: () => { v.rotation.y = Math.atan2(player.pos.x - v.position.x, player.pos.z - v.position.z); v.userData.talk = 4;
       dialogue(repliquesA1(qui), () => { v.userData.talk = 0; }); } });
@@ -2273,7 +2328,7 @@ function objectifA1() {
   const s = A(), L = lieuxA1(), pt = (o) => ({ x: o.x, z: o.z });
   if (s.parti) return ['Suis Phinaert dans la porte de lumière, devant le donjon', pt(L.dalle)];
   if (atteint('donjon')) return ['Affronte Phinaert dans l’enclos du donjon', pt(L.dalle)];
-  if (!s.caporal) return ['Des soldats se cachent devant une caserne, près de la poterne : parle-leur', pt(L.caserne)];
+  if (!s.caporal) return ['Des soldats se cachent dans une caserne, près de la poterne : entre leur parler', pt(L.caserne)];
   if (!state.bombes) {
     if (s.porte) return ['Parle à l’armurier, sur le bastion du Roy', pt(L.armurerie)];
     if (s.poudre) return ['Une flèche dans le tonneau de poudre de l’armurerie (bastion du Roy)', pt(L.armurerie)];

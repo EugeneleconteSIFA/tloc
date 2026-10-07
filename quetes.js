@@ -3,6 +3,7 @@
 // Secteur Quêtes : peuplement du niveau, dialogues, journal, objectifs, cinématiques,
 // et la boucle de jeu propre au niveau (update). Le décor lui est donné tout bâti.
 import {
+  lieux, estDecouvert,
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, camera, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, goToLevel, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
   showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer, keys, sun, hemi, renderer, bloom, sky, SUN_DIR,
@@ -73,12 +74,14 @@ export function populate() {
       // terre-plein jusqu'au coffre.
       if (!joignableDuCoeur(b, x, z)) continue;
       BOURSE.petitCoffre('bastion-' + i, x, BAST_H, z, 12 + i, Math.atan2(-b.u[0], -b.u[1]));
+      COFFRES_VAUBAN.push({ id: 'bastion-' + i, x, z });       // (les plans de Vauban les marquent : la marchande, E3)
       return;
     }
   });
   // coffre de l'arc sur le bastion de Turenne
   { const b = bastions[3]; PARTAGE.bowChest = makeChest(); const cx = b.V[0] + b.u[0] * 12 * ECH, cz = b.V[1] + b.u[1] * 12 * ECH;
-    PARTAGE.bowChest.position.set(cx, BAST_H, cz); PARTAGE.bowChest.rotation.y = Math.atan2(-b.u[0], -b.u[1]); scene.add(PARTAGE.bowChest); PARTAGE.bowChest.userData.pos = new THREE.Vector3(cx, BAST_H, cz); addCap(cx, cz, cx, cz, 0.9); }
+    PARTAGE.bowChest.position.set(cx, BAST_H, cz); PARTAGE.bowChest.rotation.y = Math.atan2(-b.u[0], -b.u[1]); scene.add(PARTAGE.bowChest); PARTAGE.bowChest.userData.pos = new THREE.Vector3(cx, BAST_H, cz); addCap(cx, cz, cx, cz, 0.9);
+    COFFRES_VAUBAN.push({ id: 'arc', x: cx, z: cz, fait: () => !!state.bowChest }); }
   // Lydéric près du pont
   // APO + MOAT_OUT ne donne PAS le bout du pont : MOAT_OUT est une distance au polygone,
   // et plein sud le fossé s'étend bien au-delà. Lydéric et Camille se retrouvaient donc
@@ -856,6 +859,10 @@ function lieuxActe1() {
   // sur un sol libre de tout mur à deux pas et demi. (2 octobre : la distance à la nappe seule le
   // posait dans une cour de brique, devant une eau cachée sous l'herbe.)
   L.pecheur = rive(164, 610) || [163.6, 610.2, -2.1];
+  // Hermès, le cocher (E3, 7 octobre) : au relais de poste, au bout du pont de Fin côté ville, tourné vers le pont
+  { const [x, z] = placeLibre(10, 262, 1, 0.4); L.hermes = [x, z, Math.atan2(-1 - x, 252 - z)]; }
+  // la marchande de cartes, rue du Cygne (la rue de l'allumeur, qui mène à la salle de la garde), tournée vers la rue
+  { const [x, z] = placeLibre(229, 672, 0, 1); L.marchande = [x, z, Math.atan2(223 - x, 668 - z)]; }
   // Houtland et le mage : à la place que leur donnait le prologue, devant la salle de la garde
   L.houtland = [E_.eugene[0], E_.eugene[1], Math.atan2(E_.x - E_.eugene[0], E_.z - E_.eugene[1])];
   { const [mx, mz] = placeLibre(E_.x - Math.sin(E_.yaw) * 3 + Math.cos(E_.yaw) * 1.6, E_.z - Math.cos(E_.yaw) * 3 - Math.sin(E_.yaw) * 1.6, -Math.sin(E_.yaw), -Math.cos(E_.yaw));
@@ -877,7 +884,9 @@ function rive(x0, z0, rMax = 40) {
   }
   return null;
 }
-const NOMS = { crieur: 'le crieur public', allumeur: 'l’allumeur de lanternes', gardien: 'le gardien de la chapelle', pecheur: 'le vieux pêcheur', houtland: 'Houtland', mage: 'le vieux mage' };
+// les coffres que marquent les plans de Vauban (la marchande, E3) : remplis au bâti, avant la partie
+const COFFRES_VAUBAN = [];
+const NOMS = { marchande: 'la marchande de cartes', hermes: 'Hermès', crieur: 'le crieur public', allumeur: 'l’allumeur de lanternes', gardien: 'le gardien de la chapelle', pecheur: 'le vieux pêcheur', houtland: 'Houtland', mage: 'le vieux mage' };
 // « parler à le… » : l'article se contracte
 const A_QUI = (n) => n.replace(/^le /, 'au ').replace(/^(?!au )/, 'à ');
 function preparerActe1() {
@@ -891,11 +900,13 @@ function preparerActe1() {
     const [x, z, yaw] = L[qui]; v.position.set(x, getH(x, z), z); v.rotation.y = yaw; v.visible = true;
     A1.gens[qui] = v; parlerA(v, qui); addCap(x, z, x, z, 0.4);
   }
-  A1.aFaire = ['crieur', 'allumeur', 'gardien', 'pecheur'];
+  A1.aFaire = ['crieur', 'allumeur', 'gardien', 'pecheur', 'hermes', 'marchande'];
 }
 // un par image : une demi-douzaine de personnages riggés d'un coup, c'était une image figée
 function naitreActe1() {
-  const qui = A1.aFaire.shift(), v = PNJ.buildRole(qui);
+  // (Hermès prend le corps du colporteur : pnj.js n'a pas de cocher, et il n'est pas à E3)
+  // (la marchande est la marchande des villageois de pnj.js, comme Aldegonde au bourg)
+  const qui = A1.aFaire.shift(), v = qui === 'marchande' ? PNJ.buildVillageois(0) : PNJ.buildRole(qui === 'hermes' ? 'colporteur' : qui);
   if (!v) { A1.aFaire.length = 0; return; }
   const [x, z, yaw] = lieuxActe1()[qui];
   v.position.set(x, getH(x, z), z); v.rotation.y = yaw; v.scale.setScalar(G.echelle);
@@ -937,9 +948,9 @@ function repliques(qui) {
       return [dit('Le vieux mage', '« Phinaert. Je pensais ne plus jamais entendre ce nom. »'),
         dit('Le vieux mage', '« Désiré a quitté le beffroi cette nuit. **Cornélie** voit tout ce qui passe dans le bourg : demande-lui. »')];
     case 'crieur':
-      // (DIALOGUES-ACTE1.md ; la phrase sur Hermès attend le voyage rapide, qui n'existe pas encore)
+      // (DIALOGUES-ACTE1.md ; la phrase sur Hermès est revenue avec le voyage rapide, E3)
       if (atteint('donjon')) return [dit('Le crieur public', '« Oyez ! Les trois cadenas sont tombés ! La garde est au donjon ! »')];
-      if (atteint('citadelle')) return [dit('Le crieur public', '« Oyez ! La garde est dans la citadelle ! **Trois monstres gardent encore le donjon !** »')];
+      if (atteint('citadelle')) return [dit('Le crieur public', '« Oyez ! La citadelle est reprise ! Trois monstres gardent encore le donjon ! **Hermès, le cocher du relais de poste,** mène la garde partout où elle veut ! »')];
       if (atteint('lanterne')) return [dit('Le crieur public', '« Oyez ! La garde descend sous la chapelle ! Que saint Roch la garde ! »')];
       return [dit('Le crieur public', '« Oyez ! La Grande Cloche est fendue, le géant d’osier ne bouge plus ! On cherche le guetteur Désiré, qui l’a vu ? »')];
     case 'gardien':
@@ -950,6 +961,11 @@ function repliques(qui) {
       if (state.lanterne) return [dit('L’allumeur', '« Tu as la lanterne de Désiré ! **Rallume les lanternes de la rue du Cygne**, veux-tu ? Moi, j’ai peur du noir, maintenant. »')];
       return [dit('L’allumeur', '« Désiré ? Je l’ai vu cette nuit, à minuit, **monter vers le beffroi** avec sa lanterne. Depuis, on voit sa lumière là-haut, mais **seulement la nuit**. Il ne m’a pas dit bonsoir. Il me dit toujours bonsoir. »', () => noter('nuit')),
         dit('L’allumeur', '« Je n’ose plus sortir faire ma tournée. Les rues sont trop noires. »')];
+    case 'marchande':
+      if (state.plansVauban) return [dit('La marchande de cartes', '« Tu as les plans ? Alors tu sais où chercher. Les coffres, c’est sur les bastions. »')];
+      return [dit('La marchande de cartes', '« La citadelle ! J’ai les plans de Vauban, moi. **Les coffres des bastions, tout est dessus.** Ça a un prix : trente écus. »', () => { A1.vauban = true; })];
+    case 'hermes':
+      return [dit('Hermès', '« Hermès, pour te servir. Pour la garde, c’est gratuit. **Je te mène à tout endroit de Lille que tu as déjà vu.** »', () => { A1.voyage = true; })];
     case 'pecheur':
       if (state.canne) return [dit('Le vieux pêcheur', state.cleBeffroi ? '« Il y a un brochet dans la Deûle, vieux comme la citadelle. Personne ne l’a jamais pris. On dit qu’il ne sort qu’à la pleine lune. »' : '« Alors, ça mord ? »')];
       if (state.vers) return [dit('Le vieux pêcheur', '« Bien gras. **Tiens, la canne.** Lance, attends que le bouchon plonge, et ramène doucement. Doucement, j’ai dit. »',
@@ -1033,6 +1049,11 @@ function tickActe1(dt) {
   if (!acte1()) return;
   if (!A1.pret) preparerActe1();
   if (A1.aFaire.length) naitreActe1();
+  if (A1.gens.hermes) A1.gens.hermes.visible = atteint('citadelle');      // le relais rouvre quand la citadelle est reprise
+  if (A1.gens.marchande) A1.gens.marchande.visible = atteint('citadelle');
+  // les plans de Vauban : les coffres pas encore ouverts, sur la carte et la minicarte (comme les repères du multi)
+  if (state.plansVauban && (A1.marquesT = (A1.marquesT || 0) - dt) <= 0) { A1.marquesT = 1;
+    PARTAGE.marques = COFFRES_VAUBAN.filter((c) => !(c.fait ? c.fait() : state.coffres && state.coffres[c.id])).map((c) => ({ x: c.x, z: c.z, fond: '#ffd24a', bord: '#3a2a10' })); }
   // Houtland et le mage sont déjà animés par update() ; les nouveaux, seulement s'ils sont près
   const c = camera.position;
   for (const [qui, v] of Object.entries(A1.gens)) if (v.visible && qui !== 'houtland' && qui !== 'mage' && Math.abs(v.position.x - c.x) + Math.abs(v.position.z - c.z) < 60) PNJ.animeVillageois(v, dt, false);
@@ -1041,7 +1062,47 @@ function tickActe1(dt) {
   porteBasse();
   tickVers();
   if (A1.enigme && !cut.active) { A1.enigme = false; enigmeDesire(); }
+  if (A1.voyage && !cut.active) { A1.voyage = false; voyageHermes(); }
+  if (A1.vauban && !cut.active) { A1.vauban = false; plansVauban(); }
 }
+// LES PLANS DE VAUBAN (E3, 7 octobre ; DIALOGUES-ACTE1.md, « La marchande de cartes ») : contre trente
+// écus (bourse.js), les coffres des bastions pas encore ouverts s'affichent sur la carte et la minicarte.
+// (Il n'y a pas de morceau de cœur dans la citadelle : la réplique ne parle que des coffres.)
+function plansVauban() {
+  showMenu('LES PLANS DE VAUBAN', 'La marchande de cartes', 'Les coffres des bastions de la citadelle, relevés par les ingénieurs du roi. Trente écus.',
+    [{ label: 'Acheter les plans (30 écus)', fn: () => { hideMenu(); state.paused = false;
+        if (!BOURSE.aBourse()) { showMessage('« Sans bourse, petite ? Reviens avec de quoi payer. »', 4); return; }
+        if (!BOURSE.peutPayer(30)) { showMessage('« Trente écus, pas un de moins. »', 3); return; }
+        BOURSE.payer(30); state.plansVauban = true; A1.marquesT = 0; saveGame(true); SFX.unlock && SFX.unlock();
+        showMessage('Les plans de Vauban : les coffres des bastions sont sur ta carte et ta minicarte.', 5); } },
+      { label: 'Pas maintenant', fn: () => { hideMenu(); state.paused = false; } }]);
+}
+PARTAGE.plansVauban = plansVauban;        // pour les bancs
+
+// LE VOYAGE RAPIDE (E3, 7 octobre ; DIALOGUES-ACTE1.md, « Hermès ») : un menu des lieux de Lille déjà
+// découverts (ceux de la carte : addLieu, estDecouvert) ; la voiture part, l'écran passe au noir, et
+// l'on descend devant le lieu, sur une place libre. Comme le petit train des Pouilles et les poteaux.
+function voyageHermes() {
+  const vus = lieux.filter((l) => l && l.id && l.x != null && estDecouvert(l.id) && Math.hypot(l.x - player.pos.x, l.z - player.pos.z) > 25);
+  if (!vus.length) { showMessage('« Tu n’as encore rien vu de Lille, toi ! Promène-toi d’abord. »', 4); return; }
+  showMenu('LA VOITURE D’HERMÈS', 'Le relais de poste', 'Il te mène à tout endroit de Lille que tu as déjà vu.',
+    [...vus.map((l) => ({ label: l.nom.charAt(0).toUpperCase() + l.nom.slice(1), fn: () => { hideMenu(); state.paused = false; partirAvecHermes(l); } })),
+      { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]);
+}
+function partirAvecHermes(l) {
+  const voile = document.createElement('div');
+  voile.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;transition:opacity .6s;z-index:50;pointer-events:none';
+  document.body.appendChild(voile); requestAnimationFrame(() => { voile.style.opacity = '1'; });
+  showMessage('La voiture d’Hermès cahote sur les pavés…', 3);
+  setTimeout(() => {
+    // une place libre devant le lieu, du côté d'où l'on arrive (le centre peut être un bâtiment)
+    const [x, z] = placeLibre(l.x, l.z, player.pos.x - l.x, player.pos.z - l.z);
+    player.pos.set(x, getH(x, z), z); player.vy = 0; player.yaw = Math.atan2(l.x - x, l.z - z); G.camYaw = player.yaw;
+    saveGame(true); voile.style.opacity = '0'; setTimeout(() => voile.remove(), 700);
+    showMessage('Hermès : « Nous y voilà. ' + l.nom.charAt(0).toUpperCase() + l.nom.slice(1) + '. »', 3);
+  }, 900);
+}
+PARTAGE.voyageHermes = voyageHermes;      // pour les bancs
 
 // ---------- la porte basse du beffroi (étapes 2 et 6) ----------
 // Le vantail est bâti par village.js (PARTAGE.porteBeffroi), ouvert : une ancienne partie monte

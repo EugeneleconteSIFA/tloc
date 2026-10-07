@@ -121,7 +121,7 @@ Ceux qui ne font pas avancer l'histoire mais rendent le jeu plus facile (`SCENAR
 |---|---|---|---|
 | `fete` | I | « Tu as la carte du beffroi ? Donne. **Je te marque dessus les endroits où l'on t'attend**, c'est gratuit pour la garde. » → les lieux de quête en cours s'affichent sur la carte | carte |
 | `grille` | I | « Pour quelques écus, **je te marque aussi les coins de pêche du quai** et les coffres du quartier. » | carte |
-| `citadelle` | I | « La citadelle ! J'ai les plans de Vauban, moi. **Les coffres des bastions et les morceaux de cœur, tout est dessus.** Ça a un prix. » | carte |
+| `citadelle` | I | « La citadelle ! J'ai les plans de Vauban, moi. **Les coffres des bastions, tout est dessus.** Ça a un prix : trente écus. » (codé, E3, 7 octobre : il n'y a pas de morceau de cœur dans la citadelle ; les plans marquent les coffres des bastions sur la carte et la minicarte) | bourse |
 
 ### Le sergent Houtland, maître d'armes
 

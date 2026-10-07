@@ -2858,3 +2858,34 @@ Découpage et répliques validés par Eugène (« d'accord sur les six, réduis 
 - **`pnj.js` (la nage, une autre conversation)** — en instance à la Garde-Guérin, `animeCamille` lit
   `p.pos.x` (`nageIci`, pnj.js:1249) sur le faux joueur que tloc-multi.js passe pour les avatars distants, qui
   n'a pas de `pos` : une pageerror à chaque image (`TLOC_ARENE=gardeguerin bancs/rencontres.mjs`).
+
+#### Passe D2 (7 octobre, PC, `PLAN-2026-10-07-VAGUE3.md`) — les demandes de l'acte V, **faites, publiées (f2f61f8)**
+- ~~`pnj.js` : la nage lit `p.pos` sur le faux joueur des avatars distants (C4)~~ — **faite, f2f61f8** : la
+  place est celle du personnage même (`p.pos || m.position`). Vérifié : les dix arènes en instance
+  (`rencontres.mjs`, une rencontre chacune), **aucune pageerror** — Lille, la Garde-Guérin, le Pouget, le Batut,
+  la maison du Batut (roquette), Ko Panyi, Gallipoli, Alberobello, Matera, l'estaminet.
+- ~~`temple.js` : le retour de l'acte V (C4)~~ — **faite, f2f61f8** : la Cloche des Troupeaux au quatrième étage,
+  les cloches qui se balancent seules dès la Lozère rendue, les sonnailles (de loin en loin), le cinquième vers
+  sur la plaque, le mage pâle (SCENARIO.md § 14, ses mots) ; une fois (`state.troupeauxVu`). Banc
+  `bancs/acte5-temple.mjs`.
+- ~~`engine.js` : la course du loup (C4)~~ — **faite, f2f61f8** : × 1,45 en courant (`state.course`), ni à cheval,
+  ni à la nage (`nageIci`), ni en instance (`EN_INSTANCE_MOTEUR`) ; l'aide des touches le dit. Mesuré : 31,9 m →
+  41,2 m en deux secondes de course (l'élan de départ et l'endurance pèsent sur deux secondes).
+
+### Acte I, les finitions (7 octobre, PC, consigne E3 de `PLAN-2026-10-07-VAGUE3.md`) — **faites, jouées en headless, publiées**
+- **Hermès et le voyage rapide** (`quetes.js`) : le cocher (le corps du colporteur de pnj.js) au relais de poste,
+  au bout du pont de Fin côté ville, à partir de l'étape `citadelle` ; « Je te mène à tout endroit de Lille que
+  tu as déjà vu » ouvre **un menu des lieux découverts** (Eugène : le menu plutôt que la carte) ; l'écran passe au
+  noir, on descend devant le lieu, sur une place libre. Le crieur le nomme de nouveau.
+- **La marchande de cartes**, rue du Cygne (la marchande des villageois), à partir de `citadelle` : les plans de
+  Vauban, trente écus (`bourse.js`) ; les coffres des bastions pas encore ouverts (et celui de l'arc) sur la carte et
+  la minicarte (`PARTAGE.marques`, comme les repères du multi). Il n'y a pas de morceau de cœur dans la citadelle :
+  la réplique ne parle que des coffres (DIALOGUES-ACTE1.md accordé).
+- **La chambrée de la caserne** (`citadelle.js`) : les trois soldats sont dedans (les lits de camp, le râtelier, la
+  table, la lanterne, le tambour) ; une porte de planches sur la façade (à la place des caisses) ; bâtie comme les
+  caves de l'Aveyron (au-dessus de la place, physique seulement dedans) ; leurs collisions n'existent qu'à sa
+  hauteur. L'objectif dit « dans une caserne ».
+- **Bancs** : `bancs/acte1-hermes.mjs` (Hermès, la marchande, la chambrée) réussi ; `acte1-citadelle` (37/37, il
+  entre dans la caserne et en ressort), `acte1-b1`, `acte1-souterrains` sans erreur.
+- **Reste** : une partie de l'acte I jouée à la main, chronométrée (Eugène) ; la marchande aux étapes `fete` et
+  `grille` (marquer les lieux de quête, les coins de pêche) n'est pas codée.

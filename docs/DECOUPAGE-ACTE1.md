@@ -243,8 +243,10 @@ passé, parler, filmer sans mur devant).
 Vérifié : les trois bancs (`acte1-b1`, `acte1-souterrains` « tout est passé », `acte1-citadelle`
 35/35) sans erreur ; une sauvegarde à l'étape `temple`, l'arc en poche, rejoue la scène de l'île et
 recharge Lille sans erreur (captures `bancs/resultats/acte1-fin-2026-10-06-*`).
-**Reste** : Hermès et le voyage rapide, la marchande et les plans de Vauban (`citadelle`) ; les
-intérieurs des casernes ; une partie complète jouée à la main, chronométrée (58 min visées) ; les
+**Fait (E3, 7 octobre)** : Hermès au relais de poste, au bout du pont de Fin, et le voyage rapide (un
+menu des lieux de Lille déjà découverts, `quetes.js`) ; la marchande de cartes, rue du Cygne, et les plans
+de Vauban (trente écus : les coffres des bastions sur la carte) ; la chambrée de la caserne des soldats
+(`citadelle.js` : bâtie au-dessus de la place, une porte sur la façade). **Reste** : une partie complète jouée à la main, chronométrée (58 min visées) ; les
 portes de l'île restent toutes ouvertes pour l'exploration (seule celle du Midi devrait l'être après
 l'acte I).
 

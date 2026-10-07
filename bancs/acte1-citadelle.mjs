@@ -86,6 +86,10 @@ try {
 
   // 1. les soldats cachés
   if (cap) {
+    // (E3, 7 octobre : les soldats sont DANS la caserne, la chambrée — on entre par la porte de la façade)
+    const entre = await page.evaluate(() => { const it = TLOC.interactables.find((i) => /entrer dans la caserne/.test(i.prompt()) && (!i.enabled || i.enabled())); if (!it) return false; it.fn(); return true; });
+    await page.waitForTimeout(800);
+    ok('la porte de la caserne mène à la chambrée', entre && await page.evaluate(() => TLOC.player.pos.y > 400), '');
     const t = posDe(/tambour/), v = posDe(/vieux/);
     const cx = (cap[0] + t[0] + v[0]) / 3, cz = (cap[2] + t[2] + v[2]) / 3;
     // en face d'eux, à 7 m
@@ -100,6 +104,10 @@ try {
       await finirCine();
       ok(`parler au ${nom}`, parle, txt.slice(0, 90));
     }
+    // et l'on ressort de la caserne
+    await page.evaluate(() => { const it = TLOC.interactables.find((i) => /sortir de la caserne/.test(i.prompt()) && (!i.enabled || i.enabled())); if (it) it.fn(); });
+    await page.waitForTimeout(600);
+    ok('on ressort sur la place d’Armes', await page.evaluate(() => TLOC.player.pos.y < 300), '');
     const e1 = await etat();
     ok('les soldats ont tout dit (créatures, nuit, armurier, poudre)', e1.a1c && e1.a1c.caporal && e1.a1c.tambour && e1.a1c.vieux && e1.a1c.poudre, JSON.stringify(e1.a1c));
   }
