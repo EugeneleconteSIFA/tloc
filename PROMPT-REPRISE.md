@@ -2795,3 +2795,19 @@ Le détail : `docs/NOTE-MULTI.md`, les trois dernières sections.
 L'arène du multi « La maison du Batut, au bord du lac » (`ARENE_ROQUETTE`, en fin de fichier) et une garde :
 en instance (`EN_INSTANCE`, lu dans `tloc_instance`), `habitants` et `acte2` ne sont pas appelés, ni
 `animeActe2`. En solo, rien ne change (`acte2-temoins.mjs` réussi). `aveyron.html` charge le multi en instance.
+
+#### La nage (7 octobre, suite de C2, à la demande d'Eugène) — **faite, publiée (7c6928e, 964148d)**
+- **`monde.js`, `nage(x, z)`** : avec le souffle du Yak (`state.souffle`), hors instance, la mer ne bloque plus.
+  On nage 0,9 m sous la surface du plan d'eau (`MER`, que la marée des Pouilles déplace) ; à moins de 30 cm
+  d'eau, on marche sur le fond. L'eau profonde des lacs se nage aussi, à leur niveau (à Ko Panyi, une eau du
+  relevé est un lac : la règle des lacs de 2194a65 y bloquait la nage). `getH` et `blocked` la prennent ;
+  `G.level.nageIci(x, z)` dit si l'on nage ici. thailande.js n'a plus de règle à lui.
+- **`pnj.js`** : la brasse (`Swim_Fwd_Loop`) en avançant, la nage sur place (`Swim_Idle_Loop`) à l'arrêt, de la
+  banque UAL ; `animeCamille` lit `nageIci` sur le niveau (le moteur est gardé à `installerCamille`). Le pivot
+  remonte la brasse à fleur d'eau (`NAGE_PIVOT` 0,45) et enfonce la nage sur place (−0,35), sinon elle sort
+  jusqu'à la taille.
+- Bancs : `bancs/monde-nage.mjs` (Gallipoli : sans le souffle, arrêtée au bord ; avec, 24 m au large), la nage
+  dans `acte3-fin.mjs` (depuis le ponton de Somsak ; plusieurs caps, les pilotis sont posés au hasard).
+- **Appris** : à Gallipoli, le relevé met la mer à moins d'un mètre partout : la nage se règle sur la surface, pas
+  sur le fond. **Appris (deux fois)** : un commentaire `//` ajouté en bout de ligne avale la suite de la ligne —
+  l'objet `GROTTE` (thailande.js), puis la boucle des lacs (monde.js) ; les bancs l'ont vu avant publication.
