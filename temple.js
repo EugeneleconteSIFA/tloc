@@ -326,10 +326,10 @@ function build() {
       n.position.set(0, 8.75, -1.0); g.add(n); }
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     for (const s of [-1, 1]) { const x = g.position.x + Math.cos(a) * s * 2.35, z = g.position.z - Math.sin(a) * s * 2.35; addCap(x, z, x, z, 0.85); }
-    // la porte des Troupeaux mène au Pouget — provisoire aussi : dans l'histoire, elle ne
-    // s'ouvre qu'à l'acte V ; c'est le premier monde bâti, Eugène veut pouvoir y aller
+    // la porte des Troupeaux mène à Villefort, place du Bosquet, devant la porte de l'île (acte V,
+    // Eugène, 7 octobre : l'acte commence au bourg ; le Pouget se gagne par le vieux chemin)
     if (P.geant === 'loup') addInteract({ pos: g.position.clone().setY(0), r: 3.2, prompt: () => 'pousser la porte des Troupeaux',
-      fn: () => goToLevel('pouget', [52.8, 0, -111.0], 0, 'La porte s’ouvre sur une pente de châtaigniers…') });
+      fn: () => goToLevel('villefort', [1568, 0, -1146.5], 0, 'La porte s’ouvre sur un bourg de pierre sombre…') });
     // le Midi mène au lac de Saint-Gervais, les Îles à la baie des pitons, les Heures à Alberobello, dans un trullo (Eugène,
     // 2 octobre, comme docs/SCENARIO.md) — provisoires comme les
     // Troupeaux ; les autres portes disent au moins qu'elles ne s'ouvrent pas encore

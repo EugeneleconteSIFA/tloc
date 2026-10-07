@@ -19,10 +19,11 @@
 // Ce qui a été bâti est consigné dans BILAN, que mesure bancs/lieu-lozere.mjs.
 //
 // On passe d'un lieu à l'autre par LES VIEUX CHEMINS : un poteau indicateur à chaque lieu, qui
-// propose les deux autres (comme le petit train des Pouilles). Pas encore de porte de l'île.
+// propose les deux autres (comme le petit train des Pouilles). La porte de l'île est à Villefort
+// (acte V, Eugène, 7 octobre), place du Bosquet ; celle du Pouget reste, pour en revenir.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -464,7 +465,10 @@ export function poteau(ctx, ici) {
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.5, prompt: () => 'prendre un vieux chemin',
     fn: () => showMenu('LES VIEUX CHEMINS', ARRIVEES[ici].titre, 'Des sentiers de troupeaux, plus vieux que les routes. On y marche longtemps, et le temps s’y emmêle.',
-      [...autres.map((k) => ({ label: 'Vers ' + ARRIVEES[k].titre, fn: () => { hideMenu(); goToLevel(k, ARRIVEES[k].pos, ARRIVEES[k].yaw, RECIT[k]); } })),
+      [...autres.map((k) => ({ label: 'Vers ' + ARRIVEES[k].titre, fn: () => { hideMenu();
+        // l'acte V : sans le chien du berger, le chemin du Pouget se perd dans le brouillard de 1765
+        if (k === 'pouget' && !EN_INSTANCE && !atteint5('chien')) { state.paused = false; showMessage('Le chemin monte dans un brouillard qui sent la châtaigne et la poudre. Un hurlement, au loin. Tu te retrouves au poteau sans savoir comment.', 6); return; }
+        goToLevel(k, ARRIVEES[k].pos, ARRIVEES[k].yaw, k === 'pouget' && state.chienSuit && !state.chienRendu ? 'Le chien trotte devant toi dans le brouillard, et ne se trompe pas une fois…' : RECIT[k]); } })),
         { label: 'Rester ici', fn: () => { hideMenu(); state.paused = false; } }]) });
 }
 
@@ -686,6 +690,8 @@ function facades(ctx, rs) {
 const BOUTIQUES = [
   { id: 'national', dans: [1599.5, -1125.2], enseigne: 'CAFÉ LE NATIONAL', drapeau: 'CAFÉ', couleur: 0x2e4a3a, fond: '#2a4436', terrasse: true },
   { id: 'fernand', dans: [1568.4, -1100.2], enseigne: 'CHEZ FERNAND', sous: 'Restaurant', drapeau: 'Restaurant', couleur: 0x6a2a24, fond: '#5e2620' },
+  // la boulangerie de l'acte V (le chien du berger y a volé un pain), dans la maison au sud de la place
+  { id: 'boulangerie', dans: [1579.3, -1080.3], enseigne: 'BOULANGERIE', sous: 'Pain – Fougasse', drapeau: 'PAIN', couleur: 0x8a5a2a, fond: '#7a4e24' },
   { id: 'balme', dans: [1615.1, -1033.4], enseigne: 'HÔTEL BALME', sous: 'Hôtel – Restaurant', drapeau: 'HÔTEL', couleur: 0x30405a, fond: '#2c3a52' },
 ];
 // le mur de devanture de chaque boutique (à appeler avant facades)
@@ -905,7 +911,9 @@ function gensDuBourg(ctx, gens, sol) {
     if (qui0 === 'pecheur') { const bx = x, bz = z;
       const banc = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.48, 0.5), phMat('granit_lozere', 1, 1, { color: 0xa8a69e }));
       banc.position.set(bx, y + 0.19, bz); banc.rotation.y = o.rotation.y; banc.castShadow = banc.receiveShadow = true; scene.add(banc); }
-    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler', fn: () => dialogue(mots.map((text) => ({ who: qui, text }))) });
+    // (le vieux de la place et le chef de gare ont une réplique de l'acte V : parleActe5)
+    const acte = { 'Un vieux, sur la place': 'vieux', 'Le chef de gare': 'chefgare' }[qui];
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'parler', fn: () => { const a = acte && parleActe5(acte); dialogue(a && a.length ? a : mots.map((text) => ({ who: qui, text }))); } });
     BILAN.gens.push({ qui, x: +x.toFixed(1), z: +z.toFixed(1), dit: mots[0] });
   }
 }
@@ -1275,7 +1283,8 @@ const FICHES = {
     ],
     sol: ['grass_ground', 0xa2ae7a],
     depart: { x: ARRIVEES.villefort.pos[0], z: ARRIVEES.villefort.pos[2], yaw: ARRIVEES.villefort.yaw },
-    portes: [],
+    // la porte de l'île (acte V, Eugène, 7 octobre) : place du Bosquet, à côté du poteau
+    portes: [{ x: 1568, z: -1150, rot: 0, prompt: 'repasser la porte de l’île', vers: ['temple', [-20.35, 0, -11.75], Math.atan2(20.35, 11.75)], label: 'Retour à l’île du temps…' }],
     counts: 'Villefort, le bourg de pierre au fond de la vallée, le long de l’Altier. Le poteau des vieux chemins, place du Bosquet, pour la Garde-Guérin et le Pouget.',
     start: 'Un bourg de pierre sombre, des toits de lauzes, et au nord, le lac.',
     entry: { title: 'Villefort', sub: 'La Cloche des Troupeaux — Lozère', cam: [1500, 170, -1560], at: [1610, 0, -1050], cam2: [1700, 40, -1300], at2: [1580, 0, -1120], dur: 6 },
@@ -1324,11 +1333,13 @@ const FICHES = {
         libre: (x, z) => !ctx.bloque(x, z, 2.5) && FICHES.villefort._sol(x, z) === null && rs.every((c) => distLigne(x, z, c.pts) > largeur(c) / 2 + 1.5) });
       poteau(ctx, 'villefort');
       const t0 = performance.now(); gensDuBourg(ctx, GENS_VILLEFORT, FICHES.villefort._sol); BILAN.msGens = Math.round(performance.now() - t0);   // règle 8 : ≤ 300 ms
+      acte5Villefort(ctx, boutiques);
     },
     // les passants respirent et bougent un peu, à chaque image
     anime(now) {
       const dt = Math.min(0.1, (now - (tAvant || now)) / 1000); tAvant = now;
       for (const g of GENS) if (g.userData.ctrl) PNJ.animeVillageois(g, dt, false);
+      acte5Anime(dt);
     },
   },
 
@@ -1388,6 +1399,188 @@ const FICHES = {
     },
   },
 };
+
+// =====================================================================
+//  L'ACTE V — « La Cloche des Troupeaux » (STORY.md ; docs/DECOUPAGE-ACTE5.md, DIALOGUES-ACTE5.md)
+// =====================================================================
+// L'acte passe d'un lieu à l'autre (Villefort, le Pouget, la Garde-Guérin) : son avancement
+// (state.acte5), son carnet (state.ind5) et la sonnaille vivent ici, que pouget.js importe comme le
+// poteau. Chaque habitant dit la réplique de l'étape la plus récente qui lui en donne une. En
+// instance du multi (les arènes de la Garde-Guérin et du Pouget), l'acte ne joue pas.
+export const EN_INSTANCE = (() => { try { const i = JSON.parse(localStorage.getItem('tloc_instance') || 'null'); return !!(i && i.code); } catch (e) { return false; } })();
+const ETAPES5 = ['arrivee', 'chien', 'sonnaille', 'temoins', 'tour', 'loup', 'course'];
+const rang5 = (e) => ETAPES5.indexOf(e);
+export const atteint5 = (e) => rang5(state.acte5 || 'arrivee') >= rang5(e);
+function passer5(e) { if (rang5(e) <= rang5(state.acte5 || 'arrivee')) return; state.acte5 = e; saveGame(true); }
+const sait5 = (k) => !!(state.ind5 && state.ind5[k]);
+function noter5(cle) { state.ind5 = state.ind5 || {}; if (state.ind5[cle]) return; state.ind5[cle] = true; saveGame(true); setTimeout(() => showMessage('Indice noté au journal (J).', 3), 300); }
+// ce que l'acte a posé, pour les bancs (bancs/acte5-*.mjs)
+export const A5 = { aFaire: [], pret: false, chien: null, gens: {}, ctx: null, lieu: null, sonne: null, sonT: 0, appuis: [] };
+if (typeof window !== 'undefined') window.__acte5 = A5;
+
+// Le carnet du journal (J)
+const INDICES5 = {
+  boulangere: { txt: 'Le chien du berger a volé un pain chez la boulangère, place du Bosquet.', qui: 'le vieux de la place', fait: () => sait5('pont') },
+  pont:       { txt: 'Il dort sous la voûte du pont Saint-Jean, et s’enfuit quand on approche.', qui: 'la boulangère, le chef de gare', fait: () => atteint5('chien') },
+  sifflet:    { txt: 'Il ne revient qu’au sifflet du berger : deux notes, une haute, une basse.', qui: 'les enfants du lavoir', fait: () => atteint5('chien') },
+  sonnaille:  { txt: 'La sonnaille : un coup, le présent ; deux coups, le passé du lieu (touche N).', qui: 'le berger du Pouget', fait: () => false },
+};
+function indices5() {
+  if (!state.ind5) return '';
+  const l = Object.keys(INDICES5).filter((k) => state.ind5[k]).map((k) => { const i = INDICES5[k], f = i.fait();
+    return `<div style="margin:4px 0;${f ? 'opacity:.5;text-decoration:line-through' : ''}">${i.txt} <span style="opacity:.6">— ${i.qui}</span></div>`; });
+  return l.length ? `<h3 style="margin:18px 0 6px;color:#9fd0ff;font-size:16px;letter-spacing:1px">INDICES</h3><div style="padding:8px 14px;border-left:4px solid #9fd0ff;background:rgba(255,255,255,.06);border-radius:6px">${l.join('')}</div>` : '';
+}
+
+// Les répliques (DIALOGUES-ACTE5.md) : [étape, fonction qui rend les lignes] ; la dernière atteinte parle
+const R5 = (who, ...t) => t.map((text) => ({ who, text }));
+const puis5 = (l, fn) => { l[l.length - 1].fn = fn; return l; };
+const REPLIQUES5 = {
+  vieux: [
+    ['arrivee', () => puis5(R5('Un vieux, sur la place', 'Le berger du Pouget est descendu hier soir. Son chien a filé quand le loup a hurlé, et il est remonté seul. **Sans son chien, le chemin du Pouget, on s’y perd.**',
+      'Le chien ? **Demande à la boulangère.** Tout ce qui a faim passe chez elle.'), () => noter5('boulangere'))],
+    ['chien', () => R5('Un vieux, sur la place', 'Le voilà ! Le chien du berger. Monte vite, il t’attend.')],
+    ['course', () => R5('Un vieux, sur la place', 'Le brouillard du chemin s’est levé. Je n’avais pas vu les crêtes depuis des semaines.')],
+  ],
+  boulangere: [
+    ['arrivee', () => puis5(R5('La boulangère', 'Un chien noir et blanc, avec un collier de cuir ? Il m’a pris un pain ce matin, ce voleur.',
+      'Il a filé vers le bas du bourg. **Il dort sous le pont Saint-Jean**, à ce qu’on dit.'), () => noter5('pont'))],
+    ['chien', () => R5('La boulangère', 'Rends-le au berger. Et dis-lui qu’il me doit un pain.')],
+  ],
+  chefgare: [
+    ['arrivee', () => !sait5('pont') ? R5('Le chef de gare', 'Les trains ne passent plus à l’heure. Alors j’attends ici.')
+      : puis5(R5('Le chef de gare', 'Le chien du berger ? Je l’ai vu sous le pont Saint-Jean. Mais il s’enfuit dès qu’on approche.',
+        '**Les enfants du lavoir** lui donnent à manger, eux.'), () => noter5('enfants'))],
+    ['chien', () => R5('Le chef de gare', 'Les trains ne passent plus à l’heure. Alors j’attends ici.')],
+  ],
+  enfants: [
+    ['arrivee', () => !sait5('pont') ? R5('Les enfants du lavoir', 'On n’a pas le droit d’aller au lac. À cause du loup.')
+      : puis5(R5('Les enfants du lavoir', 'Le chien ? Il revient seulement si on siffle comme le berger.',
+        '**Deux notes, une haute, une basse.** Tiens, écoute. (Camille apprend le sifflet.)'), () => noter5('sifflet'))],
+    ['chien', () => R5('Les enfants du lavoir', 'Il te suit ! Il t’a adoptée.')],
+  ],
+  berger: [
+    ['arrivee', () => R5('Le berger', 'Mon chien… Tu ne l’as pas vu ? Il a filé à Villefort, quand le loup a hurlé.')],
+    ['chien', () => puis5([
+      ...R5('Le berger', 'Te voilà, toi. Tu as eu peur, hein. Moi aussi.',
+        'Le loup qui a hurlé, je le connais. Il est grand comme une grange. Il garde les troupeaux de cette montagne depuis plus longtemps que les hommes.',
+        'Quelqu’un lui a planté un morceau de cloche dans l’épaule. Depuis, il ne sait plus quelle année il est. Il chasse en 1765, il chasse aujourd’hui. Là-bas, on l’appelle la Bête.',
+        'Je ne veux pas qu’on le tue. Je veux qu’on le libère. Prends ça : **la sonnaille** de ma brebis de tête. Il la connaît. **Un coup, et tout revient au présent. Deux coups, et le lieu revient à son passé.**')],
+      () => { state.sonnaille = true; noter5('sonnaille'); passer5('sonnaille'); state.chienRendu = true; saveGame(true); showMessage('La SONNAILLE : touche N. Un coup, le présent ; deux coups, le passé du lieu.', 7); })],
+    ['sonnaille', () => R5('Le berger', 'Ici, il n’y a qu’un temps. Grâce à lui.',
+      'Il paraît qu’il y a un autre Pouget, en Aveyron. Une grande maison, chez des Roquette. J’y crois pas. Un Pouget, ça suffit.')],
+  ],
+};
+const repl5 = (qui) => { let r = null; for (const [e, l] of REPLIQUES5[qui] || []) if (atteint5(e)) r = l; return r ? r() : []; };
+// pour les passants de Villefort (gensDuBourg) : une réplique d'acte quand le passant en a une
+export const parleActe5 = (qui) => (EN_INSTANCE ? null : REPLIQUES5[qui] ? repl5(qui) : null);
+
+// Les gens nouveaux : le berger (le colporteur de pnj.js, plus sec), la boulangère (la marchande des
+// villageois), les enfants du lavoir (pnj.js, enfant et enfante)
+Object.assign(PNJ.ROLES, {
+  a5_berger: { ...PNJ.ROLES.colporteur, gabarit: 'sec', idle: 'Idle_Loop' },
+});
+// (un rôle par son nom, un villageois par son numéro ; animés par acte5Anime, dans tous les lieux)
+function personne5(role, x, y, z, yaw) {
+  const o = typeof role === 'number' ? PNJ.buildVillageois(role) : PNJ.buildRole(role); if (!o) return null;
+  o.scale.setScalar(G.echelle); o.position.set(x, y, z); o.rotation.y = yaw; scene.add(o); (A5.persos = A5.persos || []).push(o); return o;
+}
+
+// ---- Le chien : loup.glb réduit (Eugène, 7 octobre : « réduis le loup pour le chien »), assombri ----
+BETES.chien = { fichier: 'loup.glb', haut: 1.1,   // (en unités de Lille, × G.echelle : 66 cm à la tête ; à 0,62, un chiot de 37 cm)
+  teintes: { M_Wolf: 0x2a2826 } };
+async function poserChien(x, y, z, yaw) {
+  const m = await chargerBete('chien'); if (!m) return null;
+  const c = m.S.clone(m.g.scene); c.scale.setScalar(m.echelle * G.echelle);
+  c.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+  c.position.set(x, y, z); c.rotation.y = yaw; scene.add(c);
+  const mix = new THREE.AnimationMixer(c), marche = m.g.animations.find((k) => /Walk/.test(k.name)), act = marche ? mix.clipAction(marche) : null;
+  if (act) { act.play(); act.paused = true; }
+  return { c, mix, act };
+}
+// il suit Camille à deux mètres et demi ; il trotte quand elle s'éloigne, s'arrête quand elle s'arrête
+function suivreChien(dt, sol) {
+  const C = A5.chien; if (!C || !C.c) return;
+  const p = player.pos, o = C.c.position, dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
+  if (d > 60) { o.set(p.x - 2, p.y, p.z - 2); return; }
+  const va = d > 2.5; if (C.act) C.act.paused = !va;
+  if (va) { const v = Math.min(d - 2.5, (d > 8 ? 9 : 6) * dt); o.x += dx / d * v; o.z += dz / d * v; C.c.rotation.y = Math.atan2(dx, dz); }
+  o.y = sol(o.x, o.z); C.mix.update(dt * (d > 8 ? 1.6 : 1));
+}
+
+// ---- Villefort : la boulangère, les enfants du lavoir, le chien sous le pont ----
+function acte5Villefort(ctx, boutiques) {
+  if (EN_INSTANCE) return;
+  A5.ctx = ctx; A5.lieu = 'villefort';
+  const { hauteur, bloque, addInteract } = ctx, sol = (x, z) => (FICHES.villefort._sol(x, z) ?? hauteur(x, z));
+  const placer = (x0, z0) => { for (let r = 0; r < 25; r += 1) for (let k = 0; k < 16; k++) { const x = x0 + Math.cos(k / 16 * TAU) * r, z = z0 + Math.sin(k / 16 * TAU) * r; if (!bloque(x, z, 0.9)) return [x, z]; } return null; };
+  const parle = (x, z, qui, r = 2.6) => addInteract({ pos: new THREE.Vector3(x, sol(x, z), z), r, prompt: () => 'parler', fn: () => dialogue(repl5(qui)) });
+  // la boulangère, devant sa devanture
+  const B = boutiques.find((b) => b.id === 'boulangerie');
+  if (B) { const fx = B.p[0] + B.u.x * B.L / 2 + B.n.x * 1.6, fz = B.p[1] + B.u.z * B.L / 2 + B.n.z * 1.6, p = placer(fx, fz);
+    if (p) { A5.aFaire.push(() => { A5.gens.boulangere = personne5(0, p[0], sol(...p), p[1], Math.atan2(B.n.x, B.n.z)); }); parle(p[0], p[1], 'boulangere'); A5.boulangere = p; } }
+  // les enfants du lavoir
+  for (const [role, x0, z0] of [['enfant', 1526, -1398], ['enfante', 1528, -1395]]) { const p = placer(x0, z0); if (!p) continue;
+    A5.aFaire.push(() => { personne5(role, p[0], sol(...p), p[1], Math.atan2(1540 - p[0], -1405 - p[1])); }); A5.enfants = p; }
+  if (A5.enfants) parle(A5.enfants[0], A5.enfants[1], 'enfants', 3);
+  // le pont Saint-Jean : le chien dort sous la voûte ; on siffle depuis la rive
+  { const p = placer(1546, -1410) || [1546, -1410]; A5.pont = p;
+    addInteract({ pos: new THREE.Vector3(p[0], sol(...p), p[1]), r: 4, prompt: () => (sait5('sifflet') ? 'siffler comme le berger' : 'regarder sous le pont'), enabled: () => !atteint5('chien'),
+      fn: () => { if (!sait5('sifflet')) { showMessage('Sous la voûte, dans l’ombre, deux yeux qui brillent. Ils disparaissent dès que tu avances.', 5); return; }
+        SFX.unlock && SFX.unlock(); dialogue([{ who: '', text: '(deux notes) Le chien sort de sous le pont, la queue basse, puis la queue haute. Il te suit.' }], () => {
+          state.chienSuit = true; passer5('chien'); saveGame(true);
+          poserChien(p[0] - 1.5, sol(...p), p[1], 0).then((c) => { A5.chien = c; }); }); } }); }
+  if (state.chienSuit && !state.chienRendu) A5.aFaire.push(() => poserChien(player.pos.x - 2, player.pos.y, player.pos.z - 2, 0).then((c) => { A5.chien = c; }));
+  A5.sol = sol;
+}
+
+// ---- Le Pouget : le berger, devant sa maison ; le chien rendu ----
+export function acte5Pouget(ctx) {
+  if (EN_INSTANCE) return;
+  A5.ctx = ctx; A5.lieu = 'pouget';
+  // devant la première maison du hameau en montant, tourné vers la route d'arrivée (une place libre)
+  const { hauteur, addInteract, bloque } = ctx, [x0, z0] = ctx.bergerA || [20, -40];
+  let x = x0, z = z0; for (let r = 0, ok = false; r < 25 && !ok; r += 1) for (let k = 0; k < 16 && !ok; k++) { const a = x0 + Math.cos(k / 16 * TAU) * r, b = z0 + Math.sin(k / 16 * TAU) * r; if (!bloque(a, b, 0.9)) { x = a; z = b; ok = true; } }
+  const y = hauteur(x, z), yaw = Math.atan2(52.6 - x, -104 - z);
+  A5.sol = hauteur; A5.berger = [x, y, z];
+  A5.aFaire.push(() => { A5.gens.berger = personne5('a5_berger', x, y, z, yaw); });
+  addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.8, prompt: () => 'parler au berger', fn: () => dialogue(repl5('berger')) });
+  // le chien : il suit Camille jusqu'ici, puis reste avec le berger
+  if (state.chienSuit) A5.aFaire.push(() => poserChien(state.chienRendu ? x + 1.2 : player.pos.x - 2, y, state.chienRendu ? z + 0.8 : player.pos.z - 2, 0).then((c) => { A5.chien = c; }));
+}
+
+// ---- La sonnaille (touche N) : un coup, le présent ; deux coups, le passé du lieu ----
+// Deux appuis à moins de 0,45 s : deux coups. Le passé dure huit secondes autour de Camille ; les lieux
+// s'y abonnent (A5.surSonnaille). L'image passe au sépia tant qu'on est dans le passé.
+A5.surSonnaille = [];
+function sonnaille() {
+  if (!state.sonnaille || EN_INSTANCE || !state.running || state.paused) return;
+  A5.appuis.push(performance.now());
+  clearTimeout(A5.attente);
+  A5.attente = setTimeout(() => { const n = A5.appuis.filter((t) => performance.now() - t < 700).length >= 2 ? 2 : 1; A5.appuis = []; sonner(n); }, 460);
+}
+function sonner(n) {
+  for (let k = 0; k < n; k++) setTimeout(() => SFX.piece && SFX.piece(), k * 260);
+  A5.sonne = n === 2 ? 'passe' : 'present'; A5.sonT = n === 2 ? 8 : 0;
+  const cv = document.querySelector('canvas'); if (cv) cv.style.filter = n === 2 ? 'sepia(0.55) contrast(1.05)' : '';
+  for (const f of A5.surSonnaille) f(A5.sonne, player.pos);
+  if (n === 2 && A5.lieu === 'pouget') showMessage('Le Pouget ne change pas. Ici, il n’y a qu’un temps.', 3);
+}
+TOUCHES.KeyN = sonnaille;
+export const passeVu = () => A5.sonne === 'passe';
+
+// à chaque image, dans chaque lieu de l'acte
+export function acte5Anime(dt) {
+  if (EN_INSTANCE) return;
+  if (!A5.pret && G.level && state.running) { A5.pret = true; if (!state.acte5) { state.acte5 = 'arrivee'; saveGame(true); } G.level.indices = indices5; }
+  if (state.sonnaille && !AIDE.extra.some(([k]) => k === 'N')) AIDE.extra.push(['N', 'sonner la sonnaille']);
+  const f = A5.aFaire.shift(); if (f) f();
+  for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
+  if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu)) suivreChien(dt, A5.sol);
+  else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
+  // le passé qui s'efface
+  if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
+}
 
 // La voie Nîmes–Clermont : le ballast et deux files de rails, posés sur le relief dessiné ; les
 // ponts tendus à plat d'une culée à l'autre, sur des piles ; les tunnels ne sont pas dessinés (la

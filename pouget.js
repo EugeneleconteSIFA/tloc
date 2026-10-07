@@ -16,7 +16,7 @@ import { especeGeo } from './foret.js';
 import { construireHameau, potagers, murets, panneau, graine } from './pouget-bati.js';
 import { planterArbresDePres } from './pouget-arbres.js';
 import { enclos } from './pouget-enclos.js';
-import { poteau, decorDeHameau } from './lozere.js';
+import { poteau, decorDeHameau, acte5Pouget, acte5Anime } from './lozere.js';
 import { PARTAGE } from './etat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -237,6 +237,8 @@ async function build() {
   // ---------- le poteau des vieux chemins : vers Villefort et la Garde-Guérin (lozere.js, le même
   // qu'à Villefort et à la Garde-Guérin ; sans lui, on ne repartait du Pouget que par la porte) ----------
   poteau({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), scene, addInteract }, 'pouget');
+  // l'acte V (lozere.js) : le berger, devant le haut du hameau, et son chien
+  acte5Pouget({ hauteur: (x, z) => Math.max(hauteur(x, z), solBati(x, z)), addInteract, bloque: blocked, bergerA: [20, -40] });
 
   // ---------- la vie du hameau (Eugène, 5 octobre : « ça manque de bancs, tonneaux, fleurs, oiseaux,
   // animaux et troupeaux ») : la fabrique de lozere.js, comme à la Garde-Guérin. Devant les maisons,
@@ -272,7 +274,9 @@ function animate(now) {
   if (R && R.voile) R.voile.material.opacity = 0.28 + Math.sin(now / 900) * 0.08;
   { const t = now / 1000, dt = Math.min(0.1, t - (tAvant || t)); tAvant = t; if (R && R.anime) R.anime(t, dt); }   // les oiseaux et le cheval (decorDeHameau)
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }   // camYaw = yaw : la caméra est DANS LE DOS (engine.js, la caméra suit le regard)
+  { const dt = Math.min(0.1, (now - (animer5 || now)) / 1000); animer5 = now; acte5Anime(dt); }   // l'acte V
 }
+let animer5 = 0;
 function minimap(g, W2) {
   const sc = W2 / 300, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc + 0, W2 / 2 + (z - player.pos.z) * sc];
   g.fillStyle = '#7a8a5a'; g.fillRect(0, 0, W2, W2);
