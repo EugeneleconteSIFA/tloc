@@ -531,6 +531,39 @@ function jardin() {
   mur(-CLOS.x, -CLOS.z, -CLOS.x, CLOS.z, clos); mur(CLOS.x, -CLOS.z, CLOS.x, CLOS.z, clos);
 }
 
+// LE JARDIN DANS LE GRAPHE DES BOTS (7 octobre, C8) : le graphe n'avait de points qu'aux maisons ;
+// un bot au jardin cherchait un point « vu » jusqu'à 45 m, et au fond d'un parterre il n'en voyait
+// aucun — il restait collé dans l'angle des buis (bancs/multi-porte-bot.mjs, à la sonde : 120 s
+// immobile en (9,9 ; 7)). L'allée, le tour du bassin, et chaque parterre par ses quatre ouvertures
+// (un point dehors, un dedans) et quatre points autour du buis du milieu ; reliés aux cours.
+function grapheJardin() {
+  const n = GRAPHE.n, a = GRAPHE.a, pt = (x, z) => n.push([x, z, 0]) - 1, lien = (...l) => { for (let k = 1; k < l.length; k++) a.push([l[k - 1], l[k]]); };
+  // le point de maison le plus proche (les cours et les coins posés par maison())
+  const deMaison = (x, z) => { let m = -1, d = Infinity; n.forEach(([qx, qz, qy], i) => { const e = Math.hypot(qx - x, qz - z); if (qy < 1 && e < d) { d = e; m = i; } }); return m; };
+  for (const s of [-1, 1]) {
+    const al = [7, 12, 20, 29].map((x) => pt(s * x, 0));
+    lien(...al); lien(al[3], deMaison(s * 33, 0));
+    for (const sz of [-1, 1]) {
+      const xm = s * 18, zm = sz * 15;
+      const oA = pt(xm, sz * 3.5), iA = pt(xm, sz * 8.5), oB = pt(xm, sz * 26.5), iB = pt(xm, sz * 21.5);
+      const oC = pt(s * 6.5, zm), iC = pt(s * 11.5, zm), oD = pt(s * 29.5, zm), iD = pt(s * 24.5, zm);
+      // autour du buis du milieu (1,2 m de rayon) : quatre points, en anneau
+      const P = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => pt(xm + u * 4.5, zm + v * 4.5));
+      lien(P[0], P[1], P[2], P[3], P[0]);
+      // chaque ouverture : dehors → dedans → les deux points intérieurs de son côté
+      const pres = (q) => [...P].sort((i, j) => Math.hypot(n[i][0] - n[q][0], n[i][1] - n[q][1]) - Math.hypot(n[j][0] - n[q][0], n[j][1] - n[q][1])).slice(0, 2);
+      for (const [o, i] of [[oA, iA], [oB, iB], [oC, iC], [oD, iD]]) { lien(o, i); for (const p of pres(i)) lien(i, p); }
+      // dehors : l'allée, le bassin, les coins et les cours des maisons
+      lien(oA, al[2]); lien(oC, pt(0, sz * 7)); lien(oC, al[0]);
+      const coin = pt(s * 29.5, sz * 26.5); lien(oB, coin, oD); lien(coin, deMaison(s * 33, sz * 21)); lien(oD, deMaison(s * 33, sz * 11.5));
+    }
+  }
+  // le tour du bassin : quatre points reliés en anneau
+  const b = [[7, 0], [0, 7], [-7, 0], [0, -7]].map(([x, z]) => n.findIndex((q) => q[0] === x && q[1] === z && q[2] === 0)).filter((i) => i >= 0);
+  if (b.length === 4) lien(b[0], b[1], b[2], b[3], b[0]);
+  if (GRAPHE.voisins) delete GRAPHE.voisins;
+}
+
 // ---------------------------------------------------------------------
 //  Le niveau
 // ---------------------------------------------------------------------
@@ -544,6 +577,7 @@ function build() {
   renderer.toneMappingExposure = 1.0; bloom.strength = 0.15;
   jardin();
   maison('batut'); maison('beauregard');
+  grapheJardin();
 }
 // où est Camille : dans une maison (et à quel niveau), dans une tour, ou dehors
 const dansMaison = (x, z) => Math.abs(z) < DEMI && Math.abs(x) > FACADE && Math.abs(x) < FACADE + PROF;

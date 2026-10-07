@@ -739,5 +739,10 @@ son état (cible, chasse, chemin du graphe, but).
   graphe ; un bot coincé garde sa destination de rechange 3 s.
 - **Mesuré** : avant, portes fermées 6/8 au contact (ouvertes 8/8) ; après, fermées 16/21 (7 à 25 s), ouvertes
   14/15 (7 à 38 s). Le bot rouvre une porte par poursuite.
-- **Défaut connu, à traiter à part** : il reste des poursuites où le bot n'arrive pas en 120 s — aussi portes
-  ouvertes (1 sur 5 au dernier passage), plus souvent portes fermées. La sonde est prête pour le chercher.
+- **Le défaut restant, trouvé à la sonde et corrigé** (`TLOC_SONDE=echecs` : le journal des seules passes
+  manquées) : à chaque échec, le bot restait immobile en (9,9 ; 7), dans l'angle intérieur d'un parterre de
+  buis — portes ouvertes ou fermées. Le graphe n'avait de points qu'aux maisons : au fond d'un parterre, le bot
+  n'en voyait aucun et poussait droit dans l'angle des haies. Le jardin entre dans le graphe (`grapheJardin`,
+  batut.js : l'allée, le tour du bassin, chaque parterre par ses quatre ouvertures et quatre points autour du
+  buis du milieu ; 216 points, 270 arêtes, tous libres). Ensuite : **12 poursuites sur 12**, ouvertes 6 à 19 s,
+  fermées 9 à 19 s.

@@ -46,16 +46,18 @@ async function passe(fermees) {
   while ((await etat()) !== 'cours' && Date.now() - t0 < 240000) await page.waitForTimeout(2000);
   // les portes refermées au départ de la manche (une manche qui commence ne les rouvre pas, mais au cas où)
   if (fermees) await page.evaluate(() => { for (const p of __batut.PORTES) TLOC.G.level.porte(p.id, false); });
-  const debut = Date.now(); let arrive = null;
+  const debut = Date.now(); let arrive = null; const journal = [];
   while (Date.now() - debut < FENETRE * 1000 && arrive === null) {
     const d = await page.evaluate(([x, z, y]) => Math.min(...[...window.TLOC_MULTI.bots.values()].filter((b) => b.pos && !(b.mortT > 0)).map((b) => Math.hypot(b.pos.x - x, b.pos.z - z) + Math.abs((b.pos.y || 0) - y) * 2)), [cache.x, cache.z, cache.y]);
     if (d < 4) arrive = Math.round((Date.now() - debut) / 1000);
     // TLOC_SONDE : où est le bot, et la porte fermée la plus proche (y compris sa hauteur)
-    if (process.env.TLOC_SONDE && fermees && (Date.now() - debut) % 10000 < 600) console.log(JSON.stringify(await page.evaluate(() => [...window.TLOC_MULTI.bots.values()].map((b) => {
+    // (TLOC_SONDE=echecs : gardées, et montrées seulement si la passe échoue ; les deux sortes de passes)
+    if (process.env.TLOC_SONDE && (fermees || process.env.TLOC_SONDE === 'echecs') && (Date.now() - debut) % 5000 < 600) journal.push(JSON.stringify(await page.evaluate(() => [...window.TLOC_MULTI.bots.values()].map((b) => {
       const f = __batut.PORTES.filter((p) => !p.ouverte).map((p) => [p.id, +Math.hypot(b.pos.x - p.x, b.pos.z - p.z).toFixed(1), p.y]).sort((a, c) => a[1] - c[1])[0];
       return { p: [+b.pos.x.toFixed(1), b.pos.y, +b.pos.z.toFixed(1)], porte: f, cible: b.cible, chasse: b.chasse, flane: !!b.flane, ch: b.chemin ? `${b.chemin.k}/${b.chemin.pts.length}` : null, but: b.but && [Math.round(b.but.x), Math.round(b.but.z)], act: b.act }; }))));
     await page.waitForTimeout(500);
   }
+  if (process.env.TLOC_SONDE && (process.env.TLOC_SONDE !== 'echecs' || arrive === null)) console.log(journal.join(String.fromCharCode(10)));
   const rouvertes = fermees ? await page.evaluate(() => __batut.PORTES.filter((p) => p.ouverte).length) : null;
   await page.screenshot({ path: DIR + `multi-porte-bot-${JOUR}-${fermees ? 'fermees' : 'ouvertes'}.jpg`, quality: 80 });
   await page.context().close();
