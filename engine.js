@@ -2210,6 +2210,40 @@ export const spawnGaufre = (x, z) => spawnPickup('gaufre', x, z);
 // objet interactif : { pos:Vector3, r, prompt(), fn(), enabled() }
 export function addInteract(it) { interactables.push(it); return it; }
 
+// ---- Le lasso (state.lasso, donné par le berger du Pouget après l'acte V) ----
+// Monté ici à la passe D3 : la Lozère (les anneaux de fer) et la rive oubliée (les pieux de la Blessure)
+// avaient chacune leur copie du geste. Camille file jusqu'à `vers`, la corde tendue vers `ancre`
+// (là où elle est nouée) ; la gravité est tenue le temps du trajet, sinon l'arrivée compterait une chute.
+const ferLasso = () => new THREE.MeshStandardMaterial({ color: 0x4a4644, metalness: 0.85, roughness: 0.35 });
+export function anneauDeFer(x, y, z, yaw = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g);
+  const a = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.045, 8, 18), ferLasso()); a.position.z = 0.1; g.add(a);
+  const tige = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8), ferLasso()); tige.rotation.x = Math.PI / 2; g.add(tige);   // scellée dans la pierre
+  return g;
+}
+let hisse = null, corde = null;
+export const enLasso = () => !!hisse;
+// opts : msg (dit au départ), sansCorde (dit sans lasso), dur (sinon selon la longueur), fin (à l'arrivée)
+export function lasso(vers, ancre, opts = {}) {
+  if (hisse) return false;
+  if (!state.lasso) { showMessage(opts.sansCorde || 'Il faudrait une corde à lancer.', 3.5); return false; }
+  const de = player.pos.clone(), v = new THREE.Vector3(...vers);
+  hisse = { de, vers: v, ancre: new THREE.Vector3(...ancre), t: 0, fin: opts.fin,
+    dur: opts.dur || Math.min(2.4, Math.max(1.2, de.distanceTo(v) / 12)) };
+  SFX.roll && SFX.roll(); if (opts.msg) showMessage(opts.msg, 2.5);
+  return true;
+}
+function lassoTick(dt) {
+  const H = hisse; if (!H) return;
+  H.t = Math.min(1, H.t + dt / H.dur); const u = H.t * H.t * (3 - 2 * H.t);
+  player.pos.lerpVectors(H.de, H.vers, u); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
+  if (!corde) { corde = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 6), new THREE.MeshStandardMaterial({ color: 0xb8a070, roughness: 0.9 })); corde.userData.dynamic = true; scene.add(corde); }
+  const a = player.pos.clone().setY(player.pos.y + 0.9), d = H.ancre.clone().sub(a), L = d.length();
+  corde.visible = L > 0.05; corde.position.copy(a).addScaledVector(d, 0.5); corde.scale.set(1, Math.max(L, 0.01), 1);
+  if (L > 0.05) corde.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  if (H.t >= 1) { hisse = null; corde.visible = false; if (H.fin) H.fin(); }
+}
+
 // =====================================================================
 //  Lieux : la carte se revele a mesure qu'on explore
 // =====================================================================
@@ -2704,7 +2738,8 @@ export function newGame() {
   if (G.sansSauvegarde) { sessionStorage.setItem('tloc_auto', 'prologue'); location.reload(); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {} sessionStorage.setItem('tloc_auto', 'new'); naviguer('index.html'); }
 export const PAGES = { citadel: 'index.html', cave: 'cave.html', house: 'house.html', tavern: 'tavern.html', mage: 'mage.html', chapelle: 'chapelle.html', temple: 'temple.html', pouget: 'pouget.html', aveyron: 'aveyron.html',
-  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html', thailande: 'thailande.html', villefort: 'villefort.html', gardeguerin: 'garde-guerin.html' };
+  gallipoli: 'gallipoli.html', matera: 'matera.html', alberobello: 'alberobello.html', thailande: 'thailande.html', villefort: 'villefort.html', gardeguerin: 'garde-guerin.html',
+  lac: 'lac.html', rive: 'rive.html' };
 export function resumeFromSave() { const d = readSave(); sessionStorage.setItem('tloc_auto', 'resume'); naviguer(PAGES[d && d.level] || 'index.html'); }
 
 // ---------------------------------------------------------------------
@@ -3781,7 +3816,7 @@ function loop(now) {
   if (state.running && !state.over && !state.paused) {
     state.time += dt; Q.tick(brut);
     const px0 = player.pos.x, pz0 = player.pos.z;
-    updatePlayer(dt); lieuxTick();
+    updatePlayer(dt); lassoTick(dt); lieuxTick();
     { const d = Math.hypot(player.pos.x - px0, player.pos.z - pz0); if (d < 2) state.distance += d; }   // un saut de plus de 2 m en une image : un changement de lieu
     for (const e of enemies) updateEnemy(e, dt);
     updateArrows(dt); updateShockwaves(dt); updateParticles(dt);

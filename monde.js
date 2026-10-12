@@ -248,9 +248,10 @@ export async function monde(f) {
       const ge = (PLAN.eau.cours || []).filter((c) => dansCadre(c.pts, 20)).map((c) => ruban(densifier(c.pts), 1.4, 0.1));
       if (ge.length) scene.add(new THREE.Mesh(mergeGeometries(ge), eau));
       // les lacs : au niveau de leurs RIVES (la médiane du relief le long du contour) — le centre
-      // du plan tombait parfois sur une avancée de terre, et l'eau débordait sur la rive
+      // du plan tombait parfois sur une avancée de terre, et l'eau débordait sur la rive. Un plan peut donner
+      // son `niveau` : un lac qu'un lieu ne montre qu'en partie (Villefort) n'a pas ses vraies rives dans le cadre
       for (const l of (PLAN.eau.plans || [])) { if (!dansCadre(l.pts) || l.pts.length < 3) continue;
-        const rives = l.pts.map(([x, z]) => hauteur(x, z)).sort((a, b) => a - b), niveau = rives[Math.floor(rives.length * 0.3)];
+        const rives = l.pts.map(([x, z]) => hauteur(x, z)).sort((a, b) => a - b), niveau = l.niveau ?? rives[Math.floor(rives.length * 0.3)];
         const g = new THREE.ShapeGeometry(new THREE.Shape(l.pts.map(([x, z]) => new THREE.Vector2(x, -z)))); g.rotateX(-Math.PI / 2);
         const lac = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3e6278, roughness: 0.05, metalness: 0.7 })); lac.position.y = niveau + 0.1; scene.add(lac);
         lac.userData.dynamic = true;          // (un lieu peut le hausser : la fusion ne doit pas le figer)

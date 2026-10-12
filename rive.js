@@ -14,13 +14,9 @@ import * as PNJ from './pnj.js';
 //
 // En mètres, x est, z sud : le bord côté Lille au nord (z > 40), l'autre rive au sud (z < −14).
 // =====================================================================
-import { THREE, TAU, scene, G, phMat, hemi, sun, renderer, bloom, mesh, boxG, PAGES,
-  addInteract, goToLevel, showMessage, dialogue, bootLevel, minimapDots, makeSky, player, state, saveGame, SFX } from './engine.js?v=41';
+import { THREE, TAU, scene, G, phMat, hemi, sun, renderer, bloom, mesh, boxG,
+  addInteract, goToLevel, showMessage, dialogue, bootLevel, minimapDots, makeSky, player, state, saveGame, SFX, lasso as lassoMoteur } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
-
-// la page de la rive, pour goToLevel (engine.js n'est pas à E1 : la table se complète d'ici, et depuis
-// temple.js qui y mène ; demande pour la passe D3 : l'inscrire dans PAGES, pour la reprise d'une partie)
-PAGES.rive = 'rive.html';
 
 // ---------- l'avancement de l'acte ----------
 const ETAPES6 = ['felure', 'bord', 'descente', 'riviere', 'escalier', 'rive', 'forge', 'metal', 'tombe', 'cloche'];
@@ -220,21 +216,13 @@ function gestes() {
   // la fêlure : le retour vers l'île, là où l'on est arrivé
   addInteract({ pos: new THREE.Vector3(DEPART.x, relief(DEPART.x, DEPART.z + 3), DEPART.z + 3), r: 2.6, prompt: () => 'repasser la fêlure', fn: () => goToLevel(...VERS_ILE) });
 }
-// le lasso : une descente (ou une remontée) d'une corniche à la suivante, en une seconde
-const LASSO = { de: null, vers: null, t: 0 };
+// le lasso : une descente (ou une remontée) d'une corniche à la suivante, en une seconde ; le geste est
+// celui du moteur (engine.js, passe D3), la corde nouée au pieu du haut
 function lasso(i, j) {
-  if (!state.lasso) return showMessage('Trop haut. Il me faudrait une corde.', 3);
-  if (LASSO.de) return;
-  const [x0, z0, y0] = ANCRES[i], [x1, z1, y1] = ANCRES[j];
-  LASSO.de = [x0, y0, z0 + (j > i ? -1.2 : 0)]; LASSO.vers = [x1, y1, z1 + (j > i ? -1.2 : 0)]; LASSO.t = 0; state.paused = false;
-  SFX.swing && SFX.swing();
-}
-function animeLasso(dt) {
-  if (!LASSO.de) return;
-  LASSO.t = Math.min(1, LASSO.t + dt);
-  const [a, b, c] = LASSO.de, [d, e, f] = LASSO.vers, t = LASSO.t, s = t * t * (3 - 2 * t);
-  player.pos.set(a + (d - a) * s, b + (e - b) * s, c + (f - c) * s); player.vy = 0;
-  if (t >= 1) { LASSO.de = null; if (LASSO.vers[1] <= FOND + 0.1) passer6('descente'); }
+  const [x0, z0, y0] = ANCRES[i], [x1, z1, y1] = ANCRES[j], [xa, za, ya] = ANCRES[Math.min(i, j)];
+  state.paused = false;
+  lassoMoteur([x1, y1, z1 + (j > i ? -1.2 : 0)], [xa, ya + 1.2, za], { dur: 1, sansCorde: 'Trop haut. Il me faudrait une corde.',
+    fin: () => { if (y1 <= FOND + 0.1) passer6('descente'); } });
 }
 
 // ---------- le niveau ----------
@@ -254,7 +242,6 @@ function animate(now) {
   if (!camPosee && state.running && !state.paused) { G.camYaw = player.yaw; camPosee = true; }
   if (!state.running) return;
   if (!passe6('bord')) passer6('bord');
-  animeLasso(dt);
   // de l'autre côté de la rivière, au fond : la rivière est passée
   const p = player.pos; if (p.z < RIVIERE[0] - 0.5 && p.y < FOND + 2 && p.z > SUD - 1) passer6('riviere');
   if (R.eau) R.eau.position.y = EAU + Math.sin(now / 700) * 0.04;

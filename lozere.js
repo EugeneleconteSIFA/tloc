@@ -23,7 +23,8 @@
 // (acte V, Eugène, 7 octobre), place du Bosquet ; celle du Pouget reste, pour en revenir.
 // =====================================================================
 import { monde } from './monde.js';
-import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, PAGES, KINDS, setMaker, setAnimHook, spawnEnemy, renderer, sun, hemi } from './engine.js?v=41';
+import { THREE, scene, rand, TAU, phMat, phPeint, PH, showMenu, hideMenu, goToLevel, state, dialogue, G, addCap, saveGame, showMessage, SFX, TOUCHES, AIDE, player, world, addBox, indexCapsules, PAGES, KINDS, setMaker, setAnimHook, spawnEnemy, renderer, sun, hemi,
+  lasso as lassoMoteur, anneauDeFer, enLasso } from './engine.js?v=41';
 import * as PNJ from './pnj.js';
 import { especeGeo } from './foret.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -66,9 +67,6 @@ const RECIT = {
   pouget: 'Le chemin raide qui monte au hameau, à travers les châtaigniers.',
   lac: 'Le chemin descend vers le lac, sous le viaduc de l’Altier.',
 };
-// la page du lac : engine.js ne la connaît pas encore (demande pour la passe D3 : l'y écrire, pour qu'une
-// partie sauvegardée au lac reprenne aussi depuis l'accueil)
-PAGES.lac = 'lac.html';
 
 // ---------------------------------------------------------------------
 //  Outils
@@ -1857,37 +1855,9 @@ function clocheTroupeaux() {
 // ---- Le lasso (Eugène, 7 octobre : « le berger », la corde des brebis tombées) ----
 // Il s'accroche à ce qui est fait pour : des anneaux de fer scellés, visibles de loin. Devant l'un d'eux,
 // à portée, Camille lance, la corde file, et elle se hisse (ou se laisse descendre) jusqu'à lui. Le geste
-// vit ici ; l'acte VI en aura besoin : demande pour la passe D3 de le monter dans le moteur.
-const fer = () => new THREE.MeshStandardMaterial({ color: 0x4a4644, metalness: 0.85, roughness: 0.35 });
-function anneauDeFer(x, y, z, yaw = 0) {
-  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; scene.add(g);
-  const a = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.045, 8, 18), fer()); a.position.z = 0.1; g.add(a);
-  const tige = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.25, 8), fer()); tige.rotation.x = Math.PI / 2; g.add(tige);   // scellée dans la pierre
-  return g;
-}
-// la corde, tendue entre Camille et l'anneau pendant qu'elle monte ou descend
-let corde = null;
-function tendreCorde(a, b) {
-  if (!corde) { corde = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 6), new THREE.MeshStandardMaterial({ color: 0xb8a070, roughness: 0.9 })); corde.userData.dynamic = true; scene.add(corde); }
-  const d = b.clone().sub(a), L = d.length(); corde.visible = true;
-  corde.position.copy(a).addScaledVector(d, 0.5); corde.scale.set(1, L, 1);
-  corde.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
-}
-// se hisser (ou descendre) jusqu'à `vers` ; `ancre` : l'anneau, où la corde est nouée
-function lasso(vers, ancre, msg) {
-  if (A5.hisse) return;
-  if (!state.lasso) { showMessage('Un anneau de fer, là-haut. Il faudrait une corde à lancer.', 3.5); return; }
-  A5.hisse = { de: player.pos.clone(), vers: new THREE.Vector3(...vers), ancre: new THREE.Vector3(...ancre), t: 0 };
-  A5.hisse.dur = Math.min(2.4, Math.max(1.2, A5.hisse.de.distanceTo(A5.hisse.vers) / 12));
-  SFX.roll && SFX.roll(); if (msg) showMessage(msg, 2.5);
-}
-function animeLasso(dt) {
-  const H = A5.hisse; if (!H) return;
-  H.t = Math.min(1, H.t + dt / H.dur); const u = H.t * H.t * (3 - 2 * H.t);
-  player.pos.lerpVectors(H.de, H.vers, u); player.vy = 0; player.fallFrom = player.pos.y; player.onGround = true;
-  tendreCorde(player.pos.clone().setY(player.pos.y + 0.9), H.ancre);
-  if (H.t >= 1) { A5.hisse = null; if (corde) corde.visible = false; }
-}
+// est dans le moteur depuis la passe D3 (engine.js, `lasso`, `anneauDeFer`) : la rive de l'acte VI s'en sert aussi.
+const fer = () => new THREE.MeshStandardMaterial({ color: 0x4a4644, metalness: 0.85, roughness: 0.35 });   // le câble de la via ferrata
+const lasso = (vers, ancre, msg) => lassoMoteur(vers, ancre, { msg, sansCorde: 'Un anneau de fer, là-haut. Il faudrait une corde à lancer.' });
 
 // ---- La tour par le dehors (R5) : l'anneau du sommet, et la tyrolienne vers Villefort (la poulie) ----
 // Le sommet de la tour (BILAN.corps, `avt`) reçoit un plancher du moteur (addBox) : on y tient debout,
@@ -1903,10 +1873,10 @@ function tourParLeDehors(ctx) {
   // l'anneau, scellé au parapet du côté du village (au-dessus de la porte), et sa lueur de métal
   const [px, pz] = A5.porteTour, a = Math.atan2(px - x, pz - z), ax = x + Math.sin(a) * 2.4, az = z + Math.cos(a) * 2.4;
   anneauDeFer(ax, y + 0.4, az, a);
-  ctx.addInteract({ pos: new THREE.Vector3(px, hauteur(px, pz), pz), r: 5, enabled: () => !A5.salle && !A5.hisse && player.pos.y < y - 3,
+  ctx.addInteract({ pos: new THREE.Vector3(px, hauteur(px, pz), pz), r: 5, enabled: () => !A5.salle && !enLasso() && player.pos.y < y - 3,
     prompt: () => (state.lasso ? 'lancer le lasso au sommet de la tour' : 'l’anneau du sommet'),
     fn: () => lasso([x, y + 0.05, z], [ax, y + 0.4, az], 'La corde s’enroule autour de l’anneau. Tu te hisses le long du mur.') });
-  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !A5.hisse && player.pos.y > y - 1, prompt: () => 'redescendre au lasso',
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !enLasso() && player.pos.y > y - 1, prompt: () => 'redescendre au lasso',
     fn: () => lasso([px, hauteur(px, pz) + 0.05, pz], [ax, y + 0.4, az]) });
   // le câble : vers Villefort (le nord), jusqu'au premier point 40 m plus bas que le sommet
   const vx = 1582 - x, vz = -1132 - z, n = Math.hypot(vx, vz), ux = vx / n, uz = vz / n;
@@ -1921,7 +1891,7 @@ function tourParLeDehors(ctx) {
   { const bois = phMat('wood_cabinet_worn_long', 0.3, 2, { color: 0x7a6650 }), g = new THREE.Group(); g.position.set(p0.x, y, p0.z); scene.add(g);
     g.add(posee(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3.6, 7), bois), 0, 1.8, 0)); }
   A5.cable = { point, dur: 6 };
-  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !A5.hisse && !A5.glisse && player.pos.y > y - 1,
+  ctx.addInteract({ pos: new THREE.Vector3(x, y, z), r: 3, enabled: () => !enLasso() && !A5.glisse && player.pos.y > y - 1,
     prompt: () => 'glisser vers Villefort, sur le câble',
     fn: () => { if (!state.poulie) { showMessage('Un câble part du sommet, vers Villefort. Et rien pour s’y accrocher.', 3.5); return; }
       A5.glisse = { t: 0 }; showMessage('La poulie des moines file sur le câble, au-dessus des gorges…', 3); SFX.roll && SFX.roll(); } });
@@ -2032,7 +2002,7 @@ function acteLac(ctx, lacs) {
   const VF = [[-283, -1992, -278, -1974], [-252, -1939, -245, -1932], [-348, -1962, -367, -1969]];
   VF.forEach(([x0, z0, x1, z1], i) => {
     const y1 = sol(x1, z1); anneauDeFer(x1, y1 + 1.6, z1, Math.atan2(x0 - x1, z0 - z1));
-    addInteract({ pos: new THREE.Vector3(x0, sol(x0, z0), z0), r: 4, enabled: () => !A5.hisse, prompt: () => (state.lasso ? 'lancer le lasso de l’autre côté' : 'l’anneau, de l’autre côté'),
+    addInteract({ pos: new THREE.Vector3(x0, sol(x0, z0), z0), r: 4, enabled: () => !enLasso(), prompt: () => (state.lasso ? 'lancer le lasso de l’autre côté' : 'l’anneau, de l’autre côté'),
       fn: () => lasso([x1, y1 + 0.05, z1], [x1, y1 + 1.6, z1], i === 0 ? 'La corde file au-dessus du vide. Tu passes, accrochée.' : null) });
   });
   // (la tyrolienne d'OSM relie deux points presque à la même hauteur dans le relief du jeu, 58 et 60 m :
@@ -2204,7 +2174,7 @@ export function acte5Anime(dt) {
   for (const o of A5.persos || []) if (o.userData.ctrl) PNJ.animeVillageois(o, dt, false);
   if (A5.chien && A5.sol && !(A5.lieu === 'pouget' && state.chienRendu) && !A5.chienRepos) suivreChien(dt, A5.sol);
   else if (A5.chien && A5.chien.mix) A5.chien.mix.update(0);
-  animeLoup(dt); animeLasso(dt); animeGlisse5(dt); animeTroupeau(dt); animeGlisseLac(dt); animePeche(dt);
+  animeLoup(dt); animeGlisse5(dt); animeTroupeau(dt); animeGlisseLac(dt); animePeche(dt);
   // le passé qui s'efface
   if (A5.sonT > 0) { A5.sonT -= dt; if (A5.sonT <= 0) { A5.sonne = 'present'; const cv = document.querySelector('canvas'); if (cv) cv.style.filter = ''; for (const fn of A5.surSonnaille) fn('present', player.pos); } }
 }

@@ -2941,3 +2941,17 @@ hisse jusqu'à un anneau ; pour la Blessure, le recopier ou attendre qu'une pass
 - **`hud.js` / la carte** : le lac n'a pas de place sur la carte M (l'atlas est celui de Lille).
 - **`monde.js`** : le niveau d'un lac au 30ᵉ centile de son contour entier ne vaut pas pour un lac qu'un lieu ne
   montre qu'en partie (corrigé ici en rognant le plan) — un `niveau` donné par le plan serait plus sûr.
+
+#### Passe D3 (12 octobre, PC, `PLAN-2026-10-07-VAGUE3.md`) — les demandes de la vague 3
+- ~~`engine.js` : `PAGES.lac`~~ — **faite (passe D3)** : `lac` et `rive` sont dans `PAGES` ; lozere.js et rive.js ne
+  complètent plus la table.
+- ~~`engine.js` : le geste du lasso dans le moteur~~ — **faite (passe D3)** : `lasso(vers, ancre, { msg, sansCorde, dur,
+  fin })`, `anneauDeFer`, `enLasso()` ; la corde et le trajet tournent dans la boucle (`lassoTick`, après
+  `updatePlayer`). lozere.js et rive.js s'en servent (rive : une seconde, la corde nouée au pieu du haut, `fin` passe
+  l'étape `descente`). Bancs `acte5-lasso`, `acte5-lac`, `acte5-quetes`, `acte6-traversee` réussis ; la corde vue en
+  rendu dans la Blessure.
+- ~~`monde.js` : le niveau d'un lac donné par le plan~~ — **faite (passe D3)** : `l.niveau` d'un plan d'eau l'emporte
+  sur le 30ᵉ centile du contour. Aucun plan ne le donne encore (le lac de Villefort reste rogné).
+- **`hud.js` / la carte M pour le lac : pas faite, à décider par Eugène.** La carte M (atlas.js) n'existe qu'à Lille :
+  aucun lieu de Lozère n'en a. Ce n'est pas un oubli à réparer pour le lac seul, c'est une carte de la Lozère (ou du
+  monde) à concevoir.
