@@ -89,10 +89,10 @@ Au premier coup qui reste, Phinaert hurle et s'enfuit par une porte. On le suit.
 
 | monde | où | sa garde | l'arme du monde |
 |---|---|---|---|
-| l'Aveyron | le lac de Saint-Gervais | il fige une zone autour de lui (acte II) | **le lasso** : on l'attrape de loin, on le tire hors de sa zone |
-| la Thaïlande | Ko Panyi, le ponton | il se met hors de portée, sur l'eau figée | **le gong** : l'eau repart sous lui, il tombe |
-| les Pouilles | le port de Gallipoli | il frappe trop vite pour qu'on approche | **le tambourin** : il ralentit |
-| la Lozère | le plateau de la Garde-Guérin | il saute d'une époque à l'autre et n'est jamais là | **la sonnaille** : un coup, il revient au présent |
+| l'Aveyron | le lac de Saint-Gervais, à la porte du Midi | il fige une zone autour de lui (acte II) | **le lasso** : on l'attrape de loin, on le tire hors de sa zone |
+| la Thaïlande | Ko Panyi, à la porte des Îles | il se met hors de portée, sur l'eau figée | **le gong** : l'eau repart sous lui, il tombe |
+| les Pouilles | Alberobello, à la porte des Heures (codé ainsi : la porte de l'île y mène) | il frappe trop vite pour qu'on approche | **le tambourin** : il ralentit |
+| la Lozère | Villefort, à la porte des Troupeaux (codé ainsi : la porte de l'île y mène) | il saute d'une époque à l'autre et n'est jamais là | **la sonnaille** : un coup, il revient au présent |
 | Lille | le pont de Fin | (le dernier combat) | **la force** : on le renverse |
 
 ### 7. Le pont de Fin (`pont`)

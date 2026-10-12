@@ -1523,8 +1523,9 @@ function animeHabitants(dt) {
   for (const F of FIGES) { const c = F.g.userData.ctrl; if (!c) continue;
     // figé : la pose d'un instant choisi au hasard, une fois pour toutes ; le gong le relance
     if (!F.pose) { c.jouer(F.g.userData.idle, 0); c.update(F.t0); F.pose = true; }
-    else if (tempsRendu() || (actif && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r)) c.update(dt); }
-  if (actif || tempsRendu()) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
+    else if ((tempsRendu() && !G.tempsArrete) || (actif && Math.hypot(F.x - GONG.x, F.z - GONG.z) < GONG.r)) c.update(dt); }
+  // (le temps arrêté de l'acte VII fige de nouveau la pluie et les gens, sauf autour du gong)
+  if (actif || (tempsRendu() && !G.tempsArrete)) PLUIE.chute = (PLUIE.chute + dt * 9) % PLUIE.pas;
 }
 
 // ---------- la garde : là où l'on ne passe plus ----------

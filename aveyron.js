@@ -2461,6 +2461,7 @@ function pluie() {
 }
 function animePluie(dt) {
   const P = A2.gouttes; if (!P || dansSous()) { if (P) P.L.visible = false; return; }
+  if (G.tempsArrete) return;          // le temps arrêté (acte VII) : les gouttes restent en l'air
   P.L.visible = true; const c = player.pos, a = P.pos;
   for (let i = 0; i < P.N; i++) { let x = a[i * 6], y = a[i * 6 + 1] - P.v[i] * dt, z = a[i * 6 + 2];
     if (y < c.y - 2 || Math.abs(x - c.x) > 25 || Math.abs(z - c.z) > 25) { x = c.x + (Math.random() - 0.5) * 50; z = c.z + (Math.random() - 0.5) * 50; y = c.y + 18 + Math.random() * 12; }

@@ -2997,3 +2997,17 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
 - Banc **`bancs/acte7-temple.mjs`** réussi ; `acte6-cloche`, `acte5-temple` repassés. Chargement de temple.html : 1,8 s.
 - **Appris (une troisième fois)** : un commentaire `//` en bout de ligne avale la suite (la cloche n'était plus ajoutée à
   la scène). Le rendu l'a vu, pas le banc.
+
+### Acte VII, lot 2 : les mondes figés (12 octobre, PC) — **fait, joué en headless**
+- **Une seule règle, dans le moteur** (`engine.js`, `MONDES7`, `arene7Tick`) : Phinaert fuit de monde en monde
+  (`state.monde7`, 0 à 3), chacun à la porte par où l'île y mène — l'Aveyron (le lasso), la Thaïlande, Ko Panyi (le gong),
+  Alberobello (le tambourin), Villefort (la sonnaille). À l'arrivée : le temps arrêté, ce que Camille voit, une réplique
+  de Phinaert ; il paraît à 7–15 m devant elle, sur un sol libre. Sa garde (`e.garde7`) refuse les coups ; l'arme du
+  monde (une invite à 14 m) l'ouvre sept secondes ; six points de l'épée de Lydéric, il fuit ; Camille le suit
+  (goToLevel). Après Villefort : Lille, `state.acte7 = 'pont'` (la place sur le pont : lot 3, quetes.js).
+- Le temps arrêté fige aussi la pluie de l'Aveyron (`animePluie`) et de la Thaïlande (`PLUIE.chute`, les gens figés).
+- Le découpage disait Gallipoli et la Garde-Guérin : codé à Alberobello et à Villefort, là où mènent les portes de l'île
+  (DECOUPAGE-ACTE7.md corrigé).
+- Banc **`bancs/acte7-mondes.mjs`** réussi (les quatre mondes, puis Lille), aucune pageerror. Chargements : Aveyron 3,6 s,
+  Thaïlande 2,1 s, Alberobello 1,5 s, Villefort 2,2 s (rien de neuf au chargement : tout se pose après).
+- **Reste** : à Alberobello, Phinaert paraît entre les trulli, à l'étroit ; une place plus ouverte serait mieux.

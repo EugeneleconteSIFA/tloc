@@ -2871,6 +2871,8 @@ export function hitEnemy(e, dmg, fromX, fromZ) {
   if (e.dead) return;
   // (acte VII) Phinaert remonte le temps de ses blessures, sauf celles de l'épée de Lydéric : le coup
   // porte, puis s'efface (effacerTick) ; il ne meurt jamais d'un coup effacé
+  // (acte VII, les mondes figés) tant que l'arme du monde n'a pas ouvert sa garde, le coup ne porte pas
+  if (e.garde7 === true) { burst(e.pos.x, e.pos.y + e.k.barY * 0.5, e.pos.z, 0xc8d0e0, 6, 3, 0.3); SFX.hit(); const M = MONDES7[state.monde7 || 0]; if (M) showMessage(M.garde, 2.5); return; }
   if (e.remonte && !state.epeeLyderic) { e.effaces = (e.effaces || []).concat([{ hp: e.hp, t: 0.9 }]); e.hp = Math.max(1, e.hp - dmg); e.flash = 0.18;
     burst(e.pos.x, e.pos.y + e.k.barY * 0.5, e.pos.z, 0xfff0a0, 7, 5, 0.35); SFX.hit(); if (e.remonte.coup) e.remonte.coup(e); return; }
   e.hp -= dmg; e.flash = 0.18;
@@ -2904,6 +2906,59 @@ export function arreterTemps(on) {
   G.tempsArrete = !!on;
   renderer.domElement.style.filter = on ? 'saturate(0.3) brightness(0.93) contrast(1.06)' : '';
 }
+// ---- Les mondes figés (acte VII, lot 2 ; docs/DECOUPAGE-ACTE7.md § 6) ----
+// Phinaert fuit de monde en monde ; Camille le suit (state.monde7 : le rang du monde). Dans chacun, à la porte
+// par où l'on arrive, le temps est arrêté ; il a une garde, l'arme du monde l'ouvre (une invite, à portée) ;
+// six points de l'épée de Lydéric, il fuit plus loin. Une seule règle pour les quatre : elle vit ici, et les
+// lieux n'ont rien à faire (leur page est celle de leur porte de l'île : temple.js, VERS).
+const MONDES7 = [
+  { lieu: 'aveyron', pos: [-127.9, 0, 143.7], yaw: -2.442, arme: 'lasso', invite: 'lancer le lasso sur Phinaert',
+    voit: 'La pluie est arrêtée en l’air. Les gouttes ne tombent plus.', dit: '« Ici, j’ai fait sécher un lac. Tu te souviens ? »',
+    garde: 'Autour de lui, l’air est figé : tes coups s’y arrêtent.', ouvre: 'La corde file et s’enroule autour de son bras. Tu le tires hors de l’air figé.', fuit: '« Encore ? »' },
+  { lieu: 'thailande', pos: [60.47, 0, -75.24], yaw: -2.842, arme: 'gongThai', invite: 'frapper le gong',
+    voit: 'Les barques sont arrêtées à mi-chemin. Somsak, la rame levée.', dit: '« Ici, la pluie ne tombait plus. Personne ne s’en plaignait. »',
+    garde: 'Il se tient sur l’eau figée, hors de portée.', ouvre: 'Le gong sonne. L’eau repart sous lui, une seconde : il tombe à genoux.', fuit: '« Tu n’es pas fatiguée ? »' },
+  { lieu: 'alberobello', pos: [6.5, 0, 4.6], yaw: Math.PI, arme: 'tambourin', invite: 'jouer du tambourin',
+    voit: 'Dans la rue des trulli, une femme arrêtée sur son seuil, une corbeille de linge sur la hanche.', dit: '« Nunzia a donné des années pour une heure. Moi, je lui offre toutes les heures. »',
+    garde: 'Il frappe trop vite : on n’approche pas.', ouvre: 'La pizzica. Ses coups ralentissent, au rythme du tambourin.', fuit: '« Ça ne sert à rien. »' },
+  { lieu: 'villefort', pos: [1568, 0, -1146.5], yaw: 0, arme: 'sonnaille', invite: 'sonner la sonnaille',
+    voit: 'Sur la place, les gens arrêtés au milieu d’un pas. Même le vent est arrêté.', dit: '« Ici, toutes les heures sont mêlées. Je suis partout. »',
+    garde: 'Il passe d’une époque à l’autre : il n’est jamais là quand tu frappes.', ouvre: 'Un coup de sonnaille : il revient au présent, là, devant toi.', fuit: '« Le pont de Fin. Là où tout a commencé. »' },
+];
+const A7 = { pose: false, phin: null };
+function arene7Tick(dt) {
+  if (state.acte7 !== 'mondes' || !G.level || !state.running) return;
+  const M = MONDES7[state.monde7 || 0]; if (!M || G.level.name !== M.lieu) return;
+  if (!A7.pose) {
+    if (cut.active) return;
+    A7.pose = true; arreterTemps(true);
+    // Phinaert, à dix ou quinze mètres devant Camille, sur un sol libre
+    let px = player.pos.x, pz = player.pos.z;
+    for (const d of [12, 9, 15, 7]) { let trouve = false;
+      for (let k = 0; k < 16; k++) { const a = player.yaw + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.4, x = player.pos.x + Math.sin(a) * d, z = player.pos.z + Math.cos(a) * d;
+        if (!(G.level.blocked && G.level.blocked(x, z, 2.4))) { px = x; pz = z; trouve = true; break; } }
+      if (trouve) break; }
+    const e = spawnEnemy('phinaert', px, pz, 'acte7'); e.horsTemps = true; e.garde7 = true; e.caged = true; A7.phin = e;
+    dialogue([{ who: '', text: M.voit }, { who: 'Phinaert', text: M.dit }], () => { e.caged = false; });
+    addInteract({ pos: e.pos, r: 14, prompt: () => M.invite, enabled: () => !!A7.phin && !A7.phin.dead && A7.phin.garde7 === true, fn: () => {
+      if (!state[M.arme]) return showMessage('Il te faudrait ce que ce monde t’a donné.', 3);
+      if (M.arme === 'gongThai') SFX.gong && SFX.gong(); else SFX.roll && SFX.roll();
+      e.garde7 = 7; showMessage(M.ouvre, 4); } });
+    return;
+  }
+  const e = A7.phin; if (!e || e.dead) return;
+  if (typeof e.garde7 === 'number') { e.garde7 -= dt; if (e.garde7 <= 0) { e.garde7 = true; showMessage(M.garde, 3); } }
+  // six points de l'épée de Lydéric : il fuit par la porte suivante, et Camille le suit
+  if (e.hp <= e.k.hp - 6) {
+    e.dead = true; e.deadT = 0.6; e.bar.visible = false; scene.remove(e.mesh); scene.remove(e.bar); A7.phin = null;
+    burst(e.pos.x, e.pos.y + 4, e.pos.z, 0x9ab8ff, 40, 6, 0.9, 2, 1.6);
+    const k = (state.monde7 || 0) + 1, N = MONDES7[k];
+    dialogue([{ who: 'Phinaert', text: M.fuit }, { who: '', text: N ? 'Il s’enfuit par une porte de lumière. Tu le suis.' : 'Il s’enfuit par une porte de lumière, vers Lille. Tu le suis.' }], () => {
+      state.monde7 = k; if (!N) state.acte7 = 'pont'; saveGame(true);
+      if (N) goToLevel(N.lieu, N.pos, N.yaw, 'Les mondes figés…'); else goToLevel('citadel', undefined, Math.PI, 'Lille…'); });
+  }
+}
+
 // l'épée de Lydéric : la lame de Camille prend un reflet bleu pâle (state.epeeLyderic, temple.js)
 let epeeMarquee = false;
 function majEpee() {
@@ -3847,7 +3902,7 @@ function loop(now) {
     updatePlayer(dt); lassoTick(dt); lieuxTick();
     { const d = Math.hypot(player.pos.x - px0, player.pos.z - pz0); if (d < 2) state.distance += d; }   // un saut de plus de 2 m en une image : un changement de lieu
     for (const e of enemies) { if (!G.tempsArrete || e.horsTemps) updateEnemy(e, dt); effacerTick(e, dt); }
-    majEpee();
+    majEpee(); arene7Tick(dt);
     updateArrows(dt); updateShockwaves(dt); updateParticles(dt);
     if (L.update) L.update(dt);
     cutTick(dt);
