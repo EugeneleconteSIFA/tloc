@@ -3011,3 +3011,22 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
 - Banc **`bancs/acte7-mondes.mjs`** réussi (les quatre mondes, puis Lille), aucune pageerror. Chargements : Aveyron 3,6 s,
   Thaïlande 2,1 s, Alberobello 1,5 s, Villefort 2,2 s (rien de neuf au chargement : tout se pose après).
 - **Reste** : à Alberobello, Phinaert paraît entre les trulli, à l'étroit ; une place plus ouverte serait mieux.
+
+### Acte VII, lots 3 et 4 : le pont de Fin, la porte, l'épilogue (12 octobre, PC) — **faits, joués en headless**
+- Tout dans `quetes.js`, section « L'ACTE VII AU PONT DE FIN » (`acte7Tick`, appelé en tête d'`update`). À `pont` : Lille
+  figée, Camille posée au sud du pont, Eugène (`PARTAGE.prince`) entre Lydéric et la porte, la scène, Phinaert (hors du
+  temps) ; au tiers de sa vie, `porte` : la lumière blanche dans la Porte Royale, Eugène au battant (« Je la tiens ! ») ;
+  trois coups de l'épée de Lydéric le font reculer d'un pas chacun, face à Camille ; « Je sais. » ; la porte se ferme →
+  `epilogue` : le temps repart (une phrase par monde, sur le ciel de Lille, sans chargement), Lydéric (« J'ai fait un long
+  rêve. »), Émile et la botte, « Ce que la garde commence, la garde l'achève. », la dernière cloche, le noir, le générique
+  (« The Legend of Camille — Pour Camille », « Fin — Le monde continue ») → `fin`, l'accueil. La sauvegarde reprend au
+  pont, le temps reparti.
+- Corrigé au passage : le morceau de cloche du prologue (quetes.js, l. 105) — un commentaire en bout de ligne avalait
+  son ombre et son `userData.dynamic`.
+- Banc **`bancs/acte7-pont.mjs`** réussi (le pont, la porte, le voile gris toujours là, l'épilogue, le générique en rendu,
+  la sauvegarde `fin`) ; `acte1-hermes` repassé.
+- **L'histoire est jouable de bout en bout, en headless**, du prologue à « Fin ». Reste ce que le plan du 7 octobre
+  annonçait : **une partie jouée à la main de bout en bout (Eugène)**.
+- **Reste, à reprendre** : l'épilogue ne montre les mondes qu'en phrases (pas de plan dans chaque monde) ; à Lille,
+  Lydéric en osier ne change pas d'apparence quand il « redevient lui-même » (seul `state.lydericOsier` bascule) ;
+  « les mondes se souviennent » (acte VI) ; les chevaux de l'autre rive ; le chargement de la rive (+0,5 s).

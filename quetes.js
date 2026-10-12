@@ -6,7 +6,7 @@ import {
   lieux, estDecouvert,
   THREE, G, SFX, TAU, addCap, addInteract, blocked, burst, camera, cut, cutscene, dialogue, endGame, enemies,
   followActor, getH, goToLevel, hideMenu, lerp, phMat, makeChest, makePrince, player, questStep, rand, saveGame, scene, setQuest,
-  showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer, keys, sun, hemi, renderer, bloom, sky, SUN_DIR,
+  showMenu, showMessage, spawnEnemy, spawnGaufre, state, naviguer, keys, sun, hemi, renderer, bloom, sky, SUN_DIR, arreterTemps,
 } from './engine.js?v=41';
 import {
   APO, BAST_H, COURTINES, DONJON, ECH, FERME, HOUSE, MOAT_IN, MOAT_OUT, PONT_Z1, TOWN, bastionAt, bastions, dehorsAt, eauVisible, nappeProche, sdEau, townWorld,
@@ -102,7 +102,9 @@ export function populate() {
   { const prof = [[0.53, 0.5], [0.58, 0.75], [0.68, 0.98], [0.86, 1.18], [0.95, 1.26]].map(([r, y]) => new THREE.Vector2(r * 0.45, -y * 0.45));
     const g = new THREE.LatheGeometry(prof, 4, 0, 0.75); g.center();
     const m = new THREE.Mesh(g, phMat('metal_plate_02', 0.3, 0.3, { color: 0xd09a58, roughness: 0.4, side: THREE.DoubleSide, emissive: 0x5a1a04, emissiveIntensity: 0.6 }));
-    const x = 0.2, z = LYD_Z + 3.2; m.position.set(x, getH(x, z) + 0.05, z); m.rotation.set(0.55, 0.6, 0.35);   // calé sur sa tranche : à plat, il se perdait dans les planches m.castShadow = true; m.userData.dynamic = true;
+    // calé sur sa tranche : à plat, il se perdait dans les planches (12 octobre : ce commentaire, en bout de ligne,
+    // avalait l'ombre et `dynamic` — la fusion du moteur pouvait figer le morceau)
+    const x = 0.2, z = LYD_Z + 3.2; m.position.set(x, getH(x, z) + 0.05, z); m.rotation.set(0.55, 0.6, 0.35); m.castShadow = true; m.userData.dynamic = true;
     m.visible = false; scene.add(m); PARTAGE.morceau = m;
     // portée 3 m : à 3 m de lui, Lydéric (portée 7) gagnait le choix d'engine.js, qui rapporte la distance à la portée
     addInteract({ pos: m.position, r: 3, enabled: () => m.visible, prompt: () => 'ramasser le morceau de métal', fn: () => {
@@ -216,6 +218,7 @@ export function inWater(x, z, y) { return sdEau(x, z) < -1.5 && eauVisible(x, z)
 
 export function update(dt) {
   const p = player;
+  acte7Tick(dt);                                    // l'acte VII au pont de Fin (en fin de fichier)
   if (PRO.etape) suivrePrologue();
   tickActe1(dt);
   if (FOULE.aFaire.length) grossirFoule();
@@ -1446,6 +1449,101 @@ export function finalScene() {
 }
 
 export function objective() {
+  if (state.acte7 === 'pont') return 'Phinaert, sur le pont de Fin';
+  if (state.acte7 === 'porte') return 'L’épée de Lydéric : repousse Phinaert de l’autre côté de la porte';
   if (acte1() && !PRO.etape) return suiteActe1()[0];
   return PRO.etape ? PRO.objectif() : state.princeFreed ? 'Ramène Eugène à Lydéric, près du pont' : !state.metLyderic ? 'Va parler à Lydéric, le géant, près du pont (Entrée)' : state.galleryOpen ? 'Descends dans les galeries par la poterne (est de la place d\'Armes) et délivre Eugène' : state.key ? 'Ouvre la grille de la poterne avec la clé du donjon' : state.bossDead ? 'Monte au sommet du donjon (escalier en colimaçon) chercher la clé' : state.gateOpen ? 'Affronte Phinaert dans l\'enclos du donjon' : (state.bow ? `Vaincs encore ${killsLeft()} monstres (fossés à l'arc, remparts, bastions) pour ouvrir l'enclos du donjon` : `Trouve l'arc (bastion de Turenne, à gauche de la porte) et vaincs ${killsLeft()} monstres`);
+}
+
+// =====================================================================
+//  L'ACTE VII AU PONT DE FIN (lots 3 et 4 ; docs/DECOUPAGE-ACTE7.md, étapes 7 à 10)
+// =====================================================================
+// Phinaert a fui les mondes figés jusqu'à Lille (engine.js, MONDES7 : `state.acte7 = 'pont'`). Lille est figée en
+// pleine fête ; Lydéric au milieu du pont, Eugène ramené par Phinaert. Le dernier combat ; à terre, Phinaert ouvre
+// la porte dans la Porte Royale. Eugène la tient (Eugène, 12 octobre) ; trois coups de l'épée de Lydéric le
+// repoussent de l'autre côté ; ils ferment à deux. Puis le temps repart, l'épilogue, la botte, la dernière cloche,
+// le générique ; la partie reprend ensuite au pont, le temps reparti (`fin`).
+const F7 = { pose: false, phin: null, scene: false, porte: null, coups: 0, epilogue: false };
+const P7 = { x: LYD_X + 0.6, z: LYD_Z - 16 };                 // Phinaert : entre Lydéric et la Porte Royale
+function figer7(on) { arreterTemps(on); PNJ.TEMPS.arrete = on; }
+function acte7Poser() {
+  F7.pose = true;
+  // Camille arrive par le sud du pont, face à Lydéric et à la porte
+  if (state.acte7 === 'pont') { const z = LYD_Z + 22; player.pos.set(LYD_X + 1.4, getH(LYD_X + 1.4, z), z); player.yaw = Math.PI; G.camYaw = Math.PI; }
+  if (state.acte7 === 'fin') return;
+  figer7(true);
+  if (PARTAGE.prince) { PARTAGE.prince.visible = true; PARTAGE.prince.position.set(LYD_X + 2.2, getH(LYD_X + 2.2, LYD_Z - 8), LYD_Z - 8); PARTAGE.prince.rotation.y = Math.PI; }
+}
+function phinaert7() {
+  const e = spawnEnemy('phinaert', P7.x, P7.z, 'acte7'); e.horsTemps = true; e.home.set(P7.x, P7.z, 0); F7.phin = e; return e;
+}
+function acte7Tick(dt) {
+  if (!state.acte7 || !['pont', 'porte', 'epilogue', 'fin'].includes(state.acte7) || !state.running) return;
+  if (!F7.pose) acte7Poser();
+  if (cut.active) return;
+  // le pont : la scène, puis le dernier combat
+  if (state.acte7 === 'pont' && !F7.scene) { F7.scene = true; const e = phinaert7(); e.caged = true;
+    const lx = LYD_X, lz = LYD_Z, pont = { cam: [lx + 9, 5, lz + 16], at: [lx, 4, lz - 6] }, eug = { cam: [lx + 6, 2.4, lz - 3], at: [lx + 2.2, 1.6, lz - 8] };
+    cutscene([
+      { ...pont, who: '', say: 'Le pont de Fin. Lydéric, au milieu, arrêté dans son pas. La foule arrêtée sur les quais.' },
+      { ...pont, who: 'Phinaert', say: '« C’est ici qu’il m’a vaincu. Ici que tout recommence. »' },
+      { ...eug, who: 'Eugène', say: '« Je suis là, Camille. Cette fois, je suis là. »' },
+    ], () => { e.caged = false; });
+    return; }
+  const e = F7.phin;
+  if (state.acte7 === 'pont' && e && !e.dead && e.hp <= e.k.hp * 0.35) porte7();
+  // la porte : chaque coup de l'épée de Lydéric le repousse d'un pas vers la lumière
+  if (state.acte7 === 'porte' && e && !e.dead) {
+    e.yaw = Math.atan2(player.pos.x - e.pos.x, player.pos.z - e.pos.z); e.mesh.rotation.y = e.yaw;   // il recule face à Camille
+    if (e.hp < F7.hp) { F7.hp = e.hp; F7.coups++; const z = e.pos.z - 2.2; e.pos.z = z; e.home.z = z; burst(e.pos.x, e.pos.y + 5, e.pos.z, 0xffffff, 16, 4, 0.6);
+      if (F7.coups >= 3) fermer7(); else showMessage(F7.coups === 1 ? 'Il recule d’un pas vers la lumière.' : 'Encore un pas.', 2.5); }
+    if (F7.porte) F7.porte.material.opacity = 0.75 + Math.sin(performance.now() / 120) * 0.15;
+  }
+  if (state.acte7 === 'epilogue' && !F7.epilogue) epilogue7();
+}
+// la porte s'ouvre dans la Porte Royale : une lumière blanche, un vent qui aspire
+function porte7() {
+  const e = F7.phin; state.acte7 = 'porte'; saveGame(true); e.caged = true; e.bar.visible = false;
+  const zp = APO + 4, y = getH(0, zp);
+  F7.porte = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  F7.porte.position.set(0, y + 3, zp); F7.porte.userData.dynamic = true; scene.add(F7.porte);
+  e.pos.set(0.4, getH(0.4, zp + 12), zp + 12); e.home.set(0.4, zp + 12, 0); e.hp = 999; F7.hp = 999; F7.coups = 0;
+  if (PARTAGE.prince) { PARTAGE.prince.position.set(2.6, getH(2.6, zp + 1.5), zp + 1.5); PARTAGE.prince.rotation.y = -2.4; }
+  { const z = zp + 18; player.pos.set(0.4, getH(0.4, z), z); player.yaw = Math.PI; G.camYaw = Math.PI; }
+  const plan = { cam: [7, 4, zp + 26], at: [0, 3, zp + 4] }, eug = { cam: [6, 2.6, zp + 7], at: [2.6, 1.8, zp + 1.5] };
+  cutscene([
+    { ...plan, who: '', say: 'Phinaert est à terre. Derrière lui, la Porte Royale s’ouvre sur une lumière blanche. Le vent aspire tout vers elle.', fn: () => SFX.cloche && SFX.cloche(true) },
+    { ...plan, who: 'Phinaert', say: '« Il y a une porte. Il y a toujours une porte. »' },
+    { ...eug, who: 'Eugène', say: '(la main sur le battant) « **Je la tiens !** Le sang de Lydéric l’ouvre… il la fermera aussi. Pousse-le ! »' },
+  ], () => { showMessage('L’épée de Lydéric : repousse-le de l’autre côté.', 4); });
+}
+function fermer7() {
+  const e = F7.phin, zp = APO + 4, plan = { cam: [7, 4, zp + 20], at: [0, 3, zp + 3] }, mains = { cam: [5, 2.4, zp + 6], at: [1.4, 1.6, zp + 1.5] };
+  cutscene([
+    { ...plan, who: 'Phinaert', say: '« Si tu fermes, plus rien ne s’arrêtera. Tout passera. Tout ce que tu aimes passera. »' },
+    { ...plan, who: 'Camille', say: '« Je sais. »', fn: () => { e.pos.set(0.4, e.pos.y, zp - 2); e.mesh.visible = false; burst(0, 4, zp, 0xffffff, 40, 6, 0.9, 2, 1.6); } },
+    { ...mains, who: '', say: 'Le vent prend Eugène par la manche. Camille lui prend la main. Ils poussent à deux.' },
+    { ...plan, who: '', say: 'La porte se ferme. De l’autre côté, Phinaert.', fn: () => { if (F7.porte) F7.porte.visible = false; SFX.stomp && SFX.stomp(); G.shake = 0.6; } },
+  ], () => { e.dead = true; e.deadT = 0.6; scene.remove(e.mesh); scene.remove(e.bar); F7.phin = null; state.acte7 = 'epilogue'; saveGame(true); });
+}
+// l'épilogue : le temps repart. Les mondes en une phrase chacun (pas de chargement : Lille au ciel qui revient),
+// puis Lille qui reprend son geste, Lydéric redevenu lui-même ; la botte, la dernière cloche, le noir, le générique
+function epilogue7() {
+  F7.epilogue = true;
+  const lx = LYD_X, lz = LYD_Z, ciel = { cam: [lx + 30, 22, lz + 40], at: [0, 14, APO] }, pont = { cam: [lx + 9, 4, lz + 12], at: [lx, 4, lz] }, cam = { cam: [lx + 5, 2.4, lz + 7], at: [lx + 0.6, 1.4, lz + 2.4] };
+  cutscene([
+    { ...ciel, who: '', say: 'Le temps repart.', fn: () => { figer7(false); SFX.cloche && SFX.cloche(); } },
+    { ...ciel, who: '', say: 'La pluie retombe sur le lac de Saint-Gervais.' },
+    { ...ciel, who: '', say: 'Les barques de Ko Panyi repartent. Somsak rame.' },
+    { ...ciel, who: '', say: 'Sur le quai de Gallipoli, Nunzia, vieille, sourit à la mer.' },
+    { ...ciel, who: '', say: 'Sur le plateau, le loup dort à côté du berger.' },
+    { ...pont, who: '', say: 'Lille. La foule reprend son geste. Les fanions claquent. Lydéric fait un pas.', fn: () => { state.lydericOsier = false; } },
+    { ...pont, who: 'Lydéric', say: '« Camille. J’ai fait un long rêve. »' },
+    { ...pont, who: 'Émile', say: '« La première botte de l’année. Tu la portes ? »' },
+    { ...cam, who: 'Camille', say: '« **Ce que la garde commence, la garde l’achève.** »', fn: () => { const b = faireBotte(); b.position.set(lx + 0.6, getH(lx + 0.6, lz + 2.4), lz + 2.4); scene.add(b); F7.botte = b; } },
+    { ...cam, who: '', say: 'Une dernière cloche sonne.', fn: () => SFX.cloche && SFX.cloche() },
+    { ...ciel, title: ' ', fade: 1, dur: 2.5 },
+    { ...ciel, title: 'The Legend of Camille', sub: 'Pour Camille', fade: 1, dur: 5 },
+    { ...ciel, title: 'Fin', sub: 'Le monde continue', fade: 1, dur: 4 },
+  ], () => { state.acte7 = 'fin'; saveGame(true); naviguer('accueil.html'); });
 }
