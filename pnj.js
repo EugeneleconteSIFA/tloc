@@ -878,10 +878,16 @@ function fabriquer(v, kind) {
 }
 
 /** Choisit le clip d'un villageois d'après son état, et avance son mixer. */
+// le temps arrêté de l'acte VII : engine.js (arreterTemps) le pose ici (pnj.js n'importe pas G)
+export const TEMPS = { arrete: false };
 export function animeVillageois(v, dt, enMarche) {
   const a = v.userData.ctrl;
   if (!a) return false;
   const ud = v.userData;
+  // le temps arrêté (acte VII) : chacun reste dans son geste — après un tiers de seconde animé au moins
+  // (figé avant sa première image, un personnage resterait les bras en croix)
+  if (TEMPS.arrete && ud.animeT > 0.3) return true;
+  ud.animeT = (ud.animeT || 0) + dt;
   let act;
   if (ud.talk > 0) act = a.jouer(CLIP.parle, 0.25);
   else if (enMarche) act = a.jouer(ud.pas || CLIP.marche, 0.3);
@@ -1000,7 +1006,7 @@ export function faireEpee() {
   const forme = new THREE.Shape();
   forme.moveTo(-0.024, 0.06); forme.lineTo(-0.021, 0.6); forme.lineTo(0, 0.73); forme.lineTo(0.021, 0.6); forme.lineTo(0.024, 0.06); forme.closePath();
   const geo = new THREE.ExtrudeGeometry(forme, { depth: 0.004, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.006, bevelSegments: 1 });
-  geo.translate(0, 0, -0.002); e.add(new THREE.Mesh(geo, acier));
+  geo.translate(0, 0, -0.002); { const l = new THREE.Mesh(geo, acier); l.userData.lame = true; e.add(l); }   // (la lame : l'épée de Lydéric la teinte, engine.js)
   for (const z of [-0.0065, 0.0065]) e.add(mesh(boxG(0.009, 0.44, 0.002), phMat('metal_plate_02', 0.05, 0.5, { color: 0x8a919a }), 0, 0.32, z));   // la gouttière
   const courbe = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.1, 0.075, 0), new THREE.Vector3(0, 0.035, 0), new THREE.Vector3(0.1, 0.075, 0));
   e.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 12, 0.011, 6), laiton));

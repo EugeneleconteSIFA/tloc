@@ -16,7 +16,7 @@ import * as PNJ from './pnj.js';
 // =====================================================================
 import { THREE, TAU, scene, G, phMat, hemi, sun, renderer, bloom, mesh, boxG,
   addInteract, goToLevel, showMessage, dialogue, bootLevel, minimapDots, makeSky, player, state, saveGame, SFX, lasso as lassoMoteur,
-  KINDS, setMaker, setAnimHook, spawnEnemy } from './engine.js?v=41';
+  KINDS, setMaker, setAnimHook, spawnEnemy, fadeTo } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 
 // ---------- l'avancement de l'acte ----------
@@ -303,7 +303,8 @@ function parleCornil() {
   if (!passe6('metal')) return dialogue(C6('Le métal du cœur du Dormeur. **Au fond de la mine de l’Aveyron**, sous l’eau.'));
   if (!passe6('tombe')) return dialogue(C6('Tu l’as. Alors **va voir la tombe du prince**, dans les ruines. Je ferai chauffer le four.'));
   if (!passe6('cloche')) return fonte();
-  dialogue(C6('Elle sonnera une fois. Une seule. Choisis bien le moment.'));
+  if (state.acte7) return dialogue(C6('Ils sont partis par le pont des géants. **Vers le Temple.**'));
+  dialogue(C6('Elle sonnera une fois. Une seule. Choisis bien le moment.'), volee);
 }
 // la fonte (lot 4) : la nuit tombe, le bronze coule dans le moule ; au matin, la cloche est neuve
 function fonte() {
@@ -325,7 +326,15 @@ function animeFonte(dt) {
   if (F.t > 7 && !F.casse) { F.casse = true; SFX.stomp && SFX.stomp(); R.moule.visible = false; R.cloche.visible = true;
     sun.intensity = R.jour.sun; hemi.intensity = R.jour.hemi; renderer.toneMappingExposure = R.jour.expo; }
   if (F.t > 8.5) { R.fonte = null; G.freeCam = null; state.grandeCloche = true; passer6('cloche'); SFX.fanfare && SFX.fanfare();
-    dialogue([{ who: '', text: 'Au matin, on casse le moule. La Grande Cloche est là, neuve. Elle n’a pas encore sonné.' }, ...C6('Elle sonnera une fois. Une seule. Choisis bien le moment.')]); }
+    dialogue([{ who: '', text: 'Au matin, on casse le moule. La Grande Cloche est là, neuve. Elle n’a pas encore sonné.' }, ...C6('Elle sonnera une fois. Une seule. Choisis bien le moment.')], volee); }
+}
+// la cloche volée (acte VII, étape 1 : Eugène, 12 octobre, « Phinaert la vole ») : la nuit suivante, Phinaert
+// vient la prendre, Eugène avec lui ; au matin, la forge est ouverte et la cloche partie
+const VOLEE = () => C6('Il est venu cette nuit. Je n’ai rien pu faire.', 'Il avait un garçon avec lui. Le garçon m’a regardé comme on demande pardon.', 'Ils sont partis par le pont des géants. **Vers le Temple.**');
+function volee() {
+  fadeTo(1, () => { state.acte7 = 'volee'; saveGame(true); R.cloche.visible = false;
+    setTimeout(() => fadeTo(0, null), 700);
+    dialogue([{ who: '', text: 'La nuit suivante. Au matin, la porte de la forge bat au vent. La cloche n’est plus là.' }, ...VOLEE()]); });
 }
 
 // les ruines du château du Buc, le château de Phinaert : des pans de murs sur la butte, la tombe au milieu
@@ -424,6 +433,8 @@ function animate(now) {
   const p = player.pos; if (p.z < RIVIERE[0] - 0.5 && p.y < FOND + 2 && p.z > SUD - 1) passer6('riviere');
   if (R.eau) R.eau.position.y = EAU + Math.sin(now / 700) * 0.04;
   veilleBande(); animeFonte(dt);
+  // la cloche et le moule selon l'état (le lieu se bâtit avant que la sauvegarde ne soit lue)
+  if (!R.fonte && R.cloche) { R.cloche.visible = !!state.grandeCloche && !state.acte7; R.moule.visible = !state.grandeCloche; }
   if (R.bande && !bandeDebout() && !state.bande6) { state.bande6 = true; saveGame(true); showMessage('Les bandits sont à terre. Au milieu des ruines, une tombe.', 4); }
   if (R.cornil && R.cornil.userData.ctrl) PNJ.animeVillageois(R.cornil, dt, false);
   if (R.feu) R.feu.intensity = (R.fonte ? 14 : 4) + Math.sin(now / 90) * 0.6 + Math.sin(now / 37) * 0.4;
@@ -439,7 +450,8 @@ function objectif() {
   if (!passe6('metal')) return 'Le métal du cœur du Dormeur : au fond de la mine de l’Aveyron, sous l’eau (la porte du Midi, sur l’île)';
   if (!passe6('tombe')) return 'La tombe du prince, dans les ruines du château du Buc (la butte, au sud-est)';
   if (!passe6('cloche')) return 'Retourne à la forge : maître Cornil fait chauffer le four';
-  return 'La Grande Cloche est neuve. Elle n’a pas encore sonné.';
+  if (!state.acte7) return 'La Grande Cloche est neuve. Elle n’a pas encore sonné.';
+  return 'Phinaert a pris la Grande Cloche. Le Temple : repasse la fêlure';
 }
 function minimap(g, W2) {
   const sc = W2 / 260, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc, W2 / 2 + (z - player.pos.z) * sc];

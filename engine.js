@@ -2869,6 +2869,10 @@ export function damagePlayer(dmg, fromX, fromZ) {
 }
 export function hitEnemy(e, dmg, fromX, fromZ) {
   if (e.dead) return;
+  // (acte VII) Phinaert remonte le temps de ses blessures, sauf celles de l'épée de Lydéric : le coup
+  // porte, puis s'efface (effacerTick) ; il ne meurt jamais d'un coup effacé
+  if (e.remonte && !state.epeeLyderic) { e.effaces = (e.effaces || []).concat([{ hp: e.hp, t: 0.9 }]); e.hp = Math.max(1, e.hp - dmg); e.flash = 0.18;
+    burst(e.pos.x, e.pos.y + e.k.barY * 0.5, e.pos.z, 0xfff0a0, 7, 5, 0.35); SFX.hit(); if (e.remonte.coup) e.remonte.coup(e); return; }
   e.hp -= dmg; e.flash = 0.18;
   const dx = e.pos.x - fromX, dz = e.pos.z - fromZ, d = Math.hypot(dx, dz) || 1;
   if (!e.k.boss) { e.kb.set(dx / d * 7, 0, dz / d * 7); if (e.state !== 'windup') { e.state = 'stagger'; e.t = 0.25; } }
@@ -2881,6 +2885,30 @@ export function hitEnemy(e, dmg, fromX, fromZ) {
     if (!e.k.boss && Math.random() < 0.35) spawnGaufre(e.pos.x, e.pos.z);
     if (G.level.onKill) G.level.onKill(e);
   }
+}
+
+// la blessure effacée : au bout de 0,9 s, la vie revient à rebours, une traînée de lumière bleue
+function effacerTick(e, dt) {
+  if (!e.effaces || !e.effaces.length) return;
+  for (const f of e.effaces) f.t -= dt;
+  while (e.effaces.length && e.effaces[0].t <= 0) { const f = e.effaces.shift(); e.hp = Math.max(e.hp, f.hp);
+    burst(e.pos.x, e.pos.y + e.k.barY * 0.5, e.pos.z, 0x9ab8ff, 18, 3, 0.7, -4, 1.2); SFX.gong && SFX.gong(); if (e.remonte && e.remonte.efface) e.remonte.efface(e); }
+}
+
+// ---- Le temps arrêté (acte VII, docs/DECOUPAGE-ACTE7.md § 3) ----
+// Toutes les cloches sonnent, et le temps s'arrête partout : seuls Camille et ce qui est « hors du temps »
+// (Phinaert : e.horsTemps) bougent encore. Les créatures se figent (la boucle du moteur), les villageois
+// aussi (pnj.js lit G.tempsArrete) ; chaque lieu fige le reste de ce qu'il anime. Un voile gris sur l'image :
+// un filtre CSS sur le canevas, qui ne coûte rien au rendu.
+export function arreterTemps(on) {
+  G.tempsArrete = !!on;
+  renderer.domElement.style.filter = on ? 'saturate(0.3) brightness(0.93) contrast(1.06)' : '';
+}
+// l'épée de Lydéric : la lame de Camille prend un reflet bleu pâle (state.epeeLyderic, temple.js)
+let epeeMarquee = false;
+function majEpee() {
+  if (epeeMarquee || !state.epeeLyderic) return; epeeMarquee = true;
+  scene.traverse((o) => { if (o.isMesh && o.userData.lame) { o.material = o.material.clone(); o.material.color.setHex(0xdfe8ff); o.material.emissive = new THREE.Color(0x3a5aa8); o.material.emissiveIntensity = 0.6; } });
 }
 
 // =====================================================================
@@ -3818,7 +3846,8 @@ function loop(now) {
     const px0 = player.pos.x, pz0 = player.pos.z;
     updatePlayer(dt); lassoTick(dt); lieuxTick();
     { const d = Math.hypot(player.pos.x - px0, player.pos.z - pz0); if (d < 2) state.distance += d; }   // un saut de plus de 2 m en une image : un changement de lieu
-    for (const e of enemies) updateEnemy(e, dt);
+    for (const e of enemies) { if (!G.tempsArrete || e.horsTemps) updateEnemy(e, dt); effacerTick(e, dt); }
+    majEpee();
     updateArrows(dt); updateShockwaves(dt); updateParticles(dt);
     if (L.update) L.update(dt);
     cutTick(dt);

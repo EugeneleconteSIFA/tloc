@@ -2979,3 +2979,21 @@ Le découpage est celui de `docs/DECOUPAGE-ACTE6.md` (étapes 6 à 10), les rép
   n'y est pas chargée (le moule sortait blanc) : `falaise_02` partout.
 - **Laissé** : les chevaux sauvages (les rênes n'existent pas) ; « les mondes se souviennent » (répliques proposées dans
   DIALOGUES-ACTE6.md, à coder dans chaque monde).
+
+### Acte VII, lot 1 (12 octobre, PC, vague 4) — **fait, joué en headless**
+Découpage et répliques : `docs/DECOUPAGE-ACTE7.md`, `docs/DIALOGUES-ACTE7.md`, validés par Eugène le 12 octobre (Phinaert
+vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on rejoue ; **Eugène tient la porte**).
+`state.acte7` : `volee` → `arret` → `epee` → `mondes` (puis, aux lots suivants, `pont`, `porte`, `epilogue`, `fin`).
+- **La cloche volée** (`rive.js`, `volee`) : après la fonte, la nuit suivante, la forge vide ; Cornil : le garçon, le Temple.
+- **Le temps arrêté** (`engine.js`, `arreterTemps(on)`, `G.tempsArrete`) : les créatures ne bougent plus sauf `e.horsTemps` ;
+  les villageois tiennent leur geste (`pnj.js`, `TEMPS.arrete`, après un tiers de seconde animé) ; un filtre CSS gris sur
+  le canevas (aucun coût de rendu). Chaque lieu fige lui-même ce qu'il anime (temple.js : `if (G.tempsArrete)`).
+- **Les blessures effacées** (`engine.js`, `e.remonte`, `effacerTick`) : un coup porte, puis s'efface au bout de 0,9 s ;
+  pas avec l'épée de Lydéric (`state.epeeLyderic` ; la lame teinte de bleu pâle, `userData.lame` dans `faireEpee`).
+- **Le Temple de la fin** (`temple.js`, `fin7Poser`, `fin7Scene`, `fin7Combat`) : le ciel blanc, la Grande Cloche à un
+  portique dans la cour, Eugène (`prince`), la scène (le mage, Eugène, Phinaert, toutes les cloches, le temps arrêté) ;
+  Phinaert en géant (`KINDS.phinaert`) ; trois coups effacés → l'indice du gong ; le gong près du mage → l'épée ; à la
+  moitié de sa vie, Phinaert s'enfuit par la porte du Midi (`mondes`). La scène attend qu'aucune autre ne joue.
+- Banc **`bancs/acte7-temple.mjs`** réussi ; `acte6-cloche`, `acte5-temple` repassés. Chargement de temple.html : 1,8 s.
+- **Appris (une troisième fois)** : un commentaire `//` en bout de ligne avale la suite (la cloche n'était plus ajoutée à
+  la scène). Le rendu l'a vu, pas le banc.

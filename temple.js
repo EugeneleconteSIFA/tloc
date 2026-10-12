@@ -797,6 +797,96 @@ function ilesScene() {
   ], () => { state.ilesVu = true; saveGame(true); });
 }
 
+// L'ACTE VII, LOT 1 (12 octobre ; docs/DECOUPAGE-ACTE7.md, étapes 2 à 5 ; DIALOGUES-ACTE7.md) : Phinaert a
+// volé la Grande Cloche à la forge de Cornil (rive.js, `state.acte7 = 'volee'`). Elle pend dans la cour, à un
+// portique de poutres, devant la porte de la tour ; Eugène à côté ; Phinaert l'attend. Il pose la main d'Eugène
+// sur le bronze, toutes les cloches sonnent, le temps s'arrête (engine.js, arreterTemps). Le premier combat :
+// les coups de l'épée d'apprentie s'effacent (e.remonte, engine.js) ; le gong de Nok rend un instant le mage au
+// temps ; il donne l'épée de Lydéric ; blessé pour de bon, Phinaert s'enfuit par la porte du Midi (lot 2).
+// Étapes : volee → arret (la scène vue) → epee (l'épée reçue) → mondes (Phinaert enfui).
+const ETAPES7 = ['volee', 'arret', 'epee', 'mondes'];
+const passe7 = (e) => ETAPES7.indexOf(state.acte7 || '') >= ETAPES7.indexOf(e) && !!state.acte7;
+const FIN7 = { pose: false, scene: false, phin: null, effaces: 0, indice: false, lame: false, eugene: null, cloche: null };
+const C7 = { x: 0, z: R_TOUR + 7 };                    // le portique de la Grande Cloche, devant la porte de la tour
+function figer(on) { PNJ_E.arreterTemps(on); PNJ.TEMPS.arrete = on; }
+function fin7Poser() {
+  if (!finPosee) { finPosee = true; finActeIPoser(); }     // le mage, au pied de la prophétie
+  makeSky(0xd8dce0, 0xe8eaec, 0xf2f2f2, true);              // le ciel blanc, sans soleil
+  sun.intensity = 0.9; hemi.intensity = 0.9;
+  // le portique : deux poteaux, une poutre, la cloche dessous (le profil de la forge de Cornil)
+  const bois = phMat('wood_planks', 0.3, 1.2, { color: 0x5a4a38 }), y0 = hauteur(C7.x, C7.z);
+  for (const s of [-1, 1]) { const p = mesh(boxG(0.5, 4.4, 0.5), bois, C7.x + s * 2.4, y0 + 2.2, C7.z); p.castShadow = true; scene.add(p); }
+  scene.add(mesh(boxG(5.6, 0.5, 0.6), bois, C7.x, y0 + 4.3, C7.z), mesh(boxG(0.12, 0.6, 0.12), bois, C7.x, y0 + 3.85, C7.z));
+  addCap(C7.x - 2.4, C7.z, C7.x - 2.4, C7.z, 0.4, y0 + 6); addCap(C7.x + 2.4, C7.z, C7.x + 2.4, C7.z, 0.4, y0 + 6);
+  const prof = [[0, 0], [1.15, 0], [1.2, 0.14], [1.03, 0.55], [0.87, 1.4], [0.74, 1.85], [0.41, 2.07], [0, 2.12]].map(([r, h]) => new THREE.Vector2(r, h));
+  const c = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), new THREE.MeshStandardMaterial({ color: 0xb8864a, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide }));
+  // (assez bas pour qu'Eugène y pose la main)
+  c.position.set(C7.x, y0 + 1.7, C7.z); c.castShadow = true; c.userData.dynamic = true; scene.add(c); FIN7.cloche = c;
+  addCap(C7.x, C7.z, C7.x, C7.z, 1.2, y0 + 6);
+  // Eugène, la main sur le bronze
+  const e = PNJ.buildRole('prince'); if (e) { e.scale.setScalar(G.echelle); e.position.set(C7.x + 1.25, y0, C7.z + 0.75); e.rotation.y = -2.1; scene.add(e); FIN7.eugene = e; }
+  // le gong de Nok, près du mage figé : il rend au temps ce qui l'entoure, un instant
+  if (MAGE) addInteract({ pos: MAGE.position.clone(), r: 3.2, prompt: () => 'frapper le gong près du mage', enabled: () => state.acte7 === 'arret' && FIN7.effaces >= 3, fn: gongMage });
+}
+// la scène du Temple : Phinaert, Eugène, la main sur la cloche, le temps qui s'arrête
+function fin7Scene() {
+  // (après la scène en cours : un retour d'acte pas encore vu passe d'abord, sinon il écraserait celle-ci)
+  if (FIN7.scene || state.acte7 !== 'volee' || !state.running || state.paused || PNJ_E.cut.active) return;
+  FIN7.scene = true;
+  const am = 0.55, mx = Math.sin(am) * (R_TOUR + 3.2), mz = Math.cos(am) * (R_TOUR + 3.2);
+  const mage = { cam: [mx - 4.5, 2.6, mz + 7], at: [mx, 1.5, mz] }, cour = { cam: [C7.x - 7, 4, C7.z + 12], at: [C7.x, 3, C7.z] }, cloche = { cam: [C7.x + 4.5, 3.2, C7.z + 4.5], at: [C7.x + 0.6, 3, C7.z] };
+  const toutes = () => [0, 400, 800, 1200, 1600, 2000].forEach((t) => setTimeout(() => PNJ_E.SFX.cloche && PNJ_E.SFX.cloche(), t));
+  cutscene([
+    { ...cour, who: '', say: 'Les six portes sont ouvertes. Le ciel est blanc. Dans la cour, la Grande Cloche pend à un portique de poutres.' },
+    { ...mage, who: 'Le vieux mage', say: '« Je n’ose pas monter. Ça fait mille ans que je n’ose pas. »' },
+    { ...cloche, who: 'Eugène', say: '« Camille. Il ne fallait pas venir. »' },
+    { ...cour, who: 'Phinaert', say: '« Elle est venue. Elle vient toujours. C’est pour ça que je l’ai choisie. »' },
+    { ...cour, who: 'Phinaert', say: '« Une gardienne sonnera les cloches, et chaque cloche me servira. Tu as tout fait, petite. Il ne manquait qu’une main. »' },
+    { ...cloche, who: '', say: 'Phinaert pose la main d’Eugène sur le bronze. La Grande Cloche sonne. Les cinq autres sonnent avec elle.', fn: toutes },
+    { ...mage, who: '', say: 'Tout s’arrête. La mer. Les nuages. Le mage, la bouche ouverte.', fn: () => figer(true) },
+    { ...cour, who: 'Phinaert', say: '« Plus rien ne passera. Plus rien ne se perdra. Jamais. »' },
+    { ...cour, who: 'Phinaert', say: '« …Tu bouges encore ? »' },
+  ], () => { state.acte7 = 'arret'; saveGame(true); phinaert7(); });
+}
+// Phinaert, géant, dans la cour : hors du temps, et ses blessures s'effacent tant que l'épée n'est pas celle de Lydéric
+function phinaert7() {
+  if (FIN7.phin && !FIN7.phin.dead) return;
+  const e = PNJ_E.spawnEnemy('phinaert', C7.x - 4, C7.z + 6, 'acte7'); e.horsTemps = true; FIN7.phin = e;
+  e.remonte = { efface: () => { FIN7.effaces++;
+    if (FIN7.effaces === 1) showMessage('Phinaert : « Ce coup-là n’a jamais eu lieu. »', 4);
+    if (FIN7.effaces === 3 && !FIN7.indice) { FIN7.indice = true; e.caged = true;
+      dialogue([{ who: 'Camille', text: 'Il remonte le temps de ses blessures… **Le gong de Nok.** Si le temps repart autour du mage…' }], () => { e.caged = false; }); } } };
+  if (state.acte7 === 'epee') e.remonte = null;
+}
+function gongMage() {
+  if (!state.gongThai) return showMessage('Il faudrait de quoi relancer le temps, un instant.', 4);
+  const e = FIN7.phin; if (e) e.caged = true;
+  PNJ_E.SFX.gong && PNJ_E.SFX.gong(); PNJ.TEMPS.arrete = false;     // le mage seul bouge (Eugène tient sa pose)
+  dialogue([{ who: 'Le vieux mage', text: '« Je l’ai gardée depuis 620. Je n’ai jamais su pour qui. »' },
+    { who: 'Le vieux mage', text: '« **Elle était à lui. Elle est à toi.** La seule lame dont il ne peut pas effacer le coup. »' },
+    { who: '', text: 'Le mage se fige de nouveau, la main encore tendue. Dans la main de Camille : l’épée de Lydéric.' }], () => {
+    PNJ.TEMPS.arrete = true; state.epeeLyderic = true; state.acte7 = 'epee'; saveGame(true); PNJ_E.SFX.fanfare && PNJ_E.SFX.fanfare();
+    if (e) { e.caged = false; e.remonte = null; } });
+}
+// l'épée de Lydéric porte : au premier coup, il la reconnaît ; à la moitié de sa vie, il s'enfuit par la porte du Midi
+function fin7Combat() {
+  const e = FIN7.phin; if (!e || e.dead || state.acte7 !== 'epee') return;
+  if (!FIN7.lame && e.hp < e.k.hp) { FIN7.lame = true; showMessage('Phinaert : « Cette lame… Je la connais. »', 4); }
+  if (e.hp <= e.k.hp / 2) {
+    e.dead = true; e.deadT = 0.6; e.bar.visible = false; scene.remove(e.mesh); scene.remove(e.bar);
+    const a = angPorte(PORTES.findIndex((P) => P.geant === 'dormeur'));
+    PNJ_E.burst(Math.sin(a) * R_COUR, 2, Math.cos(a) * R_COUR, 0x9ab8ff, 40, 6, 0.9, 2, 1.6);
+    state.acte7 = 'mondes'; saveGame(true);
+    dialogue([{ who: '', text: 'Phinaert hurle. La blessure ne s’efface pas. Il recule, et s’enfuit par la porte du Midi.' }]);
+  }
+}
+function objectif7() {
+  if (state.acte7 === 'arret') return FIN7.effaces >= 3 ? 'Le gong de Nok : relancer le temps autour du mage' : 'Phinaert, dans la cour';
+  if (state.acte7 === 'epee') return 'Phinaert : l’épée de Lydéric le blesse pour de bon';
+  if (state.acte7 === 'mondes') return 'Suis Phinaert : la porte du Midi';
+  return '';
+}
+
 // rien ne bouge sur l'île, sauf ce que les mondes ouverts ont remis en marche
 // à l'arrivée par une porte, la sauvegarde rend l'angle de caméra du niveau qu'on quitte : on
 // la remet une fois dans le dos de Camille, face à la tour
@@ -814,6 +904,12 @@ function animate(now, dt) {
   ilesScene();                                                                                       // le retour de l'acte III, une fois
   if (!troupeauxPosees && state.running && troupeauxSonne()) { troupeauxPosees = true; troupeauxPoser(); }
   troupeauxScene();                                                                                  // le retour de l'acte V, une fois
+  // l'acte VII : le Temple de la fin, posé une fois ; le temps arrêté (après la scène) et Phinaert, s'il est encore là
+  if (!FIN7.pose && state.running && ['volee', 'arret', 'epee'].includes(state.acte7)) { FIN7.pose = true; fin7Poser();
+    if (state.acte7 !== 'volee') { figer(true); phinaert7(); } }
+  fin7Scene(); fin7Combat();
+  // plus rien ne bouge ici ; le mage et Eugène tiennent leur geste (pnj.js) — sauf le mage, un instant, au gong
+  if (G.tempsArrete) { if (MAGE) PNJ.animeVillageois(MAGE, dt, false); if (FIN7.eugene) PNJ.animeVillageois(FIN7.eugene, dt, false); return; }
   if (state.troupeauxVu && state.running && (sonnT += dt) > 9) { sonnT = 0; sonnailles(); }          // les sonnailles, de loin en loin
   for (const t of RIGOLES) t.offset.y -= dt * 0.8;                                                  // l'eau des rigoles monte
   // le tic-tac du cadran, une fois les Heures pendues
@@ -823,6 +919,7 @@ function animate(now, dt) {
   if (BOUGE.aiguille) BOUGE.aiguille.rotation.z -= dt * 1.6;                                       // l'heure qui passe trop vite
   if (BOUGE.passeur) PNJ.animeVillageois(BOUGE.passeur, dt, false);
   if (MAGE) PNJ.animeVillageois(MAGE, dt, false);
+  if (FIN7.eugene) PNJ.animeVillageois(FIN7.eugene, dt, false);
 }
 function minimap(g, W2) {
   const sc = 1.45, P = (x, z) => [W2 / 2 + x * sc, W2 / 2 + z * sc];
@@ -838,7 +935,7 @@ const level = {
   // la rive : on ne marche pas sur la mer, sauf sur le ponton du passeur
   blocked: (x, z) => Math.hypot(x, z) > R_ILE - 3 && !surPonton(x, z),
   build, populate, animate, minimap,
-  counts: () => '<small>L’île du temps — le Temple des Géants. Six portes, une seule ouverte.</small>',
+  counts: () => (state.acte7 && objectif7() ? `<small>L’île du temps</small><br><small>Objectif : ${objectif7()}</small>` : '<small>L’île du temps — le Temple des Géants. Six portes, une seule ouverte.</small>'),
   start: () => showMessage('Rien ne bouge. Ni la mer, ni les nuages. Même le vent s’est arrêté.', 6),
   arriveMessage: () => 'L’île du temps.',
   entry: () => ({ title: 'L’île du temps', sub: 'Le Temple des Géants', cam: [70, 40, 120], at: [0, 20, 0], cam2: [8, 4, R_COUR + 10], at2: [0, 14, 0], dur: 6 }),
