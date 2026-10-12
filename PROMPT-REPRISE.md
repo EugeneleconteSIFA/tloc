@@ -2955,3 +2955,27 @@ hisse jusqu'à un anneau ; pour la Blessure, le recopier ou attendre qu'une pass
 - **`hud.js` / la carte M pour le lac : pas faite, à décider par Eugène.** La carte M (atlas.js) n'existe qu'à Lille :
   aucun lieu de Lozère n'en a. Ce n'est pas un oubli à réparer pour le lac seul, c'est une carte de la Lozère (ou du
   monde) à concevoir.
+
+### Acte VI, lots 2 à 4 (12 octobre, PC, vague 4 : l'acte VI fini avant l'acte VII, Eugène) — **faits, joués en headless**
+Le découpage est celui de `docs/DECOUPAGE-ACTE6.md` (étapes 6 à 10), les répliques celles de `DIALOGUES-ACTE6.md`.
+- **L'autre rive** (`rive.js`, `autreRive`) : le lieu descend jusqu'à z −330. La fontaine de l'ermite sous un chêne
+  (le souvenir de la biche), les trois traces de Lydéric enfant (l'épée de bois, la pierre « LIDERIC », la cabane dans
+  un chêne ; `state.traces6`), la forêt du Buc (520 hêtres et chênes, des troncs qui arrêtent ; rangés par cases de 4 m
+  pour `blocked`), la fumée de la forge qu'on voit au-dessus des arbres.
+- **Maître Cornil** à sa forge (`a6_cornil`, le corps de Gustave blanchi) : le moule, le métal du Dormeur → `forge`.
+- **La galerie noyée** (`aveyron.js`, `galerieNoyee`, la mine SEULEMENT) : l'eau noire au fond de la cave du Dormeur
+  (visible à partir de `forge`) ; le souffle pour plonger ; une seconde salle, bâtie comme les caves, sa moitié nord
+  sous l'eau ; la porte de pierre à la force ; l'éclat rouge → `metal`. `acte2-dormeur` réussi.
+- **Les ruines du château du Buc** sur leur butte (6 m), la bande du Buc (cinq bandits et leur chef, `bandit6`, `chef6`,
+  une fois : `state.bande6`) ; **la tombe de Salvaert** : le sixième vers, « Qui restera de l'autre côté ? », « Ce que
+  la garde commence, la garde l'achève. » → `tombe`, `state.vers6` (temple.js : le sixième vers sur la plaque).
+- **La fonte** : la nuit, le bronze qui coule, le moule cassé, la Grande Cloche neuve (`state.grandeCloche`) → `cloche`.
+- Banc **`bancs/acte6-cloche.mjs`** réussi (de la rive à la cloche, puis le Temple) ; `acte6-traversee`, `acte2-dormeur`,
+  `acte5-temple` repassés.
+- **Chargement de rive.html : 1,1 s → 1,5 à 2,6 s** (mesures bruitées) : environ +0,5 s, au-delà des 300 ms de la règle 8.
+  Coupables probables : le relief étendu (174 000 sommets au lieu de 113 000) et la forêt. À reprendre (§ 4.E) : un pas
+  de 4 m au sud de −110, moins d'arbres.
+- **Appris** : `ruines_02` et `ruines_03` rendent presque noir sur la rive (le pont l'avait déjà vu) ; `mud_cracked_dry_03`
+  n'y est pas chargée (le moule sortait blanc) : `falaise_02` partout.
+- **Laissé** : les chevaux sauvages (les rênes n'existent pas) ; « les mondes se souviennent » (répliques proposées dans
+  DIALOGUES-ACTE6.md, à coder dans chaque monde).

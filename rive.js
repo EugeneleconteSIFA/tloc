@@ -15,7 +15,8 @@ import * as PNJ from './pnj.js';
 // En mètres, x est, z sud : le bord côté Lille au nord (z > 40), l'autre rive au sud (z < −14).
 // =====================================================================
 import { THREE, TAU, scene, G, phMat, hemi, sun, renderer, bloom, mesh, boxG,
-  addInteract, goToLevel, showMessage, dialogue, bootLevel, minimapDots, makeSky, player, state, saveGame, SFX, lasso as lassoMoteur } from './engine.js?v=41';
+  addInteract, goToLevel, showMessage, dialogue, bootLevel, minimapDots, makeSky, player, state, saveGame, SFX, lasso as lassoMoteur,
+  KINDS, setMaker, setAnimHook, spawnEnemy } from './engine.js?v=41';
 import { especeGeo } from './foret.js';
 
 // ---------- l'avancement de l'acte ----------
@@ -30,12 +31,20 @@ const RIVIERE = [-8, 8], EAU = FOND - 0.3;                         // la rivièr
 const ESC = { x0: -2, x1: 2, z0: SUD, z1: -62, pas: 0.8, haut: 0.4 };   // l'escalier des géants, taillé dans la paroi sud
 const TROUS = [[10, 11.6], [24, 25.6], [38, 39.6]];                // les marches tombées, en mètres le long de l'escalier
 const PONT = { x0: 38, x1: 42 };                                   // le vieux pont des géants, quand il est abaissé
-const BORNES = { x0: -120, x1: 120, z0: -110, z1: 90 }, LOIN = 760;   // LOIN : jusqu'où la Blessure se voit
+const BORNES = { x0: -120, x1: 120, z0: -330, z1: 90 }, LOIN = 760;   // LOIN : jusqu'où la Blessure se voit
 const DEPART = { x: 0, z: 55, yaw: Math.PI };
+// l'autre rive (lot 2) : la fontaine de l'ermite, les trois traces de Lydéric enfant, la forêt du Buc et
+// la forge de Cornil au fond, les ruines du château du Buc sur leur butte, à l'est
+const FONTAINE = [-68, -72], TRACES = { epee: [-34, -54], pierre: [-92, -112], cabane: [-56, -142] };
+const FORET = { x0: -120, x1: 30, z0: -320, z1: -165 }, FORGE = { x: -42, z: -286 };
+const RUINES = { x: 72, z: -238, r: 30, h: 6 };
 const marches = () => state.marches6 || 0;
 
 // la plaine : quelques ondulations, à peine (la Flandre est plate)
 const plaine = (x, z) => Math.sin(x * 0.045) * 0.35 + Math.cos(z * 0.06 + x * 0.02) * 0.3;
+// la butte du château du Buc : un sommet plat de 15 m, des pentes douces (on y monte à pied)
+const butte = (x, z) => { const d = Math.hypot(x - RUINES.x, z - RUINES.z); if (d >= RUINES.r) return 0;
+  const t = Math.min(1, Math.max(0, (RUINES.r - d) / (RUINES.r - 15))); return RUINES.h * t * t * (3 - 2 * t); };
 // hors des bornes, la Blessure serpente (tirée au cordeau jusqu'à l'horizon, elle avait l'air d'un fossé) ;
 // entre les bornes elle reste droite : les corniches, l'escalier et le pont y sont posés
 const courbe = (x) => { const d = Math.abs(x) - BORNES.x1; return d > 0 ? Math.sin(d / 70) * 26 * Math.sign(x) * Math.min(1, d / 60) : 0; };
@@ -51,7 +60,7 @@ function relief(x, z) {
     TROUS.forEach(([a, b], i) => { if (t >= a && t < b && marches() <= i) y -= 1.6; });
     return y;
   }
-  return plaine(x, z);
+  return plaine(x, z) + butte(x, z);
 }
 const pontBas = () => !!state.pont6;
 const surPont = (x, z) => pontBas() && x > PONT.x0 && x < PONT.x1 && z < BORD_N + 1 && z > SUD - 1;
@@ -73,10 +82,15 @@ function blocked(x, z, r = 0.4, flying, y = 0) {
   }
   // jamais dans le vide : plus de 3 m sous les pieds, on ne passe pas (on descend au lasso)
   if (sol(x, z) < y - 3) return true;
-  for (const t of TRONCS) if (Math.abs(x - t[0]) < 2 && Math.abs(z - t[1]) < 2 && Math.hypot(x - t[0], z - t[1]) < 0.6 + r) return true;
+  // les troncs, rangés par cases de 4 m (la forêt du Buc en compte des centaines)
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const t of TRONCS.get(caseT(x + i * 4, z + j * 4)) || [])
+    if (Math.hypot(x - t[0], z - t[1]) < 0.6 + r) return true;
+  for (const [x0, z0, x1, z1] of MURS) if (x > x0 - r && x < x1 + r && z > z0 - r && z < z1 + r) return true;
   return false;
 }
-const TRONCS = [];
+const TRONCS = new Map(), MURS = [];
+const caseT = (x, z) => Math.floor(x / 4) + ',' + Math.floor(z / 4);
+const tronc = (x, z) => { const k = caseT(x, z); if (!TRONCS.has(k)) TRONCS.set(k, []); TRONCS.get(k).push([x, z]); };
 
 // ---------- le décor ----------
 const R = { eau: null, pont: null, blocs: [] };
@@ -88,9 +102,13 @@ function terrain() {
   for (let x = -LOIN; x < BORNES.x0; x += 4) XS.push(x);
   for (let x = BORNES.x0; x <= BORNES.x1; x++) XS.push(x);
   for (let x = BORNES.x1 + 4; x <= LOIN; x += 4) XS.push(x);
-  const nx = XS.length, nz = 201, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2);
+  // en z, d'un mètre autour de la Blessure ; de deux mètres plus au sud (l'autre rive, presque plate)
+  const ZS = [];
+  for (let z = BORNES.z0; z < -110; z += 2) ZS.push(z);
+  for (let z = -110; z <= BORNES.z1; z++) ZS.push(z);
+  const nx = XS.length, nz = ZS.length, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const x = XS[i], z = BORNES.z0 + j, k = j * nx + i;
+    const x = XS[i], z = ZS[j], k = j * nx + i;
     const y = relief(x, z);
     // une paroi tirée au cordeau a l'air d'un mur : ses sommets s'écartent un peu (le sol où l'on marche,
     // relief(), ne bouge pas ; l'écart, d'un mètre au plus, reste dans la roche)
@@ -170,13 +188,13 @@ function lointain() {
   const places = [];
   // en bosquets (une plaine semée au hasard a l'air d'un jeu) : 26 centres, 8 arbres autour de chacun
   const centres = [];
-  for (let k = 0; k < 26; k++) { const nord = k % 3 === 0; centres.push([BORNES.x0 + 10 + Math.random() * (BORNES.x1 - BORNES.x0 - 20), nord ? BORD_N + 14 + Math.random() * 30 : SUD - 16 - Math.random() * 78]); }
+  for (let k = 0; k < 26; k++) { const nord = k % 3 === 0; centres.push([BORNES.x0 + 10 + Math.random() * (BORNES.x1 - BORNES.x0 - 20), nord ? BORD_N + 14 + Math.random() * 30 : SUD - 16 - Math.random() * 120]); }
   for (let k = 0; k < 208; k++) { const [cx, cz] = centres[k % 26], a = Math.random() * TAU, d = Math.random() * 11, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
     if (z < BORD_N + 4 && z > SUD - 4) continue;
-    if (Math.abs(x - DEPART.x) < 10 && Math.abs(z - DEPART.z) < 10) continue; if (x > ESC.x0 - 6 && x < ESC.x1 + 6 && z > ESC.z1 - 6) continue; if (x > PONT.x0 - 8 && x < PONT.x1 + 8) continue;
+    if (Math.abs(x - DEPART.x) < 10 && Math.abs(z - DEPART.z) < 10) continue; if (pasIci(x, z)) continue; if (x > ESC.x0 - 6 && x < ESC.x1 + 6 && z > ESC.z1 - 6) continue; if (x > PONT.x0 - 8 && x < PONT.x1 + 8) continue;
     places.push([x, z]); }
   const tr = new THREE.InstancedMesh(esp.tronc, esp.matT, places.length), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, places.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3();
-  places.forEach(([x, z], k) => { const h = 8 + Math.random() * 4; q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * TAU); s.set(h, h, h); m4.compose(v.set(x, relief(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); TRONCS.push([x, z]); });
+  places.forEach(([x, z], k) => { const h = 8 + Math.random() * 4; q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * TAU); s.set(h, h, h); m4.compose(v.set(x, relief(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); tronc(x, z); });
   tr.castShadow = hp.castShadow = true; scene.add(tr, hp);
   // les éboulis : des blocs tombés des parois, au fond et sur les corniches (jamais sur les passages)
   const roc = phMat('falaise_02', 1, 1, { color: 0xa89e8c }), eb = [];
@@ -189,7 +207,167 @@ function lointain() {
   // la croix de chemin, au bord, côté Lille (SCENARIO.md : « une prairie, une croix de chemin, le vent »)
   const cr = phMat('ruines_02', 1, 1, { color: 0x9a9284 }), cx = DEPART.x + 7, cz = DEPART.z + 2;
   scene.add(mesh(boxG(0.35, 3, 0.35), cr, cx, 1.5, cz), mesh(boxG(1.5, 0.3, 0.3), cr, cx, 2.3, cz), mesh(boxG(1.2, 0.5, 1.2), cr, cx, 0.1, cz));
-  TRONCS.push([cx, cz]);
+  tronc(cx, cz);
+}
+
+// ---------- l'autre rive (lot 2) : la fontaine, les traces, la forêt du Buc, la forge, les ruines ----------
+// là où ne pousse aucun arbre : les lieux de l'acte et leurs abords
+function pasIci(x, z) {
+  return Math.hypot(x - FONTAINE[0], z - FONTAINE[1]) < 9 || Object.values(TRACES).some(([a, b]) => Math.hypot(x - a, z - b) < 5)
+    || Math.hypot(x - FORGE.x, z - FORGE.z) < 17 || Math.hypot(x - RUINES.x, z - RUINES.z) < RUINES.r + 4;
+}
+function trace6(k, texte) { state.traces6 = { ...(state.traces6 || {}), [k]: true }; saveGame(true); showMessage(texte, 5); }
+// un mot gravé dans la pierre (le vers de la tombe, le nom de l'enfant) : peint une fois, posé en relief sombre
+function gravure(lignes, w, h, taille = 46) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = Math.round(1024 * h / w); const g = c.getContext('2d');
+  g.font = `italic ${taille}px Georgia, serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(28,22,16,0.85)';
+  lignes.forEach((l, k) => g.fillText(l, 512, c.height / 2 + (k - (lignes.length - 1) / 2) * taille * 1.35 + taille * 0.35));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 1 }));
+}
+function autreRive() {
+  // (la roche des parois, comme le pont : ruines_02 et ruines_03 rendaient presque noir ici)
+  const pierre = phMat('falaise_02', 1, 1, { color: 0xd0c4ac }), bois = phMat('wood_planks', 0.3, 1.2, { color: 0x6a5a42 });
+  const arbres = [];
+  // la fontaine de l'ermite : une margelle sous un grand chêne, une eau claire
+  { const [x, z] = FONTAINE, y = relief(x, z);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.9, 0.6, 20, 1, true), pierre); m.position.set(x, y + 0.3, z); scene.add(m);
+    const eau = new THREE.Mesh(new THREE.CircleGeometry(1.65, 24).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x6a8a94, roughness: 0.08, metalness: 0.3 })); eau.position.set(x, y + 0.45, z); scene.add(eau);
+    MURS.push([x - 1.8, z - 1.8, x + 1.8, z + 1.8]); arbres.push([x + 5, z - 3, 15]);
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 3.2, prompt: () => 'regarder dans l’eau', fn: () => trace6('fontaine', 'Dans l’eau, un instant : un vieil homme qui berce un enfant, une biche qui boit. Puis plus rien.') }); }
+  // les trois traces de Lydéric enfant
+  { const [x, z] = TRACES.epee, y = relief(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.z = 0.12; scene.add(g);
+    g.add(mesh(boxG(0.07, 0.9, 0.03), bois, 0, 0.45, 0), mesh(boxG(0.36, 0.06, 0.05), bois, 0, 0.72, 0));
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.4, prompt: () => 'regarder', fn: () => trace6('epee', 'Une petite épée de bois, plantée dans la mousse. Taillée par un enfant.') }); }
+  { const [x, z] = TRACES.pierre, y = relief(x, z), b = mesh(boxG(1.6, 1.1, 0.9), pierre, x, y + 0.45, z); b.rotation.y = 0.4; b.castShadow = true; scene.add(b);
+    const n = gravure(['LIDERIC'], 1.2, 0.4, 120); n.position.set(x + Math.sin(0.4) * 0.46, y + 0.6, z + Math.cos(0.4) * 0.46); n.rotation.y = 0.4; n.rotation.z = -0.08; scene.add(n);
+    MURS.push([x - 0.9, z - 0.9, x + 0.9, z + 0.9]);
+    addInteract({ pos: new THREE.Vector3(x, y, z), r: 2.6, prompt: () => 'lire la pierre', fn: () => trace6('pierre', 'Gravé de travers, sur une pierre : LIDERIC.') }); }
+  { const [x, z] = TRACES.cabane, y = relief(x, z); arbres.push([x, z, 14]);
+    // un plancher de planches à quatre mètres, des montants, le toit tombé au pied de l'arbre
+    scene.add(mesh(boxG(2.6, 0.12, 2.2), bois, x + 0.6, y + 4, z), mesh(boxG(0.1, 1, 0.1), bois, x + 1.8, y + 4.5, z - 1), mesh(boxG(0.1, 1, 0.1), bois, x + 1.8, y + 4.5, z + 1));
+    const toit = mesh(boxG(2.4, 0.08, 1.6), bois, x + 2.4, y + 0.3, z + 1.6); toit.rotation.set(0.2, 0.5, 0.35); scene.add(toit);
+    addInteract({ pos: new THREE.Vector3(x + 1.5, y, z), r: 3, prompt: () => 'regarder en l’air', fn: () => trace6('cabane', 'Une cabane d’enfant, dans un chêne. Le toit est tombé depuis longtemps.') }); }
+  // la forêt du Buc : dense, des hêtres et des chênes ; on s'y guide à la fumée de la forge
+  const foret = [];
+  for (let k = 0; k < 2600 && foret.length < 520; k++) { const x = FORET.x0 + Math.random() * (FORET.x1 - FORET.x0), z = FORET.z0 + Math.random() * (FORET.z1 - FORET.z0);
+    if (pasIci(x, z) || foret.some(([a, b]) => Math.abs(a - x) < 3.2 && Math.abs(b - z) < 3.2)) continue; foret.push([x, z, 9 + Math.random() * 6]); }
+  const planter = (esp, l) => { if (!esp || !l.length) return;
+    const tr = new THREE.InstancedMesh(esp.tronc, esp.matT, l.length), hp = new THREE.InstancedMesh(esp.houppier, esp.matH, l.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3();
+    l.forEach(([x, z, h], k) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * TAU); s.set(h, h, h); m4.compose(v.set(x, relief(x, z) - 0.2, z), q, s); tr.setMatrixAt(k, m4); hp.setMatrixAt(k, m4); tronc(x, z); });
+    tr.castShadow = hp.castShadow = true; scene.add(tr, hp); };
+  planter(especeGeo('hetre'), foret.filter((_, k) => k % 3)); planter(especeGeo('chene'), [...arbres, ...foret.filter((_, k) => !(k % 3))]);
+  forge(pierre, bois); ruines(pierre);
+}
+
+// la forge de maître Cornil, au fond de la forêt : quatre murs, un toit de planches, la cheminée qui fume
+function forge(pierre, bois) {
+  const { x, z } = FORGE, y = relief(x, z), g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
+  const W = 8, D = 6, H = 3.2;
+  for (const [lx, lz, w, d] of [[0, -D / 2, W, 0.5], [-W / 2, 0, 0.5, D], [W / 2, 0, 0.5, D], [-2.6, D / 2, 2.8, 0.5], [2.6, D / 2, 2.8, 0.5]]) {
+    const m = mesh(boxG(w, H, d), pierre, lx, H / 2, lz); m.castShadow = m.receiveShadow = true; g.add(m); MURS.push([x + lx - w / 2, z + lz - d / 2, x + lx + w / 2, z + lz + d / 2]); }
+  for (const s of [-1, 1]) { const t = mesh(boxG(W + 1, 0.15, D / 2 + 0.9), bois, 0, H + 0.9, s * D / 4); t.rotation.x = -s * 0.5; t.castShadow = true; g.add(t); }
+  const che = mesh(boxG(1.2, 5.5, 1.2), pierre, -W / 2 + 1, 2.75, -D / 2 + 0.9); che.castShadow = true; g.add(che);
+  // le four : une gueule rouge, une lumière qui palpite
+  g.add(mesh(boxG(1.8, 1.4, 1.2), pierre, -W / 2 + 1.3, 0.7, -D / 2 + 1));
+  const braise = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); braise.position.set(-W / 2 + 1.3, 0.6, -D / 2 + 1.61); g.add(braise);
+  R.feu = new THREE.PointLight(0xff8a3a, 4, 14, 1.6); R.feu.position.set(-W / 2 + 1.3, 1.2, -D / 2 + 2.2); g.add(R.feu);
+  const fer = new THREE.MeshStandardMaterial({ color: 0x3a3836, metalness: 0.8, roughness: 0.45 });
+  g.add(mesh(boxG(0.9, 0.35, 0.35), fer, 1.2, 0.85, -0.8), mesh(boxG(0.35, 0.7, 0.35), fer, 1.2, 0.35, -0.8));   // l'enclume
+  // le moule de la Grande Cloche, dehors : une cloche de terre cuite, haute comme Camille
+  const prof = [[0, 0], [1.25, 0], [1.3, 0.15], [1.12, 0.6], [0.95, 1.5], [0.8, 2.0], [0.45, 2.25], [0, 2.3]].map(([r, h]) => new THREE.Vector2(r, h));
+  R.moule = new THREE.Mesh(new THREE.LatheGeometry(prof, 28), phMat('falaise_02', 1, 1, { color: 0x9a6a48 })); R.moule.position.set(x + 7, y, z + 6); R.moule.castShadow = true; scene.add(R.moule);
+  MURS.push([x + 5.6, z + 4.6, x + 8.4, z + 7.4]);
+  // la Grande Cloche, neuve : cachée jusqu'à la fonte
+  R.cloche = new THREE.Mesh(new THREE.LatheGeometry(prof.map((v) => new THREE.Vector2(v.x * 0.92, v.y * 0.95)), 32), new THREE.MeshStandardMaterial({ color: 0xb8864a, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide }));
+  R.cloche.position.copy(R.moule.position); R.cloche.castShadow = true; R.cloche.visible = !!state.grandeCloche; R.moule.visible = !state.grandeCloche; scene.add(R.cloche);
+  R.moule.userData.dynamic = R.cloche.userData.dynamic = true;   // la fusion du moteur les figerait
+  // la fumée : des boules grises qui montent de la cheminée et s'effacent (on la voit au-dessus des arbres)
+  R.fumee = []; const fm = new THREE.MeshStandardMaterial({ color: 0x8a8884, transparent: true, opacity: 0.5, roughness: 1, depthWrite: false });
+  for (let k = 0; k < 14; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), fm.clone()); b.userData.smoke = k; b.userData.t = k / 14; scene.add(b); R.fumee.push(b); }
+  R.chemine = new THREE.Vector3(x - W / 2 + 1, y + 5.6, z - D / 2 + 0.9);
+  // maître Cornil, devant sa porte
+  const c = PNJ.buildRole('a6_cornil'); if (c) { c.scale.setScalar(G.echelle); c.position.set(x + 1.5, y, z + D / 2 + 1.4); c.rotation.y = 0.3; scene.add(c); R.cornil = c; }
+  addInteract({ pos: new THREE.Vector3(x + 1.5, y, z + D / 2 + 1.4), r: 3, prompt: () => 'parler', fn: parleCornil });
+}
+Object.assign(PNJ.ROLES, {
+  a6_cornil: { ...PNJ.ROLES.aubergiste, cheveuxC: 0xd4d0c8, haut: 0x5a4636, valeur: 0.8, bas: 0x2e2620, valeurBas: 0.8, idle: 'Idle_Loop' },
+  a6_bandit: { ...PNJ.ROLES.roquette_batut, gabarit: 'sec', haut: 0x3a3428, valeur: 0.7, bas: 0x24201a, valeurBas: 0.7, idle: 'Idle_Loop' },
+  a6_chef: { ...PNJ.ROLES.roquette_beauregard, haut: 0x2a1a14, valeur: 0.7, bas: 0x1e1a16, valeurBas: 0.7, idle: 'Idle_Loop' },
+});
+const C6 = (...t) => t.map((text) => ({ who: 'Maître Cornil', text }));
+function parleCornil() {
+  if (!passe6('forge')) return dialogue(C6('Une visiteuse. Depuis le temps, j’avais cessé de compter.',
+    'Ma famille garde **le moule de la Grande Cloche** depuis 620. Les morceaux, tu les as ? Bien.',
+    'Il manque **le métal du cœur du Dormeur**. Le cœur d’un géant ne fond pas comme le bronze. **Au fond de la mine de l’Aveyron**, sous l’eau.'), () => passer6('forge'));
+  if (!passe6('metal')) return dialogue(C6('Le métal du cœur du Dormeur. **Au fond de la mine de l’Aveyron**, sous l’eau.'));
+  if (!passe6('tombe')) return dialogue(C6('Tu l’as. Alors **va voir la tombe du prince**, dans les ruines. Je ferai chauffer le four.'));
+  if (!passe6('cloche')) return fonte();
+  dialogue(C6('Elle sonnera une fois. Une seule. Choisis bien le moment.'));
+}
+// la fonte (lot 4) : la nuit tombe, le bronze coule dans le moule ; au matin, la cloche est neuve
+function fonte() {
+  if (R.fonte) return;
+  dialogue(C6('Le four est chaud. Le métal du géant d’abord, les morceaux ensuite.'), () => {
+    R.fonte = { t: 0 }; state.paused = false;
+    R.jour = { sun: sun.intensity, hemi: hemi.intensity, expo: renderer.toneMappingExposure };
+    sun.intensity = 0.15; hemi.intensity = 0.25; renderer.toneMappingExposure = 0.8;
+    const M = R.moule.position;
+    G.freeCam = { pos: new THREE.Vector3(M.x + 6, M.y + 3.5, M.z + 7), at: new THREE.Vector3(M.x, M.y + 1.5, M.z) };
+    R.coulee = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 8), new THREE.MeshBasicMaterial({ color: 0xffa040 })); R.coulee.position.set(M.x, M.y + 3.6, M.z); scene.add(R.coulee);
+    showMessage('La nuit. Le bronze coule dans le moule.', 5); SFX.stomp && SFX.stomp();
+  });
+}
+function animeFonte(dt) {
+  const F = R.fonte; if (!F) return;
+  F.t += dt; R.coulee.material.color.setHSL(0.08, 1, 0.5 + Math.sin(F.t * 9) * 0.08);
+  if (F.t > 5 && R.coulee.visible) { R.coulee.visible = false; R.moule.material = R.moule.material.clone(); R.moule.material.emissive = new THREE.Color(0x6a1a04); }
+  if (F.t > 7 && !F.casse) { F.casse = true; SFX.stomp && SFX.stomp(); R.moule.visible = false; R.cloche.visible = true;
+    sun.intensity = R.jour.sun; hemi.intensity = R.jour.hemi; renderer.toneMappingExposure = R.jour.expo; }
+  if (F.t > 8.5) { R.fonte = null; G.freeCam = null; state.grandeCloche = true; passer6('cloche'); SFX.fanfare && SFX.fanfare();
+    dialogue([{ who: '', text: 'Au matin, on casse le moule. La Grande Cloche est là, neuve. Elle n’a pas encore sonné.' }, ...C6('Elle sonnera une fois. Une seule. Choisis bien le moment.')]); }
+}
+
+// les ruines du château du Buc, le château de Phinaert : des pans de murs sur la butte, la tombe au milieu
+function ruines(pierre) {
+  const { x, z } = RUINES, y = relief(x, z), vieux = phMat('falaise_02', 1, 1, { color: 0xb0a898 });
+  // l'enceinte : un carré de 24 m, des pans à hauteurs inégales, deux brèches (au nord, vers la Blessure, et à l'ouest, vers la forge)
+  const L = 24, pans = [];
+  for (let k = 0; k < 4; k++) for (let i = 0; i < 6; i++) { if ((k === 0 && i === 2) || (k === 3 && i === 3)) continue;
+    const t = -L / 2 + (i + 0.5) * L / 6, ht = 1.5 + ((i * 7 + k * 3) % 5) * 0.9;
+    const [lx, lz, w, d] = k === 0 ? [t, L / 2, L / 6, 1] : k === 1 ? [t, -L / 2, L / 6, 1] : k === 2 ? [L / 2, t, 1, L / 6] : [-L / 2, t, 1, L / 6];
+    pans.push([x + lx, z + lz, w, d, ht]); }
+  pans.push([x - 4, z - 6, 1, 5, 6.5], [x + 5, z - 7, 6, 1, 4.5]);   // le donjon, deux pans encore debout
+  for (const [px, pz, w, d, ht] of pans) { const m = mesh(boxG(w, ht, d), vieux, px, y + ht / 2 - 0.3, pz); m.castShadow = m.receiveShadow = true; scene.add(m); MURS.push([px - w / 2, pz - d / 2, px + w / 2, pz + d / 2]); }
+  // la tombe du prince Salvaert : une dalle sur un socle, le vers gravé sur la tranche
+  const tx = x, tz = z + 2, socle = mesh(boxG(2.2, 0.8, 3.2), pierre, tx, y + 0.4, tz), dalle = mesh(boxG(2.4, 0.2, 3.4), vieux, tx, y + 0.9, tz);
+  socle.castShadow = dalle.castShadow = true; scene.add(socle, dalle); MURS.push([tx - 1.2, tz - 1.7, tx + 1.2, tz + 1.7]);
+  const v = gravure(['Le sang de Lydéric fermera la porte,', 'et de l’autre côté restera.'], 2.1, 0.7, 52); v.position.set(tx, y + 0.45, tz + 1.61); scene.add(v);
+  addInteract({ pos: new THREE.Vector3(tx, y, tz + 2.4), r: 2.6, prompt: () => (bandeDebout() ? 'la tombe' : 'lire la tombe'), fn: tombe });
+}
+// la bande du Buc : cinq bandits et leur chef, quand Camille approche des ruines (une fois vaincue, plus jamais)
+Object.assign(KINDS, {
+  bandit6: { hp: 6, speed: 4.6, dmg: 1, range: 1.9, aggro: 22, windup: 0.55, cd: 1.4, fly: 0, r: 0.55, label: 'Bandit du Buc', barY: 2.1 },
+  chef6: { hp: 14, speed: 4.4, dmg: 2, range: 2.1, aggro: 30, windup: 0.6, cd: 1.2, fly: 0, r: 0.6, label: 'Le chef des bandits', barY: 2.2 },
+});
+for (const [k, role] of [['bandit6', 'a6_bandit'], ['chef6', 'a6_chef']]) {
+  setMaker(k, () => { const g = PNJ.buildRole(role) || new THREE.Group(); g.scale.setScalar(G.echelle); g.userData.anim = true; return g; });
+  setAnimHook(k, (e, dt, v) => { if (e.mesh.userData.ctrl) PNJ.animeVillageois(e.mesh, dt, v > 0.4); return true; });
+}
+const bandeDebout = () => !!(R.bande && R.bande.some((e) => !e.dead));
+function veilleBande() {
+  if (state.bande6 || R.bande || !passe6('rive')) return;
+  if (Math.hypot(player.pos.x - RUINES.x, player.pos.z - RUINES.z) > 46) return;
+  R.bande = [['chef6', 0, 6], ['bandit6', -5, 3], ['bandit6', 5, 3], ['bandit6', -3, -4], ['bandit6', 4, -3], ['bandit6', 0, 9]]
+    .map(([k, lx, lz]) => spawnEnemy(k, RUINES.x + lx, RUINES.z + lz, 'acte6'));
+  dialogue([{ who: 'Le chef des bandits', text: 'Le château de Phinaert est à nous. Il nous l’a promis.' }]);
+}
+function tombe() {
+  if (bandeDebout()) return showMessage('Pas avec les bandits sur le dos.', 3);
+  if (!passe6('metal')) return showMessage('Une tombe de prince, sous le lierre. Gravé sur la tranche, un vers ; on dirait qu’il attend son heure.', 5);
+  dialogue([{ who: '', text: 'Gravé : « *Le sang de Lydéric fermera la porte, et de l’autre côté restera.* »' },
+    { who: 'Camille', text: 'Qui restera de l’autre côté ?' },
+    { who: 'Camille', text: '(la main sur la pierre) **Ce que la garde commence, la garde l’achève.**' }], () => { state.vers6 = true; passer6('tombe'); });
 }
 
 // ---------- les gestes : le lasso, les blocs, le treuil, la fêlure ----------
@@ -233,7 +411,7 @@ function build() {
   sun.intensity = 2.2; sun.color.setHex(0xfff2e0); sun.castShadow = true;
   Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 1, far: 500 }); sun.shadow.camera.updateProjectionMatrix();
   renderer.toneMappingExposure = 1.0; bloom.strength = 0.12;
-  terrain(); riviere(); escalier(); pont(); lointain(); gestes();
+  terrain(); riviere(); escalier(); pont(); lointain(); autreRive(); gestes();
 }
 function populate() { player.pos.set(DEPART.x, relief(DEPART.x, DEPART.z), DEPART.z); player.yaw = DEPART.yaw; G.camYaw = DEPART.yaw; }
 let camPosee = false, tAvant = 0;
@@ -245,13 +423,23 @@ function animate(now) {
   // de l'autre côté de la rivière, au fond : la rivière est passée
   const p = player.pos; if (p.z < RIVIERE[0] - 0.5 && p.y < FOND + 2 && p.z > SUD - 1) passer6('riviere');
   if (R.eau) R.eau.position.y = EAU + Math.sin(now / 700) * 0.04;
+  veilleBande(); animeFonte(dt);
+  if (R.bande && !bandeDebout() && !state.bande6) { state.bande6 = true; saveGame(true); showMessage('Les bandits sont à terre. Au milieu des ruines, une tombe.', 4); }
+  if (R.cornil && R.cornil.userData.ctrl) PNJ.animeVillageois(R.cornil, dt, false);
+  if (R.feu) R.feu.intensity = (R.fonte ? 14 : 4) + Math.sin(now / 90) * 0.6 + Math.sin(now / 37) * 0.4;
+  for (const b of R.fumee || []) { b.userData.t = (b.userData.t + dt * 0.08) % 1; const t = b.userData.t;
+    b.position.set(R.chemine.x + t * 6, R.chemine.y + t * 22, R.chemine.z - t * 3); b.scale.setScalar(0.6 + t * 3.2); b.material.opacity = 0.5 * (1 - t); }
 }
 function objectif() {
   if (!passe6('descente')) return state.lasso ? 'Descends dans la Blessure au lasso, de corniche en corniche (le vieux pieu, à l’ouest)' : 'La Blessure : il faudrait une corde pour descendre';
   if (!passe6('riviere')) return state.souffle ? 'Traverse la rivière glacée du fond' : 'La rivière glacée coupe le souffle';
   if (!passe6('escalier')) return state.force ? `Remonte par l’escalier des géants : pousse les marches tombées (${marches()} / 3)` : 'Les marches de l’escalier des géants sont tombées : trop lourdes';
   if (!passe6('rive')) return 'En haut de l’autre rive : abaisse le vieux pont des géants (le treuil, à l’est)';
-  return 'L’autre rive. La forge de maître Cornil est quelque part dans la forêt du Buc.';
+  if (!passe6('forge')) return 'L’autre rive. La forge de maître Cornil est quelque part dans la forêt du Buc (la fumée, au sud-ouest)';
+  if (!passe6('metal')) return 'Le métal du cœur du Dormeur : au fond de la mine de l’Aveyron, sous l’eau (la porte du Midi, sur l’île)';
+  if (!passe6('tombe')) return 'La tombe du prince, dans les ruines du château du Buc (la butte, au sud-est)';
+  if (!passe6('cloche')) return 'Retourne à la forge : maître Cornil fait chauffer le four';
+  return 'La Grande Cloche est neuve. Elle n’a pas encore sonné.';
 }
 function minimap(g, W2) {
   const sc = W2 / 260, P = (x, z) => [W2 / 2 + (x - player.pos.x) * sc, W2 / 2 + (z - player.pos.z) * sc];
@@ -260,11 +448,18 @@ function minimap(g, W2) {
   { const [a, b] = P(BORNES.x0, RIVIERE[0]), [c, d] = P(BORNES.x1, RIVIERE[1]); g.fillStyle = '#5a7a8c'; g.fillRect(a, b, c - a, d - b); }
   { const [a, b] = P(ESC.x0, ESC.z1), [c, d] = P(ESC.x1, SUD); g.fillStyle = '#c8bca4'; g.fillRect(a, b, c - a, d - b); }
   if (pontBas()) { const [a, b] = P(PONT.x0, SUD), [c, d] = P(PONT.x1, BORD_N); g.fillStyle = '#b0a690'; g.fillRect(a, b, c - a, d - b); }
+  { const [a, b] = P(FORET.x0, FORET.z0), [c, d] = P(FORET.x1, FORET.z1); g.fillStyle = '#4e6238'; g.fillRect(a, b, c - a, d - b); }
+  { const [a, b] = P(RUINES.x, RUINES.z); g.fillStyle = '#9a948a'; g.beginPath(); g.arc(a, b, RUINES.r * sc * 0.6, 0, TAU); g.fill(); }
+  if (passe6('rive')) { const [a, b] = P(FORGE.x, FORGE.z); g.fillStyle = '#e07a2a'; g.beginPath(); g.arc(a, b, 4, 0, TAU); g.fill(); }
   minimapDots(g, P);
 }
 function zoneName(x, z) {
   if (z >= BORD_N) return 'Le bord de la Blessure';
   if (z >= SUD) return 'La Blessure';
+  if (Math.hypot(x - RUINES.x, z - RUINES.z) < RUINES.r) return 'Les ruines du château du Buc';
+  if (Math.hypot(x - FORGE.x, z - FORGE.z) < 16) return 'La forge de maître Cornil';
+  if (Math.hypot(x - FONTAINE[0], z - FONTAINE[1]) < 10) return 'La fontaine de l’ermite';
+  if (x > FORET.x0 && x < FORET.x1 && z > FORET.z0 && z < FORET.z1) return 'La forêt du Buc';
   return 'L’autre rive';
 }
 const level = {
@@ -278,6 +473,6 @@ const level = {
   entry: () => ({ title: 'La rive oubliée', sub: 'La Blessure — acte VI', cam: [60, 30, 90], at: [0, -10, 10], cam2: [8, 6, 64], at2: [0, -8, 30], dur: 6 }),
   onKill: () => {},
 };
-window.__rive = { R, ANCRES, TROUS, ESC, PONT, relief, sol };      // pour les bancs (bancs/acte6-*.mjs)
+window.__rive = { R, ANCRES, TROUS, ESC, PONT, FONTAINE, TRACES, FORGE, RUINES, relief, sol };      // pour les bancs (bancs/acte6-*.mjs)
 await PNJ.installerCamille(PNJ_E);
 bootLevel(level, null);

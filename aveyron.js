@@ -2331,6 +2331,43 @@ function caveDormeur(ctx) {
   S.cle = 'dormeur';
   A2.caveDormeur = S;
 }
+// ---- La galerie noyée (acte VI, l'étape « metal » de DECOUPAGE-ACTE6.md) ----
+// Maître Cornil a besoin du métal du cœur du Dormeur. Au fond de la cave, une eau noire : avec le souffle,
+// on plonge et on nage sous la voûte jusqu'à une seconde salle (bâtie comme les caves, plus loin au-dessus
+// du lac). Sa moitié nord est pleine d'eau ; une porte de pierre la ferme, qu'on pousse avec la force ;
+// derrière, une poche d'air et l'éclat rouge. L'état de l'acte VI (`state.acte6`) est celui de rive.js.
+const ETAPES6 = ['felure', 'bord', 'descente', 'riviere', 'escalier', 'rive', 'forge', 'metal', 'tombe', 'cloche'];
+const passe6 = (e) => ETAPES6.indexOf(state.acte6 || '') >= ETAPES6.indexOf(e);
+function galerieNoyee(ctx) {
+  const D = A2.caveDormeur; if (!D) return;
+  // l'eau noire, dans le coin du fond de la cave du Dormeur ; elle n'est là qu'à partir de la forge
+  const trou = dyn(new THREE.Mesh(new THREE.PlaneGeometry(3, 3).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x080c10, roughness: 0.05, metalness: 0.6 })));
+  trou.position.set(-5.5, 0.03, -15.5); D.g.add(trou); A2.eauNoire = trou;
+  const S = souterrain(ctx, { x: 100, z: -160, w: 8, d: 22, h: 5, sol: ['rustic_stone_wall_02', 0x3a3430], mur: ['granit_lozere', 0x4a4440], nom: 'la galerie noyée' });
+  // la moitié nord sous l'eau : un volume vert-noir vu de l'intérieur
+  pose(S.g, new THREE.Mesh(boxG(7.6, 4.9, 10.8), new THREE.MeshStandardMaterial({ color: 0x0e2a2a, transparent: true, opacity: 0.55, side: THREE.BackSide, depthWrite: false })), 0, 2.45, 5.5);
+  const lueur = new THREE.PointLight(0x6aa8a0, 3, 12, 1.6); lueur.position.set(0, 3, 6); S.g.add(lueur);
+  // la porte de pierre, en travers
+  A2.porteNoyee = pose(S.g, boite(7.6, 4.8, 0.6, 'granit_lozere', { color: 0x5a544c }), 0, 2.4, 0);
+  A2.porteObst = [-3.8, 0, 3.8, 0, 0.4]; S.obst.push(A2.porteObst);
+  // l'éclat du cœur, au fond de la poche d'air : rouge sombre, encore chaud
+  const eclat = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), new THREE.MeshStandardMaterial({ color: 0x8a2a1a, emissive: 0x6a1004, emissiveIntensity: 1.2, roughness: 0.5, metalness: 0.4 }));
+  eclat.position.set(0, 1.1, -8); S.g.add(eclat); A2.eclat = eclat;
+  const chaud = new THREE.PointLight(0xff5a2a, 2.5, 8, 1.6); chaud.position.set(0, 1.5, -7.5); S.g.add(chaud);
+  S.cle = 'galerie'; A2.galerie = S;
+  ctx.addInteract({ pos: new THREE.Vector3(D.x - 5.5, D.y, D.z - 15.5), r: 2.2, prompt: () => 'plonger dans l’eau noire', enabled: () => dansSous() === 'dormeur' && passe6('forge'),
+    fn: () => { if (!state.souffle) { showMessage('L’eau noire descend loin sous la roche. Impossible de retenir son souffle si longtemps.', 4); return; }
+      SFX.roll && SFX.roll(); A2.eclat.visible = !passe6('metal'); entrerSous(S, 0, 9.5, Math.PI); showMessage('Tu nages sous la voûte, longtemps. Devant toi, une porte de pierre, sous l’eau.', 5); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 1), r: 2.4, prompt: () => 'pousser la porte de pierre', enabled: () => dansSous() === 'galerie' && !A2.porteOuverte,
+    fn: () => { if (!state.force) { showMessage('Une porte de pierre, sous l’eau. Elle ne bouge pas.', 3); return; }
+      A2.porteOuverte = true; SFX.stomp(); A2.porteNoyee.position.x = 6.5; S.obst = S.obst.filter((o) => o !== A2.porteObst); physSous(S, false); physSous(S, true);
+      showMessage('La porte glisse. Derrière, de l’air, et une lueur rouge.', 4); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z - 8), r: 2.2, prompt: () => 'prendre l’éclat', enabled: () => dansSous() === 'galerie' && A2.eclat.visible && passe6('forge') && !passe6('metal'),
+    fn: () => { A2.eclat.visible = false; state.acte6 = 'metal'; saveGame(true); SFX.fanfare && SFX.fanfare();
+      dialogue([{ text: 'Un éclat rouge sombre, encore chaud : **le métal du cœur du Dormeur**.' }]); } });
+  ctx.addInteract({ pos: new THREE.Vector3(S.x, S.y, S.z + 10), r: 2.2, prompt: () => 'remonter vers la cave', enabled: () => dansSous() === 'galerie',
+    fn: () => { entrerSous(D, -5.5, -13.5, 0); } });
+}
 function entrerDormeur() {
   const S = A2.caveDormeur; if (!S) return;
   entrerSous(S, 0, 15, Math.PI); passer2('dormeur');
@@ -2342,6 +2379,7 @@ function entrerDormeur() {
     A2.bande = [['brigand', -2.5, 4.5], ['brigand', 2.5, 4.5], ['jacques', 0, 3.5]].map(([k, lx, lz]) => { const e = spawnEnemy(k, S.x + lx, S.z + lz, 'acte2', S.y); e.home.y = S.y; return e; });
   }
   if (sait('coeur')) { A2.vers.visible = true; A2.cloche.visible = false; }
+  if (A2.eauNoire) A2.eauNoire.visible = passe6('forge');   // la galerie noyée (acte VI)
 }
 // la montagne qui frappe : une main de pierre sort du mur, retombe là où était Camille
 function mainDePierre(S, dt) {
@@ -2658,7 +2696,7 @@ function acte2(ctx) {
   A2.depart = abreuvoir(ctx);
   if (A2.depart && enclos(ctx)) { const E = A2.enclos, a = Math.atan2(A2.depart[0] - E.x, A2.depart[1] - E.z);
     RESERVES.push([E.x, E.z, E.r + 3]); empreintes(ctx, piste(ctx, A2.depart, [E.x + Math.sin(a) * (E.r + 2), E.z + Math.cos(a) * (E.r + 2)])); }
-  faille(ctx); caveDormeur(ctx);
+  faille(ctx); caveDormeur(ctx); galerieNoyee(ctx);
   quetes2(ctx);
   window.__acte2 = A2;
 }

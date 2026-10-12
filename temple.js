@@ -660,6 +660,7 @@ const VERS_PROPHETIE = [
   [() => state.clocheIles === true, 'Chaque géant donnera ce qu’il est,', 'et ne le reprendra pas.'],
   [() => state.acte4 === 'heures' || state.acte4 === 'temple', 'Chaque heure sauvée coûtera des années,', 'et nul ne les rendra.'],
   [() => state.acte5 === 'course', 'Toutes les heures seront mêlées,', 'et la dernière sera la sienne.'],
+  [() => state.vers6 === true, 'Le sang de Lydéric fermera la porte,', 'et de l’autre côté restera.'],   // la tombe de Salvaert (rive.js)
 ];
 function graverProphetie() {
   const P = PROPHETIE.plaque; if (!P) return;
