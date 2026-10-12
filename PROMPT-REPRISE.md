@@ -3030,3 +3030,12 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
 - **Reste, à reprendre** : l'épilogue ne montre les mondes qu'en phrases (pas de plan dans chaque monde) ; à Lille,
   Lydéric en osier ne change pas d'apparence quand il « redevient lui-même » (seul `state.lydericOsier` bascule) ;
   « les mondes se souviennent » (acte VI) ; les chevaux de l'autre rive ; le chargement de la rive (+0,5 s).
+
+#### Le chargement de la rive (12 octobre, demande d'Eugène) — **corrigé**
+- Mesuré trois fois (`acte6-traversee`) : **1,6 à 2,6 s → 1,2 s** (1,1 s avant l'autre rive). Le profil
+  (`node bancs/profil.mjs http://127.0.0.1:8000 rive.html`) : rive.js ne coûtait que 150 ms, le reste était natif (shaders).
+- Le coupable : **la PointLight de la forge** — une lumière de plus fait recompiler le shader de tous les matériaux du
+  lieu. Remplacée par la braise qui luit d'elle-même (sa couleur palpite). Aussi : la fumée sur un seul matériau (au lieu
+  de quatorze clones), le relief au pas de 4 m au sud de −110 (la butte s'y lit encore).
+- `bancs/profil.mjs` prend la page en second argument, et trouve Playwright sur le PC (il ne cherchait que le Mac).
+- **Appris** : avant d'ajouter une lumière dans un lieu, se demander si un matériau qui luit (MeshBasic, emissive) suffit.

@@ -102,9 +102,10 @@ function terrain() {
   for (let x = -LOIN; x < BORNES.x0; x += 4) XS.push(x);
   for (let x = BORNES.x0; x <= BORNES.x1; x++) XS.push(x);
   for (let x = BORNES.x1 + 4; x <= LOIN; x += 4) XS.push(x);
-  // en z, d'un mètre autour de la Blessure ; de deux mètres plus au sud (l'autre rive, presque plate)
+  // en z, d'un mètre autour de la Blessure ; de quatre mètres plus au sud (l'autre rive, presque plate : la butte
+  // des ruines s'y lit encore, 30 m de rayon)
   const ZS = [];
-  for (let z = BORNES.z0; z < -110; z += 2) ZS.push(z);
+  for (let z = BORNES.z0; z < -110; z += 4) ZS.push(z);
   for (let z = -110; z <= BORNES.z1; z++) ZS.push(z);
   const nx = XS.length, nz = ZS.length, pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
@@ -268,10 +269,10 @@ function forge(pierre, bois) {
     const m = mesh(boxG(w, H, d), pierre, lx, H / 2, lz); m.castShadow = m.receiveShadow = true; g.add(m); MURS.push([x + lx - w / 2, z + lz - d / 2, x + lx + w / 2, z + lz + d / 2]); }
   for (const s of [-1, 1]) { const t = mesh(boxG(W + 1, 0.15, D / 2 + 0.9), bois, 0, H + 0.9, s * D / 4); t.rotation.x = -s * 0.5; t.castShadow = true; g.add(t); }
   const che = mesh(boxG(1.2, 5.5, 1.2), pierre, -W / 2 + 1, 2.75, -D / 2 + 0.9); che.castShadow = true; g.add(che);
-  // le four : une gueule rouge, une lumière qui palpite
+  // le four : une gueule rouge qui luit d'elle-même. Pas de PointLight : une lumière de plus fait recompiler
+  // le shader de TOUS les matériaux du lieu (le chargement de la rive avait pris +0,5 s, 12 octobre)
   g.add(mesh(boxG(1.8, 1.4, 1.2), pierre, -W / 2 + 1.3, 0.7, -D / 2 + 1));
-  const braise = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); braise.position.set(-W / 2 + 1.3, 0.6, -D / 2 + 1.61); g.add(braise);
-  R.feu = new THREE.PointLight(0xff8a3a, 4, 14, 1.6); R.feu.position.set(-W / 2 + 1.3, 1.2, -D / 2 + 2.2); g.add(R.feu);
+  R.braise = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); R.braise.position.set(-W / 2 + 1.3, 0.6, -D / 2 + 1.61); g.add(R.braise);
   const fer = new THREE.MeshStandardMaterial({ color: 0x3a3836, metalness: 0.8, roughness: 0.45 });
   g.add(mesh(boxG(0.9, 0.35, 0.35), fer, 1.2, 0.85, -0.8), mesh(boxG(0.35, 0.7, 0.35), fer, 1.2, 0.35, -0.8));   // l'enclume
   // le moule de la Grande Cloche, dehors : une cloche de terre cuite, haute comme Camille
@@ -283,8 +284,9 @@ function forge(pierre, bois) {
   R.cloche.position.copy(R.moule.position); R.cloche.castShadow = true; R.cloche.visible = !!state.grandeCloche; R.moule.visible = !state.grandeCloche; scene.add(R.cloche);
   R.moule.userData.dynamic = R.cloche.userData.dynamic = true;   // la fusion du moteur les figerait
   // la fumée : des boules grises qui montent de la cheminée et s'effacent (on la voit au-dessus des arbres)
-  R.fumee = []; const fm = new THREE.MeshStandardMaterial({ color: 0x8a8884, transparent: true, opacity: 0.5, roughness: 1, depthWrite: false });
-  for (let k = 0; k < 14; k++) { const b = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), fm.clone()); b.userData.smoke = k; b.userData.t = k / 14; scene.add(b); R.fumee.push(b); }
+  // (un seul matériau pour toutes les boules : elles s'effacent en grandissant, pas en pâlissant chacune)
+  R.fumee = []; const fm = new THREE.MeshStandardMaterial({ color: 0x8a8884, transparent: true, opacity: 0.32, roughness: 1, depthWrite: false }), fg = new THREE.SphereGeometry(1, 8, 6);
+  for (let k = 0; k < 14; k++) { const b = new THREE.Mesh(fg, fm); b.userData.smoke = k; b.userData.t = k / 14; scene.add(b); R.fumee.push(b); }
   R.chemine = new THREE.Vector3(x - W / 2 + 1, y + 5.6, z - D / 2 + 0.9);
   // maître Cornil, devant sa porte
   const c = PNJ.buildRole('a6_cornil'); if (c) { c.scale.setScalar(G.echelle); c.position.set(x + 1.5, y, z + D / 2 + 1.4); c.rotation.y = 0.3; scene.add(c); R.cornil = c; }
@@ -437,9 +439,9 @@ function animate(now) {
   if (!R.fonte && R.cloche) { R.cloche.visible = !!state.grandeCloche && !state.acte7; R.moule.visible = !state.grandeCloche; }
   if (R.bande && !bandeDebout() && !state.bande6) { state.bande6 = true; saveGame(true); showMessage('Les bandits sont à terre. Au milieu des ruines, une tombe.', 4); }
   if (R.cornil && R.cornil.userData.ctrl) PNJ.animeVillageois(R.cornil, dt, false);
-  if (R.feu) R.feu.intensity = (R.fonte ? 14 : 4) + Math.sin(now / 90) * 0.6 + Math.sin(now / 37) * 0.4;
+  if (R.braise) R.braise.material.color.setHSL(0.06, 1, (R.fonte ? 0.62 : 0.5) + Math.sin(now / 90) * 0.04 + Math.sin(now / 37) * 0.03);   // le feu palpite
   for (const b of R.fumee || []) { b.userData.t = (b.userData.t + dt * 0.08) % 1; const t = b.userData.t;
-    b.position.set(R.chemine.x + t * 6, R.chemine.y + t * 22, R.chemine.z - t * 3); b.scale.setScalar(0.6 + t * 3.2); b.material.opacity = 0.5 * (1 - t); }
+    b.position.set(R.chemine.x + t * 6, R.chemine.y + t * 22, R.chemine.z - t * 3); b.scale.setScalar((0.6 + t * 3.2) * Math.min(1, (1 - t) * 4)); }
 }
 function objectif() {
   if (!passe6('descente')) return state.lasso ? 'Descends dans la Blessure au lasso, de corniche en corniche (le vieux pieu, à l’ouest)' : 'La Blessure : il faudrait une corde pour descendre';

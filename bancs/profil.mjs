@@ -2,16 +2,19 @@
 // C'est lui qui a trouvé les quatre secondes de rayons de aCielOuvert et les huit secondes
 // figées après « Prêt » (25 septembre). Même usage que charge.mjs :
 //
-//   node bancs/profil.mjs [http://127.0.0.1:8000]
+//   node bancs/profil.mjs [http://127.0.0.1:8000] [page.html]   (la page : index.html par défaut ; rive.html, lac.html…)
 //
 // Le profil complet est écrit dans bancs/resultats/chargement.cpuprofile (s'ouvre dans l'onglet
 // Performance de Chrome).
 import { createRequire } from 'module';
 import fs from 'fs';
-const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000';
-const PW = process.env.TLOC_PLAYWRIGHT || `${process.env.HOME}/Documents/Projet-Padel/package.json`;
+import os from 'os';
+import { fileURLToPath } from 'url';
+const ORIGINE = process.argv[2] || 'http://127.0.0.1:8000', PAGE = process.argv[3] || 'index.html';
+// sur le PC, Playwright est dans GitHub/tloc/outils ; sur le Mac, dans Projet-Padel (comme acte1-outils.mjs)
+const PW = process.env.TLOC_PLAYWRIGHT || [`${os.homedir()}/Documents/Projet-Padel/package.json`, `${os.homedir()}/Documents/GitHub/tloc/outils/package.json`].find((f) => fs.existsSync(f));
 const { chromium } = createRequire(PW)('playwright');
-const DIR = new URL('resultats/', import.meta.url).pathname;
+const DIR = fileURLToPath(new URL('resultats/', import.meta.url));   // (pathname donnait /C:/… sous Windows)
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -19,7 +22,7 @@ await page.goto(ORIGINE + '/connexion.html'); await page.evaluate(() => localSto
 const cdp = await page.context().newCDPSession(page);
 await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 500 }); await cdp.send('Profiler.start');
 const t0 = Date.now();
-await page.goto(ORIGINE + '/index.html');
+await page.goto(ORIGINE + '/' + PAGE);
 await page.waitForFunction(() => document.getElementById('loading')?.classList.contains('hidden'), null, { timeout: 300000, polling: 100 });
 const { profile } = await cdp.send('Profiler.stop');
 const dt = {};
