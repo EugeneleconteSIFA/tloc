@@ -18,6 +18,8 @@ serveur/deploiement/vps.conf
 # les notes et les briefs : privés (docs/ tout entier : les planches d'images aussi)
 *.md
 docs/
+# (les vignettes des arènes sont des .jpg du jeu : elles partent, elles — la règle doit précéder *.jpg)
++ vignettes/*.jpg
 *.jpg
 *.Rhistory
 

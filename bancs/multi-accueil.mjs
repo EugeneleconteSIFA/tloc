@@ -1,5 +1,8 @@
-// L'étape « Arène » de l'accueil en cartes (C8, 7 octobre) : neuf cartes, leurs vignettes chargées, un
-// clic sur une carte coche son arène ; une capture en largeur d'ordinateur et de téléphone. Un compte
+// L'étape « Arène » de l'accueil (C8, 7 octobre ; refaite le 13 octobre, Eugène) : l'arène choisie et un bouton
+// « Choisir l'arène » qui ouvre la liste ; seules les arènes des lieux découverts en solo s'ouvrent (sans partie
+// solo : Lille seule ; une partie qui a vu l'Aveyron et Matera ouvre leurs trois arènes) ; les autres sont
+// verrouillées, sans nom. Un clic sur Matera la choisit et ferme la liste. Captures en largeur d'ordinateur et de
+// téléphone, liste fermée et ouverte. Un compte
 // de test sur le serveur LOCAL (pseudo banc_xxxxxx, mot de passe tiré au hasard, jamais écrit).
 //
 //   bancs/tour.sh node bancs/multi-accueil.mjs
@@ -13,24 +16,29 @@ const pas = [];
 const ok = (nom, vrai, detail = '') => { pas.push(!!vrai); console.log((vrai ? '✓ ' : '✗ ') + nom + (detail ? ' — ' + detail : '')); };
 await page.goto(ORIGINE + '/connexion.html');
 await page.evaluate((c) => { localStorage.clear(); localStorage.setItem('tloc_compte', JSON.stringify({ jeton: c.jeton, pseudo: c.pseudo })); }, compte);
+const ouvertes = () => page.evaluate(() => [...document.querySelectorAll('#choixArene input[name="areneInstance"]:not([disabled])')].map((i) => i.value).sort().join(','));
+// sans partie solo : Lille seule
+await page.goto(ORIGINE + '/accueil.html'); await page.waitForTimeout(2500);
+ok('sans partie solo : Lille seule ouverte', (await ouvertes()) === 'lille', await ouvertes());
+ok('les arènes fermées n’ont pas de nom', await page.evaluate(() => [...document.querySelectorAll('.arene-carte.fermee')].every((c) => !/Matera|Gallipoli|Pouget|Batut/.test(c.textContent))));
+// une partie solo qui a vu l'Aveyron et Matera
+await page.evaluate(() => localStorage.setItem('tloc_save_v2:banc', JSON.stringify({ v: 2, level: 'matera', levels: { citadel: {}, aveyron: {}, matera: {} }, flags: {} })));
 for (const [nom, l, h] of [['ordinateur', 1280, 900], ['telephone', 390, 844]]) {
   await page.setViewportSize({ width: l, height: h });
   await page.goto(ORIGINE + '/accueil.html'); await page.waitForTimeout(2500);
-  // le formulaire de création peut être replié : on montre la grille et tout ce qui la contient
-  const etat = await page.evaluate(async () => {
-    const z = document.getElementById('choixArene'); if (!z) return null;
+  ok(`${nom} : l’Aveyron et Matera ouvrent leurs arènes`, (await ouvertes()) === 'batut,lille,matera,roquette', await ouvertes());
+  // le formulaire de création peut être replié : on montre l'étape et tout ce qui la contient
+  await page.evaluate(() => { const z = document.getElementById('btnArene');
     for (let e = z; e && e !== document.body; e = e.parentElement) { if (getComputedStyle(e).display === 'none') e.style.display = 'block'; if (e.hidden) e.hidden = false; e.removeAttribute && e.removeAttribute('inert'); }
-    z.scrollIntoView({ block: 'start' });
-    const imgs = [...z.querySelectorAll('img')]; await Promise.all(imgs.map((i) => (i.complete ? 0 : new Promise((f) => { i.onload = i.onerror = f; }))));
-    return { cartes: z.querySelectorAll('.arene-carte').length, chargees: imgs.filter((i) => i.naturalWidth > 0).length };
-  });
-  ok(`${nom} : neuf cartes, leurs vignettes chargées`, etat && etat.cartes === 9 && etat.chargees === 9, JSON.stringify(etat));
-  const carte = page.locator('.arene-carte', { hasText: 'Matera' });
-  await carte.click();
-  ok(`${nom} : un clic sur la carte de Matera la choisit`, await page.evaluate(() => (document.querySelector('input[name="areneInstance"]:checked') || {}).value === 'matera'));
-  // tout l'écran, et non la seule grille : c'est ce qui l'entoure qui la recouvrait
-  await page.evaluate(() => document.getElementById('choixArene').scrollIntoView({ block: 'start' }));
-  await page.screenshot({ path: DIR + `multi-accueil-${JOUR}-${nom}.jpg`, type: 'jpeg', quality: 80 });
+    z.scrollIntoView({ block: 'center' }); });
+  ok(`${nom} : la vignette de l’arène choisie est chargée`, await page.evaluate(async () => { const i = document.getElementById('areneVue'); if (!i.complete) await new Promise((f) => { i.onload = i.onerror = f; }); return i.naturalWidth > 0; }));
+  await page.screenshot({ path: DIR + `multi-accueil-${JOUR}-${nom}-ferme.jpg`, type: 'jpeg', quality: 80 });
+  await page.click('#btnArene'); await page.waitForTimeout(600);
+  ok(`${nom} : le bouton ouvre la liste`, await page.evaluate(() => document.getElementById('dlgArene').open));
+  await page.screenshot({ path: DIR + `multi-accueil-${JOUR}-${nom}-liste.jpg`, type: 'jpeg', quality: 80 });
+  await page.locator('.arene-carte', { hasText: 'Matera' }).click(); await page.waitForTimeout(400);
+  ok(`${nom} : un clic sur Matera la choisit et ferme la liste`, await page.evaluate(() => (document.querySelector('input[name="areneInstance"]:checked') || {}).value === 'matera'
+    && !document.getElementById('dlgArene').open && /Matera/.test(document.getElementById('areneNom').textContent)));
 }
 const vraies = erreurs.filter((e) => !/status of 404/.test(e));
 ok('aucune erreur de page', !vraies.length, vraies.slice(0, 3).join(' | '));

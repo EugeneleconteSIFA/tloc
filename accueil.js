@@ -586,15 +586,25 @@ const NOM_REGLE = { balade: 'balade', survie: 'match à mort', temps: 'chrono', 
 const ARENES = Object.fromEntries(Object.entries(C.ARENES).map(([id, a]) => [id, a.nom]));
 const areneChoisie = () => (document.querySelector('input[name="areneInstance"]:checked') || {}).value || 'lille';
 {
-  const z = $('choixArene');
+  const z = $('choixArene'), dlg = $('dlgArene');
   if (z) {
-    // une carte par arène (7 octobre, C8 : neuf arènes, neuf cases ne disaient plus rien) : sa vue, son
-    // nom, sa phrase, ses pastilles ; le bouton radio reste dessous, pour le clavier et les lecteurs d'écran
-    z.insertAdjacentHTML('beforeend', Object.entries(C.ARENES).map(([id, a], k) =>
-      `<label class="arene-carte"><input type="radio" name="areneInstance" value="${id}"${k ? '' : ' checked'}>`
-      + `<span class="arene-corps"><img class="arene-vue" src="${a.vignette}" alt="" loading="lazy" width="640" height="360">`
-      + `<b>${ECH(a.nom)}</b><small>${ECH(a.dit)}.</small>`
-      + `<span class="arene-pastilles">${(a.pastilles || []).map((p, i) => `<i${/au plus$/.test(p) ? ' class="borne"' : ''}>${ECH(p)}</i>`).join('')}</span></span></label>`).join(''));
+    // une carte par arène (7 octobre, C8) ; depuis le 13 octobre (Eugène) dans une fenêtre qu'ouvre « Choisir
+    // l'arène », et seulement celles dont le lieu a été découvert en solo — les autres, verrouillées, sans nom ni
+    // vue (pas de quoi gâcher la surprise). Le bouton radio reste dessous, pour le clavier et les lecteurs d'écran.
+    const vus = C.lieuxDecouverts();
+    z.insertAdjacentHTML('beforeend', Object.entries(C.ARENES).map(([id, a]) => C.areneOuverte(id, vus)
+      ? `<label class="arene-carte"><input type="radio" name="areneInstance" value="${id}"${id === 'lille' ? ' checked' : ''}>`
+        + `<span class="arene-corps"><img class="arene-vue" src="${a.vignette}" alt="" loading="lazy" width="640" height="360">`
+        + `<b>${ECH(a.nom)}</b><small>${ECH(a.dit)}.</small>`
+        + `<span class="arene-pastilles">${(a.pastilles || []).map((p) => `<i${/au plus$/.test(p) ? ' class="borne"' : ''}>${ECH(p)}</i>`).join('')}</span></span></label>`
+      : `<label class="arene-carte fermee"><input type="radio" name="areneInstance" disabled>`
+        + `<span class="arene-corps"><span class="arene-vue" aria-hidden="true"></span><b>🔒 Lieu à découvrir</b><small>Continue l’histoire en solo pour l’ouvrir.</small></span></label>`).join(''));
+    // la ligne de l'étape : la vue, le nom et la phrase de l'arène choisie
+    const majChoisie = () => { const a = C.ARENES[areneChoisie()] || C.ARENES.lille;
+      $('areneVue').src = a.vignette; $('areneNom').textContent = a.nom; $('areneDit').textContent = a.dit + '.'; };
+    majChoisie();
+    z.addEventListener('change', () => { majChoisie(); if (dlg && dlg.open) dlg.close(); });
+    if (dlg) { $('btnArene').addEventListener('click', () => dlg.showModal()); $('fermerArene').addEventListener('click', () => dlg.close()); }
   }
 }
 let nbVies = 1;

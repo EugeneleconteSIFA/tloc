@@ -3039,3 +3039,19 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
   de quatorze clones), le relief au pas de 4 m au sud de −110 (la butte s'y lit encore).
 - `bancs/profil.mjs` prend la page en second argument, et trouve Playwright sur le PC (il ne cherchait que le Mac).
 - **Appris** : avant d'ajouter une lumière dans un lieu, se demander si un matériau qui luit (MeshBasic, emissive) suffit.
+
+### L'accueil : le choix de l'arène (13 octobre, demande d'Eugène) — **fait, vérifié en rendu**
+- Eugène : les cartes des dix arènes déformaient le panneau Multi ; « un bouton Choisir l'arène plutôt que de toutes les
+  afficher », « la liste des arènes dont certaines verrouillées et sans nom pour pas spoiler », choisies selon les lieux
+  découverts en solo.
+- L'étape Arène a repris une hauteur fixe : la vue de l'arène choisie, son nom, sa phrase, et « Choisir l'arène », qui
+  ouvre la liste dans un `<dialog>` (aux couleurs du thème). Un clic choisit et ferme.
+- `tloc-compte.js` : chaque arène a son `lieu` (le niveau du solo qui la découvre) ; `lieuxDecouverts()` lit les parties
+  solo de ce navigateur (la clé du moteur et ses copies, pas celles des instances : `:inst:`) ; `areneOuverte(id)`.
+  Lille toujours ouverte. Les autres : « 🔒 Lieu à découvrir », sans vue ni nom, non choisissables.
+- **Les vignettes ne partaient pas sur le dev** : `serveur/deploiement/exclure.txt` excluait tous les `.jpg` (pour les
+  captures des bancs) ; `+ vignettes/*.jpg` passe avant.
+- Banc `bancs/multi-accueil.mjs` refait (sans partie solo : Lille seule ; une partie qui a vu l'Aveyron et Matera ouvre
+  le Batut, la maison du Batut et Matera ; le bouton, la liste, le clic), ordinateur et téléphone.
+- **À savoir** : les autres joueurs n'ont pas accès au solo (§ W) — pour eux, seule Lille est ouverte, tant que le solo
+  ne leur est pas ouvert. La découverte est par navigateur (les sauvegardes solo sont locales).
