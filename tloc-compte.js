@@ -78,7 +78,10 @@ export function resumeDe(d) {
   };
 }
 
-export const LIEUX = { citadel: 'La citadelle', cave: 'Les galeries', house: 'Chez Camille', tavern: "L'estaminet", mage: 'Le vieux mage', chapelle: 'La chapelle' };
+export const LIEUX = { citadel: 'La citadelle', cave: 'Les galeries', house: 'Chez Camille', tavern: "L'estaminet", mage: 'Le vieux mage', chapelle: 'La chapelle',
+  // les mondes de l'histoire (13 octobre : la carte d'une partie disait « thailande », le nom du niveau)
+  temple: "L'île du temps", aveyron: 'Le lac de Saint-Gervais', pouget: 'Le Pouget', thailande: 'La baie des pitons', gallipoli: 'Gallipoli',
+  matera: 'Matera', alberobello: 'Alberobello', villefort: 'Villefort', gardeguerin: 'La Garde-Guérin', lac: 'Le lac de Villefort', rive: 'La rive oubliée' };
 
 function majSlot(id, champs) {
   const l = slots(); const i = l.findIndex(s => s.id === id);
@@ -225,20 +228,21 @@ export async function supprimerPartout(id) {
 // géométrie de chacune est déclarée par son lieu (`arenes` de l'objet niveau : game.js,
 // garde-guerin.js, pouget.js) ; ce catalogue ne dit que le nom et la page. Le serveur n'accepte
 // que ces identifiants (NouvelleInstance.arene, app.py).
-// `vignette` : une vue de l'arène (bancs/multi-vignettes.mjs) ; `pastilles` : sa taille, puis ce qu'elle
+// `picto` : son emblème, tracé au trait comme les icônes de l'accueil (13 octobre : la vue 3D jurait dans la ligne de
+// l'étape, dessinée à plat) ; `vignette` : une vue de l'arène (bancs/multi-vignettes.mjs) ; `pastilles` : sa taille, puis ce qu'elle
 // déclare dans son lieu (bannières, fête, forge, portes) et ses bornes (ARENES_MAX, app.py) — redits ici à
 // la main, comme le serveur les tient à la main : l'accueil ne charge pas les lieux
 export const ARENES = {
-  lille: { lieu: 'citadel', vignette: 'vignettes/arene-lille.jpg', pastilles: ['quartier', 'bannières', 'fête', 'forge'], nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
-  gardeguerin: { lieu: 'gardeguerin', vignette: 'vignettes/arene-gardeguerin.jpg', pastilles: ['village', 'bannières'], nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
-  pouget: { lieu: 'pouget', vignette: 'vignettes/arene-pouget.jpg', pastilles: ['hameau', 'bannières'], nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
-  batut: { lieu: 'aveyron', vignette: 'vignettes/arene-batut.jpg', pastilles: ['maisons', 'portes', 'bannières'], nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
-  panyi: { lieu: 'thailande', vignette: 'vignettes/arene-panyi.jpg', pastilles: ['village sur l’eau'], nom: 'Ko Panyi', page: 'thailande.html', dit: 'le village sur pilotis de la baie des pitons : de passerelle en passerelle, jusqu’au marché flottant' },
-  gallipoli: { lieu: 'gallipoli', vignette: 'vignettes/arene-gallipoli.jpg', pastilles: ['vieille ville'], nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
-  alberobello: { lieu: 'alberobello', vignette: 'vignettes/arene-alberobello.jpg', pastilles: ['quartier'], nom: 'Alberobello', page: 'alberobello.html', dit: 'le Rione Monti : des ruelles en pente entre les trulli, cônes de pierre et murs blancs' },
-  estaminet: { lieu: 'tavern', vignette: 'vignettes/arene-estaminet.jpg', pastilles: ['salle', '4 au plus'], nom: 'L’estaminet', page: 'tavern.html', dit: 'la bagarre de taverne, quatre au plus : le zinc, les tables, l’âtre' },
-  roquette: { lieu: 'aveyron', vignette: 'vignettes/arene-roquette.jpg', pastilles: ['maison', '6 au plus'], nom: 'La maison du Batut', page: 'aveyron.html', dit: 'la vraie maison des Roquette, au bord du lac : ses pièces, son étage, sa cour' },
-  matera: { lieu: 'matera', vignette: 'vignettes/arene-matera.jpg', pastilles: ['gradins'], nom: 'Matera', page: 'matera.html', dit: 'les Sassi en gradins : des maisons sur les toits des autres, des ruelles en escalier' },
+  lille: { picto: '<path d="M3 21V8h3V5h3v3h6V5h3v3h3v13"/><path d="M10 21v-5a2 2 0 0 1 4 0v5"/>', lieu: 'citadel', vignette: 'vignettes/arene-lille.jpg', pastilles: ['quartier', 'bannières', 'fête', 'forge'], nom: 'La citadelle de Lille', page: 'index.html', dit: 'les bastions, la place d’Armes, la herse baissée' },
+  gardeguerin: { picto: '<path d="M7 21V6h10v15"/><path d="M7 6V3h2v3M11 6V3h2v3M15 6V3h2v3"/><path d="M11 21v-4h2v4"/><path d="M3 21h18"/>', lieu: 'gardeguerin', vignette: 'vignettes/arene-gardeguerin.jpg', pastilles: ['village', 'bannières'], nom: 'La Garde-Guérin', page: 'garde-guerin.html', dit: 'le village-forteresse : sa tour, ses ruelles, son enceinte' },
+  pouget: { picto: '<path d="M3 20l18-5"/><path d="M6 19v-5l4-3 4 3v3.5"/><path d="M15 16.5v-3l2.5-2 2.5 2v2"/>', lieu: 'pouget', vignette: 'vignettes/arene-pouget.jpg', pastilles: ['hameau', 'bannières'], nom: 'Le Pouget', page: 'pouget.html', dit: 'le hameau de granit sur sa pente, de muret en muret' },
+  batut: { picto: '<path d="M2 20v-7l5-4 5 4v7"/><path d="M12 20v-7l5-4 5 4v7"/><path d="M5.5 20v-3h3v3M15.5 20v-3h3v3"/>', lieu: 'aveyron', vignette: 'vignettes/arene-batut.jpg', pastilles: ['maisons', 'portes', 'bannières'], nom: 'Le Batut et Beauregard', page: 'batut.html', dit: 'deux maisons et un jardin : on se bat de pièce en pièce, on se cache' },
+  panyi: { picto: '<path d="M5 12h14"/><path d="M6 12V9l6-5 6 5v3"/><path d="M8 12v5M16 12v5"/><path d="M2 20c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/>', lieu: 'thailande', vignette: 'vignettes/arene-panyi.jpg', pastilles: ['village sur l’eau'], nom: 'Ko Panyi', page: 'thailande.html', dit: 'le village sur pilotis de la baie des pitons : de passerelle en passerelle, jusqu’au marché flottant' },
+  gallipoli: { picto: '<path d="M4 20h16"/><path d="M6 20v-6h12v6"/><path d="M8 14a4 4 0 0 1 8 0"/><path d="M12 10V6M10.5 7.5h3"/>', lieu: 'gallipoli', vignette: 'vignettes/arene-gallipoli.jpg', pastilles: ['vieille ville'], nom: 'Gallipoli', page: 'gallipoli.html', dit: 'la vieille ville sur son île : ses ruelles blanches, ses palais, le parvis du Duomo' },
+  alberobello: { picto: '<path d="M6 20v-6h12v6"/><path d="M6 14l6-10 6 10"/><path d="M12 4V2"/><path d="M10.5 20v-3h3v3"/>', lieu: 'alberobello', vignette: 'vignettes/arene-alberobello.jpg', pastilles: ['quartier'], nom: 'Alberobello', page: 'alberobello.html', dit: 'le Rione Monti : des ruelles en pente entre les trulli, cônes de pierre et murs blancs' },
+  estaminet: { picto: '<path d="M6 9h9v11H6z"/><path d="M15 12h2a2 2 0 0 1 0 4h-2"/><path d="M6 9c0-2 2-3 4-2 1-2 4-2 5 0"/>', lieu: 'tavern', vignette: 'vignettes/arene-estaminet.jpg', pastilles: ['salle', '4 au plus'], nom: 'L’estaminet', page: 'tavern.html', dit: 'la bagarre de taverne, quatre au plus : le zinc, les tables, l’âtre' },
+  roquette: { picto: '<path d="M4 21V10l8-6 8 6v11"/><path d="M10 21v-5h4v5"/><path d="M8 12h2M14 12h2"/>', lieu: 'aveyron', vignette: 'vignettes/arene-roquette.jpg', pastilles: ['maison', '6 au plus'], nom: 'La maison du Batut', page: 'aveyron.html', dit: 'la vraie maison des Roquette, au bord du lac : ses pièces, son étage, sa cour' },
+  matera: { picto: '<path d="M3 21h18"/><path d="M3 21v-4h5v-4h5v-4h5V5h3"/><path d="M5 17v-2M10 13v-2M15 9V7"/>', lieu: 'matera', vignette: 'vignettes/arene-matera.jpg', pastilles: ['gradins'], nom: 'Matera', page: 'matera.html', dit: 'les Sassi en gradins : des maisons sur les toits des autres, des ruelles en escalier' },
 };
 // `lieu` : le niveau du solo qui la découvre (13 octobre, Eugène : on ne choisit que les arènes des lieux déjà vus en
 // solo). Les parties solo de ce navigateur (la clé du moteur et ses copies, une par partie) gardent chacune la liste

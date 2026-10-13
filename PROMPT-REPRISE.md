@@ -3055,3 +3055,7 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
   le Batut, la maison du Batut et Matera ; le bouton, la liste, le clic), ordinateur et téléphone.
 - **À savoir** : les autres joueurs n'ont pas accès au solo (§ W) — pour eux, seule Lille est ouverte, tant que le solo
   ne leur est pas ouvert. La découverte est par navigateur (les sauvegardes solo sont locales).
+- **Suite (13 octobre, Eugène : « la vignette n'est pas du tout dans la DA »)** : dans la ligne de l'étape, un emblème rond
+  (`.mode-icone`, comme « Mode Multi ») tracé au trait, un par arène (`picto` dans C.ARENES) ; dans la fenêtre, les vues
+  virées en brique comme une gravure (filtre CSS), un liseré or. L'espace sous la ligne rendu. `C.LIEUX` connaît les
+  mondes de l'histoire (la carte d'une partie disait « thailande »).

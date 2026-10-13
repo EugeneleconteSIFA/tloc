@@ -31,12 +31,13 @@ for (const [nom, l, h] of [['ordinateur', 1280, 900], ['telephone', 390, 844]]) 
   await page.evaluate(() => { const z = document.getElementById('btnArene');
     for (let e = z; e && e !== document.body; e = e.parentElement) { if (getComputedStyle(e).display === 'none') e.style.display = 'block'; if (e.hidden) e.hidden = false; e.removeAttribute && e.removeAttribute('inert'); }
     z.scrollIntoView({ block: 'center' }); });
-  ok(`${nom} : la vignette de l’arène choisie est chargée`, await page.evaluate(async () => { const i = document.getElementById('areneVue'); if (!i.complete) await new Promise((f) => { i.onload = i.onerror = f; }); return i.naturalWidth > 0; }));
+  ok(`${nom} : l’emblème de l’arène choisie`, await page.evaluate(() => !!document.querySelector('#areneIcone svg path')));
   await page.screenshot({ path: DIR + `multi-accueil-${JOUR}-${nom}-ferme.jpg`, type: 'jpeg', quality: 80 });
   await page.click('#btnArene'); await page.waitForTimeout(600);
   ok(`${nom} : le bouton ouvre la liste`, await page.evaluate(() => document.getElementById('dlgArene').open));
   await page.screenshot({ path: DIR + `multi-accueil-${JOUR}-${nom}-liste.jpg`, type: 'jpeg', quality: 80 });
   await page.locator('.arene-carte', { hasText: 'Matera' }).click(); await page.waitForTimeout(400);
+  ok(`${nom} : les vignettes de la liste chargées`, await page.evaluate(async () => { const l = [...document.querySelectorAll('#choixArene img')]; await Promise.all(l.map((i) => (i.complete ? 0 : new Promise((f) => { i.onload = i.onerror = f; })))); return l.length > 0 && l.every((i) => i.naturalWidth > 0); }));
   ok(`${nom} : un clic sur Matera la choisit et ferme la liste`, await page.evaluate(() => (document.querySelector('input[name="areneInstance"]:checked') || {}).value === 'matera'
     && !document.getElementById('dlgArene').open && /Matera/.test(document.getElementById('areneNom').textContent)));
 }

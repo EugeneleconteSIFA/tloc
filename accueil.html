@@ -40,9 +40,8 @@
   /* l'étape « Arène » en cartes (7 octobre, C8) : la vue de l'arène, son nom, sa phrase, ses pastilles ;
      l'or de la carte choisie, comme les cases des règles (tloc-portail.css) */
   /* (une étape a une hauteur fixe sur ordinateur, tloc-portail.css : la grille en débordait, par-dessus le mode de jeu) */
-  .arene-choisie { display:flex; align-items:center; gap:10px; }
-  .arene-mini { width:96px; height:54px; object-fit:cover; border-radius:6px; flex:none; background:rgba(0,0,0,.2); }
-  .arene-choisie > span { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .arene-choisie { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .arene-texte { flex:1; min-width:0; display:flex; flex-direction:column; }
   .arene-choisie small { font-size:12px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .btn-arene { flex:none; cursor:pointer; padding:7px 12px; border-radius:8px; border:1px solid var(--or); background:rgba(226,178,90,.14); color:inherit; font:inherit; }
   /* aux couleurs du thème (clair ou sombre), comme les tuiles de la page */
@@ -57,7 +56,10 @@
   .arene-carte { position:relative; cursor:pointer; }
   .arene-carte > input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
   .arene-corps { display:flex; flex-direction:column; gap:3px; height:100%; border:1px solid var(--bord); border-radius:10px; overflow:hidden; background:var(--panneau2); color:var(--pierre); padding-bottom:8px; }
-  .arene-vue { width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; display:block; margin-bottom:4px; }
+  /* la vue de l'arène virée en brique, comme une gravure, sous un liseré or : la capture 3D en couleurs réelles
+     jurait dans la page dessinée à plat (13 octobre) */
+  .arene-vue { width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; display:block; margin-bottom:4px; border-bottom:2px solid var(--or);
+    filter:grayscale(1) sepia(1) saturate(1.9) hue-rotate(-22deg) contrast(1.08) brightness(.92); }
   .arene-corps b { font-size:14px; padding:0 9px; }
   .arene-corps small { font-size:12px; opacity:.8; padding:0 9px; line-height:1.4; }
   .arene-pastilles { display:flex; flex-wrap:wrap; gap:4px; padding:4px 9px 0; }
@@ -129,8 +131,8 @@
         <h3 class="sous-titre" aria-hidden="true">Arène</h3>
         <!-- (13 octobre, Eugène) l'arène choisie et un bouton ; la liste s'ouvre à part, celles qu'on n'a
              pas découvertes en solo verrouillées et sans nom -->
-        <div class="arene-choisie"><img id="areneVue" class="arene-mini" alt="" width="128" height="72">
-          <span><b id="areneNom">La citadelle de Lille</b><small id="areneDit"></small></span>
+        <div class="arene-choisie"><span class="mode-icone" id="areneIcone" aria-hidden="true"></span>
+          <span class="arene-texte"><b id="areneNom">La citadelle de Lille</b><small id="areneDit"></small></span>
           <button type="button" class="btn-arene" id="btnArene">Choisir l’arène</button></div>
         <dialog class="dlg-arene" id="dlgArene">
           <h3 class="sous-titre">Choisir l’arène</h3>
