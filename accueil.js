@@ -6,9 +6,9 @@ import * as SOCIAL from './accueil-social.js?v=2';
 const $ = (id) => document.getElementById(id);
 const ECH = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let partiePrete = null;        // la partie créée qui attend qu'on y entre (cf. montrerPartiePrete)
-// LE SOLO, RÉSERVÉ AU CRÉATEUR tant qu'il le prépare (Eugène, 30 septembre). Fermé par défaut,
-// il ne s'ouvre qu'une fois que le serveur a dit « c'est le créateur » ; la page de jeu lit le
-// même feu vert (tloc_solo_ouvert, cf. tloc-multi.js) et renvoie ici sans lui.
+// LE SOLO, OUVERT À TOUS depuis le 15 octobre (Eugène) — il était réservé au créateur depuis le
+// 30 septembre, le temps de le préparer. On garde l'interrupteur : refermer, c'est ouvrirSolo(false)
+// ici ET la garde de tloc-multi.js (tloc_solo_ouvert), qui renvoyait à l'accueil sans feu vert.
 function ouvrirSolo(oui) {
   const t = document.querySelector('.mode-solo'); if (t) t.classList.toggle('solo-bloque', !oui);
   const l = document.getElementById('parties'); if (l) l.classList.toggle('cache', !oui);
@@ -94,8 +94,7 @@ function depuis(t) {
 // Sans session ouverte et sans choix explicite de jouer en local, on renvoie au portail.
 const local = (() => { try { return localStorage.getItem('tloc_local') === '1'; } catch (e) { return false; } })();
 if (!C.connecte() && !local) location.replace('connexion.html');
-ouvrirSolo(false);
-if (C.connecte()) C.profil().then((p) => ouvrirSolo(!!(p && p.createur))).catch(() => {});
+ouvrirSolo(true);
 
 function peindreCompte() {
   const c = C.compte();
