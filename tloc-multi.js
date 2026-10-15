@@ -55,6 +55,8 @@ const inst = C.instance();
 const actif = !!(inst && inst.code && C.connecte());
 // Le solo est ouvert à tous depuis le 15 octobre (Eugène) : plus de renvoi à l'accueil sans le
 // feu vert tloc_solo_ouvert. Pour le refermer, remettre ici ce renvoi (cf. accueil.js, ouvrirSolo).
+// Une partie solo ouverte pendant une remise à zéro (tloc-compte.js) s'arrête : l'accueil repart de rien.
+if (!actif) C.appliquerRemiseSolo().then((vide) => { if (vide) (window.top || window).location.replace('accueil.html'); });
 // en instance, le nom du personnage a été choisi à l'entrée ; en solo, c'est le nom de la partie
 const monPerso = (actif && inst.perso) || C.nomPersonnage();
 

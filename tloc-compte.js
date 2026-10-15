@@ -216,6 +216,25 @@ export async function synchroniser() {
   return slots();
 }
 
+// LA REMISE À ZÉRO DU SOLO (15 octobre) : le serveur a effacé les parties et en donne la date
+// (/api/env, remise_solo). Ce navigateur vide alors les siennes, celles d'avant — sinon
+// synchroniser() les renverrait au compte. Les sauvegardes des instances (:inst:) restent.
+// Rend vrai quand il a fallu vider : la page appelante se recharge ou repart à l'accueil.
+const CLE_REMISE = 'tloc_remise_solo';
+export async function appliquerRemiseSolo() {
+  let t = 0; try { t = Number((await env()).remise_solo) || 0; } catch (e) { return false; }
+  const vue = Number(localStorage.getItem(CLE_REMISE)) || 0;
+  if (!t || t <= vue) return false;
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k === CLE_SLOTS || k === CLE_ACTIF || (k.startsWith(CLE_MOTEUR + ':') && !k.startsWith(CLE_MOTEUR + ':inst:'))) localStorage.removeItem(k);
+    }
+    if (!lire(CLE_INSTANCE)) localStorage.removeItem(CLE_MOTEUR);   // en instance, c'est la copie de l'instance
+    localStorage.setItem(CLE_REMISE, String(t));
+  } catch (e) {}
+  return true;
+}
+
 export async function supprimerPartout(id) {
   supprimerSlot(id);
   if (connecte()) { try { await appel('/api/parties/' + id, { method: 'DELETE' }); } catch (e) {} }

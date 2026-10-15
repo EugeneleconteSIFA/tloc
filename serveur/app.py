@@ -399,9 +399,19 @@ def init():
             badge   TEXT NOT NULL,
             n       INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (joueur, badge))""")
+        # les réglages du serveur, une valeur par clé — d'abord la date de la remise à zéro du
+        # solo (remise_solo) : elle vit dans la base pour suivre la prod jusqu'au dev, chaque nuit
+        cx.execute("""CREATE TABLE IF NOT EXISTS reglages (
+            cle     TEXT PRIMARY KEY,
+            valeur  TEXT NOT NULL)""")
 
 
 init()
+
+
+def remise_solo_date(cx: sqlite3.Connection) -> float:
+    r = cx.execute("SELECT valeur FROM reglages WHERE cle = 'remise_solo'").fetchone()
+    return float(r["valeur"]) if r else 0.0
 
 
 # =====================================================================
@@ -813,6 +823,10 @@ def est_createur(authorization: str) -> bool:
 @app.get("/api/env")
 def environnement(authorization: str = Header(default="")):
     v = {"env": TLOC_ENV, "version": lire_version(SITE)}
+    # chaque navigateur la compare à la sienne et vide ses parties solo d'avant (tloc-compte.js,
+    # appliquerRemiseSolo) : sans ça, synchroniser() renverrait au serveur ce qu'on vient d'effacer
+    with db() as cx:
+        v["remise_solo"] = remise_solo_date(cx)
     if TLOC_ENV == "dev":
         v["prod"] = lire_version(PROD_SITE)
         v["peut_promouvoir"] = bool(PROMOUVOIR) and est_createur(authorization)
@@ -988,6 +1002,15 @@ def ecrire_partie(pid: str, p: Partie, j: sqlite3.Row = Depends(porteur)):
     if not re.match(r"^[A-Za-z0-9_\-]{1,40}$", pid):
         raise HTTPException(400, "identifiant de partie invalide")
     with db() as cx:
+        # une partie née avant la remise à zéro ne revient pas : un onglet resté ouvert pendant la
+        # remise la pousserait encore. L'identifiant porte sa naissance (creerSlot : « p » + l'heure
+        # en base 36 + trois lettres au hasard).
+        try:
+            nee = int(pid[1:-3], 36) / 1000 if pid.startswith("p") else None
+        except ValueError:
+            nee = None
+        if nee is not None and nee < remise_solo_date(cx):
+            raise HTTPException(410, "partie effacée par la remise à zéro du solo")
         cx.execute("""INSERT INTO parties (id, joueur, nom, donnees, resume, maj) VALUES (?,?,?,?,?,?)
                       ON CONFLICT(id) DO UPDATE SET nom=excluded.nom, donnees=excluded.donnees,
                           resume=excluded.resume, maj=excluded.maj
@@ -1002,6 +1025,21 @@ def supprimer_partie(pid: str, j: sqlite3.Row = Depends(porteur)):
     with db() as cx:
         cx.execute("DELETE FROM parties WHERE id = ? AND joueur = ?", (pid, j["id"]))
     return {"ok": True}
+
+
+# LA REMISE À ZÉRO DU SOLO (Eugène, 15 octobre) : tout le monde repart de rien — les parties
+# solo, et les hauts faits qu'elles avaient fait gagner (quêtes, voyage). Les comptes, les amis
+# et ce que le multi a donné (styles, exploits, fidélité, ses compteurs) restent. Les mètres du
+# multi sont gardés : un voyage qu'ils suffisent à mériter retombera au prochain hauts_faits().
+# Se lance à la main sur le VPS (python app.py remise-solo), après une copie de la base.
+def remise_solo(cx: sqlite3.Connection) -> dict:
+    solo = [b for b, d in BADGES.items() if d[2] in ("quetes", "voyage")]
+    n_parties = cx.execute("DELETE FROM parties").rowcount
+    n_badges = cx.execute(f"DELETE FROM badges WHERE badge IN ({','.join('?' * len(solo))})", solo).rowcount
+    t = time.time()
+    cx.execute("""INSERT INTO reglages (cle, valeur) VALUES ('remise_solo', ?)
+                  ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur""", (str(t),))
+    return {"parties": n_parties, "badges": n_badges, "date": t}
 
 
 # =====================================================================
@@ -2262,3 +2300,20 @@ if RACINE:
             return r
 
     app.mount("/", Statique(directory=RACINE, html=True), name="jeu")
+
+
+# =====================================================================
+#  En ligne de commande
+# =====================================================================
+if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] != ["remise-solo"]:
+        sys.exit("usage : TLOC_DB=… python app.py remise-solo")
+    # d'abord une copie cohérente de la base, à côté d'elle : on n'efface rien sans pouvoir revenir
+    copie = BASE.with_name(f"{BASE.stem}-avant-remise-solo-{time.strftime('%Y-%m-%d-%H%M%S')}.db")
+    with db() as cx, sqlite3.connect(copie) as dst:
+        cx.backup(dst)
+    with db() as cx:
+        r = remise_solo(cx)
+    print(f"Copie : {copie}")
+    print(f"Remise du solo : {r['parties']} parties et {r['badges']} hauts faits effacés")

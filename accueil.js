@@ -761,6 +761,8 @@ majRejoindre();
 SOCIAL.brancherEnvironnement();       // sur tloc-dev : le rappel « dev », et la promotion pour le créateur
 C.reprendreAncienneSauvegarde();     // sauvegarde d'avant les parties nommées : on la garde
 tout();
+// le solo remis à zéro par le serveur : on vide les parties d'ici et on repart d'une page propre
+C.appliquerRemiseSolo().then((vide) => { if (vide) location.reload(); });
 setInterval(() => { if (C.connecte() && !document.hidden) chargerInstances(); }, 15000);
 
 // la pastille « Toutes tes parties » : visible tant qu'on est en haut et que la liste est hors de l'écran
