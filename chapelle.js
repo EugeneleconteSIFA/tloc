@@ -128,7 +128,14 @@ function build() {
   const tailleIn = taille.clone(); tailleIn.side = THREE.DoubleSide;
   { const ap = new THREE.Mesh(new THREE.CylinderGeometry(AR + 0.5, AR + 0.5, HM, 26, 1, true, Math.PI / 2, Math.PI), murIn);
     ap.position.set(0, HM / 2, AZ); ap.receiveShadow = true; scene.add(ap);
-    for (let k = 0; k < 14; k++) { const a = Math.PI / 2 + (k + 0.5) / 14 * Math.PI; addCap(Math.cos(a) * AR + 0.0, AZ + Math.sin(a) * AR, Math.cos(a + 0.24) * AR, AZ + Math.sin(a + 0.24) * AR, 0.25, FAITE); } }
+    // (sin, cos) comme le cylindre de three, qui pose x = r·sin θ, z = r·cos θ : en (cos, sin), le
+    // demi-cercle des collisions tournait d'un quart de tour — un mur invisible en travers de la
+    // nef, côté ouest, et l'abside ouverte à l'est (Eugène, 18 octobre). Quinze cordes de bout en
+    // bout, rentrées de leur rayon sous le mur dessiné (AR + 0,5), et raccordées aux murs latéraux.
+    { const RC = AR + 0.25;
+      for (let k = 0; k < 15; k++) { const a = Math.PI / 2 + k / 15 * Math.PI, b = Math.PI / 2 + (k + 1) / 15 * Math.PI;
+        addCap(Math.sin(a) * RC, AZ + Math.cos(a) * RC, Math.sin(b) * RC, AZ + Math.cos(b) * RC, 0.25, FAITE); }
+      for (const sx of [-1, 1]) addCap(sx * RC, AZ, sx * HW, -HD, 0.3, FAITE + 4); } }
   // cul-de-four de l'abside : demi-coupole nervurée
   { const four = new THREE.Mesh(new THREE.SphereGeometry(AR + 0.4, 24, 12, Math.PI / 2, Math.PI, 0, Math.PI / 2), tailleIn);
     four.position.set(0, HM - 2.2, AZ); scene.add(four);
@@ -289,7 +296,9 @@ function build() {
     b.add(mesh(boxG(2.4, 0.75, 0.09), chene, 0, 0.72, -0.24));                  // dossier
     b.add(mesh(boxG(2.4, 0.1, 0.3), chene, 0, 0.16, 0.34));                     // agenouilloir
     for (const sz of [-1, 1]) b.add(mesh(boxG(0.09, 0.95, 0.5), chene, sz * 1.15, 0.48, 0));
-    addCap(x - 1.2, z, x + 1.2, z, 0.35, 0.55); }
+    // les bouts arrondis de la capsule rentrés sous les jouées : ils débordaient de 35 cm de chaque
+    // côté de l'allée centrale, qui ne faisait plus que 0,7 m — moins que la largeur de Camille
+    addCap(x - 1.2 + 0.35, z, x + 1.2 - 0.35, z, 0.35, 0.55); }
 
   // ---------- fonts baptismaux, lutrin, tronc des pauvres ----------
   { const fx = -4.9, fz = HD - 2.6;

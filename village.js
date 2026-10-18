@@ -1267,7 +1267,10 @@ function terreBourg(x, z) {
 }
 // Les monuments que le bâti relevé ne recouvre pas (Eugène : « garder sur place ») : le
 // beffroi, la chapelle avec son porche et son parvis, et le cimetière. Repère du bourg.
-const MONUMENTS = [[5.0, 11.0, -15.0, -9.0], [-5.0, 5.0, -33.8, -12.5], [-18.4, -8.6, -29.0, -18.2]];
+// Le quatrième est le PASSAGE du parvis au cimetière, le long de la nef : deux îlots relevés s'y
+// posaient (l'un collé à l'angle de la façade, l'autre en travers), et le cimetière, dont l'entrée
+// regarde la nef, ne s'atteignait que par un détour de deux cents mètres (Eugène, 18 octobre).
+const MONUMENTS = [[5.0, 11.0, -15.0, -9.0], [-5.0, 5.0, -33.8, -12.5], [-18.4, -8.6, -29.0, -18.2], [-9.5, -4.5, -19.0, -14.5]];
 
 export function buildVie(ctx) {
   const RUE = ctx.RUE;
@@ -1810,7 +1813,11 @@ export function buildTown() {
     { const pg = new THREE.Group(); pg.position.set(PX, 0, HD + 0.05); ch.add(pg);
       // makeDoor dessine en mètres MONDE ; le groupe town est agrandi ×S, on compense par 1/S
       // (même règle que les props du MegaKit), et on demande donc 1,8×S sur 3,0×S.
-      const porte = makeDoor(1.8 * S, 3.0 * S, { rustique: true, arc: true, imposte: false, double: true, recess: 0.34 * S, pierre: stoneC, sansCale: true });
+      // (makeDoor pose ses vantaux à `recess` DERRIÈRE l'encadrement, dans une embrasure qu'il
+      // suppose percée ; la nef est une boîte pleine, et à 0,34 les vantaux tombaient dedans : de
+      // dehors, la chapelle n'avait pas de porte — Eugène, 18 octobre. Ils affleurent le mur, et
+      // les voussures font la profondeur.)
+      const porte = makeDoor(1.8 * S, 3.0 * S, { rustique: true, arc: true, imposte: false, double: true, recess: 0.06 * S, pierre: stoneC, sansCale: true });
       porte.scale.setScalar(1 / S); pg.add(porte);
       for (let k = 0; k < 3; k++) pg.add(mesh(new THREE.TorusGeometry(1.15 + k * 0.24, 0.13, 8, 18, Math.PI), stoneC, 0, 3.15, 0.12 + k * 0.12));
       for (const sx of [-1, 1]) { const pl = pilaster(3.2, 0.2, stoneC); pl.position.set(sx * 1.75, 0, 0.3); pg.add(pl); } pg.add(mesh(rboxG(0.36, 0.55, 0.32, 0.06, 2), stoneC, 0, 4.5, 0.3));
@@ -1833,8 +1840,10 @@ export function buildTown() {
     { const [lx, lz] = W2(cx, cz); E.addLieu({ id: 'chapelle', nom: 'la chapelle Saint-Roch', x: lx, z: lz, r: 26 }); }
     // cimetière : muret, tombes, if — décalé vers l'ouest, la nef ayant gagné 2 unités de large
     // (5 octobre) 1,6 plus au nord : il mordait sur la maison relevée qui porte l'estaminet
+    // (wallBox, engine.js, pose son mur dans la scène du MONDE : en coordonnées du bourg, le muret
+    // se dessinait loin d'ici et le cimetière gardait un mur invisible — on le range dans le bourg)
     const gx = cx - 13, gz = cz - 1.6;
-    for (const [ax, az, bx2, bz2] of [[gx - 5, gz - 5, gx + 4, gz - 5], [gx - 5, gz + 5, gx + 4, gz + 5], [gx - 5, gz - 5, gx - 5, gz + 5]]) { wallBox(ax, az, bx2, bz2, 0.9, 0.4, stoneMat, 0, 'old_stone_wall_02'); addCap(ax, az, bx2, bz2, 0.25, 0.9); }
+    for (const [ax, az, bx2, bz2] of [[gx - 5, gz - 5, gx + 4, gz - 5], [gx - 5, gz + 5, gx + 4, gz + 5], [gx - 5, gz - 5, gx - 5, gz + 5]]) { scene.add(wallBox(ax, az, bx2, bz2, 0.9, 0.4, stoneMat, 0, 'old_stone_wall_02')); addCap(ax, az, bx2, bz2, 0.25, 0.9); }
     for (let k = 0; k < 8; k++) { const px = gx - 3.5 + (k % 4) * 2.2, pz = gz - 2.5 + Math.floor(k / 4) * 4;
       const st = mesh(boxG(0.9, 1.3, 0.25), phLocal('old_stone_wall_02', 0.9, 1.3, { color: [0xd8d0c0, 0xc4bcb4, 0xd0c8cc][k % 3] }), px, 0.65, pz); st.rotation.y = rand(-0.12, 0.12); st.rotation.z = rand(-0.06, 0.06); scene.add(st);
       scene.add(mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 12, 1, false, 0, Math.PI), phLocal('old_stone_wall_02', 0.9, 0.5, { color: 0xd0c8bc }), px, 1.3, pz).rotateX(Math.PI / 2).rotateY(0));

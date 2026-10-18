@@ -9,6 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { brancherKTX2, chargerTexture, texturesEnAttente } from './assets.js';     // les textures décodées en tâche de fond
+import { PARTAGE } from './etat.js';                                                // le point d'or (PARTAGE.repere), pour les bulles
 export { THREE };
 
 // =====================================================================
@@ -1175,7 +1176,7 @@ export function addRamp(x, z, dx, dz, len, w, h0, h1) { const p = { ramp: true, 
 export function surObstacle(x, z) {
   if (!world.levelH) return false;
   const t0 = world.levelH(x, z);
-  for (const c of capsulesNear(x, z, 0)) if (c.ax === c.bx && c.az === c.bz && c.r >= 0.25 && c.bottom === undefined && c.top - t0 <= 1.6 && Math.hypot(x - c.ax, z - c.az) < c.r + 0.5) return true;
+  for (const c of capsulesNear(x, z, 0)) if (c.ax === c.bx && c.az === c.bz && c.r >= 0.25 && c.bottom === undefined && c.top - t0 <= 1.6 && Math.hypot(x - c.ax, z - c.az) < c.r + RAYON_CAMILLE) return true;
   return false;
 }
 export function getH(x, z, y = Infinity) {
@@ -1218,9 +1219,9 @@ export function getH(x, z, y = Infinity) {
       // menait droit au fossé)
       if (c.ax !== c.bx || c.az !== c.bz || c.r < 0.25 || c.bottom !== undefined || !(c.top <= y + 0.6) || c.top <= h || c.top - t0 > 1.6) continue;
       // jusqu'au bord de la zone où la capsule BLOQUE (son rayon plus celui de Camille) : sans
-      // cette marge, elle retombait dans la couronne de 50 cm où l'on n'est ni porté ni libre,
+      // cette marge, elle retombait dans la couronne (son rayon) où l'on n'est ni porté ni libre,
       // et restait coincée contre le flanc d'un gros rocher
-      if (distSeg(x, z, c.ax, c.az, c.bx, c.bz) < c.r + 0.5) h = c.top;
+      if (distSeg(x, z, c.ax, c.az, c.bx, c.bz) < c.r + RAYON_CAMILLE) h = c.top;
     }
   }
   return h;
@@ -1232,10 +1233,32 @@ export function blocked(x, z, r, flying, y = 0) {
   for (const b of world.boxes) if (y < b.top - 0.4 && x > b.x0 - r && x < b.x1 + r && z > b.z0 - r && z < b.z1 + r) return true;
   return false;
 }
+// De combien (x, z) entre dans les obstacles du décor (capsules et boîtes), au plus profond ;
+// 0 ou moins : libre. Sert à tryMove pour SE DÉGAGER.
+function enfoncement(x, z, r, y) {
+  let e = -Infinity;
+  for (const c of capsulesNear(x, z, r)) if (c.r > 0 && y < c.top && y > (c.bottom ?? -Infinity)) e = Math.max(e, c.r + r - distSeg(x, z, c.ax, c.az, c.bx, c.bz));
+  for (const b of world.boxes) if (y < b.top - 0.4) e = Math.max(e, Math.min(x - (b.x0 - r), (b.x1 + r) - x, z - (b.z0 - r), (b.z1 + r) - z));
+  return e;
+}
+// Le rayon de Camille. Il était de 0,5 m, partout, pour un corps qui en fait 0,3 : entre une table
+// à 0,72 et un client attablé, il fallait 2,4 m de vide pour passer, et l'estaminet, la chapelle ou
+// la chambre de Camille ne se parcouraient plus (Eugène, 18 octobre).
+export const RAYON_CAMILLE = 0.35;
 // déplacement avec glissement ; y = hauteur actuelle des pieds (permet de monter sur ce qui est ≤ 0.5 plus haut)
 export function tryMove(pos, dx, dz, r, flying, maxStep = 0.5, noCliff = false) {
   const y = pos.y;
-  const ok = (x, z) => { if (blocked(x, z, r, flying, y)) return false; if (flying) return true; const dh = getH(x, z, y) - y; return dh < maxStep && (!noCliff || dh > -2.5); };
+  // SE DÉGAGER. Quand on est DÉJÀ dans un obstacle (posée à l'entrée d'un intérieur sur un client
+  // attablé, coincée entre le lit et la commode), tout pas était refusé, même celui qui en sort :
+  // on restait figé. Un pas qui fait ressortir est permis — le décor seul, jamais les bords du
+  // niveau ni l'eau (levelBlocked), qui restent des murs.
+  let e0 = null;
+  const sortir = (x, z) => {
+    if ((world.bounds && world.bounds(x, z)) || (world.levelBlocked && world.levelBlocked(x, z, r, flying, y))) return false;
+    if (e0 === null) e0 = enfoncement(pos.x, pos.z, r, y);
+    return e0 > 0 && enfoncement(x, z, r, y) < e0 - 1e-4;
+  };
+  const ok = (x, z) => { if (blocked(x, z, r, flying, y) && !sortir(x, z)) return false; if (flying) return true; const dh = getH(x, z, y) - y; return dh < maxStep && (!noCliff || dh > -2.5); };
   if (ok(pos.x + dx, pos.z + dz)) { pos.x += dx; pos.z += dz; return true; }
   if (ok(pos.x + dx, pos.z)) { pos.x += dx; return true; }
   if (ok(pos.x, pos.z + dz)) { pos.z += dz; return true; }
@@ -2406,7 +2429,8 @@ window.addEventListener('keydown', (e) => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) e.preventDefault();
   SFX.unlock();
   if (G.journal) { if (e.code === 'KeyJ' || e.code === 'Escape' || e.code === 'Enter') closeJournal(); return; }
-  if (cut.active) { if (e.code === 'Enter' || e.code === 'Space') cutAdvance(); return; }
+  // ← ou Retour arrière : relire la réplique d'avant (cutRecul) — Eugène, 18 octobre
+  if (cut.active) { if (e.code === 'Enter' || e.code === 'Space') cutAdvance(); else if (e.code === 'ArrowLeft' || e.code === 'Backspace') { e.preventDefault(); cutRecul(); } return; }
   if (e.code === 'KeyJ' && state.running && !state.paused && !state.over) { openJournal(); return; }
   if (menu.active) {
     if (e.code === 'ArrowUp' || e.code === 'KeyW') menu.sel = (menu.sel + menu.items.length - 1) % menu.items.length;
@@ -3141,7 +3165,7 @@ export function updatePlayer(dt) {
   if (p.garde) speed *= 0.4;
   if (p.rollT >= 0) {
     p.rollT += dt;
-    tryMove(p.pos, p.rollDir.x * 15 * dt, p.rollDir.z * 15 * dt, 0.5, false);
+    tryMove(p.pos, p.rollDir.x * 15 * dt, p.rollDir.z * 15 * dt, RAYON_CAMILLE, false);
     if (p.rollT > 0.45) p.rollT = -1;
     speed = 0;
   } else if (p.attackT >= 0) {
@@ -3165,11 +3189,11 @@ export function updatePlayer(dt) {
   if (p.garde) p.yaw = lerpAngle(p.yaw, aimYaw, 1 - Math.exp(-14 * dt));   // le bouclier face à ce qu'on regarde
   if (moving && speed > 0) {
     if (!p.garde) p.yaw = lerpAngle(p.yaw, Math.atan2(move.x, move.z), 1 - Math.exp(-14 * dt));
-    tryMove(p.pos, move.x * speed * dt, move.z * speed * dt, 0.5, false, p.onGround ? 0.5 : 0.35);
+    tryMove(p.pos, move.x * speed * dt, move.z * speed * dt, RAYON_CAMILLE, false, p.onGround ? 0.5 : 0.35);
     if (p.onGround) p.walkT += dt * 11;
   } else if (!moving) p.walkT = lerp(p.walkT, Math.round(p.walkT / Math.PI) * Math.PI, 0.2);
   suivreColimacon(dt);
-  if (p.kb.lengthSq() > 0.01) { tryMove(p.pos, p.kb.x * dt, p.kb.z * dt, 0.5, false); p.kb.multiplyScalar(Math.exp(-8 * dt)); }
+  if (p.kb.lengthSq() > 0.01) { tryMove(p.pos, p.kb.x * dt, p.kb.z * dt, RAYON_CAMILLE, false); p.kb.multiplyScalar(Math.exp(-8 * dt)); }
 
   // verticale : gravité, atterrissage, dégâts de chute
   const g2 = getH(p.pos.x, p.pos.z, p.pos.y);
@@ -3284,6 +3308,70 @@ export function updatePlayer(dt) {
   if (locked) promptEl.style.opacity = 0;
   enterPressed = false;
   pressed.clear();
+}
+
+// LES BULLES au-dessus des personnages (Eugène, 18 octobre : « une bulle de parole avec … ou ! à
+// côté de leur tête »). « … » : quelqu'un à qui parler ; « ! » doré : celui que l'objectif désigne
+// (le point d'or, PARTAGE.repere, posé par quetes.js et citadelle.js), ou celui dont
+// l'interaction le dit (it.important()). Des étiquettes HTML et pas des sprites : ni appel de
+// dessin, ni matériau à compiler, et un trait net à toute distance. Une interaction « parler… »
+// est un personnage ; it.bulleY, la hauteur de sa tête au-dessus de it.pos (Lydéric, géant), et
+// it.bulleSur, le personnage lui-même quand l'interaction se tient ailleurs (Gustave, derrière son zinc).
+const BULLES = { el: null, pool: [], liste: [], t: 0 };
+const _vB = new THREE.Vector3();
+function majBulles(dt) {
+  if (!BULLES.el) {
+    const st = document.createElement('style');
+    st.textContent = `#bulles{position:fixed;inset:0;pointer-events:none;z-index:4;overflow:hidden}
+      #bulles .bulle{position:absolute;transform:translate(-50%,-100%);min-width:1.9em;padding:.05em .45em .12em;border-radius:1em;text-align:center;
+        font:800 22px/1.15 "Trebuchet MS","Segoe UI",sans-serif;color:#3a2a10;background:rgba(255,250,236,.94);border:2px solid #5a4020;
+        box-shadow:0 2px 6px rgba(0,0,0,.35);transition:opacity .2s}
+      #bulles .bulle::after{content:"";position:absolute;left:50%;bottom:-9px;margin-left:-6px;border:6px solid transparent;border-top:7px solid #5a4020;border-bottom:0}
+      #bulles .bulle.vif{color:#8a5a00;background:#ffe27a;border-color:#8a5a00;animation:bulleVive 1s ease-in-out infinite}
+      #bulles .bulle.vif::after{border-top-color:#8a5a00}
+      @keyframes bulleVive{50%{transform:translate(-50%,-112%)}}`;
+    document.head.appendChild(st);
+    BULLES.el = document.createElement('div'); BULLES.el.id = 'bulles'; document.body.appendChild(BULLES.el);
+  }
+  const cache = !state.running || state.paused || cut.active || G.journal || menu.active || G.freeCam;
+  // le tri des candidats, cinq fois par seconde : la position, elle, se suit à chaque image
+  if ((BULLES.t -= dt) <= 0 && !cache) {
+    BULLES.t = 0.2;
+    const p = player.pos, R = PARTAGE.repere, cand = [];
+    for (const it of interactables) {
+      if (it.enabled && !it.enabled()) continue;
+      const d = Math.hypot(it.pos.x - p.x, it.pos.z - p.z);
+      if (d > 26 || Math.abs(it.pos.y - p.y) > 6) continue;
+      let txt = ''; try { txt = typeof it.prompt === 'function' ? it.prompt() : it.prompt || ''; } catch (e) { continue; }
+      if (!/^parler\b/i.test(txt)) continue;
+      const vif = (it.important && it.important()) || (R && Math.hypot(it.pos.x - R.x, it.pos.z - R.z) < Math.max(4, it.r));
+      cand.push({ it, d, vif });
+    }
+    cand.sort((a, b) => (b.vif - a.vif) || (a.d - b.d));
+    BULLES.liste = cand.slice(0, 8);
+  }
+  let n = 0;
+  if (!cache) for (const { it, vif } of BULLES.liste) {
+    const h = it.bulleY ?? 2.15 * (G.echelle || 1);
+    if (it.bulleSur) it.bulleSur.getWorldPosition(_vB); else _vB.copy(it.pos);
+    _vB.y += h;
+    const d = camera.position.distanceTo(_vB);
+    _vB.project(camera);
+    if (_vB.z > 1 || Math.abs(_vB.x) > 1.05 || _vB.y < -1.05) continue;   // derrière la caméra, ou hors champ
+    _vB.y = Math.min(_vB.y, 0.86);       // une tête au-dessus du cadre (Lydéric, de près) : la bulle reste au bord haut
+    let b = BULLES.pool[n];
+    if (!b) { b = document.createElement('div'); b.className = 'bulle'; BULLES.el.appendChild(b); BULLES.pool.push(b); }
+    const txt = vif ? '!' : '…';
+    if (b.textContent !== txt) b.textContent = txt;
+    b.classList.toggle('vif', !!vif);
+    b.style.left = ((_vB.x + 1) / 2 * innerWidth).toFixed(1) + 'px';
+    b.style.top = ((1 - _vB.y) / 2 * innerHeight).toFixed(1) + 'px';
+    b.style.fontSize = Math.round(clamp(30 - d * 0.6, vif ? 20 : 14, 26)) + 'px';
+    b.style.opacity = it === activeInteract ? 0.55 : 1;    // à portée, l'invite du bas prend le relais
+    b.style.display = '';
+    n++;
+  }
+  for (let k = n; k < BULLES.pool.length; k++) BULLES.pool[k].style.display = 'none';
 }
 
 // =====================================================================
@@ -3590,12 +3678,12 @@ const cineUI = (() => {
   const journal = mk('journal', 'position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,8,20,.8);z-index:6;color:#fff;font-family:"Trebuchet MS","Segoe UI",sans-serif;');
   return { top, bot, sub, who, txt, hint, title, tmain, tsub, journal };
 })();
-export const cut = { active: false, steps: [], i: -1, t: 0, onEnd: null, cur: null, typed: 0 };
+export const cut = { active: false, steps: [], i: -1, t: 0, onEnd: null, cur: null, typed: 0, lus: [], retour: 0 };
 const hudEl = document.getElementById('hud');
 function bars(on) { cineUI.top.style.height = cineUI.bot.style.height = on ? '11vh' : '0'; if (hudEl) hudEl.style.opacity = on ? 0 : 1; }
 export function cutscene(steps, onEnd) {
   if (cut.active) { cut.steps = cut.steps.slice(0, cut.i + 1).concat(steps); return; }
-  cut.active = true; cut.steps = steps; cut.i = -1; cut.t = 0; cut.onEnd = onEnd || null; bars(true);
+  cut.active = true; cut.steps = steps; cut.i = -1; cut.t = 0; cut.onEnd = onEnd || null; cut.lus = []; cut.retour = 0; bars(true);
   for (const k in keys) keys[k] = false; pressed.clear(); player.walkTo = null;
   cutNext();
 }
@@ -3617,7 +3705,7 @@ function cutNext() {
   const instant = c.dur === undefined && c.say === undefined && !c.walk && !(c.actor && c.to);
   if (c.cam) G.freeCam = { pos: { x: c.cam[0], y: c.cam[1], z: c.cam[2] }, at: { x: c.at[0], y: c.at[1], z: c.at[2] } };
   if (c.follow) G.freeCam = null;
-  if (c.say !== undefined) { showSub(c.say, c.who); cineUI.hint.style.display = ''; }
+  if (c.say !== undefined) { cut.lus.push({ say: c.say, who: c.who }); cut.retour = 0; showSub(c.say, c.who); majIndice(); cineUI.hint.style.display = ''; }
   else if (c.text) { showSub(c.text, c.who); cineUI.hint.style.display = 'none'; }
   else showSub(null);
   if (!c.title) cineUI.title.style.opacity = 0;
@@ -3630,7 +3718,23 @@ function cutNext() {
   if (instant) cutNext();
 }
 // Entrée pendant une cinématique : ferme la réplique en cours ou saute l'étape chronométrée
-export function cutAdvance(force = false) { if (!cut.active || !cut.cur) return; const c = cut.cur; if (force || c.say !== undefined || c.skippable !== false && c.dur !== undefined) cutNext(); }
+export function cutAdvance(force = false) { if (!cut.active || !cut.cur) return; const c = cut.cur;
+  if (!force && cut.retour > 0) { cut.retour--; relire(); return; }     // on relisait : on revient vers la réplique en cours
+  if (force || c.say !== undefined || c.skippable !== false && c.dur !== undefined) cutNext(); }
+// REVENIR EN ARRIÈRE DANS LE TEXTE (Eugène, 18 octobre). On RELIT les répliques déjà dites, on ne
+// rejoue pas les étapes : une réplique peut porter un effet (un cœur donné, une quête qui avance,
+// un plan de caméra) qui ne doit pas se refaire. Entrée revient, une à une, jusqu'à la réplique en
+// cours ; le dialogue reprend alors où il en était.
+export function cutRecul() {
+  if (!cut.active || !cut.cur || cut.cur.say === undefined || !cut.lus || cut.retour + 1 >= cut.lus.length) return;
+  cut.retour++; relire();
+}
+function relire() { const l = cut.lus[cut.lus.length - 1 - cut.retour]; showSub(l.say, l.who); majIndice(); }
+// l'indice sous la réplique : le retour n'est proposé que s'il y a de quoi relire
+function majIndice() {
+  const avant = cut.lus && cut.lus.length - 1 - cut.retour > 0;
+  cineUI.hint.textContent = TACTILE ? 'Entrée ▸' : (avant ? '← relire   ·   ' : '') + (cut.retour > 0 ? `Entrée ▸ (${cut.retour} plus loin)` : 'Entrée ▸');
+}
 function cutEnd() {
   cut.active = false; cut.cur = null; G.freeCam = null; showSub(null); cineUI.title.style.opacity = 0; bars(false); player.walkTo = null;
   if (G.fadeTarget === 1 && !G.fadeCb) fadeTo(0, null);
@@ -3918,6 +4022,7 @@ function loop(now) {
   for (const g of pickups) { g.t += dt * 2; g.mesh.rotation.y = g.t; g.mesh.position.y = getH(g.pos.x, g.pos.z) + 0.8 + Math.sin(g.t * 2) * 0.15; }
   if (L.animate) L.animate(now, dt);
   if (state.running && !state.paused) updateCamera(dt);
+  majBulles(dt);                                     // après la caméra : les bulles suivent l'image qu'on va dessiner
   if (G.freeCam) { const f = G.freeCam; camera.position.set(f.pos.x, f.pos.y, f.pos.z); camera.lookAt(f.at.x, f.at.y, f.at.z); }
   if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt * 1.2); const a = G.shake * 0.35; camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a; }
   if (sky) sky.position.copy(camera.position);
@@ -4650,9 +4755,9 @@ export async function bootLevel(level, titleMenuFn) {
 }
 // si la position chargée est dans un obstacle (ex. table), on cherche la case libre la plus proche
 export function unstick() {
-  const p = player.pos; if (!blocked(p.x, p.z, 0.5, false, p.y)) return;
+  const p = player.pos; if (!blocked(p.x, p.z, RAYON_CAMILLE, false, p.y)) return;
   for (let r = 0.4; r <= 4; r += 0.4) for (let k = 0; k < 16; k++) { const a = k * TAU / 16, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
-    if (!blocked(x, z, 0.5, false, p.y) && Math.abs(getH(x, z, p.y) - p.y) < 0.6) { p.x = x; p.z = z; return; } }
+    if (!blocked(x, z, RAYON_CAMILLE, false, p.y) && Math.abs(getH(x, z, p.y) - p.y) < 0.6) { p.x = x; p.z = z; return; } }
 }
 export function startGame(resume) {
   state.running = true;

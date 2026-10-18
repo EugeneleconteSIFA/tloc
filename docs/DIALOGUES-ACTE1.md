@@ -91,11 +91,14 @@ Camille parle peu, comme Link : elle agit plus qu'elle ne parle.
 
 1. Camille offre le blé. Eugène tire la corde. La Grande Cloche sonne, une fois.
 2. Au deuxième coup, un craquement. Une fente court sur le métal. Une fumée rouge en sort.
+   *Phinaert. Le géant que Lydéric avait vaincu il y a mille ans, et que l'ermite avait enfermé
+   dans la Grande Cloche. La cloche est fendue : il est libre.* (texte de plan, 18 octobre)
 3. **Phinaert** : « Mille ans dans une cloche. Et le premier son que j'entends… c'est le
    sang de Lydéric qui tire la corde. »
 4. Lydéric se dresse entre lui et Eugène. Phinaert pose la main sur son torse : le géant
    devient d'osier, figé.
    **Phinaert** : « Reste debout, vieux frère. En osier, tu dureras plus longtemps. »
+   *Lydéric est devenu un géant d'osier. Il ne peut plus bouger.* (texte de plan, 18 octobre)
 5. Il saisit Eugène et part vers la citadelle. La grande grille tombe derrière lui.
 6. Sur le pont, un morceau de métal fume encore. *Un morceau de la Grande Cloche. Il est
    chaud.* → **le morceau de cloche** (personne n'en parle en gras avant l'acte VI).
@@ -153,7 +156,9 @@ crie la dernière nouvelle, puis ce qu'on attend de la garde — c'est-à-dire l
 
 | étape | type | réplique | besoin |
 |---|---|---|---|
-| `grille` | I | « Il est entré dans la citadelle et il a fait tomber la grande grille de l’entrée. Il y a un autre chemin : **la crypte de la chapelle Saint-Roch**, la cave sous l'église, descend jusqu'aux souterrains de la citadelle. » | — |
+| `grille` | A | *(la première fois seulement, 18 octobre)* « Phinaert a pris Eugène. Moi, il m'a changé en osier : je ne peux plus faire un pas. » | — |
+| `grille` | A | *(id.)* « Ce que la garde commence, la garde l'achève. Ton serment, c'est maintenant : va chercher Eugène. » | — |
+| `grille` | I | « Phinaert est entré dans la citadelle et il a fait tomber la grande grille de l’entrée. Il y a un autre chemin : **la crypte de la chapelle Saint-Roch**, la cave sous l'église, descend jusqu'aux souterrains de la citadelle. » | — |
 | `grille` | I | *(après avoir essayé la crypte)* « Sous terre, il faut une lumière qui ne s'éteint pas. **La lanterne de Désiré**, le guetteur du beffroi. Il ne la quitte jamais. » | — |
 | `grille` | A | « Tu as prêté serment ce matin. Tu ne savais pas que ce serait pour ça. » | — |
 | `lanterne` | A | « Je ne peux plus tourner la tête. Dis-moi ce que tu vois de la citadelle. » | — |

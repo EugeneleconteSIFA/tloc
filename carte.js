@@ -227,10 +227,24 @@ function grilleVille() {
   }
   // l'emprise elle-même, les lieux épargnés et leur abord
   const epargne = [[FERME.x, FERME.z, 110], [MAGE.x, MAGE.z, 200], [HOUSE.x, HOUSE.z, 40], [-91, 539, 30]];
+  // LES PONTS ET LEUR ABORD. Le tissu coupé prenait les deux bouts du pont de la Citadelle et
+  // du Petit Paradis, mais pas leur tablier, posé au-dessus de l'eau : on y montait, puis on
+  // restait enfermé dessus, sans pouvoir ni en descendre ni sauter par-dessus le parapet (le
+  // sol d'en bas était coupé aussi). Eugène, 18 octobre. Chaque pont garde 14 m de part et d'autre de
+  // son axe, et sa voie 25 m au-delà de chaque culée : la porte de ville se pose plus loin, toute
+  // seule (portesDeVille, quartier.js), et l'on retombe du tablier sur une berge où l'on marche.
+  const abords = [];
+  for (const o of LILLE.ponts || []) {
+    const p = o.pts; if (!p || p.length < 2) continue;
+    const prolonge = (a, b) => { const L = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1; return [a[0] + (a[0] - b[0]) / L * 25, a[1] + (a[1] - b[1]) / L * 25]; };
+    for (let k = 0; k < p.length - 1; k++) abords.push([p[k], p[k + 1], 14]);
+    abords.push([p[0], prolonge(p[0], p[1]), 8], [p[p.length - 1], prolonge(p[p.length - 1], p[p.length - 2]), 8]);
+  }
   for (let j = 0; j < VG.m; j++) for (let i = 0; i < VG.n; i++) {
     const k2 = j * VG.n + i; if (!g[k2]) continue;
     const x = VG.x0 + i * VG.pas, z = VG.z0 + j * VG.pas;
-    if (dansVille(x, z) || epargne.some(([ex, ez, r]) => Math.hypot(x - ex, z - ez) < r)) g[k2] = 0;
+    if (dansVille(x, z) || epargne.some(([ex, ez, r]) => Math.hypot(x - ex, z - ez) < r)
+      || abords.some(([a, b, r]) => distSegV(x, z, a, b) < r)) g[k2] = 0;
   }
   return (VG.g = g);
 }

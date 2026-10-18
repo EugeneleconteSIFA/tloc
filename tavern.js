@@ -240,9 +240,11 @@ function build() {
   // (le premier pan, la façade à gauche de la porte, partait du coin nord-ouest : une diagonale qui
   // traversait la salle jusqu'à la porte — 6 octobre, relevé par l'arène du multi)
   for (const [ax, az, bx, bz] of [[-W / 2, D / 2, -0.85, D / 2], [0.85, D / 2, W / 2, D / 2], [-W / 2, -D / 2, W / 2, -D / 2], [-W / 2, -D / 2, -W / 2, D / 2], [W / 2, -D / 2, W / 2, D / 2]]) cap(ax, az, bx, bz, EP / 2);
-  // en instance du multi, la porte est fermée : on se bat dans la salle, pas dans la rue (la porte
-  // ouverte donnait sur un dehors sans bord, hors de l'aire)
-  if (EN_INSTANCE) cap(-0.85, D / 2, 0.85, D / 2, EP / 2);
+  // La porte se ferme d'une capsule, en solo aussi : derrière, il n'y a que la vue peinte de la rue
+  // et un dehors sans bord. Au rayon de 0,5, Camille ne passait pas l'embrasure ; à 0,35 (engine.js,
+  // RAYON_CAMILLE) elle sortait dans le vide. On sort par Entrée. (En instance du multi, c'était
+  // déjà le cas : on se bat dans la salle, pas dans la rue.)
+  cap(-0.85, D / 2, 0.85, D / 2, EP / 2);
   // lambris d'appui et pans de bois : l'intérieur flamand n'est pas un enduit nu
   const murs = [[-W / 2, -D / 2, W / 2, -D / 2], [-W / 2, D / 2, W / 2, D / 2], [-W / 2, -D / 2, -W / 2, D / 2], [W / 2, -D / 2, W / 2, D / 2]];
   for (const [ax, az, bx, bz] of murs) {
@@ -321,7 +323,9 @@ function build() {
   }
 
   // ---------- tables ----------
-  const tables = [[-3.4, 1.9], [0.2, 2.1], [3.5, 1.9], [-3.3, -1.5]];
+  // la table du milieu recule vers le comptoir : à [0,2 ; 2,1], son client était assis sur le point
+  // d'arrivée, devant la porte, et Camille entrait DANS lui (18 octobre)
+  const tables = [[-3.4, 1.9], [0.3, 0.6], [3.5, 1.9], [-3.3, -1.5]];
   const plateau = M.chene;
   for (const [x, z] of tables) {
     put(mesh(new THREE.CylinderGeometry(0.74, 0.74, 0.07, 16), plateau, x, 0.75, z));
@@ -348,7 +352,7 @@ function build() {
       }
     }
   }
-  const seated = [[-3.4, 1.9, 0, 0x8a3a2a], [0.2, 2.1, 1, 0x2a4a7a], [3.5, 1.9, 2, 0x4a6a3a], [-3.3, -1.5, 1, 0x7a3a6a]];
+  const seated = [[-3.4, 1.9, 0, 0x8a3a2a], [0.3, 0.6, 1, 0x2a4a7a], [3.5, 1.9, 2, 0x4a6a3a], [-3.3, -1.5, 1, 0x7a3a6a]];
   seated.forEach(([x, z, kind, col], i) => {
     // riggés comme les villageois, assis par leur clip ; les primitives ne restent qu'en repli
     const rig = PNJ.buildRole(i === 3 ? 'braconnier' : 'client' + kind);
@@ -443,7 +447,9 @@ function build() {
   const gustave = PNJ.buildRole('aubergiste');
   barman = gustave || makePatron(0, 0xf0e6d0); barman.position.set(bx - 0.3, 0, bz - 0.82); barman.rotation.y = gustave ? 0 : Math.PI; put(barman);
   if (barman.userData.arms) { barman.userData.arms[0].rotation.x = -0.6; barman.userData.arms[0].userData.elbow.rotation.x = -1.2; }
-  addInteract({ pos: V(bx - 0.3, 0, bz + 1.25), r: 2.0 * SC, prompt: () => (etapeActe1(state) ? 'parler à Gustave' : 'commander une gaufre au patron'), fn: commanderGaufre });
+  // (la bulle au-dessus de Gustave, pas devant le zinc ; « ! » quand l'enquête envoie à lui — quetes.js, suiteActe1)
+  addInteract({ pos: V(bx - 0.3, 0, bz + 1.25), r: 2.0 * SC, prompt: () => (etapeActe1(state) ? 'parler à Gustave' : 'commander une gaufre au patron'), fn: commanderGaufre,
+    bulleSur: barman, important: () => !!(etapeActe1(state) && state.ind && state.ind.gustave && !state.ind.escalier) });
   // lustre à bougies
   const lustre = new THREE.Group(); lustre.position.set(-0.4, H - 1.05, 1.2); put(lustre);
   lustre.add(mesh(new THREE.TorusGeometry(0.62, 0.035, 6, 20), FERN(), 0, 0, 0).rotateX(Math.PI / 2));

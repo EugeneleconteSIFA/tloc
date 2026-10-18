@@ -94,7 +94,7 @@ export function populate() {
   PARTAGE.lyderic = geant('lyderic', 0x2b4fa8, 0xe0b64a, 'sword'); PARTAGE.lyderic.position.set(LYD_X, getH(LYD_X, LYD_Z), LYD_Z); PARTAGE.lyderic.rotation.y = 0;
   scene.add(PARTAGE.lyderic); addCap(LYD_X, LYD_Z, LYD_X, LYD_Z, 1.2); PARTAGE.lyderic.userData.talkCd = 0;
   // 7 m : un géant de 7,6 m se parle de plus loin qu'un villageois, et Camille se relève à 6,5 m de lui
-  addInteract({ pos: PARTAGE.lyderic.position, r: 7, prompt: () => 'parler à Lydéric', fn: talkLyderic });
+  addInteract({ pos: PARTAGE.lyderic.position, r: 7, prompt: () => 'parler à Lydéric', fn: talkLyderic, bulleY: 8.3 });   // (la bulle au-dessus de sa tête, engine.js)
   // LE MORCEAU DE CLOCHE (STORY.md § 2 ; découpage, plan 17) : après l'enlèvement, un éclat de
   // la Grande Cloche fume sur les planches. Camille le garde ; personne n'en parle avant
   // l'acte VI. Un éclat de la robe — le même profil que la cloche du beffroi, un huitième de
@@ -665,7 +665,7 @@ export function introScene(serment = false) {
     b.position.set(lx + 0.9, hy, lz + 2.2); b.rotation.set(0, 0.4, 0); SFX.pickup(); };
   const ouverture = serment ? [
     // Lydéric mesure 7,6 m : les plans le prennent en entier, ou en contre-plongée (découpage, plans 8 à 10)
-    { cam: [16, 8, lz + 88], at: [0, 6, lz - 42], cam2: [10, 6, lz + 40], at2: [0, 5, lz - 20], dur: 5, fade: 0, text: 'Le pont de Fin. Lydéric attend la première botte de l’année, la Porte Royale dans le dos.' },
+    { cam: [16, 8, lz + 88], at: [0, 6, lz - 42], cam2: [10, 6, lz + 40], at2: [0, 5, lz - 20], dur: 5, fade: 0, text: 'Le pont de Fin. Lydéric, le géant qui veille sur Lille, attend la première botte de blé de l’année. C’est le rite des apprentis de la garde.' },
     { say: '« Quand tu auras prêté serment, je sonne la Grande Cloche. Désiré m’a laissé la corde, pour la première fois ! »', who: 'Eugène', cam: [2.8, 1.8, lz + 0.8], at: [1.3, 1.4, lz + 4.6] },   // entre eux et le géant : leurs visages, la plaine au fond
     { say: '« Camille, de la garde. La première botte de l’année… Comme au temps de l’ermite. »', who: 'Lydéric', cam: [4, 2.3, lz + 16], at: [lx, 4, lz], fn: () => { PRO.tend = true; } },
     { say: '« Répète après moi, et n’en change pas un mot. »', who: 'Lydéric', cam: [0.5, 1.3, lz + 10], at: [lx + 0.6, 8, lz - 4], fn: poser },
@@ -703,6 +703,9 @@ export function introScene(serment = false) {
       fn: () => setTimeout(() => sonner(true), 400) },
     { cam: [2.6, hy + 2.2, lz - 3], at: [40, 35, lz + 90], cam2: [2.6, hy + 2.2, lz - 3], at2: [1.5, hy + 5, lz + 16], dur: 5.5,   // à droite de Lydéric : sa jambe bouchait le ciel
       text: 'Une fumée rouge sort du métal, traverse le ciel… et prend forme sur le pont.', fn: fumee },
+    // QUI EST CE GÉANT (Eugène, 18 octobre : « je ne comprends pas la scène ») : la légende du § 1 de
+    // STORY.md, en une phrase, au moment où il prend forme
+    { cam: [-1.5, hy + 2, lz + 6], at: [1.5, hy + 5.5, lz + 16], dur: 5, text: 'Phinaert. Le géant que Lydéric avait vaincu il y a mille ans, et que l’ermite avait enfermé dans la Grande Cloche. La cloche est fendue : il est libre.' },
     { say: '« Mille ans dans une cloche. Et le premier son que j’entends… c’est le sang de Lydéric qui tire la corde. »', who: 'Phinaert', cam: [-1.5, hy + 2, lz + 6], at: [1.5, hy + 5.5, lz + 16] },
     { cam: [6, 3, lz + 20], at: [1.8, 2, lz + 30], dur: 3.2, actor: eu, to: [2, lz + 23], speed: 7, text: 'Eugène redescend du beffroi en courant…',
       fn: () => { eu.visible = true; eu.position.set(2, hy, lz + 45); villain.rotation.y = 0; } },
@@ -726,6 +729,7 @@ export function introScene(serment = false) {
       { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 3.6, shake: 0.6, text: 'Phinaert pose la main sur son torse.',
         fn: () => setTimeout(() => { state.lydericOsier = true; SFX.cloche(true); burst(lx + 0.3, hy + 5, lz + 0.6, 0x8a1410, 30, 2.5, 1.2, -1, 2.5); }, 900) },
       { say: '« Reste debout, vieux frère. En osier, tu dureras plus longtemps. »', who: 'Phinaert', cam: [-3, 3.5, lz - 8], at: [1.2, 5, lz + 3] },   // du nord : son visage, le dos d'osier
+      { cam: [-6.5, 2.4, lz + 5.5], at: [lx + 0.6, 5.2, lz + 0.8], dur: 3.6, text: 'Lydéric est devenu un géant d’osier. Il ne peut plus bouger.' },
     ] : []),
     { cam: [-9, 5, lz - 10], at: [0, 6, APO + 10], cam2: [-9, 6, lz - 14], at2: [0, 6, APO], dur: 6, actor: villain, to: [0, APO - 2], speed: 20, text: 'Phinaert emporte Eugène dans la citadelle, et la herse retombe derrière lui.' },
     // un plan à elle : celui qui suit un acteur s'achève quand il arrive (cutTick), la herse
@@ -1009,7 +1013,12 @@ function lydericActe1() {
   if (atteint('lanterne')) lines = [L('« Je ne peux plus tourner la tête. Dis-moi ce que tu vois de la citadelle. »')];
   else if (ind('crypteNoire')) lines = [L('« Sous terre, il faut une lumière qui ne s’éteint pas. **La lanterne de Désiré**, le guetteur du beffroi. Il ne la quitte jamais. »', () => noter('lanterne')),
     L('« Tu as prêté serment ce matin. Tu ne savais pas que ce serait pour ça. »')];
-  else lines = [L('« Il est entré dans la citadelle et il a fait tomber la grande grille de l’entrée. Il y a un autre chemin : **la crypte de la chapelle Saint-Roch**, la cave sous l’église, descend jusqu’aux souterrains de la citadelle. »', () => noter('crypte')),
+  // la première fois, il dit d'abord ce qui vient d'arriver : la scène du pont va vite, et
+  // l'on ne savait plus, en se relevant, qui avait pris Eugène ni pourquoi Lydéric ne bougeait plus
+  else lines = [...(state.metLyderic ? [] : [
+      L('« Phinaert a pris Eugène. Moi, il m’a changé en osier : je ne peux plus faire un pas. »'),
+      L('« Ce que la garde commence, la garde l’achève. Ton serment, c’est maintenant : va chercher Eugène. »')]),
+    L('« Phinaert est entré dans la citadelle et il a fait tomber la grande grille de l’entrée. Il y a un autre chemin : **la crypte de la chapelle Saint-Roch**, la cave sous l’église, descend jusqu’aux souterrains de la citadelle. »', () => noter('crypte')),
     L('« Tu as prêté serment ce matin. Tu ne savais pas que ce serait pour ça. »')];
   dialogue(lines, () => { state.metLyderic = true; saveGame(true); });
 }

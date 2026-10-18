@@ -4,13 +4,14 @@ Mini-jeu d'aventure 3D (Three.js, modules ES). `./lancer.sh` puis `http://localh
 un seul serveur (serveur/app.py) sert le jeu ET l'API des comptes et du multi, sans cache.
 `python3 -m http.server` ne sert que les fichiers : accueil, comptes et multi n'y marchent pas.
 
-**Depuis le 5 octobre, le travail se fait sur le PC Windows** (`C:\Users\eleconte\Documents\GitHub\tloc\the_legend_of_camille`) :
-le Mac ne sert plus pour ce dépôt, ce dossier-ci est le seul exemplaire du travail en cours.
+**Depuis le 18 octobre, le travail se fait de nouveau sur le Mac** (`~/Documents/GitHub/the_legend_of_camille`) : le PC
+Windows (`C:\Users\eleconte\Documents\GitHub\tloc\the_legend_of_camille`), où il s'est fait du 5 au 18 octobre, a tout
+poussé ; ce dossier-ci est le seul exemplaire du travail en cours. Sur le PC :
 Les scripts `.sh` se lancent dans **Git Bash**, pas dans PowerShell. `python3` et `python` n'y sont
 que des raccourcis du Microsoft Store : le vrai Python est `py -3`. Playwright est dans
-`..\outils` (hors du dépôt) ; les bancs utilisent le Chrome du PC. Quand ce fichier ou
-`PROMPT-REPRISE.md` parlent du Mac (sa puce, sa charge), c'est l'historique : la contrainte des
-textures à 512 px reste, pour les petites machines.
+`..\outils` (hors du dépôt) ; les bancs utilisent le Chrome du PC. Sur le Mac, Playwright est dans
+`~/Documents/GitHub/tloc/outils`, et sa puce Intel (1,5 Go de mémoire graphique) redevient la
+contrainte : textures à 512 px, un seul Chrome de banc à la fois.
 
 ## À lire en premier
 

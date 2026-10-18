@@ -3059,3 +3059,37 @@ vole la cloche ; le combat dans les vrais lieux, figés ; un générique puis on
   (`.mode-icone`, comme « Mode Multi ») tracé au trait, un par arène (`picto` dans C.ARENES) ; dans la fenêtre, les vues
   virées en brique comme une gravure (filtre CSS), un liseré or. L'espace sous la ligne rendu. `C.LIEUX` connaît les
   mondes de l'histoire (la carte d'une partie disait « thailande »).
+
+### Retours d'Eugène sur ses captures du dev (18 octobre, sur le Mac) — **faits, vérifiés au banc et en rendu**
+Le travail revient sur le Mac (Eugène : « tout est poussé, on travaille sur le Mac maintenant ») : le dossier était déjà
+identique à GitHub (ae1bf3c), rien à tirer.
+- **Les ponts** : le tissu coupé de la ville resserrée prenait les deux bouts des ponts de la Citadelle et du Petit
+  Paradis (et un bout du pont Napoléon), pas leur tablier : on y montait et on restait enfermé dessus, sans en descendre
+  ni sauter par-dessus le parapet (le sol d'en bas était coupé lui aussi). `grilleVille` (carte.js) épargne chaque pont
+  du relevé, 14 m de part et d'autre de son axe et sa voie 25 m au-delà des culées ; les portes de ville se reposent
+  plus loin toutes seules. Les six ponts se traversent dans les deux sens, et l'on marche à leur pied.
+- **Le rayon de Camille** passe de 0,5 à 0,35 m (`RAYON_CAMILLE`, engine.js) et **on se dégage d'un obstacle** où l'on
+  est déjà (`tryMove` permet le pas qui fait ressortir — le décor seulement, jamais levelBlocked ni bounds).
+- **L'estaminet** : le client de la table du milieu était assis sur le point d'arrivée — Camille entrait DANS lui. La
+  table recule vers le comptoir ; la porte se ferme d'une capsule en solo aussi (à 0,35, on sortait dans le vide).
+- **La chapelle** : les collisions de l'abside étaient en (cos, sin), le dessin en (sin, cos) — un mur invisible en
+  travers de la nef, l'abside ouverte à l'est. Les bancs : leurs bouts arrondis fermaient l'allée centrale.
+- **La porte de la chapelle**, dehors : `makeDoor` pose ses vantaux à `recess` derrière l'encadrement ; à 0,34, ils
+  tombaient dans la boîte pleine de la nef. Ils affleurent (0,06).
+- **Le cimetière** : son muret (`wallBox`, engine.js) se posait dans la scène du MONDE en coordonnées du bourg — dessiné
+  ailleurs, et un mur invisible autour des tombes. Rangé dans le bourg. Deux îlots relevés fermaient le passage du parvis
+  au cimetière : un quatrième monument (`MONUMENTS`, village.js) les écarte ; on entre du parvis, le long de la nef.
+- **Les bulles** au-dessus des personnages (engine.js, `majBulles`) : « … » sur toute interaction « parler… » à moins de
+  26 m, « ! » doré sur celle qui est au point d'or (PARTAGE.repere) ou dont `it.important()` est vrai. Étiquettes HTML
+  (ni appel de dessin, ni shader). `it.bulleY` (Lydéric : 8,3), `it.bulleSur` (Gustave, derrière son zinc).
+- **Relire le texte** : ← ou Retour arrière dans un dialogue relit les répliques passées (`cutRecul`), Entrée revient.
+  On relit, on ne rejoue pas : une réplique peut porter un effet.
+- **Lydéric** (« je ne comprends pas la scène ») : trois textes de plan (qui est Lydéric, qui est Phinaert, l'osier), et
+  à la première parole en osier, ce qui vient d'arriver et le serment (DIALOGUES-ACTE1.md suit).
+- **Pas fait** : « musique et bruitage : utiliser la nouvelle application » — on ne sait pas encore laquelle. Sur
+  tactile, pas de geste pour relire.
+- **Appris** : (1) un lieu épargné du tissu coupé doit l'être AVEC ce qui l'entoure, sinon il devient une prison ;
+  (2) `wallBox` et tout ce qui fait `scene.add` dans engine.js posent dans le monde : dans un groupe tourné (le bourg),
+  `scene.add(wallBox(…))` ; (3) une interaction de porte n'est pas un mur : une embrasure ouverte laisse sortir dès
+  que le rayon baisse ; (4) un point d'arrivée se vérifie contre les capsules (`bancs/` : une sonde de remplissage depuis
+  le départ montre d'un coup les pièces fermées et les fuites).
