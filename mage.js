@@ -243,7 +243,7 @@ function build() {
     if (!state.mageHeart) { coeur = makeHeartContainer(); coeur.position.set(px, 1.1, pz); coeur.scale.setScalar(0.8); scene.add(coeur); } }
 
   // ---------- le mage, debout près de l'âtre ----------
-  mage = PNJ.buildRole('mage') || makeMage(); mage.position.set(-2.3, 0, -0.9); mage.rotation.y = 1.9; scene.add(mage);
+  mage = PNJ.buildRole('mage') || makeMage(); mage.position.set(-2.3, 0, -0.9); mage.rotation.y = 1.9; mage.scale.multiplyScalar(G.echelle); scene.add(mage);
   addCap(-2.3, -0.9, -2.3, -0.9, 0.5);
   addInteract({ pos: V(-1.4, 0, -0.5), r: 2.3, prompt: () => 'parler au vieux mage', fn: parler });
   // l'établi d'alchimie fait comptoir : c'est là qu'on achète les fioles
@@ -354,6 +354,9 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
+  // À L'ÉCHELLE DU DEHORS (0,6, comme la citadelle) : à 1, Camille et les gens d'ici mesuraient près de
+  // trois mètres dans une pièce bâtie en mètres vrais — la porte, les tables, le lit en jouets (Eugène, 18 octobre)
+  echelle: 0.6,
   name: 'mage', musique: 'mage', getH: () => 0, zoneName: () => 'Chaumière du vieux mage', build, populate, animate, minimap,
   counts: () => `<small>La chaumière du vieux mage — Entrée devant lui pour l'écouter, Entrée devant l'établi pour ses fioles, Entrée devant la porte pour ressortir.</small>`
     + BOURSE.ligneHUD(),

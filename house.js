@@ -9,8 +9,10 @@ import * as BOURSE from './bourse.js';
 import * as LOOK from './look.js';
 import { etapeActe1 } from './etat.js';
 
-const W = 12, D = 9, H = 5.2;              // pièce (unités de construction) ; tout est agrandi par SC pour être à l'échelle de Camille
-const SC = 1.3;
+const W = 12, D = 9, H = 5.2;              // pièce (unités de construction) ; tout est agrandi par SC
+// SC valait 1,3 : on agrandissait la maison pour une Camille de trois mètres. Camille est à l'échelle du dehors
+// (echelle 0,6, cf. l'export du niveau) : la maison reprend ses mètres vrais (18 octobre).
+const SC = 1;
 const room = new THREE.Group(); room.scale.setScalar(SC);
 // top / bas en unités de construction comme le reste : un meuble posé SOUS la mezzanine
 // doit s'arrêter sous son plancher, un meuble posé DESSUS doit commencer au-dessus — sans
@@ -248,6 +250,9 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
+  // À L'ÉCHELLE DU DEHORS (0,6, comme la citadelle) : à 1, Camille et les gens d'ici mesuraient près de
+  // trois mètres dans une pièce bâtie en mètres vrais — la porte, les tables, le lit en jouets (Eugène, 18 octobre)
+  echelle: 0.6,
   name: 'house', musique: 'maison', getH: () => 0, zoneName: () => 'Maison de Camille', build, populate, animate, minimap,
   counts: () => `<small>Chez Camille — Entrée devant le lit pour dormir, devant l'armoire pour se changer, devant la porte pour sortir. Le coffre est sur la mezzanine.</small>`
     + BOURSE.ligneHUD(),

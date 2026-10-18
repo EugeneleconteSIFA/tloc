@@ -3311,7 +3311,7 @@ export function updatePlayer(dt) {
 }
 
 // LES BULLES au-dessus des personnages (Eugène, 18 octobre : « une bulle de parole avec … ou ! à
-// côté de leur tête »). « … » : quelqu'un à qui parler ; « ! » doré : celui que l'objectif désigne
+// côté de leur tête »), pour les seuls personnages importants du moment : un « ! » doré sur celui que l'objectif désigne
 // (le point d'or, PARTAGE.repere, posé par quetes.js et citadelle.js), ou celui dont
 // l'interaction le dit (it.important()). Des étiquettes HTML et pas des sprites : ni appel de
 // dessin, ni matériau à compiler, et un trait net à toute distance. Une interaction « parler… »
@@ -3345,7 +3345,9 @@ function majBulles(dt) {
       let txt = ''; try { txt = typeof it.prompt === 'function' ? it.prompt() : it.prompt || ''; } catch (e) { continue; }
       if (!/^parler\b/i.test(txt)) continue;
       const vif = (it.important && it.important()) || (R && Math.hypot(it.pos.x - R.x, it.pos.z - R.z) < Math.max(4, it.r));
-      cand.push({ it, d, vif });
+      // seulement ceux qui comptent MAINTENANT (Eugène, 18 octobre : « pas besoin d'en mettre pour
+      // tout le monde ») : un « … » sur chaque passant noyait le « ! » de celui qu'on cherche
+      if (vif) cand.push({ it, d, vif });
     }
     cand.sort((a, b) => (b.vif - a.vif) || (a.d - b.d));
     BULLES.liste = cand.slice(0, 8);
@@ -4710,9 +4712,9 @@ export function razCharge() { chargeP = 0; etapeEnCours = null; mesures = {}; pe
 
 export async function bootLevel(level, titleMenuFn) {
   G.level = level;
-  // Les intérieurs (estaminet, chapelle, maison, cave) ont été dessinés autour d'un
-  // personnage de trois mètres ; la carte, elle, est au 1:1 relevé. Chaque niveau donne
-  // donc son échelle de personnage, et 1 reste la valeur par défaut.
+  // Chaque niveau donne son échelle de personnage, et 1 reste la valeur par défaut. Le personnage
+  // à 1 mesure près de trois mètres : la carte, au 1:1 relevé, le met à 0,6, et depuis le 18 octobre
+  // l'estaminet, la maison, la chapelle et la chaumière aussi (bâtis en mètres vrais). La cave reste à 1.
   G.echelle = level.echelle || 1;
   if (player.mesh) player.mesh.scale.setScalar(G.echelle);
   world.levelH = level.getH; world.levelBlocked = level.blocked || null; world.zoneName = level.zoneName || (() => ''); world.bounds = level.bounds || null;

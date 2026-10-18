@@ -407,6 +407,9 @@ function minimap(g, W2) {
   minimapDots(g, P);
 }
 const level = {
+  // À L'ÉCHELLE DU DEHORS (0,6, comme la citadelle) : à 1, Camille et les gens d'ici mesuraient près de
+  // trois mètres dans une pièce bâtie en mètres vrais — la porte, les tables, le lit en jouets (Eugène, 18 octobre)
+  echelle: 0.6,
   name: 'chapelle', musique: 'chapelle', getH: () => 0, zoneName: () => 'Chapelle Saint-Roch', build, populate, animate, minimap,
   counts: () => `<small>La chapelle Saint-Roch — le retable, la plaque de la garnison et les cierges se lisent (Entrée). Le portail, derrière toi, pour ressortir.</small>`,
   start: () => showMessage('Il fait frais. La lumière des vitraux traverse la nef en biais et tombe sur les dalles.', 5),

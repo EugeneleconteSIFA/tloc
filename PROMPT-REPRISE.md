@@ -3082,6 +3082,12 @@ identique à GitHub (ae1bf3c), rien à tirer.
 - **Les bulles** au-dessus des personnages (engine.js, `majBulles`) : « … » sur toute interaction « parler… » à moins de
   26 m, « ! » doré sur celle qui est au point d'or (PARTAGE.repere) ou dont `it.important()` est vrai. Étiquettes HTML
   (ni appel de dessin, ni shader). `it.bulleY` (Lydéric : 8,3), `it.bulleSur` (Gustave, derrière son zinc).
+- **Les bulles, suite** (Eugène : « que pour les personnages importants sur le moment ») : plus de « … », le « ! » seul.
+- **Les proportions des intérieurs** (« un problème de proportions sur l'ensemble des bâtiments en intérieur ») : à
+  l'échelle 1, Camille et les gens d'ici mesuraient près de 3 m (tête à 2,63 m, contre 1,59 m dehors) dans des pièces
+  bâties en mètres vrais. L'estaminet, la maison, la chapelle et la chaumière déclarent `echelle: 0.6` comme la
+  citadelle ; leurs personnages prennent `G.echelle` (l'assise des clients aussi) ; la maison, qu'on avait agrandie
+  (SC 1,3) pour la Camille de trois mètres, reprend ses mètres (SC 1). La cave (les galeries) reste à 1 : à revoir.
 - **Relire le texte** : ← ou Retour arrière dans un dialogue relit les répliques passées (`cutRecul`), Entrée revient.
   On relit, on ne rejoue pas : une réplique peut porter un effet.
 - **Lydéric** (« je ne comprends pas la scène ») : trois textes de plan (qui est Lydéric, qui est Phinaert, l'osier), et

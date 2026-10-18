@@ -357,12 +357,12 @@ function build() {
     // riggés comme les villageois, assis par leur clip ; les primitives ne restent qu'en repli
     const rig = PNJ.buildRole(i === 3 ? 'braconnier' : 'client' + kind);
     const pt = rig || makePatron(kind, col); const a = i * 1.9 + 0.4;
-    pt.position.set(x + Math.cos(a) * 1.06, 0, z + Math.sin(a) * 1.06);
+    pt.position.set(x + Math.cos(a) * 1.06, 0, z + Math.sin(a) * 1.06); pt.scale.setScalar(G.echelle);   // (l'échelle du niveau, cf. son export)
     pt.rotation.y = Math.atan2(x - pt.position.x, z - pt.position.z);
-    if (rig) pt.position.y = ASSIS_Y;
+    if (rig) pt.position.y = ASSIS_Y * G.echelle;
     else {
       pt.userData.legs.forEach(l => { l.rotation.x = -1.4; l.userData.knee.rotation.x = 1.4; });
-      pt.position.y = -0.55; pt.userData.arms[1].rotation.x = -0.9; pt.userData.arms[1].userData.elbow.rotation.x = -1.4;
+      pt.position.y = -0.55 * G.echelle; pt.userData.arms[1].rotation.x = -0.9; pt.userData.arms[1].userData.elbow.rotation.x = -1.4;
     }
     put(pt); patrons.push(pt); cap(pt.position.x, pt.position.z, pt.position.x, pt.position.z, 0.4);
   });
@@ -445,7 +445,7 @@ function build() {
   // ---------- Gustave et les enseignes de la maison ----------
   // riggé, il fait face à la salle : l'ancien, tourné de π, servait le mur
   const gustave = PNJ.buildRole('aubergiste');
-  barman = gustave || makePatron(0, 0xf0e6d0); barman.position.set(bx - 0.3, 0, bz - 0.82); barman.rotation.y = gustave ? 0 : Math.PI; put(barman);
+  barman = gustave || makePatron(0, 0xf0e6d0); barman.position.set(bx - 0.3, 0, bz - 0.82); barman.rotation.y = gustave ? 0 : Math.PI; barman.scale.setScalar(G.echelle); put(barman);
   if (barman.userData.arms) { barman.userData.arms[0].rotation.x = -0.6; barman.userData.arms[0].userData.elbow.rotation.x = -1.2; }
   // (la bulle au-dessus de Gustave, pas devant le zinc ; « ! » quand l'enquête envoie à lui — quetes.js, suiteActe1)
   addInteract({ pos: V(bx - 0.3, 0, bz + 1.25), r: 2.0 * SC, prompt: () => (etapeActe1(state) ? 'parler à Gustave' : 'commander une gaufre au patron'), fn: commanderGaufre,
@@ -608,6 +608,9 @@ const ARENE_ESTAMINET = {
 };
 
 const level = {
+  // À L'ÉCHELLE DU DEHORS (0,6, comme la citadelle) : à 1, Camille et les gens d'ici mesuraient près de
+  // trois mètres dans une pièce bâtie en mètres vrais — la porte, les tables, le lit en jouets (Eugène, 18 octobre)
+  echelle: 0.6,
   name: 'tavern', arenes: [ARENE_ESTAMINET], musique: 'taverne', getH: () => 0, zoneName: () => "L'Estaminet", build, populate, animate, minimap, onLoad,
   entry: () => ({ title: "L'Estaminet", sub: 'Gaufres et bière de la citadelle', cam: [3.6, 2.6, 3.4], at: [-1.5, 1.1, -1.5], cam2: [1.2, 2.0, 3.4], at2: [0, 1.3, 0.5], dur: 3.5 }),
   counts: () => `<small>L'estaminet du village — Gustave, au comptoir, offre une gaufre (Entrée). Les clients attablés ont aussi des choses à raconter. Porte derrière toi pour sortir.</small>`,
