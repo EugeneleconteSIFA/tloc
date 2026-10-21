@@ -45,6 +45,7 @@ async function valider() {
   $('valider').disabled = true;
   try {
     await (mode === 'connexion' ? C.connexion(pseudo, mdp) : C.inscription(pseudo, mdp));
+    window.kernse?.track(mode); // studio Kernse : compte les connexions et inscriptions (sans donnée personnelle)
     try { localStorage.removeItem('tloc_local'); } catch (e) {}
     location.href = 'accueil.html';
   } catch (e) {
